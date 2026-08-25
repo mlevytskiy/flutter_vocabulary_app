@@ -19,6 +19,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final List<TextEditingController> _wordControllers = [];
   final List<TextEditingController> _translationControllers = [];
   final List<bool> _isLoadingTranslation = [];
+  final List<bool> _wasAutoFilled = [];
   final FocusNode _firstFieldFocusNode = FocusNode();
 
   @override
@@ -39,16 +40,21 @@ class _WordInputScreenState extends State<WordInputScreen> {
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
       _checkAndAddNewPair();
+      setState(() {}); // Оновити для показу іконки при >= 2 літерах
     });
 
     translationController.addListener(() {
       _wordPairs[index].translation = translationController.text;
       _checkAndAddNewPair();
+      setState(() {
+        _wasAutoFilled[index] = false;
+      });
     });
 
     _wordControllers.add(wordController);
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
+    _wasAutoFilled.add(false);
   }
 
   void _checkAndAddNewPair() {
@@ -77,6 +83,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
     setState(() {
       _isLoadingTranslation[index] = false;
+      _wasAutoFilled[index] = true;
     });
   }
 
@@ -145,29 +152,42 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
                   ),
                 ),
-                Positioned(
-                  top: 16,
-                  right: 8,
-                  child: _isLoadingTranslation[index]
-                      ? const Padding(
-                          padding: EdgeInsets.all(12.0),
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2.5),
-                          ),
-                        )
-                      : Material(
-                          color: Colors.transparent,
-                          child: IconButton(
-                            icon: const Icon(Icons.electric_bolt),
-                            color: Colors.purple[600],
-                            iconSize: 28,
-                            tooltip: 'AI Translate',
-                            onPressed: () => _fillWithAI(index),
-                          ),
-                        ),
-                ),
+                if (_wordControllers[index].text.length >= 2)
+                  Positioned(
+                    top: 16,
+                    right: 8,
+                    child: _isLoadingTranslation[index]
+                        ? const Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2.5),
+                            ),
+                          )
+                        : _wasAutoFilled[index]
+                            ? Material(
+                                color: Colors.transparent,
+                                child: IconButton(
+                                  icon: const Icon(Icons.edit),
+                                  color: Colors.grey[600],
+                                  iconSize: 24,
+                                  tooltip: 'Edit Translation',
+                                  onPressed: () => _fillWithAI(index),
+                                ),
+                              )
+                            : Material(
+                                color: Colors.transparent,
+                                child: IconButton(
+                                  icon: const Icon(Icons.electric_bolt),
+                                  color: Colors.purple[600],
+                                  iconSize: 28,
+                                  tooltip: 'AI Translate',
+                                  onPressed: () => _fillWithAI(index),
+                                ),
+                              ),
+                  ),
               ],
             ),
           );
