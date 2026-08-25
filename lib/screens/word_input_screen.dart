@@ -18,6 +18,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   final List<TextEditingController> _wordControllers = [];
   final List<TextEditingController> _translationControllers = [];
+  final List<bool> _isLoadingTranslation = [];
   final FocusNode _firstFieldFocusNode = FocusNode();
 
   @override
@@ -47,6 +48,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
     _wordControllers.add(wordController);
     _translationControllers.add(translationController);
+    _isLoadingTranslation.add(false);
   }
 
   void _checkAndAddNewPair() {
@@ -60,6 +62,22 @@ class _WordInputScreenState extends State<WordInputScreen> {
         _addControllersForIndex(_wordPairs.length - 1);
       });
     }
+  }
+
+  Future<void> _fillWithAI(int index) async {
+    setState(() {
+      _isLoadingTranslation[index] = true;
+    });
+
+    // Симуляція AI запиту - 1 секунда
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Заповнити текст "заповнено"
+    _translationControllers[index].text = 'заповнено';
+
+    setState(() {
+      _isLoadingTranslation[index] = false;
+    });
   }
 
   void _navigateToTableScreen() {
@@ -123,6 +141,21 @@ class _WordInputScreenState extends State<WordInputScreen> {
                 leftHint: 'Word',
                 rightHint: 'Translation',
                 leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
+                rightSuffixIcon: _isLoadingTranslation[index]
+                    ? const Padding(
+                        padding: EdgeInsets.all(12.0),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.electric_bolt),
+                        color: Colors.amber,
+                        tooltip: 'AI Translate',
+                        onPressed: () => _fillWithAI(index),
+                      ),
               ),
             ),
           );

@@ -40,6 +40,8 @@ class SyncedTextFieldRow extends StatefulWidget {
     this.rightHint,
     this.leftFocusNode,
     this.rightFocusNode,
+    this.leftSuffixIcon,
+    this.rightSuffixIcon,
     this.spacing = 16,
     this.contentPadding =
         const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -56,6 +58,8 @@ class SyncedTextFieldRow extends StatefulWidget {
   final String? rightHint;
   final FocusNode? leftFocusNode;
   final FocusNode? rightFocusNode;
+  final Widget? leftSuffixIcon;
+  final Widget? rightSuffixIcon;
 
   /// Horizontal gap between the two fields.
   final double spacing;
@@ -143,6 +147,7 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
     required StrutStyle strutStyle,
     required int minLines,
     FocusNode? focusNode,
+    Widget? suffixIcon,
   }) {
     return TextField(
       controller: controller,
@@ -164,6 +169,7 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
         ),
         contentPadding: widget.contentPadding,
         isDense: false,
+        suffixIcon: suffixIcon,
       ),
     );
   }
@@ -209,6 +215,7 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
                 strutStyle: strutStyle,
                 minLines: lines,
                 focusNode: widget.leftFocusNode,
+                suffixIcon: widget.leftSuffixIcon,
               ),
             ),
             SizedBox(width: widget.spacing),
@@ -221,6 +228,7 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
                 strutStyle: strutStyle,
                 minLines: lines,
                 focusNode: widget.rightFocusNode,
+                suffixIcon: widget.rightSuffixIcon,
               ),
             ),
           ],
