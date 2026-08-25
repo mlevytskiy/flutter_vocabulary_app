@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:translator/translator.dart';
 
 import '../models/word_pair.dart';
 import '../widgets/synced_text_field_row.dart';
@@ -75,20 +76,37 @@ class _WordInputScreenState extends State<WordInputScreen> {
   }
 
   Future<void> _fillWithAI(int index) async {
+    final word = _wordControllers[index].text.trim();
+    if (word.isEmpty) return;
+
     setState(() {
       _isLoadingTranslation[index] = true;
     });
 
-    // Симуляція AI запиту - 1 секунда
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Google Translate: English -> Ukrainian
+      final translator = GoogleTranslator();
+      final translation =
+          await translator.translate(word, from: 'en', to: 'uk');
 
-    // Заповнити текст "заповнено"
-    _translationControllers[index].text = 'заповнено';
+      _translationControllers[index].text = translation.text;
 
-    setState(() {
-      _isLoadingTranslation[index] = false;
-      _wasAutoFilled[index] = true;
-    });
+      setState(() {
+        _isLoadingTranslation[index] = false;
+        _wasAutoFilled[index] = true;
+      });
+    } catch (e) {
+      // Помилка перекладу - показати повідомлення
+      setState(() {
+        _isLoadingTranslation[index] = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Translation error: $e')),
+        );
+      }
+    }
   }
 
   void _navigateToTableScreen() {
