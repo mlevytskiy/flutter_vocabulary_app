@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/word_pair.dart';
+import '../widgets/synced_text_field_row.dart';
 import 'words_table_screen.dart';
 
 class WordInputScreen extends StatefulWidget {
@@ -17,11 +18,16 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   final List<TextEditingController> _wordControllers = [];
   final List<TextEditingController> _translationControllers = [];
+  final FocusNode _firstFieldFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _addControllersForIndex(0);
+    // Request focus on the first field after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _firstFieldFocusNode.requestFocus();
+    });
   }
 
   void _addControllersForIndex(int index) {
@@ -69,6 +75,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   @override
   void dispose() {
+    _firstFieldFocusNode.dispose();
     for (var controller in _wordControllers) {
       controller.dispose();
     }
@@ -108,41 +115,14 @@ class _WordInputScreenState extends State<WordInputScreen> {
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _wordControllers[index],
-                        minLines: 1,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        decoration: const InputDecoration(
-                          labelText: 'Word',
-                          border: OutlineInputBorder(),
-                          hintText: 'Word',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextField(
-                        controller: _translationControllers[index],
-                        minLines: 1,
-                        maxLines: null,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        decoration: const InputDecoration(
-                          labelText: 'Translation',
-                          border: OutlineInputBorder(),
-                          hintText: 'Переклад',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              child: SyncedTextFieldRow(
+                leftController: _wordControllers[index],
+                rightController: _translationControllers[index],
+                leftLabel: 'Word',
+                rightLabel: 'Translation',
+                leftHint: 'Word',
+                rightHint: 'Translation',
+                leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
               ),
             ),
           );
