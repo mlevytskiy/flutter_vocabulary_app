@@ -131,32 +131,44 @@ class _WordInputScreenState extends State<WordInputScreen> {
           return Card(
             margin: const EdgeInsets.only(bottom: 12.0),
             elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SyncedTextFieldRow(
-                leftController: _wordControllers[index],
-                rightController: _translationControllers[index],
-                leftLabel: 'Word',
-                rightLabel: 'Translation',
-                leftHint: 'Word',
-                rightHint: 'Translation',
-                leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
-                rightSuffixIcon: _isLoadingTranslation[index]
-                    ? const Padding(
-                        padding: EdgeInsets.all(12.0),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: SyncedTextFieldRow(
+                    leftController: _wordControllers[index],
+                    rightController: _translationControllers[index],
+                    leftLabel: 'Word',
+                    rightLabel: 'Translation',
+                    leftHint: 'Word',
+                    rightHint: 'Translation',
+                    leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: _isLoadingTranslation[index]
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
+                        )
+                      : Material(
+                          color: Colors.transparent,
+                          child: IconButton(
+                            icon: const Icon(Icons.electric_bolt),
+                            color: Colors.amber,
+                            iconSize: 28,
+                            tooltip: 'AI Translate',
+                            onPressed: () => _fillWithAI(index),
+                          ),
                         ),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.electric_bolt),
-                        color: Colors.amber,
-                        tooltip: 'AI Translate',
-                        onPressed: () => _fillWithAI(index),
-                      ),
-              ),
+                ),
+              ],
             ),
           );
         },
