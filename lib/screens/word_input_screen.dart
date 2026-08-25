@@ -25,7 +25,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   void _addControllersForIndex(int index) {
     final wordController = TextEditingController(text: _wordPairs[index].word);
-    final translationController = TextEditingController(text: _wordPairs[index].translation);
+    final translationController =
+        TextEditingController(text: _wordPairs[index].translation);
 
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
@@ -45,7 +46,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
     if (_wordPairs.isEmpty) return;
 
     final lastPair = _wordPairs.last;
-    if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
+    if (lastPair.word.trim().isNotEmpty ||
+        lastPair.translation.trim().isNotEmpty) {
       setState(() {
         _wordPairs.add(WordPair(word: '', translation: ''));
         _addControllersForIndex(_wordPairs.length - 1);
@@ -106,10 +108,15 @@ class _WordInputScreenState extends State<WordInputScreen> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _wordControllers[index],
+                      minLines: 1,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
                         labelText: 'Word',
                         border: OutlineInputBorder(),
@@ -121,6 +128,10 @@ class _WordInputScreenState extends State<WordInputScreen> {
                   Expanded(
                     child: TextField(
                       controller: _translationControllers[index],
+                      minLines: 1,
+                      maxLines: null,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
                       decoration: const InputDecoration(
                         labelText: 'Translation',
                         border: OutlineInputBorder(),
