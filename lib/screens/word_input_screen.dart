@@ -110,7 +110,9 @@ class _WordInputScreenState extends State<WordInputScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  Flexible(
+                    flex: 1,
+                    fit: FlexFit.tight,
                     child: TextField(
                       controller: _wordControllers[index],
                       minLines: 1,
@@ -121,11 +123,15 @@ class _WordInputScreenState extends State<WordInputScreen> {
                         labelText: 'Word',
                         border: OutlineInputBorder(),
                         hintText: 'Enter English word',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
+                  Flexible(
+                    flex: 1,
+                    fit: FlexFit.tight,
                     child: TextField(
                       controller: _translationControllers[index],
                       minLines: 1,
@@ -136,6 +142,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
                         labelText: 'Translation',
                         border: OutlineInputBorder(),
                         hintText: 'Переклад',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                     ),
                   ),
