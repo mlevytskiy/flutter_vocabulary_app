@@ -234,15 +234,13 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                 maxColumns: 3,
                                 dismissOnClickAway: true,
                                 backgroundColor: Colors.black87,
-                                child: Material(
+                                child: Container(
                                   key: _editButtonKeys[index],
-                                  color: Colors.transparent,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.edit),
+                                  padding: const EdgeInsets.all(12),
+                                  child: Icon(
+                                    Icons.edit,
                                     color: Colors.grey[600],
-                                    iconSize: 24,
-                                    tooltip: 'Edit Translation',
-                                    onPressed: () {},
+                                    size: 24,
                                   ),
                                 ),
                               )
