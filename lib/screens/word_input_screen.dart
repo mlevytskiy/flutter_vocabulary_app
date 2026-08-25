@@ -182,7 +182,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                 ),
                 if (_wordControllers[index].text.length >= 2)
                   Positioned(
-                    top: 36,
+                    top: 16,
                     right: 8,
                     child: _isLoadingTranslation[index]
                         ? const Padding(
@@ -234,14 +234,28 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                 maxColumns: 3,
                                 dismissOnClickAway: true,
                                 backgroundColor: Colors.black87,
-                                child: Container(
-                                  key: _editButtonKeys[index],
-                                  padding: const EdgeInsets.all(12),
-                                  child: Icon(
-                                    Icons.edit,
-                                    color: Colors.grey[600],
-                                    size: 24,
-                                  ),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    // Невидимий anchor для popup (зміщений вниз)
+                                    Positioned(
+                                      top: 20,
+                                      child: Container(
+                                        key: _editButtonKeys[index],
+                                        width: 48,
+                                        height: 1,
+                                      ),
+                                    ),
+                                    // Видима іконка (на місці)
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Icon(
+                                        Icons.edit,
+                                        color: Colors.grey[600],
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             : Material(
