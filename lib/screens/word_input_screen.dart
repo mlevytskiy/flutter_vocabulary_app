@@ -182,7 +182,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                 ),
                 if (_wordControllers[index].text.length >= 2)
                   Positioned(
-                    top: 16,
+                    top: 36,
                     right: 8,
                     child: _isLoadingTranslation[index]
                         ? const Padding(
