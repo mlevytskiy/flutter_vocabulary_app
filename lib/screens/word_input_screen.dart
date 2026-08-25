@@ -46,9 +46,6 @@ class _WordInputScreenState extends State<WordInputScreen> {
     translationController.addListener(() {
       _wordPairs[index].translation = translationController.text;
       _checkAndAddNewPair();
-      setState(() {
-        _wasAutoFilled[index] = false;
-      });
     });
 
     _wordControllers.add(wordController);
