@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:translator/translator.dart';
+import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../models/word_pair.dart';
 import '../widgets/synced_text_field_row.dart';
@@ -21,6 +22,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final List<TextEditingController> _translationControllers = [];
   final List<bool> _isLoadingTranslation = [];
   final List<bool> _wasAutoFilled = [];
+  final List<GlobalKey> _editButtonKeys = [];
   final FocusNode _firstFieldFocusNode = FocusNode();
 
   @override
@@ -60,6 +62,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
     _wasAutoFilled.add(false);
+    _editButtonKeys.add(GlobalKey());
   }
 
   void _checkAndAddNewPair() {
@@ -192,14 +195,55 @@ class _WordInputScreenState extends State<WordInputScreen> {
                             ),
                           )
                         : _wasAutoFilled[index]
-                            ? Material(
-                                color: Colors.transparent,
-                                child: IconButton(
-                                  icon: const Icon(Icons.edit),
-                                  color: Colors.grey[600],
-                                  iconSize: 24,
-                                  tooltip: 'Edit Translation',
-                                  onPressed: () => _fillWithAI(index),
+                            ? ContextualMenu(
+                                targetWidgetKey: _editButtonKeys[index],
+                                items: [
+                                  ContextPopupMenuItem(
+                                    onTap: () async {
+                                      // TODO: Re-translate action
+                                      _fillWithAI(index);
+                                    },
+                                    child: const Icon(
+                                      Icons.refresh,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  ContextPopupMenuItem(
+                                    onTap: () async {
+                                      // TODO: Edit manually action
+                                    },
+                                    child: const Icon(
+                                      Icons.edit,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  ContextPopupMenuItem(
+                                    onTap: () async {
+                                      // TODO: Clear translation action
+                                      _translationControllers[index].clear();
+                                    },
+                                    child: const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ],
+                                maxColumns: 3,
+                                dismissOnClickAway: true,
+                                backgroundColor: Colors.black87,
+                                child: Material(
+                                  key: _editButtonKeys[index],
+                                  color: Colors.transparent,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit),
+                                    color: Colors.grey[600],
+                                    iconSize: 24,
+                                    tooltip: 'Edit Translation',
+                                    onPressed: () {},
+                                  ),
                                 ),
                               )
                             : Material(
