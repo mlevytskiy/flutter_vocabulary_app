@@ -239,7 +239,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                   children: [
                                     // Невидимий anchor для popup (зміщений вниз)
                                     Positioned(
-                                      top: 20,
+                                      top: 14,
                                       child: Container(
                                         key: _editButtonKeys[index],
                                         width: 48,
