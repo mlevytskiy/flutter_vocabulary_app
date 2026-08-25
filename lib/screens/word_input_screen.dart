@@ -107,44 +107,33 @@ class _WordInputScreenState extends State<WordInputScreen> {
             elevation: 2,
             child: Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Flexible(
-                    flex: 1,
-                    fit: FlexFit.tight,
-                    child: TextField(
-                      controller: _wordControllers[index],
-                      minLines: 1,
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        labelText: 'Word',
-                        border: OutlineInputBorder(),
-                        hintText: 'Enter English word',
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
+                  TextField(
+                    controller: _wordControllers[index],
+                    minLines: 1,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    decoration: const InputDecoration(
+                      labelText: 'Word',
+                      border: OutlineInputBorder(),
+                      hintText: 'Enter English word',
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Flexible(
-                    flex: 1,
-                    fit: FlexFit.tight,
-                    child: TextField(
-                      controller: _translationControllers[index],
-                      minLines: 1,
-                      maxLines: null,
-                      keyboardType: TextInputType.multiline,
-                      textInputAction: TextInputAction.newline,
-                      decoration: const InputDecoration(
-                        labelText: 'Translation',
-                        border: OutlineInputBorder(),
-                        hintText: 'Переклад',
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _translationControllers[index],
+                    minLines: 1,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    decoration: const InputDecoration(
+                      labelText: 'Translation',
+                      border: OutlineInputBorder(),
+                      hintText: 'Переклад',
                     ),
                   ),
                 ],
