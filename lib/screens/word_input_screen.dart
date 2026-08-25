@@ -161,7 +161,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                           color: Colors.transparent,
                           child: IconButton(
                             icon: const Icon(Icons.electric_bolt),
-                            color: Colors.deepPurple,
+                            color: Colors.purple[600],
                             iconSize: 28,
                             tooltip: 'AI Translate',
                             onPressed: () => _fillWithAI(index),
