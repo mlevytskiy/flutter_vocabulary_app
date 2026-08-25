@@ -146,7 +146,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                   ),
                 ),
                 Positioned(
-                  top: 8,
+                  top: 16,
                   right: 8,
                   child: _isLoadingTranslation[index]
                       ? const Padding(
@@ -161,7 +161,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                           color: Colors.transparent,
                           child: IconButton(
                             icon: const Icon(Icons.electric_bolt),
-                            color: Colors.amber,
+                            color: Colors.deepPurple,
                             iconSize: 28,
                             tooltip: 'AI Translate',
                             onPressed: () => _fillWithAI(index),
