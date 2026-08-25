@@ -83,6 +83,9 @@ class _WordInputScreenState extends State<WordInputScreen> {
       _isLoadingTranslation[index] = true;
     });
 
+    // Дати UI час відрендерити loader перед запитом
+    await Future.delayed(const Duration(milliseconds: 50));
+
     try {
       // Google Translate: English -> Ukrainian
       final translator = GoogleTranslator();
