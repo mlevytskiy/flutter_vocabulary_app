@@ -46,6 +46,13 @@ class _WordInputScreenState extends State<WordInputScreen> {
     translationController.addListener(() {
       _wordPairs[index].translation = translationController.text;
       _checkAndAddNewPair();
+
+      // Якщо translation повністю видалений, скинути wasAutoFilled
+      if (translationController.text.isEmpty && _wasAutoFilled[index]) {
+        setState(() {
+          _wasAutoFilled[index] = false;
+        });
+      }
     });
 
     _wordControllers.add(wordController);
