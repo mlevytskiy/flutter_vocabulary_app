@@ -22,8 +22,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final List<TextEditingController> _wordControllers = [];
   final List<TextEditingController> _translationControllers = [];
   final List<bool> _isLoadingTranslation = [];
-  final List<bool> _wasAutoFilled = [];
-  final List<GlobalKey> _editButtonKeys = [];
+  final List<bool> _hasTranslationOptions = [];
   final FocusNode _firstFieldFocusNode = FocusNode();
 
   @override
@@ -38,7 +37,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   void _addControllersForIndex(int index) {
     final wordController = TextEditingController(text: _wordPairs[index].word);
-    final translationController = TextEditingController(text: _wordPairs[index].translation);
+    final translationController =
+        TextEditingController(text: _wordPairs[index].translation);
 
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
@@ -50,10 +50,10 @@ class _WordInputScreenState extends State<WordInputScreen> {
       _wordPairs[index].translation = translationController.text;
       _checkAndAddNewPair();
 
-      // Якщо translation повністю видалений, скинути wasAutoFilled
-      if (translationController.text.isEmpty && _wasAutoFilled[index]) {
+      // Якщо translation повністю видалений, скинути опції
+      if (translationController.text.isEmpty && _hasTranslationOptions[index]) {
         setState(() {
-          _wasAutoFilled[index] = false;
+          _hasTranslationOptions[index] = false;
         });
       }
     });
@@ -61,15 +61,15 @@ class _WordInputScreenState extends State<WordInputScreen> {
     _wordControllers.add(wordController);
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
-    _wasAutoFilled.add(false);
-    _editButtonKeys.add(GlobalKey());
+    _hasTranslationOptions.add(false);
   }
 
   void _checkAndAddNewPair() {
     if (_wordPairs.isEmpty) return;
 
     final lastPair = _wordPairs.last;
-    if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
+    if (lastPair.word.trim().isNotEmpty ||
+        lastPair.translation.trim().isNotEmpty) {
       setState(() {
         _wordPairs.add(WordPair(word: '', translation: ''));
         _addControllersForIndex(_wordPairs.length - 1);
@@ -91,13 +91,14 @@ class _WordInputScreenState extends State<WordInputScreen> {
     try {
       // Google Translate: English -> Ukrainian
       final translator = GoogleTranslator();
-      final translation = await translator.translate(word, from: 'en', to: 'uk');
+      final translation =
+          await translator.translate(word, from: 'en', to: 'uk');
 
       _translationControllers[index].text = translation.text;
 
       setState(() {
         _isLoadingTranslation[index] = false;
-        _wasAutoFilled[index] = true;
+        _hasTranslationOptions[index] = true;
       });
     } catch (e) {
       // Помилка перекладу - показати повідомлення
@@ -188,83 +189,28 @@ class _WordInputScreenState extends State<WordInputScreen> {
                             child: SizedBox(
                               width: 24,
                               height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2.5),
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2.5),
                             ),
                           )
-                        : _wasAutoFilled[index]
-                            ? ContextualMenu(
-                                targetWidgetKey: _editButtonKeys[index],
-                                items: [
-                                  ContextPopupMenuItem(
-                                    onTap: () async {
-                                      // TODO: Re-translate action
-                                      _fillWithAI(index);
-                                    },
-                                    child: const Icon(
-                                      Icons.refresh,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  ContextPopupMenuItem(
-                                    onTap: () async {
-                                      // TODO: Edit manually action
-                                    },
-                                    child: const Icon(
-                                      Icons.edit,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                  ContextPopupMenuItem(
-                                    onTap: () async {
-                                      // TODO: Clear translation action
-                                      _translationControllers[index].clear();
-                                    },
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
-                                ],
-                                maxColumns: 3,
-                                dismissOnClickAway: true,
-                                backgroundColor: Colors.black87,
-                                child: Stack(
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    // Невидимий anchor для popup (зміщений вниз)
-                                    Positioned(
-                                      top: 14,
-                                      child: Container(
-                                        key: _editButtonKeys[index],
-                                        width: 48,
-                                        height: 1,
-                                      ),
-                                    ),
-                                    // Видима іконка (на місці)
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Icon(
-                                        Icons.edit,
-                                        color: Colors.grey[600],
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : Material(
-                                color: Colors.transparent,
-                                child: IconButton(
-                                  icon: const Icon(Icons.electric_bolt),
-                                  color: Colors.purple[600],
-                                  iconSize: 28,
-                                  tooltip: 'AI Translate',
-                                  onPressed: () => _fillWithAI(index),
-                                ),
-                              ),
+                        : Material(
+                            color: Colors.transparent,
+                            child: IconButton(
+                              icon: const Icon(Icons.electric_bolt),
+                              color: _hasTranslationOptions[index]
+                                  ? Colors.amber[
+                                      600] // Жовта - є варіанти перекладу
+                                  : Colors.purple[
+                                      600], // Фіолетова - отримати переклад
+                              iconSize: 28,
+                              tooltip: _hasTranslationOptions[index]
+                                  ? 'Show translation options'
+                                  : 'AI Translate',
+                              onPressed: _hasTranslationOptions[index]
+                                  ? null // TODO: показати popup з варіантами (майбутній функціонал)
+                                  : () => _fillWithAI(index),
+                            ),
+                          ),
                   ),
               ],
             ),
