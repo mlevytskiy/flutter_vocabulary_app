@@ -212,19 +212,14 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                       _selectTranslationOption(
                                           index, 'переклад 1');
                                     },
-                                    child: SizedBox(
-                                      width: 220,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
-                                        child: Text(
-                                          'переклад 1',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
-                                          maxLines: null,
-                                          softWrap: true,
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 14),
+                                      child: Text(
+                                        'переклад 1',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
                                         ),
                                       ),
                                     ),
@@ -234,19 +229,14 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                       _selectTranslationOption(
                                           index, 'переклад 2');
                                     },
-                                    child: SizedBox(
-                                      width: 220,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
-                                        child: Text(
-                                          'переклад 2',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
-                                          maxLines: null,
-                                          softWrap: true,
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 14),
+                                      child: Text(
+                                        'переклад 2',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
                                         ),
                                       ),
                                     ),
@@ -256,19 +246,14 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                       _selectTranslationOption(
                                           index, 'переклад 3');
                                     },
-                                    child: SizedBox(
-                                      width: 220,
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 12),
-                                        child: Text(
-                                          'переклад 3',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
-                                          maxLines: null,
-                                          softWrap: true,
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 20, vertical: 14),
+                                      child: Text(
+                                        'переклад 3',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
                                         ),
                                       ),
                                     ),
