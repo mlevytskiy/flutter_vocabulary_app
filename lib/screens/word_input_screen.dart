@@ -201,7 +201,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 5),
                 // Stack з полями та молнією
                 Stack(
                   children: [
