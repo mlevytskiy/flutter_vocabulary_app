@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:translator/translator.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
+import 'package:translator/translator.dart';
 
 import '../models/word_pair.dart';
 import '../widgets/synced_text_field_row.dart';
@@ -37,8 +38,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   void _addControllersForIndex(int index) {
     final wordController = TextEditingController(text: _wordPairs[index].word);
-    final translationController =
-        TextEditingController(text: _wordPairs[index].translation);
+    final translationController = TextEditingController(text: _wordPairs[index].translation);
 
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
@@ -69,8 +69,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
     if (_wordPairs.isEmpty) return;
 
     final lastPair = _wordPairs.last;
-    if (lastPair.word.trim().isNotEmpty ||
-        lastPair.translation.trim().isNotEmpty) {
+    if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
       setState(() {
         _wordPairs.add(WordPair(word: '', translation: ''));
         _addControllersForIndex(_wordPairs.length - 1);
@@ -86,14 +85,13 @@ class _WordInputScreenState extends State<WordInputScreen> {
       _isLoadingTranslation[index] = true;
     });
 
-    // Дати UI час відрендерити loader перед запитом
-    await Future.delayed(const Duration(milliseconds: 50));
+    // Почекати поки UI завершить рендер поточного frame
+    await SchedulerBinding.instance.endOfFrame;
 
     try {
       // Google Translate: English -> Ukrainian
       final translator = GoogleTranslator();
-      final translation =
-          await translator.translate(word, from: 'en', to: 'uk');
+      final translation = await translator.translate(word, from: 'en', to: 'uk');
 
       _translationControllers[index].text = translation.text;
 
@@ -190,8 +188,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                             child: SizedBox(
                               width: 24,
                               height: 24,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2.5),
+                              child: CircularProgressIndicator(strokeWidth: 2.5),
                             ),
                           )
                         : _wasAutoFilled[index]
