@@ -248,10 +248,13 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     if (_isDragMode) ...[
                       SizedBox(
                         width: 32,
-                        child: Icon(
-                          Icons.drag_indicator,
-                          color: const Color(0xFF7F77DD),
-                          size: 28,
+                        height: 44,
+                        child: Center(
+                          child: Icon(
+                            Icons.drag_indicator,
+                            color: const Color(0xFF7F77DD),
+                            size: 32,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 8),
