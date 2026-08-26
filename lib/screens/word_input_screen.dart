@@ -217,12 +217,11 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                     'переклад 2',
                                     'переклад 3',
                                   ];
+                                  var selectedItems = List<bool>.generate(
+                                      translations.length, (_) => false);
 
                                   return StatefulBuilder(
                                     builder: (context, setMenuState) {
-                                      final selectedItems = List<bool>.generate(
-                                          translations.length, (_) => false);
-
                                       return ClipRRect(
                                         borderRadius: BorderRadius.circular(8),
                                         child: Material(
