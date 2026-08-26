@@ -173,7 +173,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
             padding:
                 const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFEDE7F6),
+              color: const Color(0xFFD1C4E9),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
