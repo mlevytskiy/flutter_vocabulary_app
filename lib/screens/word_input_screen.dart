@@ -23,6 +23,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final List<TextEditingController> _translationControllers = [];
   final List<bool> _isLoadingTranslation = [];
   final List<bool> _hasTranslationOptions = [];
+  final List<GlobalKey> _translationButtonKeys = [];
   final FocusNode _firstFieldFocusNode = FocusNode();
 
   @override
@@ -62,6 +63,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
     _hasTranslationOptions.add(false);
+    _translationButtonKeys.add(GlobalKey());
   }
 
   void _checkAndAddNewPair() {
@@ -112,6 +114,11 @@ class _WordInputScreenState extends State<WordInputScreen> {
         );
       }
     }
+  }
+
+  void _selectTranslationOption(int index, String selectedTranslation) {
+    _translationControllers[index].text = selectedTranslation;
+    // Popup закривається автоматично
   }
 
   void _navigateToTableScreen() {
@@ -193,24 +200,85 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                   CircularProgressIndicator(strokeWidth: 2.5),
                             ),
                           )
-                        : Material(
-                            color: Colors.transparent,
-                            child: IconButton(
-                              icon: const Icon(Icons.electric_bolt),
-                              color: _hasTranslationOptions[index]
-                                  ? Colors.amber[
-                                      600] // Жовта - є варіанти перекладу
-                                  : Colors.purple[
-                                      600], // Фіолетова - отримати переклад
-                              iconSize: 28,
-                              tooltip: _hasTranslationOptions[index]
-                                  ? 'Show translation options'
-                                  : 'AI Translate',
-                              onPressed: _hasTranslationOptions[index]
-                                  ? null // TODO: показати popup з варіантами (майбутній функціонал)
-                                  : () => _fillWithAI(index),
-                            ),
-                          ),
+                        : _hasTranslationOptions[index]
+                            ? ContextualMenu(
+                                targetWidgetKey: _translationButtonKeys[index],
+                                maxColumns: 1, // Вертикальне розташування
+                                dismissOnClickAway: true,
+                                backgroundColor: Colors.black87,
+                                items: [
+                                  ContextPopupMenuItem(
+                                    onTap: () async {
+                                      _selectTranslationOption(
+                                          index, 'переклад 1');
+                                    },
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      child: Text(
+                                        'переклад 1',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  ContextPopupMenuItem(
+                                    onTap: () async {
+                                      _selectTranslationOption(
+                                          index, 'переклад 2');
+                                    },
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      child: Text(
+                                        'переклад 2',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  ContextPopupMenuItem(
+                                    onTap: () async {
+                                      _selectTranslationOption(
+                                          index, 'переклад 3');
+                                    },
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                      child: Text(
+                                        'переклад 3',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                child: Container(
+                                  key: _translationButtonKeys[index],
+                                  padding: const EdgeInsets.all(12),
+                                  child: Icon(
+                                    Icons.electric_bolt,
+                                    color: Colors.amber[600],
+                                    size: 28,
+                                  ),
+                                ),
+                              )
+                            : Material(
+                                color: Colors.transparent,
+                                child: IconButton(
+                                  icon: const Icon(Icons.electric_bolt),
+                                  color: Colors.purple[600],
+                                  iconSize: 28,
+                                  tooltip: 'AI Translate',
+                                  onPressed: () => _fillWithAI(index),
+                                ),
+                              ),
                   ),
               ],
             ),
