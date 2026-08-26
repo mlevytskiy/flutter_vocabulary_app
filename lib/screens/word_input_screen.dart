@@ -171,34 +171,37 @@ class _WordInputScreenState extends State<WordInputScreen> {
           return Container(
             margin: const EdgeInsets.only(bottom: 12.0),
             padding:
-                const EdgeInsets.only(top: 8, right: 12, bottom: 12, left: 8),
+                const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFEEEDFE),
+              color: const Color(0xFFE8E5FF),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Верхній рядок: кнопка видалення
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        iconSize: 16,
-                        icon: const Icon(Icons.close),
-                        color: const Color(0xFF7F77DD),
-                        onPressed: () {
-                          // TODO: функціонал видалення
-                        },
+                SizedBox(
+                  height: 20,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          iconSize: 14,
+                          icon: const Icon(Icons.close),
+                          color: const Color(0xFF7F77DD),
+                          onPressed: () {
+                            // TODO: функціонал видалення
+                          },
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 // Stack з полями та молнією
                 Stack(
                   children: [
@@ -213,8 +216,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     ),
                     if (_wordControllers[index].text.length >= 2)
                       Positioned(
-                        top: 16,
-                        right: 8,
+                        top: 12,
+                        right: 4,
                         child: _isLoadingTranslation[index]
                             ? const Padding(
                                 padding: EdgeInsets.all(12.0),
