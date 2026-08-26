@@ -173,7 +173,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
             padding:
                 const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFD1C4E9),
+              color: const Color(0x57d9c1ff),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -201,7 +201,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
                 // Stack з полями та молнією
                 Stack(
                   children: [
@@ -216,8 +216,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     ),
                     if (_wordControllers[index].text.length >= 2)
                       Positioned(
-                        top: 12,
-                        right: 4,
+                        top: 6,
+                        right: 6,
                         child: _isLoadingTranslation[index]
                             ? const Padding(
                                 padding: EdgeInsets.all(12.0),
