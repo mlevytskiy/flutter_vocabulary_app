@@ -190,7 +190,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.drag_handle),
+              leading: const Icon(Icons.drag_indicator),
               title: const Text('Drag and Drop мод'),
               selected: _isDragMode,
               onTap: () {
@@ -249,7 +249,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                       SizedBox(
                         width: 32,
                         child: Icon(
-                          Icons.drag_handle,
+                          Icons.drag_indicator,
                           color: const Color(0xFF7F77DD),
                           size: 28,
                         ),
