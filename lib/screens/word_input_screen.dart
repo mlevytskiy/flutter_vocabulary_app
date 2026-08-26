@@ -200,7 +200,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
       margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFD1C4E9),
+        color: const Color(0x57d9c1ff),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -544,6 +544,12 @@ class _WordInputScreenState extends State<WordInputScreen> {
               itemCount: _wordPairs.length,
               onReorder: _reorderItems,
               itemBuilder: _buildItem,
+              proxyDecorator: (child, index, animation) {
+                return Material(
+                  color: Colors.transparent,
+                  child: child,
+                );
+              },
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16.0),
