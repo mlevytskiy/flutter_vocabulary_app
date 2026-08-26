@@ -212,91 +212,171 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                 menuBuilder: () {
                                   final maxWidth =
                                       MediaQuery.of(context).size.width * 0.7;
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Material(
-                                      color: Colors.black87,
-                                      child: Container(
-                                        constraints:
-                                            BoxConstraints(maxWidth: maxWidth),
-                                        child: IntrinsicWidth(
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.stretch,
-                                            children: [
-                                              InkWell(
-                                                onTap: () {
-                                                  _popupControllers[index]!
-                                                      .hideMenu();
-                                                  _selectTranslationOption(
-                                                      index,
-                                                      'лололололо лолололо переклад 1');
-                                                },
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 14),
-                                                  child: Text(
-                                                    'лололололо лолололо переклад 1',
-                                                    style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 16),
-                                                    softWrap: true,
-                                                    maxLines: null,
+                                  final translations = [
+                                    'лололололо лолололо переклад 1',
+                                    'переклад 2',
+                                    'переклад 3',
+                                  ];
+
+                                  return StatefulBuilder(
+                                    builder: (context, setMenuState) {
+                                      final selectedItems = List<bool>.generate(
+                                          translations.length, (_) => false);
+
+                                      return ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Material(
+                                          color: Colors.black87,
+                                          child: Container(
+                                            constraints: BoxConstraints(
+                                                maxWidth: maxWidth),
+                                            child: IntrinsicWidth(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.stretch,
+                                                children: [
+                                                  // Вертикальний список перекладів з checkboxами
+                                                  for (int i = 0;
+                                                      i < translations.length;
+                                                      i++)
+                                                    InkWell(
+                                                      onTap: () {
+                                                        // Клік по тексту - вибрати тільки цей і закрити
+                                                        _popupControllers[
+                                                                index]!
+                                                            .hideMenu();
+                                                        _selectTranslationOption(
+                                                            index,
+                                                            translations[i]);
+                                                      },
+                                                      child: Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                vertical: 8,
+                                                                horizontal: 12),
+                                                        child: Row(
+                                                          children: [
+                                                            // Checkbox - клік toggle без закриття
+                                                            SizedBox(
+                                                              width: 40,
+                                                              height: 40,
+                                                              child: Checkbox(
+                                                                value:
+                                                                    selectedItems[
+                                                                        i],
+                                                                onChanged:
+                                                                    (bool?
+                                                                        value) {
+                                                                  setMenuState(
+                                                                      () {
+                                                                    selectedItems[
+                                                                            i] =
+                                                                        value ??
+                                                                            false;
+                                                                  });
+                                                                },
+                                                                activeColor:
+                                                                    Colors.amber[
+                                                                        600],
+                                                                checkColor:
+                                                                    Colors
+                                                                        .black,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                                width: 8),
+                                                            // Текст перекладу
+                                                            Expanded(
+                                                              child: Text(
+                                                                translations[i],
+                                                                style:
+                                                                    const TextStyle(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontSize: 16,
+                                                                ),
+                                                                softWrap: true,
+                                                                maxLines: null,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                  const Divider(
+                                                      color: Colors.white24,
+                                                      height: 1),
+
+                                                  // Горизонтальний ряд кнопок внизу
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(8),
+                                                    child: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment.end,
+                                                      children: [
+                                                        // ✕ Cancel
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                              Icons.close),
+                                                          color: Colors.white70,
+                                                          iconSize: 24,
+                                                          onPressed: () {
+                                                            _popupControllers[
+                                                                    index]!
+                                                                .hideMenu();
+                                                          },
+                                                        ),
+                                                        const SizedBox(
+                                                            width: 4),
+                                                        // ✓ Done
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                              Icons.check),
+                                                          color:
+                                                              Colors.amber[600],
+                                                          iconSize: 24,
+                                                          onPressed: () {
+                                                            final selected =
+                                                                <String>[];
+                                                            for (int i = 0;
+                                                                i <
+                                                                    translations
+                                                                        .length;
+                                                                i++) {
+                                                              if (selectedItems[
+                                                                  i]) {
+                                                                selected.add(
+                                                                    translations[
+                                                                        i]);
+                                                              }
+                                                            }
+
+                                                            if (selected
+                                                                .isNotEmpty) {
+                                                              _popupControllers[
+                                                                      index]!
+                                                                  .hideMenu();
+                                                              _selectTranslationOption(
+                                                                  index,
+                                                                  selected.join(
+                                                                      ', '));
+                                                            }
+                                                          },
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                              InkWell(
-                                                onTap: () {
-                                                  _popupControllers[index]!
-                                                      .hideMenu();
-                                                  _selectTranslationOption(
-                                                      index, 'переклад 2');
-                                                },
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 14),
-                                                  child: Text(
-                                                    'переклад 2',
-                                                    style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 16),
-                                                    softWrap: true,
-                                                    maxLines: null,
-                                                  ),
-                                                ),
-                                              ),
-                                              InkWell(
-                                                onTap: () {
-                                                  _popupControllers[index]!
-                                                      .hideMenu();
-                                                  _selectTranslationOption(
-                                                      index, 'переклад 3');
-                                                },
-                                                child: Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 20,
-                                                      vertical: 14),
-                                                  child: Text(
-                                                    'переклад 3',
-                                                    style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 16),
-                                                    softWrap: true,
-                                                    maxLines: null,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                    ),
+                                      );
+                                    },
                                   );
                                 },
                                 child: Padding(
