@@ -209,75 +209,96 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                 arrowSize: 10,
                                 barrierColor: Colors.transparent,
                                 verticalMargin: 6,
-                                menuBuilder: () => ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Material(
-                                    color: Colors.black87,
-                                    child: IntrinsicWidth(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          InkWell(
-                                            onTap: () {
-                                              _popupControllers[index]!
-                                                  .hideMenu();
-                                              _selectTranslationOption(
-                                                  index, 'переклад 1');
-                                            },
-                                            child: const Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 20, vertical: 14),
-                                              child: Text(
-                                                'переклад 1',
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 16),
+                                menuBuilder: () {
+                                  final maxWidth =
+                                      MediaQuery.of(context).size.width * 0.7;
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Material(
+                                      color: Colors.black87,
+                                      child: Container(
+                                        constraints:
+                                            BoxConstraints(maxWidth: maxWidth),
+                                        child: IntrinsicWidth(
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              InkWell(
+                                                onTap: () {
+                                                  _popupControllers[index]!
+                                                      .hideMenu();
+                                                  _selectTranslationOption(
+                                                      index,
+                                                      'лололололо лолололо переклад 1');
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 20,
+                                                      vertical: 14),
+                                                  child: Text(
+                                                    'лололололо лолололо переклад 1',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 16),
+                                                    softWrap: true,
+                                                    maxLines: null,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          InkWell(
-                                            onTap: () {
-                                              _popupControllers[index]!
-                                                  .hideMenu();
-                                              _selectTranslationOption(
-                                                  index, 'переклад 2');
-                                            },
-                                            child: const Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 20, vertical: 14),
-                                              child: Text(
-                                                'переклад 2',
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 16),
+                                              InkWell(
+                                                onTap: () {
+                                                  _popupControllers[index]!
+                                                      .hideMenu();
+                                                  _selectTranslationOption(
+                                                      index, 'переклад 2');
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 20,
+                                                      vertical: 14),
+                                                  child: Text(
+                                                    'переклад 2',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 16),
+                                                    softWrap: true,
+                                                    maxLines: null,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
-                                          ),
-                                          InkWell(
-                                            onTap: () {
-                                              _popupControllers[index]!
-                                                  .hideMenu();
-                                              _selectTranslationOption(
-                                                  index, 'переклад 3');
-                                            },
-                                            child: const Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 20, vertical: 14),
-                                              child: Text(
-                                                'переклад 3',
-                                                style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 16),
+                                              InkWell(
+                                                onTap: () {
+                                                  _popupControllers[index]!
+                                                      .hideMenu();
+                                                  _selectTranslationOption(
+                                                      index, 'переклад 3');
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 20,
+                                                      vertical: 14),
+                                                  child: Text(
+                                                    'переклад 3',
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 16),
+                                                    softWrap: true,
+                                                    maxLines: null,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
+                                  );
+                                },
                                 child: Padding(
                                   padding: const EdgeInsets.all(12),
                                   child: Icon(
