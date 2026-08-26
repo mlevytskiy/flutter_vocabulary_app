@@ -132,6 +132,39 @@ class _WordInputScreenState extends State<WordInputScreen> {
     );
   }
 
+  void _reorderItems(int oldIndex, int newIndex) {
+    setState(() {
+      // Flutter quirk: якщо переміщуємо вниз, треба зменшити newIndex на 1
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+
+      // Синхронізуємо всі списки
+      // 1. _wordPairs
+      final wordPair = _wordPairs.removeAt(oldIndex);
+      _wordPairs.insert(newIndex, wordPair);
+
+      // 2. _wordControllers
+      final wordController = _wordControllers.removeAt(oldIndex);
+      _wordControllers.insert(newIndex, wordController);
+
+      // 3. _translationControllers
+      final translationController = _translationControllers.removeAt(oldIndex);
+      _translationControllers.insert(newIndex, translationController);
+
+      // 4. _isLoadingTranslation
+      final isLoading = _isLoadingTranslation.removeAt(oldIndex);
+      _isLoadingTranslation.insert(newIndex, isLoading);
+
+      // 5. _hasTranslationOptions
+      final hasOptions = _hasTranslationOptions.removeAt(oldIndex);
+      _hasTranslationOptions.insert(newIndex, hasOptions);
+
+      // 6. _popupControllers - очищуємо Map (найпростіше рішення)
+      _popupControllers.clear();
+    });
+  }
+
   @override
   void dispose() {
     _firstFieldFocusNode.dispose();
@@ -142,6 +175,308 @@ class _WordInputScreenState extends State<WordInputScreen> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  Widget _buildItem(BuildContext context, int index) {
+    final dragHandle = _isDragMode
+        ? ReorderableDragStartListener(
+            index: index,
+            child: SizedBox(
+              width: 32,
+              height: 44,
+              child: Center(
+                child: Icon(
+                  Icons.drag_indicator,
+                  color: const Color(0xFF7F77DD),
+                  size: 32,
+                ),
+              ),
+            ),
+          )
+        : null;
+
+    return Container(
+      key: ValueKey(index),
+      margin: const EdgeInsets.only(bottom: 12.0),
+      padding: const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFf1a4e9),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Верхній рядок: кнопка видалення
+          SizedBox(
+            height: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    iconSize: 14,
+                    icon: const Icon(Icons.close),
+                    color: const Color(0xFF7F77DD),
+                    onPressed: () {
+                      // TODO: функціонал видалення
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 5),
+          // Row з drag handle та Stack з полями
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (dragHandle != null) ...[
+                dragHandle,
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Stack(
+                  children: [
+                    SyncedTextFieldRow(
+                      leftController: _wordControllers[index],
+                      rightController: _translationControllers[index],
+                      leftLabel: 'Word',
+                      rightLabel: 'Translation',
+                      leftHint: 'Word',
+                      rightHint: 'Translation',
+                      leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
+                    ),
+                    if (_wordControllers[index].text.length >= 2)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _isLoadingTranslation[index]
+                            ? const Padding(
+                                padding: EdgeInsets.all(12.0),
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2.5),
+                                ),
+                              )
+                            : _hasTranslationOptions[index]
+                                ? CustomPopupMenu(
+                                    controller: _popupControllers.putIfAbsent(
+                                        index,
+                                        () => CustomPopupMenuController()),
+                                    pressType: PressType.singleClick,
+                                    showArrow: true,
+                                    arrowColor: Colors.black87,
+                                    arrowSize: 10,
+                                    barrierColor: Colors.transparent,
+                                    verticalMargin: 6,
+                                    menuBuilder: () {
+                                      final maxWidth =
+                                          MediaQuery.of(context).size.width *
+                                              0.7;
+                                      final translations = [
+                                        'лололололо лолололо переклад 1',
+                                        'переклад 2',
+                                        'переклад 3',
+                                      ];
+                                      var selectedItems = List<bool>.generate(
+                                          translations.length, (_) => false);
+
+                                      return StatefulBuilder(
+                                        builder: (context, setMenuState) {
+                                          return ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Material(
+                                              color: Colors.black87,
+                                              child: Container(
+                                                constraints: BoxConstraints(
+                                                    maxWidth: maxWidth),
+                                                child: IntrinsicWidth(
+                                                  child: Column(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .stretch,
+                                                    children: [
+                                                      for (int i = 0;
+                                                          i <
+                                                              translations
+                                                                  .length;
+                                                          i++)
+                                                        InkWell(
+                                                          onTap: () {
+                                                            _popupControllers[
+                                                                    index]!
+                                                                .hideMenu();
+                                                            _selectTranslationOption(
+                                                                index,
+                                                                translations[
+                                                                    i]);
+                                                          },
+                                                          child: Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .symmetric(
+                                                                    vertical: 8,
+                                                                    horizontal:
+                                                                        12),
+                                                            child: Row(
+                                                              children: [
+                                                                SizedBox(
+                                                                  width: 40,
+                                                                  height: 40,
+                                                                  child:
+                                                                      Checkbox(
+                                                                    value:
+                                                                        selectedItems[
+                                                                            i],
+                                                                    onChanged:
+                                                                        (bool?
+                                                                            value) {
+                                                                      setMenuState(
+                                                                          () {
+                                                                        selectedItems[i] =
+                                                                            value ??
+                                                                                false;
+                                                                      });
+                                                                    },
+                                                                    activeColor:
+                                                                        Colors.amber[
+                                                                            600],
+                                                                    checkColor:
+                                                                        Colors
+                                                                            .black,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                    width: 8),
+                                                                Expanded(
+                                                                  child: Text(
+                                                                    translations[
+                                                                        i],
+                                                                    style:
+                                                                        const TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                      fontSize:
+                                                                          16,
+                                                                    ),
+                                                                    softWrap:
+                                                                        true,
+                                                                    maxLines:
+                                                                        null,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      const Divider(
+                                                          color: Colors.white24,
+                                                          height: 1),
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(8),
+                                                        child: Row(
+                                                          mainAxisAlignment:
+                                                              MainAxisAlignment
+                                                                  .end,
+                                                          children: [
+                                                            IconButton(
+                                                              icon: const Icon(
+                                                                  Icons.close),
+                                                              color: Colors
+                                                                  .white70,
+                                                              iconSize: 24,
+                                                              onPressed: () {
+                                                                _popupControllers[
+                                                                        index]!
+                                                                    .hideMenu();
+                                                              },
+                                                            ),
+                                                            const SizedBox(
+                                                                width: 4),
+                                                            IconButton(
+                                                              icon: const Icon(
+                                                                  Icons.check),
+                                                              color: Colors
+                                                                  .amber[600],
+                                                              iconSize: 24,
+                                                              onPressed: () {
+                                                                final selected =
+                                                                    <String>[];
+                                                                for (int i = 0;
+                                                                    i <
+                                                                        translations
+                                                                            .length;
+                                                                    i++) {
+                                                                  if (selectedItems[
+                                                                      i]) {
+                                                                    selected.add(
+                                                                        translations[
+                                                                            i]);
+                                                                  }
+                                                                }
+
+                                                                if (selected
+                                                                    .isNotEmpty) {
+                                                                  _popupControllers[
+                                                                          index]!
+                                                                      .hideMenu();
+                                                                  _selectTranslationOption(
+                                                                      index,
+                                                                      selected.join(
+                                                                          ', '));
+                                                                }
+                                                              },
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(12),
+                                      child: Icon(
+                                        Icons.electric_bolt,
+                                        color: Colors.amber[600],
+                                        size: 28,
+                                      ),
+                                    ),
+                                  )
+                                : Material(
+                                    color: Colors.transparent,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.electric_bolt),
+                                      color: Colors.purple[600],
+                                      iconSize: 28,
+                                      tooltip: 'AI Translate',
+                                      onPressed: () => _fillWithAI(index),
+                                    ),
+                                  ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -203,324 +538,18 @@ class _WordInputScreenState extends State<WordInputScreen> {
           ],
         ),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: _wordPairs.length,
-        itemBuilder: (context, index) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12.0),
-            padding:
-                const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
-            decoration: BoxDecoration(
-              color: const Color(0x57d9c1ff),
-              borderRadius: BorderRadius.circular(12),
+      body: _isDragMode
+          ? ReorderableListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _wordPairs.length,
+              onReorder: _reorderItems,
+              itemBuilder: _buildItem,
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: _wordPairs.length,
+              itemBuilder: _buildItem,
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Верхній рядок: кнопка видалення
-                SizedBox(
-                  height: 20,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: IconButton(
-                          padding: EdgeInsets.zero,
-                          iconSize: 14,
-                          icon: const Icon(Icons.close),
-                          color: const Color(0xFF7F77DD),
-                          onPressed: () {
-                            // TODO: функціонал видалення
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                // Row з drag handle та Stack з полями
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_isDragMode) ...[
-                      SizedBox(
-                        width: 32,
-                        height: 44,
-                        child: Center(
-                          child: Icon(
-                            Icons.drag_indicator,
-                            color: const Color(0xFF7F77DD),
-                            size: 32,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          SyncedTextFieldRow(
-                            leftController: _wordControllers[index],
-                            rightController: _translationControllers[index],
-                            leftLabel: 'Word',
-                            rightLabel: 'Translation',
-                            leftHint: 'Word',
-                            rightHint: 'Translation',
-                            leftFocusNode:
-                                index == 0 ? _firstFieldFocusNode : null,
-                          ),
-                          if (_wordControllers[index].text.length >= 2)
-                            Positioned(
-                              top: 6,
-                              right: 6,
-                              child: _isLoadingTranslation[index]
-                                  ? const Padding(
-                                      padding: EdgeInsets.all(12.0),
-                                      child: SizedBox(
-                                        width: 24,
-                                        height: 24,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2.5),
-                                      ),
-                                    )
-                                  : _hasTranslationOptions[index]
-                                      ? CustomPopupMenu(
-                                          controller:
-                                              _popupControllers.putIfAbsent(
-                                                  index,
-                                                  () =>
-                                                      CustomPopupMenuController()),
-                                          pressType: PressType.singleClick,
-                                          showArrow: true,
-                                          arrowColor: Colors.black87,
-                                          arrowSize: 10,
-                                          barrierColor: Colors.transparent,
-                                          verticalMargin: 6,
-                                          menuBuilder: () {
-                                            final maxWidth =
-                                                MediaQuery.of(context)
-                                                        .size
-                                                        .width *
-                                                    0.7;
-                                            final translations = [
-                                              'лололололо лолололо переклад 1',
-                                              'переклад 2',
-                                              'переклад 3',
-                                            ];
-                                            var selectedItems =
-                                                List<bool>.generate(
-                                                    translations.length,
-                                                    (_) => false);
-
-                                            return StatefulBuilder(
-                                              builder: (context, setMenuState) {
-                                                return ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  child: Material(
-                                                    color: Colors.black87,
-                                                    child: Container(
-                                                      constraints:
-                                                          BoxConstraints(
-                                                              maxWidth:
-                                                                  maxWidth),
-                                                      child: IntrinsicWidth(
-                                                        child: Column(
-                                                          mainAxisSize:
-                                                              MainAxisSize.min,
-                                                          crossAxisAlignment:
-                                                              CrossAxisAlignment
-                                                                  .stretch,
-                                                          children: [
-                                                            // Вертикальний список перекладів з checkboxами
-                                                            for (int i = 0;
-                                                                i <
-                                                                    translations
-                                                                        .length;
-                                                                i++)
-                                                              InkWell(
-                                                                onTap: () {
-                                                                  // Клік по тексту - вибрати тільки цей і закрити
-                                                                  _popupControllers[
-                                                                          index]!
-                                                                      .hideMenu();
-                                                                  _selectTranslationOption(
-                                                                      index,
-                                                                      translations[
-                                                                          i]);
-                                                                },
-                                                                child: Padding(
-                                                                  padding: const EdgeInsets
-                                                                      .symmetric(
-                                                                      vertical:
-                                                                          8,
-                                                                      horizontal:
-                                                                          12),
-                                                                  child: Row(
-                                                                    children: [
-                                                                      // Checkbox - клік toggle без закриття
-                                                                      SizedBox(
-                                                                        width:
-                                                                            40,
-                                                                        height:
-                                                                            40,
-                                                                        child:
-                                                                            Checkbox(
-                                                                          value:
-                                                                              selectedItems[i],
-                                                                          onChanged:
-                                                                              (bool? value) {
-                                                                            setMenuState(() {
-                                                                              selectedItems[i] = value ?? false;
-                                                                            });
-                                                                          },
-                                                                          activeColor:
-                                                                              Colors.amber[600],
-                                                                          checkColor:
-                                                                              Colors.black,
-                                                                        ),
-                                                                      ),
-                                                                      const SizedBox(
-                                                                          width:
-                                                                              8),
-                                                                      // Текст перекладу
-                                                                      Expanded(
-                                                                        child:
-                                                                            Text(
-                                                                          translations[
-                                                                              i],
-                                                                          style:
-                                                                              const TextStyle(
-                                                                            color:
-                                                                                Colors.white,
-                                                                            fontSize:
-                                                                                16,
-                                                                          ),
-                                                                          softWrap:
-                                                                              true,
-                                                                          maxLines:
-                                                                              null,
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ),
-                                                              ),
-
-                                                            const Divider(
-                                                                color: Colors
-                                                                    .white24,
-                                                                height: 1),
-
-                                                            // Горизонтальний ряд кнопок внизу
-                                                            Padding(
-                                                              padding:
-                                                                  const EdgeInsets
-                                                                      .all(8),
-                                                              child: Row(
-                                                                mainAxisAlignment:
-                                                                    MainAxisAlignment
-                                                                        .end,
-                                                                children: [
-                                                                  // ✕ Cancel
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .close),
-                                                                    color: Colors
-                                                                        .white70,
-                                                                    iconSize:
-                                                                        24,
-                                                                    onPressed:
-                                                                        () {
-                                                                      _popupControllers[
-                                                                              index]!
-                                                                          .hideMenu();
-                                                                    },
-                                                                  ),
-                                                                  const SizedBox(
-                                                                      width: 4),
-                                                                  // ✓ Done
-                                                                  IconButton(
-                                                                    icon: const Icon(
-                                                                        Icons
-                                                                            .check),
-                                                                    color: Colors
-                                                                            .amber[
-                                                                        600],
-                                                                    iconSize:
-                                                                        24,
-                                                                    onPressed:
-                                                                        () {
-                                                                      final selected =
-                                                                          <String>[];
-                                                                      for (int i =
-                                                                              0;
-                                                                          i < translations.length;
-                                                                          i++) {
-                                                                        if (selectedItems[
-                                                                            i]) {
-                                                                          selected
-                                                                              .add(translations[i]);
-                                                                        }
-                                                                      }
-
-                                                                      if (selected
-                                                                          .isNotEmpty) {
-                                                                        _popupControllers[index]!
-                                                                            .hideMenu();
-                                                                        _selectTranslationOption(
-                                                                            index,
-                                                                            selected.join(', '));
-                                                                      }
-                                                                    },
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(12),
-                                            child: Icon(
-                                              Icons.electric_bolt,
-                                              color: Colors.amber[600],
-                                              size: 28,
-                                            ),
-                                          ),
-                                        )
-                                      : Material(
-                                          color: Colors.transparent,
-                                          child: IconButton(
-                                            icon:
-                                                const Icon(Icons.electric_bolt),
-                                            color: Colors.purple[600],
-                                            iconSize: 28,
-                                            tooltip: 'AI Translate',
-                                            onPressed: () => _fillWithAI(index),
-                                          ),
-                                        ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
     );
   }
 }
