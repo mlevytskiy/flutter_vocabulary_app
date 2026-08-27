@@ -512,6 +512,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('English Vocabulary'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
