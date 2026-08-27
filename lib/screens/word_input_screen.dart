@@ -208,18 +208,21 @@ class _WordInputScreenState extends State<WordInputScreen> {
         children: [
           // Верхній рядок: кнопка видалення
           SizedBox(
-            height: 20,
+            height: 26,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 SizedBox(
-                  width: 20,
-                  height: 20,
+                  width: 26,
+                  height: 26,
                   child: IconButton(
                     padding: EdgeInsets.zero,
-                    iconSize: 14,
+                    constraints: const BoxConstraints(),
+                    visualDensity: VisualDensity.compact,
+                    splashRadius: 16,
+                    iconSize: 18,
                     icon: const Icon(Icons.close),
-                    color: const Color(0xFF7F77DD),
+                    color: Colors.purple[600],
                     onPressed: () {
                       // TODO: функціонал видалення
                     },
@@ -251,8 +254,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     ),
                     if (_wordControllers[index].text.length >= 2)
                       Positioned(
-                        top: 6,
-                        right: 6,
+                        top: 2,
+                        right: 2,
                         child: _isLoadingTranslation[index]
                             ? const Padding(
                                 padding: EdgeInsets.all(12.0),
