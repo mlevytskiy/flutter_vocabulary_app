@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
   translator: ^1.0.0
+  lottie: ^3.3.3
+  http: ^1.6.0
   popup_menu_2: ^0.1.7
 
 dev_dependencies:
@@ -20,3 +22,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/animations/
