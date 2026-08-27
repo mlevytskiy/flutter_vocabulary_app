@@ -42,9 +42,14 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
       // Generate content
       final content = _generateCloseUpB2Format();
 
+      // Get current date for filename
+      final now = DateTime.now();
+      final dateStr =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
       // Get temporary directory
       final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/vocabulary_close_up_b2.txt';
+      final filePath = '${directory.path}/vocabulary_$dateStr.txt';
 
       // Create file
       final file = File(filePath);
