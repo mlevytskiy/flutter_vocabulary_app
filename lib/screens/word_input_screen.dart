@@ -39,8 +39,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   void _addControllersForIndex(int index) {
     final wordController = TextEditingController(text: _wordPairs[index].word);
-    final translationController =
-        TextEditingController(text: _wordPairs[index].translation);
+    final translationController = TextEditingController(text: _wordPairs[index].translation);
 
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
@@ -70,8 +69,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
     if (_wordPairs.isEmpty) return;
 
     final lastPair = _wordPairs.last;
-    if (lastPair.word.trim().isNotEmpty ||
-        lastPair.translation.trim().isNotEmpty) {
+    if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
       setState(() {
         _wordPairs.add(WordPair(word: '', translation: ''));
         _addControllersForIndex(_wordPairs.length - 1);
@@ -93,8 +91,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
     try {
       // Google Translate: English -> Ukrainian
       final translator = GoogleTranslator();
-      final translation =
-          await translator.translate(word, from: 'en', to: 'uk');
+      final translation = await translator.translate(word, from: 'en', to: 'uk');
 
       _translationControllers[index].text = translation.text;
 
@@ -200,7 +197,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
       margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFD1C4E9),
+        color: const Color(0x57d9c1ff),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -222,7 +219,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
                     splashRadius: 16,
                     iconSize: 18,
                     icon: const Icon(Icons.close),
-                    color: Colors.purple[600],
+                    color: const Color(0xFFa883ca),
                     onPressed: () {
                       // TODO: функціонал видалення
                     },
@@ -262,15 +259,12 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                 child: SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2.5),
+                                  child: CircularProgressIndicator(strokeWidth: 2.5),
                                 ),
                               )
                             : _hasTranslationOptions[index]
                                 ? CustomPopupMenu(
-                                    controller: _popupControllers.putIfAbsent(
-                                        index,
-                                        () => CustomPopupMenuController()),
+                                    controller: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
                                     pressType: PressType.singleClick,
                                     showArrow: true,
                                     arrowColor: Colors.black87,
@@ -278,165 +272,98 @@ class _WordInputScreenState extends State<WordInputScreen> {
                                     barrierColor: Colors.transparent,
                                     verticalMargin: 6,
                                     menuBuilder: () {
-                                      final maxWidth =
-                                          MediaQuery.of(context).size.width *
-                                              0.7;
+                                      final maxWidth = MediaQuery.of(context).size.width * 0.7;
                                       final translations = [
                                         'лололололо лолололо переклад 1',
                                         'переклад 2',
                                         'переклад 3',
                                       ];
-                                      var selectedItems = List<bool>.generate(
-                                          translations.length, (_) => false);
+                                      var selectedItems = List<bool>.generate(translations.length, (_) => false);
 
                                       return StatefulBuilder(
                                         builder: (context, setMenuState) {
                                           return ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8),
                                             child: Material(
                                               color: Colors.black87,
                                               child: Container(
-                                                constraints: BoxConstraints(
-                                                    maxWidth: maxWidth),
+                                                constraints: BoxConstraints(maxWidth: maxWidth),
                                                 child: IntrinsicWidth(
                                                   child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                                     children: [
-                                                      for (int i = 0;
-                                                          i <
-                                                              translations
-                                                                  .length;
-                                                          i++)
+                                                      for (int i = 0; i < translations.length; i++)
                                                         InkWell(
                                                           onTap: () {
-                                                            _popupControllers[
-                                                                    index]!
-                                                                .hideMenu();
-                                                            _selectTranslationOption(
-                                                                index,
-                                                                translations[
-                                                                    i]);
+                                                            _popupControllers[index]!.hideMenu();
+                                                            _selectTranslationOption(index, translations[i]);
                                                           },
                                                           child: Padding(
                                                             padding:
-                                                                const EdgeInsets
-                                                                    .symmetric(
-                                                                    vertical: 8,
-                                                                    horizontal:
-                                                                        12),
+                                                                const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                                             child: Row(
                                                               children: [
                                                                 SizedBox(
                                                                   width: 40,
                                                                   height: 40,
-                                                                  child:
-                                                                      Checkbox(
-                                                                    value:
-                                                                        selectedItems[
-                                                                            i],
-                                                                    onChanged:
-                                                                        (bool?
-                                                                            value) {
-                                                                      setMenuState(
-                                                                          () {
-                                                                        selectedItems[i] =
-                                                                            value ??
-                                                                                false;
+                                                                  child: Checkbox(
+                                                                    value: selectedItems[i],
+                                                                    onChanged: (bool? value) {
+                                                                      setMenuState(() {
+                                                                        selectedItems[i] = value ?? false;
                                                                       });
                                                                     },
-                                                                    activeColor:
-                                                                        Colors.amber[
-                                                                            600],
-                                                                    checkColor:
-                                                                        Colors
-                                                                            .black,
+                                                                    activeColor: Colors.amber[600],
+                                                                    checkColor: Colors.black,
                                                                   ),
                                                                 ),
-                                                                const SizedBox(
-                                                                    width: 8),
+                                                                const SizedBox(width: 8),
                                                                 Expanded(
                                                                   child: Text(
-                                                                    translations[
-                                                                        i],
-                                                                    style:
-                                                                        const TextStyle(
-                                                                      color: Colors
-                                                                          .white,
-                                                                      fontSize:
-                                                                          16,
+                                                                    translations[i],
+                                                                    style: const TextStyle(
+                                                                      color: Colors.white,
+                                                                      fontSize: 16,
                                                                     ),
-                                                                    softWrap:
-                                                                        true,
-                                                                    maxLines:
-                                                                        null,
+                                                                    softWrap: true,
+                                                                    maxLines: null,
                                                                   ),
                                                                 ),
                                                               ],
                                                             ),
                                                           ),
                                                         ),
-                                                      const Divider(
-                                                          color: Colors.white24,
-                                                          height: 1),
+                                                      const Divider(color: Colors.white24, height: 1),
                                                       Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(8),
+                                                        padding: const EdgeInsets.all(8),
                                                         child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .end,
+                                                          mainAxisAlignment: MainAxisAlignment.end,
                                                           children: [
                                                             IconButton(
-                                                              icon: const Icon(
-                                                                  Icons.close),
-                                                              color: Colors
-                                                                  .white70,
+                                                              icon: const Icon(Icons.close),
+                                                              color: Colors.white70,
                                                               iconSize: 24,
                                                               onPressed: () {
-                                                                _popupControllers[
-                                                                        index]!
-                                                                    .hideMenu();
+                                                                _popupControllers[index]!.hideMenu();
                                                               },
                                                             ),
-                                                            const SizedBox(
-                                                                width: 4),
+                                                            const SizedBox(width: 4),
                                                             IconButton(
-                                                              icon: const Icon(
-                                                                  Icons.check),
-                                                              color: Colors
-                                                                  .amber[600],
+                                                              icon: const Icon(Icons.check),
+                                                              color: Colors.amber[600],
                                                               iconSize: 24,
                                                               onPressed: () {
-                                                                final selected =
-                                                                    <String>[];
-                                                                for (int i = 0;
-                                                                    i <
-                                                                        translations
-                                                                            .length;
-                                                                    i++) {
-                                                                  if (selectedItems[
-                                                                      i]) {
-                                                                    selected.add(
-                                                                        translations[
-                                                                            i]);
+                                                                final selected = <String>[];
+                                                                for (int i = 0; i < translations.length; i++) {
+                                                                  if (selectedItems[i]) {
+                                                                    selected.add(translations[i]);
                                                                   }
                                                                 }
 
-                                                                if (selected
-                                                                    .isNotEmpty) {
-                                                                  _popupControllers[
-                                                                          index]!
-                                                                      .hideMenu();
-                                                                  _selectTranslationOption(
-                                                                      index,
-                                                                      selected.join(
-                                                                          ', '));
+                                                                if (selected.isNotEmpty) {
+                                                                  _popupControllers[index]!.hideMenu();
+                                                                  _selectTranslationOption(index, selected.join(', '));
                                                                 }
                                                               },
                                                             ),
