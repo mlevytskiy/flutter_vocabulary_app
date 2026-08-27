@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/word_pair.dart';
 
 class WordsTableScreen extends StatefulWidget {
@@ -36,12 +38,30 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
       return;
     }
 
-    final content = _generateCloseUpB2Format();
+    try {
+      // Generate content
+      final content = _generateCloseUpB2Format();
 
-    await Share.share(
-      content,
-      subject: 'English Vocabulary - Close-up B2 Format',
-    );
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/vocabulary_close_up_b2.txt';
+
+      // Create file
+      final file = File(filePath);
+      await file.writeAsString(content);
+
+      // Share file
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'English Vocabulary - Close-up B2 Format',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sharing file: $e')),
+        );
+      }
+    }
   }
 
   @override
