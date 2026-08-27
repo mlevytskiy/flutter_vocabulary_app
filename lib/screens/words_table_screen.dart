@@ -1,10 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/word_pair.dart';
 
-class WordsTableScreen extends StatelessWidget {
+class WordsTableScreen extends StatefulWidget {
   final List<WordPair> wordPairs;
 
   const WordsTableScreen({super.key, required this.wordPairs});
+
+  @override
+  State<WordsTableScreen> createState() => _WordsTableScreenState();
+}
+
+class _WordsTableScreenState extends State<WordsTableScreen> {
+  String _generateCloseUpB2Format() {
+    final buffer = StringBuffer();
+
+    // Add header
+    buffer.writeln('#separator:tab');
+    buffer.writeln('#html:true');
+    buffer.writeln('#tags column:3');
+
+    // Add word pairs
+    for (var pair in widget.wordPairs) {
+      buffer.writeln('${pair.word}\t${pair.translation}\t');
+    }
+
+    return buffer.toString();
+  }
+
+  Future<void> _shareWords() async {
+    if (widget.wordPairs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No words to share')),
+      );
+      return;
+    }
+
+    final content = _generateCloseUpB2Format();
+
+    await Share.share(
+      content,
+      subject: 'English Vocabulary - Close-up B2 Format',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -12,8 +50,22 @@ class WordsTableScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Words Table'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: ElevatedButton.icon(
+              onPressed: _shareWords,
+              icon: const Icon(Icons.share),
+              label: const Text('Share'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
+        ],
       ),
-      body: wordPairs.isEmpty
+      body: widget.wordPairs.isEmpty
           ? const Center(
               child: Text(
                 'No words added yet',
@@ -54,12 +106,12 @@ class WordsTableScreen extends StatelessWidget {
                       ),
                     ],
                     rows: List<DataRow>.generate(
-                      wordPairs.length,
+                      widget.wordPairs.length,
                       (index) => DataRow(
                         cells: [
                           DataCell(Text('${index + 1}')),
-                          DataCell(Text(wordPairs[index].word)),
-                          DataCell(Text(wordPairs[index].translation)),
+                          DataCell(Text(widget.wordPairs[index].word)),
+                          DataCell(Text(widget.wordPairs[index].translation)),
                         ],
                       ),
                     ),
