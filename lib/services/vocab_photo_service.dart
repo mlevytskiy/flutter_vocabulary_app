@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -52,14 +53,20 @@ class VocabPhotoService {
 
     http.Response response;
     try {
-      response = await http.post(
-        uri,
-        headers: {
-          'content-type': mediaType,
-          'x-app-secret': VocabApiConfig.appSecret,
-        },
-        body: imageBytes,
-      );
+      response = await http
+          .post(
+            uri,
+            headers: {
+              'content-type': mediaType,
+              'x-app-secret': VocabApiConfig.appSecret,
+            },
+            body: imageBytes,
+          )
+          // Without a deadline a stalled connection leaves the caller waiting
+          // forever behind the loading overlay, with nothing to report.
+          .timeout(const Duration(seconds: 60));
+    } on TimeoutException {
+      throw VocabPhotoException('The request timed out, please try again');
     } catch (e) {
       throw VocabPhotoException('Network error: $e');
     }

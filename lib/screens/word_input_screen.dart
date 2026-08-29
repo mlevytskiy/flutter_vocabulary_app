@@ -23,7 +23,8 @@ class WordInputScreen extends StatefulWidget {
   State<WordInputScreen> createState() => _WordInputScreenState();
 }
 
-class _WordInputScreenState extends State<WordInputScreen> {
+class _WordInputScreenState extends State<WordInputScreen>
+    with WidgetsBindingObserver {
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
   ];
@@ -38,15 +39,97 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final ScreenshotController _screenshotController = ScreenshotController();
   final VocabPhotoService _vocabPhotoService = VocabPhotoService();
   bool _isAnalyzingPhoto = false;
+  bool _isRecoveringLostPhoto = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _addControllersForIndex(0);
     // Request focus on the first field after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _firstFieldFocusNode.requestFocus();
     });
+    _pollForLostPhoto();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Android can kill our process while the system camera app is in the
+    // foreground (verified in logcat: the app comes back with a new PID), and
+    // the pending pickImage() future dies with it — the photo is taken, but
+    // nothing happens when we return. Android delivers onActivityResult
+    // before onResume, so resuming is the race-free point to claim it.
+    debugPrint('VOCAB: lifecycle -> $state');
+    if (state == AppLifecycleState.resumed) {
+      _pollForLostPhoto();
+    }
+  }
+
+  /// Android can restart our process just to serve [ImagePickerFileProvider]
+  /// while the camera is still writing the photo, so the result may only reach
+  /// the plugin a moment after we start up — and on a cold start we never get a
+  /// `resumed` callback to retry on. Polling briefly covers both orderings.
+  Future<void> _pollForLostPhoto() async {
+    if (!Platform.isAndroid) return;
+    const delays = <Duration>[
+      Duration.zero,
+      Duration(milliseconds: 400),
+      Duration(milliseconds: 600),
+      Duration(seconds: 1),
+      Duration(seconds: 2),
+      Duration(seconds: 3),
+    ];
+    for (final delay in delays) {
+      if (delay > Duration.zero) {
+        await Future.delayed(delay);
+      }
+      if (!mounted) return;
+      if (_isAnalyzingPhoto) return;
+      if (await _recoverLostPhoto()) return;
+    }
+  }
+
+  /// Returns true once a lost photo has been claimed (or definitively failed),
+  /// so the caller can stop polling.
+  Future<bool> _recoverLostPhoto() async {
+    // retrieveLostData is an Android-only concern.
+    if (!Platform.isAndroid) return true;
+    if (_isRecoveringLostPhoto || _isAnalyzingPhoto) return true;
+    _isRecoveringLostPhoto = true;
+    try {
+      debugPrint('VOCAB: checking retrieveLostData()');
+      final LostDataResponse response =
+          await ImagePicker().retrieveLostData();
+      debugPrint(
+        'VOCAB: lostData isEmpty=${response.isEmpty} '
+        'file=${response.file?.path} exception=${response.exception}',
+      );
+      if (response.isEmpty) return false;
+      if (response.exception != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lost the photo: ${response.exception}')),
+          );
+        }
+        return true;
+      }
+      final XFile? file = response.file;
+      if (file == null) return false;
+      await _processPickedPhoto(file);
+      return true;
+    } catch (e, stack) {
+      debugPrint('VOCAB: recovery failed: $e\n$stack');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Recovering the photo failed: $e')),
+        );
+      }
+      return true;
+    } finally {
+      _isRecoveringLostPhoto = false;
+    }
   }
 
   void _addControllersForIndex(int index) {
@@ -180,23 +263,53 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   Future<void> _takePhotoForVocabulary() async {
     final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(source: ImageSource.camera);
-    if (picked == null) return;
+    XFile? picked;
+    try {
+      picked = await picker.pickImage(source: ImageSource.camera);
+    } catch (e) {
+      // On some Android devices (notably MIUI/Xiaomi, which logs
+      // "checkCallerLegality: Unknown caller" for third-party camera
+      // callers) the camera intent can fail instead of just returning null.
+      // Without this catch, that exception was silently swallowed — the
+      // screen would flash black and land back on the app with no feedback.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open the camera: $e')),
+        );
+      }
+      return;
+    }
+    if (picked == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No photo was taken')),
+        );
+      }
+      return;
+    }
+    await _processPickedPhoto(picked);
+  }
 
-    final originalBytes = await picked.readAsBytes();
+  Future<void> _processPickedPhoto(XFile picked) async {
+    debugPrint('VOCAB: processing photo ${picked.path}');
 
     setState(() {
       _isAnalyzingPhoto = true;
     });
 
     try {
+      debugPrint('VOCAB: compressing...');
       final compressStopwatch = Stopwatch()..start();
-      final bytes = await PhotoScaler.instance.resizeToMinSide(
-        originalBytes,
+      final bytes = await PhotoScaler.instance.resizeFileToMinSide(
+        picked.path,
         minSide: 640,
         quality: 85,
       );
       compressStopwatch.stop();
+      debugPrint(
+        'VOCAB: compressed to ${bytes.lengthInBytes} bytes '
+        'in ${compressStopwatch.elapsedMilliseconds}ms; uploading...',
+      );
 
       final requestStopwatch = Stopwatch()..start();
       final result = await _vocabPhotoService.analyzePhoto(
@@ -208,6 +321,10 @@ class _WordInputScreenState extends State<WordInputScreen> {
         limit: 20,
       );
       requestStopwatch.stop();
+      debugPrint(
+        'VOCAB: got ${result.words.length} words '
+        'in ${requestStopwatch.elapsedMilliseconds}ms; showing dialog',
+      );
 
       if (mounted) {
         _showVocabResultDialog(
@@ -218,12 +335,14 @@ class _WordInputScreenState extends State<WordInputScreen> {
         );
       }
     } on VocabPhotoException catch (e) {
+      debugPrint('VOCAB: analyze failed: ${e.message}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.message)),
         );
       }
     } catch (e) {
+      debugPrint('VOCAB: processing failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error analyzing photo: $e')),
@@ -383,6 +502,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _firstFieldFocusNode.dispose();
     for (var controller in _wordControllers) {
       controller.dispose();
