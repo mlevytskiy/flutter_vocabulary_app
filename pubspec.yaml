@@ -13,6 +13,8 @@ dependencies:
   translator: ^1.0.0
   popup_menu_2: ^0.1.7
   share_plus: ^7.2.1
+  flutter_speed_dial: ^7.0.0
+  screenshot: ^2.3.0
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 import 'package:translator/translator.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/word_pair.dart';
 import '../widgets/synced_text_field_row.dart';
@@ -26,6 +31,7 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final Map<int, CustomPopupMenuController> _popupControllers = {};
   final FocusNode _firstFieldFocusNode = FocusNode();
   bool _isDragMode = false;
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   @override
   void initState() {
@@ -130,6 +136,40 @@ class _WordInputScreenState extends State<WordInputScreen> {
         builder: (context) => WordsTableScreen(wordPairs: validPairs),
       ),
     );
+  }
+
+  Future<void> _takeScreenshot() async {
+    try {
+      final image = await _screenshotController.capture();
+      if (image == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to capture screenshot')),
+          );
+        }
+        return;
+      }
+
+      // Save to temporary file and share
+      final directory = await getTemporaryDirectory();
+      final now = DateTime.now();
+      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final filePath = '${directory.path}/vocabulary_screenshot_$dateStr.png';
+      
+      final file = File(filePath);
+      await file.writeAsBytes(image);
+      
+      await Share.shareXFiles(
+        [XFile(filePath)],
+        subject: 'Vocabulary Screenshot',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error taking screenshot: $e')),
+        );
+      }
+    }
   }
 
   void _removeItem(int index) {
@@ -568,24 +608,66 @@ class _WordInputScreenState extends State<WordInputScreen> {
           ],
         ),
       ),
-      body: _isDragMode
-          ? ReorderableListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _wordPairs.length,
-              onReorder: _reorderItems,
-              itemBuilder: _buildItem,
-              proxyDecorator: (child, index, animation) {
-                return Material(
-                  color: Colors.transparent,
-                  child: child,
-                );
-              },
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _wordPairs.length,
-              itemBuilder: _buildItem,
-            ),
+      body: Screenshot(
+        controller: _screenshotController,
+        child: _isDragMode
+            ? ReorderableListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _wordPairs.length,
+                onReorder: _reorderItems,
+                itemBuilder: _buildItem,
+                proxyDecorator: (child, index, animation) {
+                  return Material(
+                    color: Colors.transparent,
+                    child: child,
+                  );
+                },
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _wordPairs.length,
+                itemBuilder: _buildItem,
+              ),
+      ),
+      floatingActionButton: SpeedDial(
+        icon: Icons.add,
+        activeIcon: Icons.close,
+        backgroundColor: Colors.red,
+        foregroundColor: Colors.white,
+        activeBackgroundColor: Colors.red[700],
+        activeForegroundColor: Colors.white,
+        visible: true,
+        closeManually: false,
+        curve: Curves.bounceIn,
+        overlayColor: Colors.black,
+        overlayOpacity: 0.5,
+        elevation: 8.0,
+        shape: const CircleBorder(),
+        children: [
+          SpeedDialChild(
+            child: const Icon(Icons.camera_alt),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            onTap: _takeScreenshot,
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.edit),
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            onTap: () {
+              // Placeholder for future feature
+            },
+          ),
+          SpeedDialChild(
+            child: const Icon(Icons.settings),
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
+            onTap: () {
+              // Placeholder for future feature
+            },
+          ),
+        ],
+      ),
     );
   }
 }
