@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>This app uses the camera to take photos and extract English vocabulary from them.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app uses your photo library so you can pick a photo to extract English vocabulary from.</string>
 </dict>
 </plist>

@@ -7,8 +7,12 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../models/word_pair.dart';
+import '../models/vocab_word.dart';
+import '../services/photo_scaler.dart';
+import '../services/vocab_photo_service.dart';
 import '../widgets/synced_text_field_row.dart';
 import 'words_table_screen.dart';
 
@@ -32,6 +36,8 @@ class _WordInputScreenState extends State<WordInputScreen> {
   final FocusNode _firstFieldFocusNode = FocusNode();
   bool _isDragMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
+  final VocabPhotoService _vocabPhotoService = VocabPhotoService();
+  bool _isAnalyzingPhoto = false;
 
   @override
   void initState() {
@@ -170,6 +176,148 @@ class _WordInputScreenState extends State<WordInputScreen> {
         );
       }
     }
+  }
+
+  Future<void> _takePhotoForVocabulary() async {
+    final picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(source: ImageSource.camera);
+    if (picked == null) return;
+
+    final originalBytes = await picked.readAsBytes();
+
+    setState(() {
+      _isAnalyzingPhoto = true;
+    });
+
+    try {
+      final compressStopwatch = Stopwatch()..start();
+      final bytes = await PhotoScaler.instance.resizeToMinSide(
+        originalBytes,
+        minSide: 640,
+        quality: 85,
+      );
+      compressStopwatch.stop();
+
+      final requestStopwatch = Stopwatch()..start();
+      final result = await _vocabPhotoService.analyzePhoto(
+        bytes,
+        mediaType: 'image/jpeg',
+        translation: true,
+        withDesc: true,
+        shortifyDefinition: true,
+        limit: 20,
+      );
+      requestStopwatch.stop();
+
+      if (mounted) {
+        _showVocabResultDialog(
+          result.words,
+          compressDuration: compressStopwatch.elapsed,
+          requestDuration: requestStopwatch.elapsed,
+          aiDuration: result.aiDuration,
+        );
+      }
+    } on VocabPhotoException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error analyzing photo: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAnalyzingPhoto = false;
+        });
+      }
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final seconds = d.inMilliseconds / 1000;
+    return '${seconds.toStringAsFixed(2)}s';
+  }
+
+  void _showVocabResultDialog(
+    List<VocabWord> words, {
+    required Duration compressDuration,
+    required Duration requestDuration,
+    Duration? aiDuration,
+  }) {
+    final timingLines = <String>[
+      'Compressing photo: ${_formatDuration(compressDuration)}',
+      'Sending & receiving response: ${_formatDuration(requestDuration)}',
+      if (aiDuration != null)
+        '  \u2514 AI processing on server: ${_formatDuration(aiDuration)}',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Vocabulary Found'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  timingLines.join('\n'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: words.isEmpty
+                      ? const Text('No vocabulary words found in this photo.')
+                      : ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: words.length,
+                    separatorBuilder: (_, __) => const Divider(),
+                    itemBuilder: (context, index) {
+                      final w = words[index];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            w.word,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          if (w.translation != null)
+                            Text('Translation: ${w.translation}'),
+                          if (w.description != null)
+                            Text('Description: ${w.description}'),
+                          if (w.context != null)
+                            Text(
+                              'Context: ${w.context}',
+                              style: const TextStyle(
+                                  fontStyle: FontStyle.italic),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _removeItem(int index) {
@@ -608,26 +756,49 @@ class _WordInputScreenState extends State<WordInputScreen> {
           ],
         ),
       ),
-      body: Screenshot(
-        controller: _screenshotController,
-        child: _isDragMode
-            ? ReorderableListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _wordPairs.length,
-                onReorder: _reorderItems,
-                itemBuilder: _buildItem,
-                proxyDecorator: (child, index, animation) {
-                  return Material(
-                    color: Colors.transparent,
-                    child: child,
-                  );
-                },
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16.0),
-                itemCount: _wordPairs.length,
-                itemBuilder: _buildItem,
+      body: Stack(
+        children: [
+          Screenshot(
+            controller: _screenshotController,
+            child: _isDragMode
+                ? ReorderableListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _wordPairs.length,
+                    onReorder: _reorderItems,
+                    itemBuilder: _buildItem,
+                    proxyDecorator: (child, index, animation) {
+                      return Material(
+                        color: Colors.transparent,
+                        child: child,
+                      );
+                    },
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _wordPairs.length,
+                    itemBuilder: _buildItem,
+                  ),
+          ),
+          if (_isAnalyzingPhoto)
+            Container(
+              color: Colors.black45,
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Analyzing photo...'),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            ),
+        ],
       ),
       floatingActionButton: SpeedDial(
         icon: Icons.add,
@@ -646,17 +817,17 @@ class _WordInputScreenState extends State<WordInputScreen> {
         children: [
           SpeedDialChild(
             child: const Icon(Icons.camera_alt),
+            label: 'Take Photo',
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
-            onTap: _takeScreenshot,
+            onTap: _takePhotoForVocabulary,
           ),
           SpeedDialChild(
-            child: const Icon(Icons.edit),
+            child: const Icon(Icons.screenshot),
+            label: 'Screenshot',
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,
-            onTap: () {
-              // Placeholder for future feature
-            },
+            onTap: _takeScreenshot,
           ),
           SpeedDialChild(
             child: const Icon(Icons.settings),

@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "vocab-photo-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-01",
+  "observability": {
+    "enabled": true
+  },
+  // Per-IP rate limit: 20 requests / 60s. Change namespace_id to any unused
+  // positive integer string if it collides with another Worker on your account.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 20,
+        "period": 60
+      }
+    }
+  ]
+  // Secrets (ANTHROPIC_API_KEY, APP_SHARED_SECRET) are NOT set here.
+  // Set them with `npx wrangler secret put <NAME>` (production) and in
+  // `.dev.vars` (local dev only, gitignored) — see README.md.
+}
