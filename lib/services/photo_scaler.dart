@@ -80,7 +80,6 @@ class PhotoScaler {
 
     receivePort.listen((dynamic message) {
       if (message is SendPort) {
-        debugPrint('VOCAB: PhotoScaler isolate ready');
         if (!readyPort.isCompleted) readyPort.complete(message);
         return;
       }
@@ -131,16 +130,11 @@ class PhotoScaler {
       final completer = Completer<Uint8List>();
       _pending[requestId] = completer;
       sendPort.send(_ResizeRequest(requestId, path, minSide, quality));
-      final result = await completer.future.timeout(_resizeTimeout);
-      debugPrint('VOCAB: resized on isolate -> ${result.lengthInBytes} bytes');
-      return result;
+      return await completer.future.timeout(_resizeTimeout);
     } catch (e) {
       _pending.remove(requestId);
       debugPrint('VOCAB: isolate resize failed ($e); compressing directly');
-      final result = await _compress(path, minSide, quality)
-          .timeout(_resizeTimeout);
-      debugPrint('VOCAB: resized directly -> ${result.lengthInBytes} bytes');
-      return result;
+      return await _compress(path, minSide, quality).timeout(_resizeTimeout);
     }
   }
 }

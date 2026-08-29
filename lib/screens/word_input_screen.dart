@@ -61,7 +61,6 @@ class _WordInputScreenState extends State<WordInputScreen>
     // the pending pickImage() future dies with it — the photo is taken, but
     // nothing happens when we return. Android delivers onActivityResult
     // before onResume, so resuming is the race-free point to claim it.
-    debugPrint('VOCAB: lifecycle -> $state');
     if (state == AppLifecycleState.resumed) {
       _pollForLostPhoto();
     }
@@ -99,13 +98,8 @@ class _WordInputScreenState extends State<WordInputScreen>
     if (_isRecoveringLostPhoto || _isAnalyzingPhoto) return true;
     _isRecoveringLostPhoto = true;
     try {
-      debugPrint('VOCAB: checking retrieveLostData()');
       final LostDataResponse response =
           await ImagePicker().retrieveLostData();
-      debugPrint(
-        'VOCAB: lostData isEmpty=${response.isEmpty} '
-        'file=${response.file?.path} exception=${response.exception}',
-      );
       if (response.isEmpty) return false;
       if (response.exception != null) {
         if (mounted) {
@@ -291,14 +285,11 @@ class _WordInputScreenState extends State<WordInputScreen>
   }
 
   Future<void> _processPickedPhoto(XFile picked) async {
-    debugPrint('VOCAB: processing photo ${picked.path}');
-
     setState(() {
       _isAnalyzingPhoto = true;
     });
 
     try {
-      debugPrint('VOCAB: compressing...');
       final compressStopwatch = Stopwatch()..start();
       final bytes = await PhotoScaler.instance.resizeFileToMinSide(
         picked.path,
@@ -306,10 +297,6 @@ class _WordInputScreenState extends State<WordInputScreen>
         quality: 85,
       );
       compressStopwatch.stop();
-      debugPrint(
-        'VOCAB: compressed to ${bytes.lengthInBytes} bytes '
-        'in ${compressStopwatch.elapsedMilliseconds}ms; uploading...',
-      );
 
       final requestStopwatch = Stopwatch()..start();
       final result = await _vocabPhotoService.analyzePhoto(
@@ -321,10 +308,6 @@ class _WordInputScreenState extends State<WordInputScreen>
         limit: 20,
       );
       requestStopwatch.stop();
-      debugPrint(
-        'VOCAB: got ${result.words.length} words '
-        'in ${requestStopwatch.elapsedMilliseconds}ms; showing dialog',
-      );
 
       if (mounted) {
         _showVocabResultDialog(
