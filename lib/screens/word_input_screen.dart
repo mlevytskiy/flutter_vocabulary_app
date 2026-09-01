@@ -1,16 +1,18 @@
 import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:popup_menu_2/popup_menu_2.dart';
-import 'package:translator/translator.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:popup_menu_2/popup_menu_2.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:translator/translator.dart';
 
-import '../models/word_pair.dart';
 import '../models/vocab_word.dart';
+import '../models/word_pair.dart';
 import '../services/photo_scaler.dart';
 import '../services/vocab_photo_service.dart';
 import '../widgets/synced_text_field_row.dart';
@@ -23,8 +25,7 @@ class WordInputScreen extends StatefulWidget {
   State<WordInputScreen> createState() => _WordInputScreenState();
 }
 
-class _WordInputScreenState extends State<WordInputScreen>
-    with WidgetsBindingObserver {
+class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingObserver {
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
   ];
@@ -32,9 +33,25 @@ class _WordInputScreenState extends State<WordInputScreen>
   final List<TextEditingController> _wordControllers = [];
   final List<TextEditingController> _translationControllers = [];
   final List<bool> _isLoadingTranslation = [];
+  // Loading state for the Word icon's own translate action (Translation ->
+  // Word), tracked separately from _isLoadingTranslation so the two
+  // corners' spinners never interfere with each other.
+  final List<bool> _isLoadingWordTranslation = [];
   final List<bool> _hasTranslationOptions = [];
+  // "Translation filled" per docs/lightning_icon_rules.md: true once the
+  // Translation field was auto-populated (AI translate, picking a popup
+  // option, or photo recognition) -- independent of the >5-character rule.
+  final List<bool> _translationMarkedFilled = [];
+  // "Word filled" counterpart -- true once the Word field was
+  // auto-populated (photo recognition, or a real translate-to-Word result
+  // via the Word icon). See docs/lightning_icon_rules.md.
+  final List<bool> _wordMarkedFilled = [];
+  // Per-row focus tracking for the "item in focus" rule (see
+  // docs/lightning_icon_rules.md): a lightning icon only ever shows while
+  // its own row (word or translation field) currently has focus.
+  final List<FocusNode> _wordFocusNodes = [];
+  final List<FocusNode> _translationFocusNodes = [];
   final Map<int, CustomPopupMenuController> _popupControllers = {};
-  final FocusNode _firstFieldFocusNode = FocusNode();
   bool _isDragMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
   final VocabPhotoService _vocabPhotoService = VocabPhotoService();
@@ -48,7 +65,7 @@ class _WordInputScreenState extends State<WordInputScreen>
     _addControllersForIndex(0);
     // Request focus on the first field after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _firstFieldFocusNode.requestFocus();
+      _wordFocusNodes[0].requestFocus();
     });
     _pollForLostPhoto();
   }
@@ -98,8 +115,7 @@ class _WordInputScreenState extends State<WordInputScreen>
     if (_isRecoveringLostPhoto || _isAnalyzingPhoto) return true;
     _isRecoveringLostPhoto = true;
     try {
-      final LostDataResponse response =
-          await ImagePicker().retrieveLostData();
+      final LostDataResponse response = await ImagePicker().retrieveLostData();
       if (response.isEmpty) return false;
       if (response.exception != null) {
         if (mounted) {
@@ -128,39 +144,110 @@ class _WordInputScreenState extends State<WordInputScreen>
 
   void _addControllersForIndex(int index) {
     final wordController = TextEditingController(text: _wordPairs[index].word);
-    final translationController =
-        TextEditingController(text: _wordPairs[index].translation);
+    final translationController = TextEditingController(text: _wordPairs[index].translation);
+    final wordFocusNode = FocusNode();
+    final translationFocusNode = FocusNode();
+
+    // Rebuild on focus change so the lightning icons can appear/disappear
+    // per the "item in focus" rule (docs/lightning_icon_rules.md).
+    wordFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+    translationFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
 
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
       _checkAndAddNewPair();
-      setState(() {}); // Оновити для показу іконки при >= 2 літерах
+
+      // Якщо word повністю видалений, скинути "filled"-мітку
+      final wordIsEmptyNow = wordController.text.isEmpty;
+      final shouldResetWordFilledMark =
+          wordIsEmptyNow && _wordMarkedFilled[index];
+
+      setState(() {
+        if (shouldResetWordFilledMark) {
+          _wordMarkedFilled[index] = false;
+        }
+      }); // Оновити для показу іконки при >= 2 літерах
     });
 
     translationController.addListener(() {
       _wordPairs[index].translation = translationController.text;
       _checkAndAddNewPair();
 
-      // Якщо translation повністю видалений, скинути опції
-      if (translationController.text.isEmpty && _hasTranslationOptions[index]) {
-        setState(() {
+      // Якщо translation повністю видалений, скинути опції й "filled"-мітку
+      final isEmptyNow = translationController.text.isEmpty;
+      final shouldResetOptions = isEmptyNow && _hasTranslationOptions[index];
+      final shouldResetFilledMark =
+          isEmptyNow && _translationMarkedFilled[index];
+
+      setState(() {
+        if (shouldResetOptions) {
           _hasTranslationOptions[index] = false;
-        });
-      }
+        }
+        if (shouldResetFilledMark) {
+          _translationMarkedFilled[index] = false;
+        }
+      }); // Оновити для показу/приховування lightning-іконок (docs/lightning_icon_rules.md)
     });
 
     _wordControllers.add(wordController);
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
+    _isLoadingWordTranslation.add(false);
     _hasTranslationOptions.add(false);
+    _translationMarkedFilled.add(false);
+    _wordMarkedFilled.add(false);
+    _wordFocusNodes.add(wordFocusNode);
+    _translationFocusNodes.add(translationFocusNode);
+  }
+
+  /// Hot-reload-only safety net. Hot reload keeps this State object alive
+  /// and just patches in new code, but it does NOT re-run initState() on
+  /// that live instance -- so a per-row list field added in a later edit
+  /// (like _wordFocusNodes) resets to its empty initializer while older
+  /// fields (like _wordControllers) keep the values they already had,
+  /// leaving the lists out of sync and causing a RangeError when the UI
+  /// indexes into the short one. A full app restart never hits this
+  /// (initState() runs normally and populates everything in lockstep), so
+  /// this is skipped entirely in release builds, where hot reload doesn't
+  /// happen.
+  void _ensureRowStateSynced() {
+    if (kReleaseMode) return;
+
+    final target = _wordControllers.length;
+    while (_wordFocusNodes.length < target) {
+      final node = FocusNode();
+      node.addListener(() {
+        if (mounted) setState(() {});
+      });
+      _wordFocusNodes.add(node);
+    }
+    while (_translationFocusNodes.length < target) {
+      final node = FocusNode();
+      node.addListener(() {
+        if (mounted) setState(() {});
+      });
+      _translationFocusNodes.add(node);
+    }
+    while (_translationMarkedFilled.length < target) {
+      _translationMarkedFilled.add(false);
+    }
+    while (_isLoadingWordTranslation.length < target) {
+      _isLoadingWordTranslation.add(false);
+    }
+    while (_wordMarkedFilled.length < target) {
+      _wordMarkedFilled.add(false);
+    }
   }
 
   void _checkAndAddNewPair() {
     if (_wordPairs.isEmpty) return;
 
     final lastPair = _wordPairs.last;
-    if (lastPair.word.trim().isNotEmpty ||
-        lastPair.translation.trim().isNotEmpty) {
+    if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
       setState(() {
         _wordPairs.add(WordPair(word: '', translation: ''));
         _addControllersForIndex(_wordPairs.length - 1);
@@ -168,9 +255,133 @@ class _WordInputScreenState extends State<WordInputScreen>
     }
   }
 
+  // --- Lightning icon show/hide rules (see docs/lightning_icon_rules.md) ---
+  //
+  // Word icon (offers translating Translation -> Word): shown iff the Word
+  // field is fully empty AND Translation has 2+ letters. This threshold is
+  // intentionally lower than Translation's own "filled" concept below --
+  // it only needs enough text to make a reverse translation worth trying.
+  //
+  // Translation icon (offers translating Word -> Translation, existing
+  // behaviour): shown iff Word has 2+ letters AND Translation is NOT yet
+  // "filled" (more than 5 chars, or auto-populated). The loading spinner
+  // and the amber "more options" state are governed separately (unaffected
+  // by this rule).
+
+  /// "Translation filled" per docs/lightning_icon_rules.md: more than 5
+  /// characters, OR auto-populated (AI translate, a picked popup option, or
+  /// photo recognition) regardless of length. Gates only the Translation
+  /// icon's own hide condition -- see _shouldShowWordIcon for the separate,
+  /// lower "2+ letters" threshold that triggers the Word icon.
+  bool _isTranslationFilled(int index) {
+    return _translationControllers[index].text.length > 5 ||
+        _translationMarkedFilled[index];
+  }
+
+  /// Heuristic for "did we get an actual translation, or just an echo of
+  /// the input back?" Google Translate (via the `translator` package)
+  /// doesn't signal failure when it has no translation for the input --
+  /// it silently returns the input text unchanged (seen for short or
+  /// ambiguous words, proper nouns, or when there's simply no distinct
+  /// translation available). Comparing the (trimmed) input and output
+  /// catches that case. See docs/lightning_icon_rules.md.
+  bool _isRealTranslation(String input, String output) {
+    return output.trim() != input.trim();
+  }
+
+  /// Whether [char] (expected to be a single character) is an ASCII
+  /// English letter. Used to guess whether the Word field's content is
+  /// English by looking at just its first letter -- see
+  /// docs/lightning_icon_rules.md.
+  bool _isEnglishLetter(String char) {
+    return RegExp(r'^[A-Za-z]$').hasMatch(char);
+  }
+
+  /// "Item in focus" per docs/lightning_icon_rules.md: true while either
+  /// the Word or the Translation field of this row currently has focus.
+  bool _isItemFocused(int index) {
+    return _wordFocusNodes[index].hasFocus ||
+        _translationFocusNodes[index].hasFocus;
+  }
+
+  bool _shouldShowWordIcon(int index) {
+    if (!_isItemFocused(index)) return false;
+    final wordIsFullyEmpty = _wordControllers[index].text.isEmpty;
+    final translationHasTwoLetters =
+        _translationControllers[index].text.length >= 2;
+    return wordIsFullyEmpty && translationHasTwoLetters;
+  }
+
+  bool _shouldShowTranslationIcon(int index) {
+    if (!_isItemFocused(index)) return false;
+    final wordHasTwoLetters = _wordControllers[index].text.length >= 2;
+    return wordHasTwoLetters && !_isTranslationFilled(index);
+  }
+
+  /// Translate Translation -> Word. The Translation field can be in any
+  /// language Google Translate supports (auto-detected -- from: 'auto'),
+  /// translated to English for the Word field. See
+  /// docs/lightning_icon_rules.md for the button's visibility rules.
+  Future<void> _fillWordWithAI(int index) async {
+    final translationText = _translationControllers[index].text.trim();
+    if (translationText.isEmpty) return;
+
+    setState(() {
+      _isLoadingWordTranslation[index] = true;
+    });
+
+    // Почекати поки UI завершить рендер поточного frame
+    await SchedulerBinding.instance.endOfFrame;
+
+    try {
+      // Google Translate: auto-detect source language -> English.
+      final translator = GoogleTranslator();
+      final translation = await translator.translate(
+        translationText,
+        from: 'auto',
+        to: 'en',
+      );
+
+      _wordControllers[index].text = translation.text;
+
+      final gotRealTranslation =
+          _isRealTranslation(translationText, translation.text);
+
+      setState(() {
+        _isLoadingWordTranslation[index] = false;
+        if (gotRealTranslation) {
+          // Got an actual translation (not just an echo of the input) ->
+          // both fields count as "filled" per docs/lightning_icon_rules.md.
+          _wordMarkedFilled[index] = true;
+          _translationMarkedFilled[index] = true;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingWordTranslation[index] = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Translation error: $e')),
+        );
+      }
+    }
+  }
+
+  /// Translate Word -> Translation (the Translation icon's action). If
+  /// the Word field's first letter is an English letter, behaves exactly
+  /// as before: English -> Ukrainian. Otherwise the Word field probably
+  /// holds what should have been the Translation (typed into the wrong
+  /// field), so instead this auto-detects its language, translates to
+  /// English, and -- only on a real translation -- swaps the two fields:
+  /// the text the user typed moves to Translation, the English result
+  /// moves to Word. See docs/lightning_icon_rules.md.
   Future<void> _fillWithAI(int index) async {
     final word = _wordControllers[index].text.trim();
     if (word.isEmpty) return;
+
+    final wordStartsWithEnglishLetter = _isEnglishLetter(word[0]);
 
     setState(() {
       _isLoadingTranslation[index] = true;
@@ -180,17 +391,61 @@ class _WordInputScreenState extends State<WordInputScreen>
     await SchedulerBinding.instance.endOfFrame;
 
     try {
-      // Google Translate: English -> Ukrainian
       final translator = GoogleTranslator();
-      final translation =
-          await translator.translate(word, from: 'en', to: 'uk');
 
-      _translationControllers[index].text = translation.text;
+      if (wordStartsWithEnglishLetter) {
+        // Google Translate: English -> Ukrainian
+        final translation =
+            await translator.translate(word, from: 'en', to: 'uk');
 
-      setState(() {
-        _isLoadingTranslation[index] = false;
-        _hasTranslationOptions[index] = true;
-      });
+        _translationControllers[index].text = translation.text;
+
+        final gotRealTranslation = _isRealTranslation(word, translation.text);
+
+        setState(() {
+          _isLoadingTranslation[index] = false;
+          _hasTranslationOptions[index] = true;
+          if (gotRealTranslation) {
+            // Got an actual translation (not just an echo of the input) ->
+            // both fields count as "filled" per docs/lightning_icon_rules.md.
+            _translationMarkedFilled[index] = true;
+            _wordMarkedFilled[index] = true;
+          }
+        });
+      } else {
+        // Word doesn't start with an English letter -> auto-detect its
+        // language and translate to English instead.
+        final translation =
+            await translator.translate(word, from: 'auto', to: 'en');
+        final gotRealTranslation = _isRealTranslation(word, translation.text);
+
+        if (gotRealTranslation) {
+          // Swap: what the user typed becomes the Translation, the
+          // English result becomes the Word.
+          _translationControllers[index].text = word;
+          _wordControllers[index].text = translation.text;
+
+          setState(() {
+            _isLoadingTranslation[index] = false;
+            // Clear any stale "more options" popup from a previous
+            // Word->Translation run -- irrelevant after a field swap.
+            _hasTranslationOptions[index] = false;
+            _wordMarkedFilled[index] = true;
+            _translationMarkedFilled[index] = true;
+          });
+        } else {
+          // No distinct translation found -- leave both fields untouched.
+          setState(() {
+            _isLoadingTranslation[index] = false;
+          });
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No translation found')),
+            );
+          }
+        }
+      }
     } catch (e) {
       // Помилка перекладу - показати повідомлення
       setState(() {
@@ -207,6 +462,10 @@ class _WordInputScreenState extends State<WordInputScreen>
 
   void _selectTranslationOption(int index, String selectedTranslation) {
     _translationControllers[index].text = selectedTranslation;
+    // Auto-populated -> counts as "filled" regardless of length.
+    setState(() {
+      _translationMarkedFilled[index] = selectedTranslation.isNotEmpty;
+    });
     // Popup закривається автоматично
   }
 
@@ -238,10 +497,10 @@ class _WordInputScreenState extends State<WordInputScreen>
       final now = DateTime.now();
       final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final filePath = '${directory.path}/vocabulary_screenshot_$dateStr.png';
-      
+
       final file = File(filePath);
       await file.writeAsBytes(image);
-      
+
       await Share.shareXFiles(
         [XFile(filePath)],
         subject: 'Vocabulary Screenshot',
@@ -354,72 +613,125 @@ class _WordInputScreenState extends State<WordInputScreen>
     final timingLines = <String>[
       'Compressing photo: ${_formatDuration(compressDuration)}',
       'Sending & receiving response: ${_formatDuration(requestDuration)}',
-      if (aiDuration != null)
-        '  \u2514 AI processing on server: ${_formatDuration(aiDuration)}',
+      if (aiDuration != null) '  \u2514 AI processing on server: ${_formatDuration(aiDuration)}',
     ];
 
-    showDialog(
+    // Words the user hasn't crossed out; whatever is left here when the
+    // dialog is closed gets added to the main screen.
+    final remainingWords = List<VocabWord>.of(words);
+
+    showDialog<List<VocabWord>>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Vocabulary Found'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  timingLines.join('\n'),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: words.isEmpty
-                      ? const Text('No vocabulary words found in this photo.')
-                      : ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: words.length,
-                    separatorBuilder: (_, __) => const Divider(),
-                    itemBuilder: (context, index) {
-                      final w = words[index];
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            w.word,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          if (w.translation != null)
-                            Text('Translation: ${w.translation}'),
-                          if (w.description != null)
-                            Text('Description: ${w.description}'),
-                          if (w.context != null)
-                            Text(
-                              'Context: ${w.context}',
-                              style: const TextStyle(
-                                  fontStyle: FontStyle.italic),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Vocabulary Found'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      timingLines.join('\n'),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Flexible(
+                      child: remainingWords.isEmpty
+                          ? const Text('No vocabulary words found in this photo.')
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: remainingWords.length,
+                              separatorBuilder: (_, __) => const Divider(),
+                              itemBuilder: (context, index) {
+                                final w = remainingWords[index];
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              w.word,
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                            ),
+                                            if (w.translation != null) Text('Translation: ${w.translation}'),
+                                            if (w.description != null) Text('Description: ${w.description}'),
+                                            if (w.context != null)
+                                              Text(
+                                                'Context: ${w.context}',
+                                                style: const TextStyle(fontStyle: FontStyle.italic),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close, color: Colors.black),
+                                      tooltip: 'Skip this word',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          remainingWords.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
-                        ],
-                      );
-                    },
-                  ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, remainingWords),
+                  child: const Text('Done'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
+            );
+          },
         );
       },
-    );
+    ).then((selected) {
+      if (selected != null && selected.isNotEmpty) {
+        _addWordsFromPhoto(selected);
+      }
+    });
+  }
+
+  /// Appends words kept in the photo-results dialog to the main word list,
+  /// reusing the still-empty first row if the screen hasn't been touched yet.
+  void _addWordsFromPhoto(List<VocabWord> words) {
+    setState(() {
+      for (final w in words) {
+        final translation = w.translation ?? w.description ?? '';
+        if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
+          _wordPairs[0] = WordPair(word: w.word, translation: translation);
+          _wordControllers[0].text = w.word;
+          _translationControllers[0].text = translation;
+          // Photo recognition auto-populated this row -> "filled".
+          _translationMarkedFilled[0] = translation.isNotEmpty;
+          _wordMarkedFilled[0] = w.word.isNotEmpty;
+        } else {
+          _wordPairs.add(WordPair(word: w.word, translation: translation));
+          _addControllersForIndex(_wordPairs.length - 1);
+          _translationMarkedFilled[_wordPairs.length - 1] =
+              translation.isNotEmpty;
+          _wordMarkedFilled[_wordPairs.length - 1] = w.word.isNotEmpty;
+        }
+      }
+      _checkAndAddNewPair();
+    });
   }
 
   void _removeItem(int index) {
@@ -430,7 +742,10 @@ class _WordInputScreenState extends State<WordInputScreen>
         _translationControllers[0].clear();
         _wordPairs[0] = WordPair(word: '', translation: '');
         _isLoadingTranslation[0] = false;
+        _isLoadingWordTranslation[0] = false;
         _hasTranslationOptions[0] = false;
+        _translationMarkedFilled[0] = false;
+        _wordMarkedFilled[0] = false;
       } else {
         // Для інших айтемів видаляємо повністю
         // Dispose контролерів перед видаленням
@@ -442,7 +757,14 @@ class _WordInputScreenState extends State<WordInputScreen>
         _wordControllers.removeAt(index);
         _translationControllers.removeAt(index);
         _isLoadingTranslation.removeAt(index);
+        _isLoadingWordTranslation.removeAt(index);
         _hasTranslationOptions.removeAt(index);
+        _translationMarkedFilled.removeAt(index);
+        _wordMarkedFilled.removeAt(index);
+        _wordFocusNodes[index].dispose();
+        _wordFocusNodes.removeAt(index);
+        _translationFocusNodes[index].dispose();
+        _translationFocusNodes.removeAt(index);
 
         // Видаляємо з popup controllers якщо є
         _popupControllers.remove(index);
@@ -474,11 +796,29 @@ class _WordInputScreenState extends State<WordInputScreen>
       final isLoading = _isLoadingTranslation.removeAt(oldIndex);
       _isLoadingTranslation.insert(newIndex, isLoading);
 
+      // 4b. _isLoadingWordTranslation
+      final isLoadingWord = _isLoadingWordTranslation.removeAt(oldIndex);
+      _isLoadingWordTranslation.insert(newIndex, isLoadingWord);
+
       // 5. _hasTranslationOptions
       final hasOptions = _hasTranslationOptions.removeAt(oldIndex);
       _hasTranslationOptions.insert(newIndex, hasOptions);
 
-      // 6. _popupControllers - очищуємо Map (найпростіше рішення)
+      // 6. _translationMarkedFilled
+      final markedFilled = _translationMarkedFilled.removeAt(oldIndex);
+      _translationMarkedFilled.insert(newIndex, markedFilled);
+
+      // 6b. _wordMarkedFilled
+      final wordMarkedFilled = _wordMarkedFilled.removeAt(oldIndex);
+      _wordMarkedFilled.insert(newIndex, wordMarkedFilled);
+
+      // 7. _wordFocusNodes / _translationFocusNodes
+      final wordFocusNode = _wordFocusNodes.removeAt(oldIndex);
+      _wordFocusNodes.insert(newIndex, wordFocusNode);
+      final translationFocusNode = _translationFocusNodes.removeAt(oldIndex);
+      _translationFocusNodes.insert(newIndex, translationFocusNode);
+
+      // 8. _popupControllers - очищуємо Map (найпростіше рішення)
       _popupControllers.clear();
     });
   }
@@ -486,12 +826,17 @@ class _WordInputScreenState extends State<WordInputScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _firstFieldFocusNode.dispose();
     for (var controller in _wordControllers) {
       controller.dispose();
     }
     for (var controller in _translationControllers) {
       controller.dispose();
+    }
+    for (var node in _wordFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _translationFocusNodes) {
+      node.dispose();
     }
     super.dispose();
   }
@@ -558,7 +903,17 @@ class _WordInputScreenState extends State<WordInputScreen>
                 const SizedBox(width: 8),
               ],
               Expanded(
-                child: Stack(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Must match the `spacing` passed to SyncedTextFieldRow
+                    // below, so the Word icon's right edge lines up with the
+                    // boundary between the Word and Translation fields (same
+                    // padding pattern the Translation icon uses on the
+                    // stack's own right edge).
+                    const fieldSpacing = 16.0;
+                    final wordFieldRightEdge =
+                        (constraints.maxWidth - fieldSpacing) / 2;
+                    return Stack(
                   children: [
                     SyncedTextFieldRow(
                       leftController: _wordControllers[index],
@@ -567,9 +922,40 @@ class _WordInputScreenState extends State<WordInputScreen>
                       rightLabel: 'Translation',
                       leftHint: 'Word',
                       rightHint: 'Translation',
-                      leftFocusNode: index == 0 ? _firstFieldFocusNode : null,
+                      leftFocusNode: _wordFocusNodes[index],
+                      rightFocusNode: _translationFocusNodes[index],
+                      spacing: fieldSpacing,
                     ),
-                    if (_wordControllers[index].text.length >= 2)
+                    if (_isLoadingWordTranslation[index] ||
+                        _shouldShowWordIcon(index))
+                      Positioned(
+                        top: 2,
+                        // End of the Word field, mirroring the Translation
+                        // icon's `right: 2` (see docs/lightning_icon_rules.md).
+                        right: constraints.maxWidth - wordFieldRightEdge + 2,
+                        child: _isLoadingWordTranslation[index]
+                            ? const Padding(
+                                padding: EdgeInsets.all(12.0),
+                                child: SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                                ),
+                              )
+                            : Material(
+                                color: Colors.transparent,
+                                child: IconButton(
+                                  icon: const Icon(Icons.electric_bolt),
+                                  color: Colors.purple[600],
+                                  iconSize: 28,
+                                  tooltip: 'AI Translate (to Word)',
+                                  onPressed: () => _fillWordWithAI(index),
+                                ),
+                              ),
+                      ),
+                    if (_isLoadingTranslation[index] ||
+                        _hasTranslationOptions[index] ||
+                        _shouldShowTranslationIcon(index))
                       Positioned(
                         top: 2,
                         right: 2,
@@ -579,15 +965,12 @@ class _WordInputScreenState extends State<WordInputScreen>
                                 child: SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2.5),
+                                  child: CircularProgressIndicator(strokeWidth: 2.5),
                                 ),
                               )
                             : _hasTranslationOptions[index]
                                 ? CustomPopupMenu(
-                                    controller: _popupControllers.putIfAbsent(
-                                        index,
-                                        () => CustomPopupMenuController()),
+                                    controller: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
                                     pressType: PressType.singleClick,
                                     showArrow: true,
                                     arrowColor: Colors.black87,
@@ -595,165 +978,98 @@ class _WordInputScreenState extends State<WordInputScreen>
                                     barrierColor: Colors.transparent,
                                     verticalMargin: 6,
                                     menuBuilder: () {
-                                      final maxWidth =
-                                          MediaQuery.of(context).size.width *
-                                              0.7;
+                                      final maxWidth = MediaQuery.of(context).size.width * 0.7;
                                       final translations = [
                                         'лололололо лолололо переклад 1',
                                         'переклад 2',
                                         'переклад 3',
                                       ];
-                                      var selectedItems = List<bool>.generate(
-                                          translations.length, (_) => false);
+                                      var selectedItems = List<bool>.generate(translations.length, (_) => false);
 
                                       return StatefulBuilder(
                                         builder: (context, setMenuState) {
                                           return ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(8),
                                             child: Material(
                                               color: Colors.black87,
                                               child: Container(
-                                                constraints: BoxConstraints(
-                                                    maxWidth: maxWidth),
+                                                constraints: BoxConstraints(maxWidth: maxWidth),
                                                 child: IntrinsicWidth(
                                                   child: Column(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .stretch,
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
                                                     children: [
-                                                      for (int i = 0;
-                                                          i <
-                                                              translations
-                                                                  .length;
-                                                          i++)
+                                                      for (int i = 0; i < translations.length; i++)
                                                         InkWell(
                                                           onTap: () {
-                                                            _popupControllers[
-                                                                    index]!
-                                                                .hideMenu();
-                                                            _selectTranslationOption(
-                                                                index,
-                                                                translations[
-                                                                    i]);
+                                                            _popupControllers[index]!.hideMenu();
+                                                            _selectTranslationOption(index, translations[i]);
                                                           },
                                                           child: Padding(
                                                             padding:
-                                                                const EdgeInsets
-                                                                    .symmetric(
-                                                                    vertical: 8,
-                                                                    horizontal:
-                                                                        12),
+                                                                const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                                             child: Row(
                                                               children: [
                                                                 SizedBox(
                                                                   width: 40,
                                                                   height: 40,
-                                                                  child:
-                                                                      Checkbox(
-                                                                    value:
-                                                                        selectedItems[
-                                                                            i],
-                                                                    onChanged:
-                                                                        (bool?
-                                                                            value) {
-                                                                      setMenuState(
-                                                                          () {
-                                                                        selectedItems[i] =
-                                                                            value ??
-                                                                                false;
+                                                                  child: Checkbox(
+                                                                    value: selectedItems[i],
+                                                                    onChanged: (bool? value) {
+                                                                      setMenuState(() {
+                                                                        selectedItems[i] = value ?? false;
                                                                       });
                                                                     },
-                                                                    activeColor:
-                                                                        Colors.amber[
-                                                                            600],
-                                                                    checkColor:
-                                                                        Colors
-                                                                            .black,
+                                                                    activeColor: Colors.amber[600],
+                                                                    checkColor: Colors.black,
                                                                   ),
                                                                 ),
-                                                                const SizedBox(
-                                                                    width: 8),
+                                                                const SizedBox(width: 8),
                                                                 Expanded(
                                                                   child: Text(
-                                                                    translations[
-                                                                        i],
-                                                                    style:
-                                                                        const TextStyle(
-                                                                      color: Colors
-                                                                          .white,
-                                                                      fontSize:
-                                                                          16,
+                                                                    translations[i],
+                                                                    style: const TextStyle(
+                                                                      color: Colors.white,
+                                                                      fontSize: 16,
                                                                     ),
-                                                                    softWrap:
-                                                                        true,
-                                                                    maxLines:
-                                                                        null,
+                                                                    softWrap: true,
+                                                                    maxLines: null,
                                                                   ),
                                                                 ),
                                                               ],
                                                             ),
                                                           ),
                                                         ),
-                                                      const Divider(
-                                                          color: Colors.white24,
-                                                          height: 1),
+                                                      const Divider(color: Colors.white24, height: 1),
                                                       Padding(
-                                                        padding:
-                                                            const EdgeInsets
-                                                                .all(8),
+                                                        padding: const EdgeInsets.all(8),
                                                         child: Row(
-                                                          mainAxisAlignment:
-                                                              MainAxisAlignment
-                                                                  .end,
+                                                          mainAxisAlignment: MainAxisAlignment.end,
                                                           children: [
                                                             IconButton(
-                                                              icon: const Icon(
-                                                                  Icons.close),
-                                                              color: Colors
-                                                                  .white70,
+                                                              icon: const Icon(Icons.close),
+                                                              color: Colors.white70,
                                                               iconSize: 24,
                                                               onPressed: () {
-                                                                _popupControllers[
-                                                                        index]!
-                                                                    .hideMenu();
+                                                                _popupControllers[index]!.hideMenu();
                                                               },
                                                             ),
-                                                            const SizedBox(
-                                                                width: 4),
+                                                            const SizedBox(width: 4),
                                                             IconButton(
-                                                              icon: const Icon(
-                                                                  Icons.check),
-                                                              color: Colors
-                                                                  .amber[600],
+                                                              icon: const Icon(Icons.check),
+                                                              color: Colors.amber[600],
                                                               iconSize: 24,
                                                               onPressed: () {
-                                                                final selected =
-                                                                    <String>[];
-                                                                for (int i = 0;
-                                                                    i <
-                                                                        translations
-                                                                            .length;
-                                                                    i++) {
-                                                                  if (selectedItems[
-                                                                      i]) {
-                                                                    selected.add(
-                                                                        translations[
-                                                                            i]);
+                                                                final selected = <String>[];
+                                                                for (int i = 0; i < translations.length; i++) {
+                                                                  if (selectedItems[i]) {
+                                                                    selected.add(translations[i]);
                                                                   }
                                                                 }
 
-                                                                if (selected
-                                                                    .isNotEmpty) {
-                                                                  _popupControllers[
-                                                                          index]!
-                                                                      .hideMenu();
-                                                                  _selectTranslationOption(
-                                                                      index,
-                                                                      selected.join(
-                                                                          ', '));
+                                                                if (selected.isNotEmpty) {
+                                                                  _popupControllers[index]!.hideMenu();
+                                                                  _selectTranslationOption(index, selected.join(', '));
                                                                 }
                                                               },
                                                             ),
@@ -790,6 +1106,8 @@ class _WordInputScreenState extends State<WordInputScreen>
                                   ),
                       ),
                   ],
+                    );
+                  },
                 ),
               ),
             ],
@@ -801,6 +1119,7 @@ class _WordInputScreenState extends State<WordInputScreen>
 
   @override
   Widget build(BuildContext context) {
+    _ensureRowStateSynced(); // hot-reload safety net, see method doc above
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
