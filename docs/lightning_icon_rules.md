@@ -1,29 +1,38 @@
-# Lightning icon show/hide rules
+# Lightning icon show/hide rules; Translation dots button
 
-This documents when the amber/purple "lightning" (`Icons.electric_bolt`)
-trigger icons on the word-pair row (`lib/screens/word_input_screen.dart`)
-should be shown or hidden. There are two such icons on a row:
+This documents the three AI-translate triggers on the word-pair row
+(`lib/screens/word_input_screen.dart`):
 
-- **Word icon** (new): sits at the **end (right edge) of the Word field**
-  (same padding as the Translation icon's edge placement — see
-  Implementation notes below). Offers translating *Translation → Word*.
-- **Translation icon** (existing): sits in the top-right corner, over the
-  *Translation* field. Offers translating *Word → Translation*.
+- **Word icon** (purple `Icons.electric_bolt`): overlaid on the **end
+  (right edge) of the Word field**, inside the field's own box. Offers
+  translating *Translation → Word*. Gated by focus + a length rule (Rule
+  0 and the Word icon rule below) — hidden most of the time.
+- **Translation icon** (purple `Icons.electric_bolt`): overlaid on the
+  **top-right corner of the Translation field**, inside the field's own
+  box. Offers translating *Word → Translation*. Gated by focus + a
+  length/"filled" rule (Rule 0 and the Translation icon rule below) —
+  hidden most of the time.
+- **Translation dots button** (`Icons.circle_outlined` / `Icons.circle`):
+  sits **outside** the Translation field entirely, as its own element to
+  the field's right — not overlaid, not gated by focus. **Always
+  visible.** Its full/solid state is the sole way to open the "more
+  options" popup — see the Translation dots button rule below.
 
-Out of scope for this doc: the amber "more translation options" popup that
-replaces the Translation icon once a translation has been fetched, and the
-loading spinner shown while a translation request is in flight. Both keep
-their existing behaviour untouched — they're a separate concern from "when
-does the trigger icon appear".
+The Word icon and Translation icon are symmetric siblings (same focus
+gate, same overlay style, mirrored positioning). The dots button is
+independent and asymmetric on purpose — see history in the Changelog.
 
-## Rule 0 — focus gate (applies to both icons, before anything else)
+## Rule 0 — focus gate (Word icon and Translation icon)
 
 **A lightning icon can only be visible while its row is "in focus."** If
 neither the Word field nor the Translation field of a row currently has
-focus, both of that row's icons are hidden, regardless of the rules below.
-As soon as the row gains focus (either field), the icons follow their own
-rules normally. Losing focus (tapping away, moving to another row,
-dismissing the keyboard) immediately hides both icons again.
+focus, both of that row's icons are hidden, regardless of the rules
+below. As soon as the row gains focus (either field), the icons follow
+their own rules normally. Losing focus (tapping away, moving to another
+row, dismissing the keyboard) immediately hides both icons again.
+
+This gate does **not** apply to the Translation dots button — it is
+always rendered, focused row or not.
 
 ## Word icon rule
 
@@ -42,6 +51,11 @@ typing manually.
 showWordIcon = isItemFocused && wordIsFullyEmpty && translation.length >= 2
 ```
 
+Tapping it runs `_fillWordWithAI` (Translation → Word, any source
+language auto-detected via Google Translate's `from: 'auto'`), with its
+own loading spinner (`_isLoadingWordTranslation`) shown in the same spot
+while the request is in flight.
+
 ## Translation icon rule
 
 Show the Translation icon iff, in addition to Rule 0:
@@ -55,8 +69,11 @@ translationIsFilled = translation.length > 5 || translationMarkedFilled
 showTranslationIcon  = isItemFocused && wordHasTwoLetters && !translationIsFilled
 ```
 
-The loading spinner and the amber "more options" popup that can occupy
-this same corner are governed separately (unaffected by this rule).
+The loading spinner that can occupy this same corner is governed
+separately (unaffected by this rule). Unlike the pre-dots-button design,
+there is no amber "more options" state for this icon anymore — it is
+always the plain purple `electric_bolt`; opening the popup is the dots
+button's job now (see below).
 
 ### Translation icon action — smart language swap
 
@@ -82,14 +99,45 @@ This is a first-letter heuristic, not a full language check — a Word field
 that starts with an English letter but contains other-language text past
 that point still takes the plain English → Ukrainian path.
 
+A successful translate action — whether the plain English → Ukrainian run
+or the smart-swap path — sets `_hasTranslationOptions[index] = true`,
+which is what turns the Translation dots button solid (see below). The
+smart-swap path sets it too (not just the plain path): a real translation
+there still means there's more to offer than the literal swap, e.g.
+translation-in-context alternatives.
+
+## Translation dots button rule
+
+The dots button has no show/hide rule of its own — it is always rendered,
+for every row, regardless of focus. Its **appearance** and **tap
+behaviour** both key off `_hasTranslationOptions[index]`:
+
+- **Empty dots** (`Icons.circle_outlined`, purple) — the default, i.e.
+  `_hasTranslationOptions[index] == false`. Tapping does **nothing**
+  right now (`onPressed: null`) — there is currently no action wired to
+  this state.
+- **Full dots** (`Icons.circle`, purple — same color as empty) — shown once
+  `_hasTranslationOptions[index] == true`, i.e. once the Translation
+  icon's action (either the plain English → Ukrainian run, or the
+  smart-swap path — see below) has produced a real translation for this
+  row. Tapping opens the "more options" popup
+  (`_selectTranslationOption` per picked option).
+
+The dots button has **no loading state of its own** — while a translate
+request is in flight (`_isLoadingTranslation[index] == true`), the dots
+simply stay in whatever state they were already in (empty or full) and
+flip only once the request resolves and `_hasTranslationOptions` changes.
+The loading spinner itself is shown separately, in the Translation icon's
+own overlay slot (see "Translation icon rule" above).
+
 ## Successful-translation marking rule
 
 Whenever either translate action (the Word icon's Translation→Word, the
 Translation icon's Word→Translation, or the Translation icon's smart
-swap above) **produces a real translation** —
-not just an echo of the input — **both** fields of that row are marked
-"filled" (`_wordMarkedFilled` and `_translationMarkedFilled`), not only the
-field that got written to.
+swap above) **produces a real translation** — not just an echo of the
+input — **both** fields of that row are marked "filled"
+(`_wordMarkedFilled` and `_translationMarkedFilled`), not only the field
+that got written to.
 
 "Real translation" means the (trimmed) output differs from the (trimmed)
 input. Google Translate — via the `translator` package both actions use —
@@ -118,29 +166,23 @@ there's no "other field" input to compare against in those paths.
 
 | Term | Meaning |
 |---|---|
-| Item in focus | Either the Word field or the Translation field of this row currently has focus |
-| Word ≥2 letters | `Word field` text length is 2 or more |
+| Item in focus | Either the Word field or the Translation field of this row currently has focus — gates the Word icon and Translation icon (Rule 0); does not gate the dots button |
+| Word ≥2 letters | `Word field` text length is 2 or more — triggers the Translation icon (see above) |
 | Translation ≥2 letters | `Translation field` text length is 2 or more — triggers the Word icon (see above); independent of "Translation filled" below |
-| Translation filled | `Translation field` text length is more than 5, **or** it was populated automatically (AI translate, picking a popup translation option, or photo recognition) — hides the Translation icon (see above) |
-| Word filled | `Word field` text length > 5, **or** it was populated automatically (photo recognition, or a real translation via the Word icon — see "Successful-translation marking rule" above). Tracked in `_wordMarkedFilled`, but not currently wired to either icon's visibility — see Implementation status |
 | Word fully empty | `Word field` text is empty (0 characters) |
+| Translation filled | `Translation field` text length is more than 5, **or** it was populated automatically (AI translate, picking a popup translation option, or photo recognition) — hides the Translation icon (see above) |
+| Word filled | `Word field` text length > 5, **or** it was populated automatically (photo recognition, or a real translation via the Word icon — see "Successful-translation marking rule" above). Tracked in `_wordMarkedFilled`, but not currently wired to either icon's visibility |
+| Translation has options | `_hasTranslationOptions[index]` — drives the Translation dots button's empty/full state and its popup |
 
-Note the two icons are **not symmetric**: the Word icon's own trigger
-("Translation ≥2 letters") is intentionally a lower bar than the
-Translation icon's hide condition ("Translation filled", >5 or
-auto-populated). In the 2–5-character range, if Word is empty, only the
-Word icon shows (Translation icon requires Word to have 2+ letters, so the
-two can never show at once for the same row — see worked example below).
+Note the two overlaid icons are **not symmetric in their thresholds**:
+the Word icon's own trigger ("Translation ≥2 letters") is intentionally a
+lower bar than the Translation icon's hide condition ("Translation
+filled", >5 or auto-populated). In the 2–5-character range, if Word is
+empty, only the Word icon shows (Translation icon requires Word to have
+2+ letters, so the two can never show at once for the same row — see
+worked example below).
 
-Previously-open question, now resolved for **both** fields: once a field
-is marked "filled" by auto-population, that status persists through edits
-and only clears when the field is emptied completely (mirrors the existing
-`_hasTranslationOptions` reset behaviour). Implemented in
-`_translationMarkedFilled` and `_wordMarkedFilled`. Word's flag still
-doesn't gate either icon's visibility today (see Implementation status) —
-only the state is tracked so far.
-
-### Worked example (why the icons never overlap)
+### Worked example (why the two overlaid icons never overlap)
 
 | Word text | Translation text | Show Word ⚡ | Show Transl ⚡ | Why |
 |---|---|---|---|---|
@@ -151,16 +193,40 @@ only the state is tracked so far.
 | `an` (2) | `hi` (2) | − | + | Word ≥2, Translation not yet filled |
 | `an` (2) | `hello!` (6) | − | − | Word ≥2 but Translation is filled → Transl icon hides too |
 
-(All rows assume the row is focused, per Rule 0.)
+(All rows assume the row is focused, per Rule 0. The dots button's
+empty/full state is independent of this table — it depends only on
+`_hasTranslationOptions`.)
 
 ## Implementation notes
 
-- **Word icon position:** placed at the end (right edge) of the Word field,
-  2px inset — the same padding the Translation icon uses at the end of the
-  Translation field. Because both fields live in one `Stack` spanning the
-  whole row (via `SyncedTextFieldRow`), the Word field's right edge isn't
-  the Stack's right edge, so its `Positioned` is computed from the row's
-  measured width (`LayoutBuilder`) rather than a fixed `right:` value.
+- **Word icon position:** placed at the end (right edge) of the Word
+  field, 2px inset — the same padding the Translation icon uses at the
+  end of the Translation field. Because both fields live in one `Stack`
+  spanning the whole row (via `SyncedTextFieldRow`), the Word field's
+  right edge isn't the Stack's right edge, so its `Positioned` is
+  computed from the row's measured width (`LayoutBuilder`) rather than a
+  fixed `right:` value.
+- **Translation icon position:** `Positioned(top: 2, right: 2)` inside
+  the same `Stack`, pinned to the Stack's own right edge (which coincides
+  with the Translation field's right edge).
+- **Translation dots button position:** sits *outside* that `Stack`, as a
+  plain sibling in the outer `Row` (after the `Expanded` that wraps the
+  Word/Translation fields), so it never overlaps the Translation field's
+  own box — it just takes its own slice of the row's width, immediately
+  to the field's right. Built by `_buildTranslationDotsButton(index)`.
+  The outer `Row` uses `crossAxisAlignment: CrossAxisAlignment.center` so
+  the (much shorter) dots button sits vertically centered against the
+  fields rather than pinned to their top.
+- **Dots button sizing:** three 6px dots (3px gap) inside a `SizedBox`
+  22px wide, tapped via an `IconButton` with `padding: EdgeInsets.zero`,
+  empty `constraints`, and `VisualDensity.compact` — the same tight-button
+  pattern the row's own delete ("X") button uses — instead of the default
+  `IconButton`'s 48px minimum tap target, so it claims as little of the
+  row's horizontal space as possible. The full (`CustomPopupMenu`) variant
+  uses the same 22px-wide `SizedBox` with the dots centered inside via
+  `Center` (no extra padding), matching the empty variant's footprint
+  exactly — so flipping `_hasTranslationOptions` between the two never
+  shifts the row's layout.
 - **Focus tracking:** every row has its own `FocusNode` for both fields
   (`_wordFocusNodes[index]`, `_translationFocusNodes[index]`, created in
   `_addControllersForIndex`), each with a listener that rebuilds the UI on
@@ -176,86 +242,43 @@ only the state is tracked so far.
   cold launch never triggers it either since the lists are already in
   sync.
 
-## Implementation status
-
-- **Done:** show/hide logic for both icons, including the focus gate, the
-  split Word-icon/Translation-icon thresholds, and the "auto-populated"
-  half of "Translation filled". Word icon positioned at the end of the
-  Word field (2px inset), matching the Translation icon's positioning at
-  the end of the Translation field. The Word icon's action
-  (`_fillWordWithAI`) is now implemented: translates the Translation
-  field's text (any source language, auto-detected) to English and fills
-  the Word field, with its own loading spinner
-  (`_isLoadingWordTranslation`) shown in the same spot while the request
-  is in flight. The Translation icon's existing behaviour (calls Google
-  Translate, shows its own loading spinner, then the amber multi-option
-  popup) is unchanged.
-- **Done:** `_wordMarkedFilled` tracking, per the "Successful-translation
-  marking rule" above — both fields get marked filled together on a real
-  translation (checked via `_isRealTranslation`), whichever direction the
-  translate action ran. Photo recognition also marks the Word field filled
-  (`_addWordsFromPhoto`), matching the pre-existing Translation handling.
-- **Not implemented:** wiring "Word filled" into either icon's visibility
-  rule. Nothing currently reads `_wordMarkedFilled` (or the Word field's
-  `length > 5`) for show/hide purposes — the Word icon still hides purely
-  because filling it makes "Word fully empty" false, which happens to
-  produce the same visible result today. Implement an `_isWordFilled(index)`
-  helper (mirroring `_isTranslationFilled`) if/when a future rule needs to
-  distinguish "Word filled" from "Word non-empty".
-
 ## Changelog
 
-- **2026-09-01:**
-  - Translation icon's hide threshold changed from "2+ letters" to
-    "filled" (more than 5 characters), to match the Word field's own
-    "filled" concept — the old 2-letter threshold was hiding the icon too
-    early.
-  - "Translation filled" extended to also cover auto-population (AI
-    translate, picking a popup option, photo recognition), matching "Word
-    filled"'s definition. Backed by a new `_translationMarkedFilled`
-    per-row flag, wired into the same add/remove/reorder/reset lifecycle
-    as the existing per-row lists.
-  - Word icon position moved from the top-left corner of the Word field to
-    its end (right edge), to match the Translation icon's placement
-    pattern.
-  - Added the "item in focus" rule (Rule 0): both icons on a row are
-    hidden whenever neither field of that row has focus. Backed by new
-    per-row `_wordFocusNodes` / `_translationFocusNodes`, replacing the
-    old single `_firstFieldFocusNode` (which only ever handled row 0's
-    launch autofocus).
-  - Added `_ensureRowStateSynced()` (hot-reload-only, no-op in release
-    builds) to fix a `RangeError` new per-row list fields would otherwise
-    hit on hot reload.
-  - **Un-merged the Word icon's trigger from Translation's "filled"
-    concept.** The Word icon now shows again once Translation reaches 2+
-    letters (not 5+) — this was the pre-existing, never-changed rule for
-    the Word icon specifically; only the *Translation icon's own hide*
-    threshold was ever meant to move to 5. The two icons' thresholds are
-    intentionally different numbers now (documented in the "Terms" note
-    above and the worked example) and this does not reintroduce any
-    overlap between the two icons.
-  - **Implemented the Word icon's action.** Tapping it now translates the
-    Translation field's text to English and fills the Word field, using
-    the `translator` package's auto-detect source language support
-    (`from: 'auto'`) — Google Translate (which the package scrapes)
-    auto-detects across its full supported-language list, so any language
-    typed into Translation works, not just a fixed set. Added a dedicated
-    `_isLoadingWordTranslation` per-row flag (mirroring
-    `_isLoadingTranslation`) so the Word icon's own loading spinner
-    doesn't interfere with the Translation icon's.
-  - **Added the successful-translation marking rule.** Either translate
-    action now marks *both* fields "filled" (`_wordMarkedFilled` +
-    `_translationMarkedFilled`) when it gets a real translation back, via
-    a new shared `_isRealTranslation(input, output)` heuristic (output
-    differs from input after trimming). This also documents and works
-    around an observed API/library behaviour: when there's no translation
-    available, Google Translate silently echoes the input back instead of
-    signalling failure, so a naive "non-empty result" check would have
-    wrongly marked fields "filled" on a no-op echo.
-  - **Added the Translation icon's smart language swap.** `_fillWithAI`
-    now checks the Word field's first letter: if it's not an English
-    letter, it auto-detects the Word field's language, translates to
-    English, and — only on a real translation — swaps the two fields
-    (typed text -> Translation, English result -> Word) instead of
-    running the plain English -> Ukrainian path. Added `_isEnglishLetter`
-    as the first-letter check.
+- **2026-09-01:** Original implementation — both the Word icon and the
+  Translation icon (purple `electric_bolt`, turning into an amber
+  `electric_bolt` popup trigger once `_hasTranslationOptions` was true)
+  lived overlaid inside the Stack, both gated by Rule 0 + their own
+  length thresholds. Full history of that build (the successful-
+  translation marking rule, the smart language swap, the focus-node
+  refactor, etc.) is preserved in this repo's commit history — see the
+  commit titled "add implementation hide/show lightning button and cover
+  each cases connected to the button".
+- **2026-09-01 (later):** Experimented with replacing the Translation icon
+  entirely with an always-visible button outside the field (first a
+  lightbulb, then three dots), with various trial rules for its
+  empty/full state and tap behaviour.
+- **2026-09-01 (final):** Reverted the Translation icon to its original
+  overlaid, focus-gated, purple-only behaviour (this doc's "Translation
+  icon rule" above) — the experiment's amber popup-trigger variant is
+  gone. Kept the always-visible Translation dots button from the
+  experiment as an *additional*, independent control: it no longer has
+  its own amber "icon" identity, it's purely the popup trigger — full
+  (solid) dots open the same "more options" popup the amber icon used to
+  open, empty dots remain a no-op. The two overlaid icons (Word,
+  Translation) and the outside dots button now coexist as three
+  independent controls per row.
+- **2026-09-01 (later still):** Removed the dots button's own loading
+  spinner (it used to replace the dots with a `CircularProgressIndicator`
+  while `_isLoadingTranslation` was true). The dots now simply hold their
+  current empty/full state during a translate request and flip straight
+  to full once it resolves — the loading spinner is shown once, in the
+  Translation icon's own overlay slot, not duplicated in the dots.
+- **2026-09-01 (later still):** The smart-swap path now sets
+  `_hasTranslationOptions[index] = true` on a real translation, same as
+  the plain English → Ukrainian path — it previously cleared this flag,
+  which hid the dots button after a swap. Typing a Ukrainian word
+  directly into Word (triggering the swap) now also surfaces the dots'
+  "more options" popup, not just the Word/Translation swap itself.
+- **2026-09-01 (later still):** Full (solid) dots changed from amber to
+  purple, matching the empty (outlined) dots and the two lightning icons
+  — the dots button no longer has an amber state at all.

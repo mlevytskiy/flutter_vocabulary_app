@@ -255,7 +255,8 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
     }
   }
 
-  // --- Lightning icon show/hide rules (see docs/lightning_icon_rules.md) ---
+  // --- Lightning icon show/hide rules; Translation dots button (see
+  // docs/lightning_icon_rules.md) ---
   //
   // Word icon (offers translating Translation -> Word): shown iff the Word
   // field is fully empty AND Translation has 2+ letters. This threshold is
@@ -264,9 +265,14 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
   //
   // Translation icon (offers translating Word -> Translation, existing
   // behaviour): shown iff Word has 2+ letters AND Translation is NOT yet
-  // "filled" (more than 5 chars, or auto-populated). The loading spinner
-  // and the amber "more options" state are governed separately (unaffected
-  // by this rule).
+  // "filled" (more than 5 chars, or auto-populated). The loading spinner is
+  // governed separately (unaffected by this rule).
+  //
+  // Translation dots button: sits *outside* the Translation field, always
+  // visible -- no focus or length gating, and no loading state of its own.
+  // Empty (outlined) dots by default; full (solid) dots once a translate
+  // has produced options for this row (`_hasTranslationOptions`) -- opens
+  // the "more options" popup. See _buildTranslationDotsButton.
 
   /// "Translation filled" per docs/lightning_icon_rules.md: more than 5
   /// characters, OR auto-populated (AI translate, a picked popup option, or
@@ -316,6 +322,175 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
     if (!_isItemFocused(index)) return false;
     final wordHasTwoLetters = _wordControllers[index].text.length >= 2;
     return wordHasTwoLetters && !_isTranslationFilled(index);
+  }
+
+  /// Translation dots button: unlike the Translation icon, this sits
+  /// *outside* the Translation field (a plain sibling in the outer Row,
+  /// not overlaid via Positioned) and is always visible -- no focus or
+  /// length gating, and no loading state of its own. It tracks
+  /// `_hasTranslationOptions`: empty (outlined) dots by default, full
+  /// (solid) dots once a translate has produced multiple options for this
+  /// row -- including while a translate request is in flight, the dots
+  /// just stay in their current (empty or full) state and flip once the
+  /// request resolves; the Translation icon's own overlay slot is what
+  /// shows the loading spinner. Tapping empty dots does nothing for now;
+  /// tapping full dots opens the "more options" popup.
+  Widget _buildTranslationDotsButton(int index) {
+    final isFilled = _hasTranslationOptions[index];
+    final dotIcon = isFilled ? Icons.circle : Icons.circle_outlined;
+    final dotColor = Colors.purple[600];
+    final dotsIcon = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(dotIcon, size: 6, color: dotColor),
+        const SizedBox(height: 3),
+        Icon(dotIcon, size: 6, color: dotColor),
+        const SizedBox(height: 3),
+        Icon(dotIcon, size: 6, color: dotColor),
+      ],
+    );
+
+    // Both branches below share the same 22px-wide footprint and zero
+    // extra padding around the dots, so toggling `isFilled` never shifts
+    // the row's layout.
+    if (isFilled) {
+      return SizedBox(
+        width: 22,
+        child: CustomPopupMenu(
+          controller:
+              _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
+          pressType: PressType.singleClick,
+          showArrow: true,
+          arrowColor: Colors.black87,
+          arrowSize: 10,
+          barrierColor: Colors.transparent,
+          verticalMargin: 6,
+          menuBuilder: () {
+            final maxWidth = MediaQuery.of(context).size.width * 0.7;
+            final translations = [
+              'лололололо лолололо переклад 1',
+              'переклад 2',
+              'переклад 3',
+            ];
+            var selectedItems = List<bool>.generate(translations.length, (_) => false);
+
+            return StatefulBuilder(
+              builder: (context, setMenuState) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Material(
+                    color: Colors.black87,
+                    child: Container(
+                      constraints: BoxConstraints(maxWidth: maxWidth),
+                      child: IntrinsicWidth(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (int i = 0; i < translations.length; i++)
+                              InkWell(
+                                onTap: () {
+                                  _popupControllers[index]!.hideMenu();
+                                  _selectTranslationOption(index, translations[i]);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8, horizontal: 12),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 40,
+                                        height: 40,
+                                        child: Checkbox(
+                                          value: selectedItems[i],
+                                          onChanged: (bool? value) {
+                                            setMenuState(() {
+                                              selectedItems[i] = value ?? false;
+                                            });
+                                          },
+                                          activeColor: Colors.amber[600],
+                                          checkColor: Colors.black,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          translations[i],
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 16,
+                                          ),
+                                          softWrap: true,
+                                          maxLines: null,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            const Divider(color: Colors.white24, height: 1),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.close),
+                                    color: Colors.white70,
+                                    iconSize: 24,
+                                    onPressed: () {
+                                      _popupControllers[index]!.hideMenu();
+                                    },
+                                  ),
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(Icons.check),
+                                    color: Colors.amber[600],
+                                    iconSize: 24,
+                                    onPressed: () {
+                                      final selected = <String>[];
+                                      for (int i = 0; i < translations.length; i++) {
+                                        if (selectedItems[i]) {
+                                          selected.add(translations[i]);
+                                        }
+                                      }
+
+                                      if (selected.isNotEmpty) {
+                                        _popupControllers[index]!.hideMenu();
+                                        _selectTranslationOption(
+                                            index, selected.join(', '));
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: Center(child: dotsIcon),
+        ),
+      );
+    }
+
+    // Empty -- nothing to do yet, so tapping is a no-op.
+    return SizedBox(
+      width: 22,
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(),
+        visualDensity: VisualDensity.compact,
+        splashRadius: 18,
+        icon: dotsIcon,
+        onPressed: null,
+      ),
+    );
   }
 
   /// Translate Translation -> Word. The Translation field can be in any
@@ -427,9 +602,11 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
 
           setState(() {
             _isLoadingTranslation[index] = false;
-            // Clear any stale "more options" popup from a previous
-            // Word->Translation run -- irrelevant after a field swap.
-            _hasTranslationOptions[index] = false;
+            // A real translation came back here too -> offer the same
+            // "more options" popup as the plain English->Ukrainian path
+            // (e.g. translation-in-context alternatives), not just a
+            // literal swap.
+            _hasTranslationOptions[index] = true;
             _wordMarkedFilled[index] = true;
             _translationMarkedFilled[index] = true;
           });
@@ -896,7 +1073,7 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
           const SizedBox(height: 5),
           // Row з drag handle та Stack з полями
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               if (dragHandle != null) ...[
                 dragHandle,
@@ -954,7 +1131,6 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
                               ),
                       ),
                     if (_isLoadingTranslation[index] ||
-                        _hasTranslationOptions[index] ||
                         _shouldShowTranslationIcon(index))
                       Positioned(
                         top: 2,
@@ -968,148 +1144,24 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
                                   child: CircularProgressIndicator(strokeWidth: 2.5),
                                 ),
                               )
-                            : _hasTranslationOptions[index]
-                                ? CustomPopupMenu(
-                                    controller: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
-                                    pressType: PressType.singleClick,
-                                    showArrow: true,
-                                    arrowColor: Colors.black87,
-                                    arrowSize: 10,
-                                    barrierColor: Colors.transparent,
-                                    verticalMargin: 6,
-                                    menuBuilder: () {
-                                      final maxWidth = MediaQuery.of(context).size.width * 0.7;
-                                      final translations = [
-                                        'лололололо лолололо переклад 1',
-                                        'переклад 2',
-                                        'переклад 3',
-                                      ];
-                                      var selectedItems = List<bool>.generate(translations.length, (_) => false);
-
-                                      return StatefulBuilder(
-                                        builder: (context, setMenuState) {
-                                          return ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Material(
-                                              color: Colors.black87,
-                                              child: Container(
-                                                constraints: BoxConstraints(maxWidth: maxWidth),
-                                                child: IntrinsicWidth(
-                                                  child: Column(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                                                    children: [
-                                                      for (int i = 0; i < translations.length; i++)
-                                                        InkWell(
-                                                          onTap: () {
-                                                            _popupControllers[index]!.hideMenu();
-                                                            _selectTranslationOption(index, translations[i]);
-                                                          },
-                                                          child: Padding(
-                                                            padding:
-                                                                const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                                            child: Row(
-                                                              children: [
-                                                                SizedBox(
-                                                                  width: 40,
-                                                                  height: 40,
-                                                                  child: Checkbox(
-                                                                    value: selectedItems[i],
-                                                                    onChanged: (bool? value) {
-                                                                      setMenuState(() {
-                                                                        selectedItems[i] = value ?? false;
-                                                                      });
-                                                                    },
-                                                                    activeColor: Colors.amber[600],
-                                                                    checkColor: Colors.black,
-                                                                  ),
-                                                                ),
-                                                                const SizedBox(width: 8),
-                                                                Expanded(
-                                                                  child: Text(
-                                                                    translations[i],
-                                                                    style: const TextStyle(
-                                                                      color: Colors.white,
-                                                                      fontSize: 16,
-                                                                    ),
-                                                                    softWrap: true,
-                                                                    maxLines: null,
-                                                                  ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      const Divider(color: Colors.white24, height: 1),
-                                                      Padding(
-                                                        padding: const EdgeInsets.all(8),
-                                                        child: Row(
-                                                          mainAxisAlignment: MainAxisAlignment.end,
-                                                          children: [
-                                                            IconButton(
-                                                              icon: const Icon(Icons.close),
-                                                              color: Colors.white70,
-                                                              iconSize: 24,
-                                                              onPressed: () {
-                                                                _popupControllers[index]!.hideMenu();
-                                                              },
-                                                            ),
-                                                            const SizedBox(width: 4),
-                                                            IconButton(
-                                                              icon: const Icon(Icons.check),
-                                                              color: Colors.amber[600],
-                                                              iconSize: 24,
-                                                              onPressed: () {
-                                                                final selected = <String>[];
-                                                                for (int i = 0; i < translations.length; i++) {
-                                                                  if (selectedItems[i]) {
-                                                                    selected.add(translations[i]);
-                                                                  }
-                                                                }
-
-                                                                if (selected.isNotEmpty) {
-                                                                  _popupControllers[index]!.hideMenu();
-                                                                  _selectTranslationOption(index, selected.join(', '));
-                                                                }
-                                                              },
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: Icon(
-                                        Icons.electric_bolt,
-                                        color: Colors.amber[600],
-                                        size: 28,
-                                      ),
-                                    ),
-                                  )
-                                : Material(
-                                    color: Colors.transparent,
-                                    child: IconButton(
-                                      icon: const Icon(Icons.electric_bolt),
-                                      color: Colors.purple[600],
-                                      iconSize: 28,
-                                      tooltip: 'AI Translate',
-                                      onPressed: () => _fillWithAI(index),
-                                    ),
-                                  ),
+                            : Material(
+                                color: Colors.transparent,
+                                child: IconButton(
+                                  icon: const Icon(Icons.electric_bolt),
+                                  color: Colors.purple[600],
+                                  iconSize: 28,
+                                  tooltip: 'AI Translate',
+                                  onPressed: () => _fillWithAI(index),
+                                ),
+                              ),
                       ),
                   ],
                     );
                   },
                 ),
               ),
+              const SizedBox(width: 4),
+              _buildTranslationDotsButton(index),
             ],
           ),
         ],

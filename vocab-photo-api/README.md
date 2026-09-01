@@ -58,6 +58,55 @@ Flutter app subtracts this from its own end-to-end request time to show both.
 
 Error response (non-2xx): `{ "error": "<message>" }`
 
+## Reverso enrichment endpoints (unofficial, best-effort)
+
+Two extra endpoints call reverso.net's internal (undocumented) endpoints to enrich a
+single word beyond what `/analyze` returns. These are **not an official Reverso API** —
+there isn't one. They reverse-engineer reverso.net's own web/mobile requests, which
+Reverso's terms of service prohibit (no reverse engineering, no integrating the service
+into another product). Treat both as optional, best-effort enrichment: expect
+occasional 403s / IP rate limiting, and don't build a required feature on top of them.
+See the "Reverso" conversation in this session for the full legal/risk rundown.
+
+`GET /reverso-context?word=<text>&from=eng&to=ukr`
+
+Real bilingual example sentences (not AI-generated) for `word`, scraped from Reverso
+Context's HTML via Workers' native `HTMLRewriter` (no cheerio/Node DOM dependency).
+`from`/`to` are Reverso's 3-letter language codes, not ISO 639-1 (default `eng`/`ukr`).
+
+```bash
+curl "https://<your-worker>.workers.dev/reverso-context?word=receipt" \
+  -H "x-app-secret: <secret>"
+```
+
+```json
+{
+  "examples": [
+    { "source": "Keep the receipt in case you need to return it.", "target": "Збережіть квитанцію на випадок повернення." }
+  ],
+  "translations": ["квитанція", "чек", "розписка"]
+}
+```
+
+`GET /reverso-translation?word=<text>&from=eng&to=ukr`
+
+Reverso's own machine translation for `word`, from a plain JSON endpoint (no HTML
+scraping involved, so it's less likely to silently break if reverso.net changes its
+page markup). Useful as a second opinion alongside Claude's translation in `/analyze`.
+
+```bash
+curl "https://<your-worker>.workers.dev/reverso-translation?word=receipt" \
+  -H "x-app-secret: <secret>"
+```
+
+```json
+{ "translation": "квитанція", "allTranslations": ["квитанція", "чек", "розписка"] }
+```
+
+Both endpoints share `/analyze`'s `x-app-secret` auth and per-IP rate limit. An empty
+`examples`/`translations` array, or a `502`, usually means Reverso rate-limited or
+blocked the Worker's IP, or changed its page markup — not that no data exists.
+
 ## Setup
 
 ```bash

@@ -1,3 +1,5 @@
+import { fetchReversoContext, fetchReversoTranslation } from "./reverso";
+
 export interface Env {
   ANTHROPIC_API_KEY: string;
   APP_SHARED_SECRET: string;
@@ -27,7 +29,7 @@ const MAX_RAW_BYTES = 7 * 1024 * 1024;
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, x-app-secret",
 };
 
@@ -225,6 +227,88 @@ async function callClaude(
   return { words: parsed, aiMs };
 }
 
+async function handleAnalyze(request: Request, env: Env, url: URL): Promise<Response> {
+  if (request.method !== "POST") {
+    return jsonResponse({ error: "Method not allowed, use POST" }, 405);
+  }
+
+  const mediaType = request.headers.get("content-type");
+  if (!isAllowedMediaType(mediaType)) {
+    return jsonResponse({ error: `Content-Type header must be one of: ${ALLOWED_MEDIA_TYPES.join(", ")}` }, 400);
+  }
+
+  const imageBytes = await request.arrayBuffer();
+  if (imageBytes.byteLength === 0) {
+    return jsonResponse({ error: "Request body must contain image bytes" }, 400);
+  }
+  if (imageBytes.byteLength > MAX_RAW_BYTES) {
+    return jsonResponse({ error: "Image is too large" }, 413);
+  }
+
+  const options = parseOptions(url);
+  if (!options.context && !options.translation && !options.withDesc) {
+    options.translation = true;
+  }
+
+  try {
+    const imageBase64 = arrayBufferToBase64(imageBytes);
+    const { words, aiMs } = await callClaude(env, imageBase64, mediaType, options);
+    const limited = options.limit !== undefined ? words.slice(0, options.limit) : words;
+    return jsonResponse({ words: limited, timings: { aiMs } });
+  } catch (err) {
+    console.error("analyze failed", err);
+    return jsonResponse({ error: "Failed to analyze photo, please try again" }, 502);
+  }
+}
+
+async function handleReversoContext(request: Request, url: URL): Promise<Response> {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed, use GET" }, 405);
+  }
+
+  const word = url.searchParams.get("word")?.trim();
+  if (!word) {
+    return jsonResponse({ error: "Query param 'word' is required" }, 400);
+  }
+  const from = url.searchParams.get("from")?.trim() || "eng";
+  const to = url.searchParams.get("to")?.trim() || "ukr";
+
+  try {
+    const result = await fetchReversoContext(word, from, to);
+    return jsonResponse(result);
+  } catch (err) {
+    console.error("reverso context lookup failed", err);
+    return jsonResponse({ error: "Reverso context lookup failed, please try again" }, 502);
+  }
+}
+
+async function handleReversoTranslation(request: Request, url: URL): Promise<Response> {
+  if (request.method !== "GET") {
+    return jsonResponse({ error: "Method not allowed, use GET" }, 405);
+  }
+
+  const word = url.searchParams.get("word")?.trim();
+  if (!word) {
+    return jsonResponse({ error: "Query param 'word' is required" }, 400);
+  }
+  const from = url.searchParams.get("from")?.trim() || "eng";
+  const to = url.searchParams.get("to")?.trim() || "ukr";
+
+  try {
+    const result = await fetchReversoTranslation(word, from, to);
+    return jsonResponse(result);
+  } catch (err) {
+    console.error("reverso translation lookup failed", err);
+    return jsonResponse({ error: "Reverso translation lookup failed, please try again" }, 502);
+  }
+}
+
+const ROUTES: Record<string, (request: Request, env: Env, url: URL) => Promise<Response>> = {
+  "/analyze": (request, env, url) => handleAnalyze(request, env, url),
+  "/reverso-context": (request, _env, url) => handleReversoContext(request, url),
+  "/reverso-translation": (request, _env, url) => handleReversoTranslation(request, url),
+};
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === "OPTIONS") {
@@ -232,12 +316,9 @@ export default {
     }
 
     const url = new URL(request.url);
-    if (url.pathname !== "/analyze") {
+    const route = ROUTES[url.pathname];
+    if (!route) {
       return jsonResponse({ error: "Not found" }, 404);
-    }
-
-    if (request.method !== "POST") {
-      return jsonResponse({ error: "Method not allowed, use POST" }, 405);
     }
 
     const providedSecret = request.headers.get("x-app-secret");
@@ -251,35 +332,6 @@ export default {
       return jsonResponse({ error: "Too many requests, please slow down" }, 429);
     }
 
-    const mediaType = request.headers.get("content-type");
-    if (!isAllowedMediaType(mediaType)) {
-      return jsonResponse(
-        { error: `Content-Type header must be one of: ${ALLOWED_MEDIA_TYPES.join(", ")}` },
-        400
-      );
-    }
-
-    const imageBytes = await request.arrayBuffer();
-    if (imageBytes.byteLength === 0) {
-      return jsonResponse({ error: "Request body must contain image bytes" }, 400);
-    }
-    if (imageBytes.byteLength > MAX_RAW_BYTES) {
-      return jsonResponse({ error: "Image is too large" }, 413);
-    }
-
-    const options = parseOptions(url);
-    if (!options.context && !options.translation && !options.withDesc) {
-      options.translation = true;
-    }
-
-    try {
-      const imageBase64 = arrayBufferToBase64(imageBytes);
-      const { words, aiMs } = await callClaude(env, imageBase64, mediaType, options);
-      const limited = options.limit !== undefined ? words.slice(0, options.limit) : words;
-      return jsonResponse({ words: limited, timings: { aiMs } });
-    } catch (err) {
-      console.error("analyze failed", err);
-      return jsonResponse({ error: "Failed to analyze photo, please try again" }, 502);
-    }
+    return route(request, env, url);
   },
 };
