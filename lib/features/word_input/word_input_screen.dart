@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
@@ -17,8 +16,11 @@ import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/photo_scaler.dart';
 import '../../core/services/vocab_photo_service.dart';
-import '../../core/widgets/synced_text_field_row.dart';
 import '../../router/routes.dart';
+import 'lightning_rules.dart';
+import 'widgets/word_input_speed_dial.dart';
+import 'widgets/word_row_item.dart';
+import 'widgets/vocab_result_dialog.dart';
 import 'word_input_notifier.dart';
 
 class WordInputScreen extends ConsumerStatefulWidget {
@@ -344,25 +346,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _translationMarkedFilled[index];
   }
 
-  /// Heuristic for "did we get an actual translation, or just an echo of
-  /// the input back?" Google Translate (via the `translator` package)
-  /// doesn't signal failure when it has no translation for the input --
-  /// it silently returns the input text unchanged (seen for short or
-  /// ambiguous words, proper nouns, or when there's simply no distinct
-  /// translation available). Comparing the (trimmed) input and output
-  /// catches that case. See docs/lightning_icon_rules.md.
-  bool _isRealTranslation(String input, String output) {
-    return output.trim() != input.trim();
-  }
-
-  /// Whether [char] (expected to be a single character) is an ASCII
-  /// English letter. Used to guess whether the Word field's content is
-  /// English by looking at just its first letter -- see
-  /// docs/lightning_icon_rules.md.
-  bool _isEnglishLetter(String char) {
-    return RegExp(r'^[A-Za-z]$').hasMatch(char);
-  }
-
   /// "Item in focus" per docs/lightning_icon_rules.md: true while either
   /// the Word or the Translation field of this row currently has focus.
   bool _isItemFocused(int index) {
@@ -382,175 +365,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (!_isItemFocused(index)) return false;
     final wordHasTwoLetters = _wordControllers[index].text.length >= 2;
     return wordHasTwoLetters && !_isTranslationFilled(index);
-  }
-
-  /// Translation dots button: unlike the Translation icon, this sits
-  /// *outside* the Translation field (a plain sibling in the outer Row,
-  /// not overlaid via Positioned) and is always visible -- no focus or
-  /// length gating, and no loading state of its own. It tracks
-  /// `_hasTranslationOptions`: empty (outlined) dots by default, full
-  /// (solid) dots once a translate has produced multiple options for this
-  /// row -- including while a translate request is in flight, the dots
-  /// just stay in their current (empty or full) state and flip once the
-  /// request resolves; the Translation icon's own overlay slot is what
-  /// shows the loading spinner. Tapping empty dots does nothing for now;
-  /// tapping full dots opens the "more options" popup.
-  Widget _buildTranslationDotsButton(int index) {
-    final isFilled = _hasTranslationOptions[index];
-    final dotIcon = isFilled ? Icons.circle : Icons.circle_outlined;
-    final dotColor = Colors.purple[600];
-    final dotsIcon = Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(dotIcon, size: 6, color: dotColor),
-        const SizedBox(height: 3),
-        Icon(dotIcon, size: 6, color: dotColor),
-        const SizedBox(height: 3),
-        Icon(dotIcon, size: 6, color: dotColor),
-      ],
-    );
-
-    // Both branches below share the same 22px-wide footprint and zero
-    // extra padding around the dots, so toggling `isFilled` never shifts
-    // the row's layout.
-    if (isFilled) {
-      return SizedBox(
-        width: 22,
-        child: CustomPopupMenu(
-          controller:
-              _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
-          pressType: PressType.singleClick,
-          showArrow: true,
-          arrowColor: Colors.black87,
-          arrowSize: 10,
-          barrierColor: Colors.transparent,
-          verticalMargin: 6,
-          menuBuilder: () {
-            final maxWidth = MediaQuery.of(context).size.width * 0.7;
-            final translations = [
-              'лололололо лолололо переклад 1',
-              'переклад 2',
-              'переклад 3',
-            ];
-            var selectedItems = List<bool>.generate(translations.length, (_) => false);
-
-            return StatefulBuilder(
-              builder: (context, setMenuState) {
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Material(
-                    color: Colors.black87,
-                    child: Container(
-                      constraints: BoxConstraints(maxWidth: maxWidth),
-                      child: IntrinsicWidth(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (int i = 0; i < translations.length; i++)
-                              InkWell(
-                                onTap: () {
-                                  _popupControllers[index]!.hideMenu();
-                                  _selectTranslationOption(index, translations[i]);
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 12),
-                                  child: Row(
-                                    children: [
-                                      SizedBox(
-                                        width: 40,
-                                        height: 40,
-                                        child: Checkbox(
-                                          value: selectedItems[i],
-                                          onChanged: (bool? value) {
-                                            setMenuState(() {
-                                              selectedItems[i] = value ?? false;
-                                            });
-                                          },
-                                          activeColor: Colors.amber[600],
-                                          checkColor: Colors.black,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          translations[i],
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 16,
-                                          ),
-                                          softWrap: true,
-                                          maxLines: null,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            const Divider(color: Colors.white24, height: 1),
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.close),
-                                    color: Colors.white70,
-                                    iconSize: 24,
-                                    onPressed: () {
-                                      _popupControllers[index]!.hideMenu();
-                                    },
-                                  ),
-                                  const SizedBox(width: 4),
-                                  IconButton(
-                                    icon: const Icon(Icons.check),
-                                    color: Colors.amber[600],
-                                    iconSize: 24,
-                                    onPressed: () {
-                                      final selected = <String>[];
-                                      for (int i = 0; i < translations.length; i++) {
-                                        if (selectedItems[i]) {
-                                          selected.add(translations[i]);
-                                        }
-                                      }
-
-                                      if (selected.isNotEmpty) {
-                                        _popupControllers[index]!.hideMenu();
-                                        _selectTranslationOption(
-                                            index, selected.join(', '));
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: Center(child: dotsIcon),
-        ),
-      );
-    }
-
-    // Empty -- nothing to do yet, so tapping is a no-op.
-    return SizedBox(
-      width: 22,
-      child: IconButton(
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        visualDensity: VisualDensity.compact,
-        splashRadius: 18,
-        icon: dotsIcon,
-        onPressed: null,
-      ),
-    );
   }
 
   /// Translate Translation -> Word. The Translation field can be in any
@@ -580,7 +394,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _wordControllers[index].text = translation.text;
 
       final gotRealTranslation =
-          _isRealTranslation(translationText, translation.text);
+          isRealTranslation(translationText, translation.text);
 
       setState(() {
         _isLoadingWordTranslation[index] = false;
@@ -616,7 +430,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final word = _wordControllers[index].text.trim();
     if (word.isEmpty) return;
 
-    final wordStartsWithEnglishLetter = _isEnglishLetter(word[0]);
+    final wordStartsWithEnglishLetter = isEnglishLetter(word[0]);
 
     setState(() {
       _isLoadingTranslation[index] = true;
@@ -635,7 +449,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
         _translationControllers[index].text = translation.text;
 
-        final gotRealTranslation = _isRealTranslation(word, translation.text);
+        final gotRealTranslation = isRealTranslation(word, translation.text);
 
         setState(() {
           _isLoadingTranslation[index] = false;
@@ -652,7 +466,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // language and translate to English instead.
         final translation =
             await translator.translate(word, from: 'auto', to: 'en');
-        final gotRealTranslation = _isRealTranslation(word, translation.text);
+        final gotRealTranslation = isRealTranslation(word, translation.text);
 
         if (gotRealTranslation) {
           // Swap: what the user typed becomes the Translation, the
@@ -799,12 +613,17 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       requestStopwatch.stop();
 
       if (mounted) {
-        _showVocabResultDialog(
+        showVocabResultDialog(
+          context,
           result.words,
           compressDuration: compressStopwatch.elapsed,
           requestDuration: requestStopwatch.elapsed,
           aiDuration: result.aiDuration,
-        );
+        ).then((selected) {
+          if (selected != null && selected.isNotEmpty) {
+            _addWordsFromPhoto(selected);
+          }
+        });
       }
     } on VocabPhotoException catch (e) {
       debugPrint('VOCAB: analyze failed: ${e.message}');
@@ -827,116 +646,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         });
       }
     }
-  }
-
-  String _formatDuration(Duration d) {
-    final seconds = d.inMilliseconds / 1000;
-    return '${seconds.toStringAsFixed(2)}s';
-  }
-
-  void _showVocabResultDialog(
-    List<VocabWord> words, {
-    required Duration compressDuration,
-    required Duration requestDuration,
-    Duration? aiDuration,
-  }) {
-    final timingLines = <String>[
-      'Compressing photo: ${_formatDuration(compressDuration)}',
-      'Sending & receiving response: ${_formatDuration(requestDuration)}',
-      if (aiDuration != null) '  \u2514 AI processing on server: ${_formatDuration(aiDuration)}',
-    ];
-
-    // Words the user hasn't crossed out; whatever is left here when the
-    // dialog is closed gets added to the main screen.
-    final remainingWords = List<VocabWord>.of(words);
-
-    showDialog<List<VocabWord>>(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Vocabulary Found'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      timingLines.join('\n'),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Flexible(
-                      child: remainingWords.isEmpty
-                          ? const Text('No vocabulary words found in this photo.')
-                          : ListView.separated(
-                              shrinkWrap: true,
-                              itemCount: remainingWords.length,
-                              separatorBuilder: (_, __) => const Divider(),
-                              itemBuilder: (context, index) {
-                                final w = remainingWords[index];
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.only(top: 12),
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              w.word,
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
-                                            ),
-                                            if (w.translation != null) Text('Translation: ${w.translation}'),
-                                            if (w.description != null) Text('Description: ${w.description}'),
-                                            if (w.context != null)
-                                              Text(
-                                                'Context: ${w.context}',
-                                                style: const TextStyle(fontStyle: FontStyle.italic),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.close, color: Colors.black),
-                                      tooltip: 'Skip this word',
-                                      visualDensity: VisualDensity.compact,
-                                      onPressed: () {
-                                        setDialogState(() {
-                                          remainingWords.removeAt(index);
-                                        });
-                                      },
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, remainingWords),
-                  child: const Text('Done'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((selected) {
-      if (selected != null && selected.isNotEmpty) {
-        _addWordsFromPhoto(selected);
-      }
-    });
   }
 
   /// Appends words kept in the photo-results dialog to the main word list,
@@ -1091,154 +800,25 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     super.dispose();
   }
 
-  Widget _buildItem(BuildContext context, int index) {
-    final dragHandle = _isDragMode
-        ? ReorderableDragStartListener(
-            index: index,
-            child: SizedBox(
-              width: 32,
-              height: 44,
-              child: Center(
-                child: Icon(
-                  Icons.drag_indicator,
-                  color: const Color(0xFF7F77DD),
-                  size: 32,
-                ),
-              ),
-            ),
-          )
-        : null;
-
-    return Container(
+  Widget _buildRowItem(int index) {
+    return WordRowItem(
       key: ValueKey(index),
-      margin: const EdgeInsets.only(bottom: 12.0),
-      padding: const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
-      decoration: BoxDecoration(
-        color: const Color(0x57d9c1ff),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Верхній рядок: кнопка видалення
-          SizedBox(
-            height: 26,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    visualDensity: VisualDensity.compact,
-                    splashRadius: 16,
-                    iconSize: 18,
-                    icon: const Icon(Icons.close),
-                    color: const Color(0xFFa883ca),
-                    onPressed: () => _removeItem(index),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 5),
-          // Row з drag handle та Stack з полями
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (dragHandle != null) ...[
-                dragHandle,
-                const SizedBox(width: 8),
-              ],
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Must match the `spacing` passed to SyncedTextFieldRow
-                    // below, so the Word icon's right edge lines up with the
-                    // boundary between the Word and Translation fields (same
-                    // padding pattern the Translation icon uses on the
-                    // stack's own right edge).
-                    const fieldSpacing = 16.0;
-                    final wordFieldRightEdge =
-                        (constraints.maxWidth - fieldSpacing) / 2;
-                    return Stack(
-                  children: [
-                    SyncedTextFieldRow(
-                      leftController: _wordControllers[index],
-                      rightController: _translationControllers[index],
-                      leftLabel: 'Word',
-                      rightLabel: 'Translation',
-                      leftHint: 'Word',
-                      rightHint: 'Translation',
-                      leftFocusNode: _wordFocusNodes[index],
-                      rightFocusNode: _translationFocusNodes[index],
-                      spacing: fieldSpacing,
-                    ),
-                    if (_isLoadingWordTranslation[index] ||
-                        _shouldShowWordIcon(index))
-                      Positioned(
-                        top: 2,
-                        // End of the Word field, mirroring the Translation
-                        // icon's `right: 2` (see docs/lightning_icon_rules.md).
-                        right: constraints.maxWidth - wordFieldRightEdge + 2,
-                        child: _isLoadingWordTranslation[index]
-                            ? const Padding(
-                                padding: EdgeInsets.all(12.0),
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5),
-                                ),
-                              )
-                            : Material(
-                                color: Colors.transparent,
-                                child: IconButton(
-                                  icon: const Icon(Icons.electric_bolt),
-                                  color: Colors.purple[600],
-                                  iconSize: 28,
-                                  tooltip: 'AI Translate (to Word)',
-                                  onPressed: () => _fillWordWithAI(index),
-                                ),
-                              ),
-                      ),
-                    if (_isLoadingTranslation[index] ||
-                        _shouldShowTranslationIcon(index))
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: _isLoadingTranslation[index]
-                            ? const Padding(
-                                padding: EdgeInsets.all(12.0),
-                                child: SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(strokeWidth: 2.5),
-                                ),
-                              )
-                            : Material(
-                                color: Colors.transparent,
-                                child: IconButton(
-                                  icon: const Icon(Icons.electric_bolt),
-                                  color: Colors.purple[600],
-                                  iconSize: 28,
-                                  tooltip: 'AI Translate',
-                                  onPressed: () => _fillWithAI(index),
-                                ),
-                              ),
-                      ),
-                  ],
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 4),
-              _buildTranslationDotsButton(index),
-            ],
-          ),
-        ],
-      ),
+      index: index,
+      isDragMode: _isDragMode,
+      wordController: _wordControllers[index],
+      translationController: _translationControllers[index],
+      wordFocusNode: _wordFocusNodes[index],
+      translationFocusNode: _translationFocusNodes[index],
+      isLoadingWordTranslation: _isLoadingWordTranslation[index],
+      isLoadingTranslation: _isLoadingTranslation[index],
+      shouldShowWordIcon: _shouldShowWordIcon(index),
+      shouldShowTranslationIcon: _shouldShowTranslationIcon(index),
+      hasTranslationOptions: _hasTranslationOptions[index],
+      popupController: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
+      onRemove: () => _removeItem(index),
+      onFillWordWithAI: () => _fillWordWithAI(index),
+      onFillWithAI: () => _fillWithAI(index),
+      onSelectTranslation: (translation) => _selectTranslationOption(index, translation),
     );
   }
 
@@ -1325,7 +905,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
                     onReorder: _reorderItems,
-                    itemBuilder: _buildItem,
+                    itemBuilder: (context, index) => _buildRowItem(index),
                     proxyDecorator: (child, index, animation) {
                       return Material(
                         color: Colors.transparent,
@@ -1336,7 +916,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 : ListView.builder(
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
-                    itemBuilder: _buildItem,
+                    itemBuilder: (context, index) => _buildRowItem(index),
                   ),
           ),
           if (_isAnalyzingPhoto)
@@ -1360,44 +940,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
         ],
       ),
-      floatingActionButton: SpeedDial(
-        icon: Icons.add,
-        activeIcon: Icons.close,
-        backgroundColor: Colors.red,
-        foregroundColor: Colors.white,
-        activeBackgroundColor: Colors.red[700],
-        activeForegroundColor: Colors.white,
-        visible: true,
-        closeManually: false,
-        curve: Curves.bounceIn,
-        overlayColor: Colors.black,
-        overlayOpacity: 0.5,
-        elevation: 8.0,
-        shape: const CircleBorder(),
-        children: [
-          SpeedDialChild(
-            child: const Icon(Icons.camera_alt),
-            label: 'Take Photo',
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
-            onTap: _takePhotoForVocabulary,
-          ),
-          SpeedDialChild(
-            child: const Icon(Icons.screenshot),
-            label: 'Screenshot',
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            onTap: _takeScreenshot,
-          ),
-          SpeedDialChild(
-            child: const Icon(Icons.settings),
-            backgroundColor: Colors.orange,
-            foregroundColor: Colors.white,
-            onTap: () {
-              // Placeholder for future feature
-            },
-          ),
-        ],
+      floatingActionButton: WordInputSpeedDial(
+        onTakePhoto: _takePhotoForVocabulary,
+        onScreenshot: _takeScreenshot,
       ),
     );
   }
