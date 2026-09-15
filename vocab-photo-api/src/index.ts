@@ -1,5 +1,3 @@
-import { fetchReversoContext, fetchReversoTranslation } from "./reverso";
-
 export interface Env {
   ANTHROPIC_API_KEY: string;
   APP_SHARED_SECRET: string;
@@ -261,52 +259,8 @@ async function handleAnalyze(request: Request, env: Env, url: URL): Promise<Resp
   }
 }
 
-async function handleReversoContext(request: Request, url: URL): Promise<Response> {
-  if (request.method !== "GET") {
-    return jsonResponse({ error: "Method not allowed, use GET" }, 405);
-  }
-
-  const word = url.searchParams.get("word")?.trim();
-  if (!word) {
-    return jsonResponse({ error: "Query param 'word' is required" }, 400);
-  }
-  const from = url.searchParams.get("from")?.trim() || "eng";
-  const to = url.searchParams.get("to")?.trim() || "ukr";
-
-  try {
-    const result = await fetchReversoContext(word, from, to);
-    return jsonResponse(result);
-  } catch (err) {
-    console.error("reverso context lookup failed", err);
-    return jsonResponse({ error: "Reverso context lookup failed, please try again" }, 502);
-  }
-}
-
-async function handleReversoTranslation(request: Request, url: URL): Promise<Response> {
-  if (request.method !== "GET") {
-    return jsonResponse({ error: "Method not allowed, use GET" }, 405);
-  }
-
-  const word = url.searchParams.get("word")?.trim();
-  if (!word) {
-    return jsonResponse({ error: "Query param 'word' is required" }, 400);
-  }
-  const from = url.searchParams.get("from")?.trim() || "eng";
-  const to = url.searchParams.get("to")?.trim() || "ukr";
-
-  try {
-    const result = await fetchReversoTranslation(word, from, to);
-    return jsonResponse(result);
-  } catch (err) {
-    console.error("reverso translation lookup failed", err);
-    return jsonResponse({ error: "Reverso translation lookup failed, please try again" }, 502);
-  }
-}
-
 const ROUTES: Record<string, (request: Request, env: Env, url: URL) => Promise<Response>> = {
   "/analyze": (request, env, url) => handleAnalyze(request, env, url),
-  "/reverso-context": (request, _env, url) => handleReversoContext(request, url),
-  "/reverso-translation": (request, _env, url) => handleReversoTranslation(request, url),
 };
 
 export default {
