@@ -19,6 +19,7 @@ import '../../core/services/photo_scaler.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../core/widgets/synced_text_field_row.dart';
 import '../../router/routes.dart';
+import 'word_input_notifier.dart';
 
 class WordInputScreen extends ConsumerStatefulWidget {
   const WordInputScreen({super.key});
@@ -58,6 +59,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   final ScreenshotController _screenshotController = ScreenshotController();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
+  bool _restoredFromStore = false;
 
   @override
   void initState() {
@@ -81,6 +83,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     // before onResume, so resuming is the race-free point to claim it.
     if (state == AppLifecycleState.resumed) {
       _pollForLostPhoto();
+    }
+    // The OS can kill the process while the camera is open; `paused` is the
+    // last guaranteed callback before that happens, so flush immediately
+    // instead of waiting on the debounce timer.
+    if (state == AppLifecycleState.paused) {
+      ref.read(wordInputNotifierProvider.notifier).flush();
     }
   }
 
@@ -160,6 +168,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     wordController.addListener(() {
       _wordPairs[index].word = wordController.text;
+      ref.read(wordInputNotifierProvider.notifier).updateAt(index, word: wordController.text);
       _checkAndAddNewPair();
 
       // Якщо word повністю видалений, скинути "filled"-мітку
@@ -176,6 +185,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     translationController.addListener(() {
       _wordPairs[index].translation = translationController.text;
+      ref.read(wordInputNotifierProvider.notifier).updateAt(index, translation: translationController.text);
       _checkAndAddNewPair();
 
       // Якщо translation повністю видалений, скинути опції й "filled"-мітку
@@ -203,6 +213,53 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     _wordMarkedFilled.add(false);
     _wordFocusNodes.add(wordFocusNode);
     _translationFocusNodes.add(translationFocusNode);
+  }
+
+  /// Replaces the placeholder row from initState() with the persisted list,
+  /// the first time it resolves (see the `ref.listen` in build()). Rebuilds
+  /// every parallel per-row list from scratch, exactly like initState() does
+  /// for a single row, then re-runs the same "always one trailing blank row"
+  /// and initial-focus logic a fresh launch would.
+  void _restoreFromStore(List<WordPair> pairs) {
+    for (final c in _wordControllers) {
+      c.dispose();
+    }
+    for (final c in _translationControllers) {
+      c.dispose();
+    }
+    for (final n in _wordFocusNodes) {
+      n.dispose();
+    }
+    for (final n in _translationFocusNodes) {
+      n.dispose();
+    }
+
+    setState(() {
+      _wordPairs
+        ..clear()
+        ..addAll(pairs.map((p) => WordPair(word: p.word, translation: p.translation)));
+      _wordControllers.clear();
+      _translationControllers.clear();
+      _isLoadingTranslation.clear();
+      _isLoadingWordTranslation.clear();
+      _hasTranslationOptions.clear();
+      _translationMarkedFilled.clear();
+      _wordMarkedFilled.clear();
+      _wordFocusNodes.clear();
+      _translationFocusNodes.clear();
+      _popupControllers.clear();
+
+      for (var i = 0; i < _wordPairs.length; i++) {
+        _addControllersForIndex(i);
+      }
+      _checkAndAddNewPair();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _wordFocusNodes.isNotEmpty) {
+        _wordFocusNodes.last.requestFocus();
+      }
+    });
   }
 
   /// Hot-reload-only safety net. Hot reload keeps this State object alive
@@ -249,10 +306,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     final lastPair = _wordPairs.last;
     if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
+      final newPair = WordPair(word: '', translation: '');
       setState(() {
-        _wordPairs.add(WordPair(word: '', translation: ''));
+        _wordPairs.add(newPair);
         _addControllersForIndex(_wordPairs.length - 1);
       });
+      ref.read(wordInputNotifierProvider.notifier).addAll([newPair]);
     }
   }
 
@@ -648,8 +707,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   }
 
   void _navigateToTableScreen() {
-    final validPairs = _wordPairs.where((pair) => pair.isValid).toList();
-    ref.read(validPairsProvider.notifier).state = validPairs;
     const WordsTableRoute().go(context);
   }
 
@@ -885,6 +942,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// Appends words kept in the photo-results dialog to the main word list,
   /// reusing the still-empty first row if the screen hasn't been touched yet.
   void _addWordsFromPhoto(List<VocabWord> words) {
+    var reusedFirstRow = false;
+    final appendedPairs = <WordPair>[];
+
     setState(() {
       for (final w in words) {
         final translation = w.translation ?? w.description ?? '';
@@ -895,16 +955,29 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           // Photo recognition auto-populated this row -> "filled".
           _translationMarkedFilled[0] = translation.isNotEmpty;
           _wordMarkedFilled[0] = w.word.isNotEmpty;
+          reusedFirstRow = true;
         } else {
           _wordPairs.add(WordPair(word: w.word, translation: translation));
           _addControllersForIndex(_wordPairs.length - 1);
           _translationMarkedFilled[_wordPairs.length - 1] =
               translation.isNotEmpty;
           _wordMarkedFilled[_wordPairs.length - 1] = w.word.isNotEmpty;
+          appendedPairs.add(_wordPairs[_wordPairs.length - 1]);
         }
       }
       _checkAndAddNewPair();
     });
+
+    if (reusedFirstRow) {
+      ref.read(wordInputNotifierProvider.notifier).updateAt(
+            0,
+            word: _wordPairs[0].word,
+            translation: _wordPairs[0].translation,
+          );
+    }
+    if (appendedPairs.isNotEmpty) {
+      ref.read(wordInputNotifierProvider.notifier).addAll(appendedPairs);
+    }
   }
 
   void _removeItem(int index) {
@@ -919,6 +992,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _hasTranslationOptions[0] = false;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
+        ref.read(wordInputNotifierProvider.notifier).updateAt(0, word: '', translation: '');
       } else {
         // Для інших айтемів видаляємо повністю
         // Dispose контролерів перед видаленням
@@ -941,6 +1015,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
         // Видаляємо з popup controllers якщо є
         _popupControllers.remove(index);
+        ref.read(wordInputNotifierProvider.notifier).removeAt(index);
       }
     });
   }
@@ -993,6 +1068,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
       // 8. _popupControllers - очищуємо Map (найпростіше рішення)
       _popupControllers.clear();
+
+      ref.read(wordInputNotifierProvider.notifier).reorder(oldIndex, newIndex);
     });
   }
 
@@ -1168,6 +1245,19 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   @override
   Widget build(BuildContext context) {
     _ensureRowStateSynced(); // hot-reload safety net, see method doc above
+
+    // One-time restore: once the persisted list first resolves, replace the
+    // placeholder row created in initState() with what was saved. Later
+    // notifier updates (all driven by this screen's own mutations, via
+    // updateAt/removeAt/reorder/addAll below) must not re-trigger this.
+    ref.listen<AsyncValue<List<WordPair>>>(wordInputNotifierProvider, (previous, next) {
+      if (_restoredFromStore) return;
+      next.whenData((pairs) {
+        _restoredFromStore = true;
+        if (pairs.isNotEmpty) _restoreFromStore(pairs);
+      });
+    });
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,

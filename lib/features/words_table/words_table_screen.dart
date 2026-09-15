@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/models/word_pair.dart';
-import '../../core/providers.dart';
+import '../word_input/word_input_notifier.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
   const WordsTableScreen({super.key});
@@ -71,7 +71,10 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final wordPairs = ref.watch(validPairsProvider);
+    final asyncPairs = ref.watch(wordInputNotifierProvider);
+    final wordPairs = (asyncPairs.valueOrNull ?? const <WordPair>[])
+        .where((pair) => pair.isValid)
+        .toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Words Table'),

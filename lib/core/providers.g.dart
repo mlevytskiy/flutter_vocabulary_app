@@ -39,5 +39,21 @@ final photoScalerProvider = Provider<PhotoScaler>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PhotoScalerRef = ProviderRef<PhotoScaler>;
+String _$wordStoreHash() => r'35144c25d3b366099226b6e06d59cc11a32e82ee';
+
+/// See also [wordStore].
+@ProviderFor(wordStore)
+final wordStoreProvider = Provider<WordStore>.internal(
+  wordStore,
+  name: r'wordStoreProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$wordStoreHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef WordStoreRef = ProviderRef<WordStore>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
