@@ -21,19 +21,21 @@ lib/
     routes.dart (+ routes.g.dart)   the ONLY place routes are declared (go_router_builder)
   config/
     vocab_api_config.dart       the Worker URL + secret as constants — kept, gitignored, as today
+    azure_config.dart           pre-existing, untouched by this plan
   core/
-    providers.dart              providers for services: photoScaler, vocabPhotoService, wordStore
+    providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, wordStore
     models/                     word_pair.dart, vocab_word.dart — moved, unchanged
     services/                   photo_scaler.dart, vocab_photo_service.dart, word_store.dart (new: persistence)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
       word_input_screen.dart          the screen: composes widgets below, owns controllers/focus as today
-      word_input_notifier.dart (+.g)  the word list (List<WordPair>) + save/load — the only new logic
+      word_input_notifier.dart (+.g)  AsyncNotifier<List<WordPair>> + debounced save() — the main new logic
+      lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
         translation_dots_button.dart    _buildTranslationDotsButton (popup_menu_2 stays)
-        vocab_result_dialog.dart        _showVocabResultDialog
+        vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog)
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays)
     words_table/
       words_table_screen.dart         reads words from the notifier instead of a constructor arg
@@ -88,5 +90,5 @@ flowchart LR
 
 - [ ] `flutter analyze` clean; `dart run build_runner build --delete-conflicting-outputs` run, `.g.dart` committed
 - [ ] `grep -rn "Navigator.push\|MaterialPageRoute" lib` → only `lib/router/` (or nothing)
-- [ ] `grep -rn "static final .* instance" lib` → nothing
+- [ ] `grep -rn "static final .* instance" lib` → only `lib/core/services/photo_scaler.dart` (`PhotoScaler.instance`, documented exception: the singleton stays for now, wrapped by `photoScalerProvider`)
 - [ ] On device, the walkthrough in `docs/refactoring-plan.md` §"Behaviour that must not change" passes

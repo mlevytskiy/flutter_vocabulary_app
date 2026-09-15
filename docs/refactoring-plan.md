@@ -237,3 +237,78 @@ Commit: `docs: step 5 — plan closed, structure documented`
 The full version of each of these is on branch `chore/architecture-migration` (`docs/architecture/`,
 `docs/adr/`). The product docs (`docs/idea-brief.md`, `docs/roadmap.md`, `docs/tasks/`) are back on
 `master`; this plan is `docs/tasks/task-00-restructure.md` in the task index.
+
+---
+
+## What changed
+
+Executed 2026-09-15, steps 1-5, across three commits (`9a0deb4` steps 1-2, `5e18846` step 3,
+`9da9291` step 4) plus this doc pass for step 5. `find lib -name "*.dart"` matches
+`docs/architecture.md` §1 exactly.
+
+**Files moved** (git mv, content unchanged except import paths):
+- `lib/models/*` -> `lib/core/models/`
+- `lib/services/*` -> `lib/core/services/`
+- `lib/widgets/synced_text_field_row.dart` -> `lib/core/widgets/`
+- `lib/screens/word_input_screen.dart` -> `lib/features/word_input/word_input_screen.dart`
+- `lib/screens/words_table_screen.dart` -> `lib/features/words_table/words_table_screen.dart`
+
+**Files added:**
+- `lib/core/providers.dart` (+`.g.dart`) — `vocabPhotoServiceProvider`, `photoScalerProvider`,
+  `wordStoreProvider`
+- `lib/router/routes.dart` (+`.g.dart`) — `WordInputRoute` (`/`), `WordsTableRoute` (`/table`),
+  `appRouter`
+- `lib/app.dart` — `MaterialApp.router`, pulled out of `main.dart`
+- `lib/core/services/word_store.dart` — `WordStore.load()`/`save()` over one
+  `shared_preferences` JSON key; `load()` never throws
+- `lib/features/word_input/word_input_notifier.dart` (+`.g.dart`) — `WordInputNotifier`
+  (`AsyncNotifier<List<WordPair>>`): `setPairs`/`updateAt`/`removeAt`/`reorder`/`addAll`, a
+  500ms-debounced `flush()`
+- `lib/features/word_input/widgets/{word_row_item,translation_dots_button,vocab_result_dialog,
+  word_input_speed_dial}.dart` — step 4's cut-and-paste extractions
+- `lib/features/word_input/lightning_rules.dart` — the two pure lightning predicates
+  (`isRealTranslation`, `isEnglishLetter`); `_isTranslationFilled` stayed in the screen (not pure)
+- `test/word_store_test.dart` — 4 tests, all passing
+
+**Providers added:** `vocabPhotoServiceProvider`, `photoScalerProvider`, `wordStoreProvider`,
+`wordInputNotifierProvider`. `validPairsProvider` (step 2's temporary bridge) was added then
+deleted in step 3, as planned.
+
+**Routes added:** `WordInputRoute` (`/`), `WordsTableRoute` (`/table`).
+
+**Deviations from the plan, and why:**
+- `PhotoScaler.instance` singleton remains (`lib/core/services/photo_scaler.dart`), wrapped by
+  `photoScalerProvider` — this is the grep exception CLAUDE.md and `docs/architecture.md` §4 both
+  name explicitly, not an oversight.
+- `showVocabResultDialog` (step 4, `vocab_result_dialog.dart`) keeps the original 4-parameter
+  signature (`words`, `compressDuration`, `requestDuration`, `aiDuration`) rather than the plan's
+  assumed single `VocabAnalysisResult` parameter — `master`'s `_processPickedPhoto` computes the
+  two durations from separate stopwatches around the compress and request steps, so a single
+  result object doesn't carry what the dialog needs. Dialog body is identical either way.
+- `word_input_screen.dart` is 949 lines after all five step-4 extractions, not the "~500 lines"
+  in Done-when. The gap is real scope the plan doesn't name as an extraction target: the
+  photo-capture pipeline (`_takePhotoForVocabulary`, `_processPickedPhoto`, `_pollForLostPhoto`,
+  `_recoverLostPhoto`), the step-3 persistence wiring (`_restoreFromStore`, the notifier calls
+  threaded through every mutation site), and the step-1/2 Riverpod/go_router plumbing all live in
+  this file and weren't part of the plan's original 1,282-line inventory. No further extraction
+  was invented beyond the plan's explicit list, per its own "do not improvise a different
+  structure" rule — a future session could split the photo-capture pipeline into its own
+  controller/notifier if this file's size becomes a problem, but that's new scope, not this plan's.
+- The dots popup (`TranslationDotsButton`) still renders three hardcoded placeholder strings, not
+  real Google Translate results — pre-existing on `master`, unrelated to this restructure. See
+  `docs/tasks/task-01-remove-reverso.md`'s note and `docs/tasks/README.md`'s "Known gap" section.
+- No `test/` directory existed on `master` before step 3; the README's claim of one pre-existing
+  live-network smoke test refers to the parked `chore/architecture-migration` branch, not this
+  one. `test/word_store_test.dart` (step 3) is the first test on this branch.
+
+**Verified on device after every step:** the full 8-item "Behaviour that must not change" list
+above, plus step 3's restart-persistence checklist (5 pairs -> force-quit -> reopen -> 5 rows +
+blank with focus, repeated 3x with no growth; photo-added words survive too). Special attention
+was paid to items 2 (dots popup) and 4 (FAB) in steps 1, 2, and 4, per this plan's own warning
+about where the previous attempt regressed — both held pixel-for-pixel throughout.
+
+**Left for a later, separate task (not this plan):** wiring real Google Translate results into
+the dots popup (needs porting `translation_repository`/`translate_api` from
+`chore/architecture-migration`, or a fresh implementation); the deferred items already listed
+above.
+

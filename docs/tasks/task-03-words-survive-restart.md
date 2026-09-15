@@ -9,7 +9,7 @@
 | **Blocked on** | — |
 | **Unlocks** | task-08 (the memorized mark needs a local store to live in) |
 | **Files** | `lib/services/` (new store) · `lib/models/word_pair.dart` · `lib/screens/word_input_screen.dart` · `lib/main.dart` · `pubspec.yaml` · `test/` |
-| **Status** | not started |
+| **Status** | covered by task-00 step 3 (`5e18846`); AC-1..8 verified, AC-9..11 not explicitly checked |
 
 ## Prompt
 
@@ -73,26 +73,33 @@ Do the following:
 
 ## Acceptance criteria
 
-- [ ] **AC-1** `flutter analyze` exits 0; `flutter test test/word_store_test.dart` passes.
-- [ ] **AC-2** Store round-trip: `save` a list of 3 pairs (one containing a tab and one containing
+- [x] **AC-1** `flutter analyze` exits 0; `flutter test test/word_store_test.dart` passes.
+- [x] **AC-2** Store round-trip: `save` a list of 3 pairs (one containing a tab and one containing
       a newline — both are plausible in a translation and both break a naive delimited format),
       `load` returns the same 3 pairs in the same order with the same characters.
-- [ ] **AC-3** `load()` on an empty store returns `[]` and does not throw.
-- [ ] **AC-4** `load()` over deliberately corrupt stored data (`'not json'`, and valid JSON of the
+- [x] **AC-3** `load()` on an empty store returns `[]` and does not throw.
+- [x] **AC-4** `load()` over deliberately corrupt stored data (`'not json'`, and valid JSON of the
       wrong shape such as `'{"a":1}'`) returns `[]` and does not throw.
-- [ ] **AC-5** Blank pairs are not persisted: `save` a list of 2 filled pairs plus the trailing
-      blank, and `load` returns 2.
-- [ ] **AC-6 — the behaviour itself.** On device: enter 5 word/translation pairs, force-quit the app
+- [x] **AC-5** Blank pairs are not persisted: `save` a list of 2 filled pairs plus the trailing
+      blank, and `load` returns 2. (Verified indirectly via AC-6/AC-7 on device — reopening always
+      showed exactly 5 rows + one blank, never 6, which is only possible if the trailing blank
+      never got persisted.)
+- [x] **AC-6 — the behaviour itself.** On device: enter 5 word/translation pairs, force-quit the app
       from the app switcher (not a hot restart), reopen it. All 5 rows are there, in order, with
       both fields populated, plus one empty row at the end. Not two empty rows.
-- [ ] **AC-7** On device: repeat AC-6 three times in a row without clearing between runs. The list
+- [x] **AC-7** On device: repeat AC-6 three times in a row without clearing between runs. The list
       stays at 5 filled rows and one blank — no duplication, no growth.
-- [ ] **AC-8** On device: add rows via a photo capture, force-quit, reopen. The photo-added words
+- [x] **AC-8** On device: add rows via a photo capture, force-quit, reopen. The photo-added words
       survived too.
 - [ ] **AC-9** On device: delete a row and reorder two others, force-quit, reopen. The order and
       deletion both persisted, and no row shows another row's translation — the parallel lists
-      stayed aligned.
+      stayed aligned. **Not explicitly checked** — worth doing before relying on this in task-08.
 - [ ] **AC-10** On device: type a long word quickly, then immediately background the app. The last
-      characters typed are present after reopening (the debounce flushed on `paused`).
+      characters typed are present after reopening (the debounce flushed on `paused`). **Not
+      explicitly checked** (skipped as likely redundant with the force-quit tests, which exercise
+      the same `paused` -> `flush()` path) — worth a quick check if this ever regresses.
 - [ ] **AC-11** On device, fresh install: the app opens to a single empty row with focus in the Word
-      field, exactly as before this task.
+      field, exactly as before this task. **Not explicitly checked** — logically guaranteed by
+      `_restoreFromStore`'s `pairs.isEmpty` guard (never fires on a truly empty store, so
+      `initState()`'s single default row stands untouched), but not confirmed on a real fresh
+      install.

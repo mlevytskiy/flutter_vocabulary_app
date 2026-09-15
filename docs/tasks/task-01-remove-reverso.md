@@ -9,7 +9,7 @@
 | **Blocked on** | — |
 | **Unlocks** | task-09's recon (it frees the word-detail slot) |
 | **Files** | `lib/widgets/reverso_info_popup.dart` · `lib/services/reverso_service.dart` · `lib/models/reverso_info.dart` · `lib/screens/word_input_screen.dart` · `vocab-photo-api/src/reverso.ts` · `vocab-photo-api/src/index.ts` · `vocab-photo-api/README.md` · `pubspec.yaml` |
-| **Status** | code complete (`8a6356f`); AC-9, AC-10, AC-11 need a manual device pass |
+| **Status** | code complete (app: `8a6356f`; Worker: `b6e7b16`); AC-1..6 verified by grep/typecheck, AC-7..11 need a running Worker + a manual device pass |
 
 ## Note — the Google-section popup this task describes isn't on `master`
 
@@ -106,13 +106,13 @@ open decision **D3** and is task-09's question.
 
 ## Acceptance criteria
 
-- [ ] **AC-1** `grep -ri reverso lib/ vocab-photo-api/src/ pubspec.yaml` returns no matches.
-- [ ] **AC-2** `grep -ri reverso vocab-photo-api/README.md` returns no matches.
-- [ ] **AC-3** `grep -rn "package:html" lib/` returns no matches, and `html:` is absent from
+- [x] **AC-1** `grep -ri reverso lib/ vocab-photo-api/src/ pubspec.yaml` returns no matches.
+- [x] **AC-2** `grep -ri reverso vocab-photo-api/README.md` returns no matches.
+- [x] **AC-3** `grep -rn "package:html" lib/` returns no matches, and `html:` is absent from
       `pubspec.yaml`.
-- [ ] **AC-4** `flutter analyze` exits 0 with no warnings about unused imports or dead code.
-- [ ] **AC-5** `cd vocab-photo-api && npm run typecheck` exits 0.
-- [ ] **AC-6** `ROUTES` in `vocab-photo-api/src/index.ts` has exactly one key: `/analyze`.
+- [x] **AC-4** `flutter analyze` exits 0 with no warnings about unused imports or dead code.
+- [x] **AC-5** `cd vocab-photo-api && npm run typecheck` exits 0.
+- [x] **AC-6** `ROUTES` in `vocab-photo-api/src/index.ts` has exactly one key: `/analyze`.
 - [ ] **AC-7** Against a running Worker (`npm run dev`), both retired routes 404 —
       `curl -s -o /dev/null -w '%{http_code}' -H "x-app-secret: <secret>" "http://localhost:8787/reverso-context?word=receipt"`
       prints `404`, and the same for `/reverso-translation`. (A `401` means you forgot the header;

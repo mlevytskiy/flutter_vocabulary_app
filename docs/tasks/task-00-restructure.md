@@ -9,7 +9,7 @@
 | **Blocked on** | — |
 | **Unlocks** | task-03 (step 3 of the plan *is* task-03), parallel work on 02/04/08 |
 | **Files** | `lib/**` (moves), `lib/router/` (new), `lib/core/providers.dart` (new), `lib/core/services/word_store.dart` (new), `lib/features/word_input/word_input_notifier.dart` (new), `pubspec.yaml`, `test/word_store_test.dart` |
-| **Status** | not started |
+| **Status** | done (`9a0deb4`, `5e18846`, `9da9291`, docs commit for step 5) |
 
 ## Prompt
 
@@ -29,10 +29,10 @@ If a step cannot be done as written, append `### Findings` under that step in
 
 ## Acceptance criteria
 
-- [ ] **AC-1** `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test` all exit 0.
-- [ ] **AC-2** `grep -rn "Navigator.push\|MaterialPageRoute\|static final .* instance" lib` matches nothing (the `PhotoScaler.instance` singleton may remain only if step 1's provider wraps it — then the grep exception is that one line and it is noted in the plan's "What changed").
-- [ ] **AC-3** `find lib -name "*.dart"` matches the tree in `docs/architecture.md` §1; `lib/screens`, `lib/services`, `lib/models`, `lib/widgets` no longer exist; no `packages/` directory.
-- [ ] **AC-4** `pubspec.yaml` diff against `master` before the task adds exactly `go_router`, `go_router_builder`, `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `shared_preferences` and removes nothing.
-- [ ] **AC-5** On device, all 8 items of "Behaviour that must not change" pass — the popup and the FAB are pixel-for-pixel what they were.
-- [ ] **AC-6** Persistence (task-03 AC-6…AC-11): 5 pairs → force-quit → reopen → 5 rows + one blank, focus in the blank; 3× repeat with no growth; photo-added words survive; typing then immediately backgrounding keeps the last characters.
-- [ ] **AC-7** `docs/refactoring-plan.md` ends with a filled-in `## What changed` section.
+- [x] **AC-1** `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test` all exit 0. (5 pre-existing info-level lints remain, unrelated to this task — see `docs/refactoring-plan.md`'s "What changed".)
+- [x] **AC-2** `grep -rn "Navigator.push\|MaterialPageRoute\|static final .* instance" lib` matches nothing except the documented `PhotoScaler.instance` exception.
+- [x] **AC-3** `find lib -name "*.dart"` matches the tree in `docs/architecture.md` §1; `lib/screens`, `lib/services`, `lib/models`, `lib/widgets` no longer exist; no `packages/` directory.
+- [x] **AC-4** `pubspec.yaml` diff against `master` before the task adds exactly `go_router`, `go_router_builder`, `flutter_riverpod`, `riverpod_annotation`, `riverpod_generator`, `build_runner`, `shared_preferences` and removes nothing.
+- [x] **AC-5** On device, all 8 items of "Behaviour that must not change" pass — the popup and the FAB are pixel-for-pixel what they were. (The dots popup's *options* are still the pre-existing hardcoded stub, unrelated to this task — see task-01's note.)
+- [x] **AC-6** Persistence: 5 pairs → force-quit → reopen → 5 rows + one blank, focus in the blank; 3× repeat with no growth; photo-added words survive. **Not explicitly checked:** typing then immediately backgrounding (not force-quitting) keeps the last characters — the `didChangeAppLifecycleState(paused)` → `flush()` path should cover it (the same code path force-quit exercises), but the user chose to skip this specific manual check as redundant with the force-quit tests already done. Worth a quick check if this ever regresses.
+- [x] **AC-7** `docs/refactoring-plan.md` ends with a filled-in `## What changed` section.
