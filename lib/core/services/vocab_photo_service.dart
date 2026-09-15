@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
-import '../config/vocab_api_config.dart';
+import '../../config/vocab_api_config.dart';
 import '../models/vocab_word.dart';
 
 class VocabPhotoException implements Exception {

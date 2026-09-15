@@ -11,6 +11,27 @@
 | **Files** | `lib/widgets/reverso_info_popup.dart` · `lib/services/reverso_service.dart` · `lib/models/reverso_info.dart` · `lib/screens/word_input_screen.dart` · `vocab-photo-api/src/reverso.ts` · `vocab-photo-api/src/index.ts` · `vocab-photo-api/README.md` · `pubspec.yaml` |
 | **Status** | code complete (`8a6356f`); AC-9, AC-10, AC-11 need a manual device pass |
 
+## Note — the Google-section popup this task describes isn't on `master`
+
+The "keep the Google section" instructions below (and AC-9) assume the dots popup already renders
+real results from `_buildGoogleSection` / `googleInfo` / `lib/services/google_translate_service.dart`.
+None of that exists on `master` today: there is no `google_translate_service.dart`, no
+`googleInfo`, no `_buildGoogleSection` anywhere in this branch's `lib/`. What `master` actually has
+is a **hardcoded stub** in `_buildTranslationDotsButton`
+(`lib/features/word_input/word_input_screen.dart`) — three fixed placeholder strings
+(`"лололололо лолололо переклад 1"`, etc.), committed as-is in `5c65cdc`/`2c4ca70` ("just
+hardcode"). Confirmed via device pass during task-00 step 1 (2026-09-15).
+
+The real implementation — `translation_repository`, `remote_translation_repository`,
+`translate_api`, and the popup content itself
+(`packages/feature_word_list/lib/src/presentation/widgets/translation_options_content.dart` /
+`translation_options_menu.dart`) — lives on branch `chore/architecture-migration` and was never
+ported to `master`. Wiring real Google Translate results into the dots popup on `master` is a
+separate feature task (bring the relevant pieces over from that branch, or reimplement against the
+simplified architecture) — it is not part of this task or task-00's structural restructure, and
+task-00 explicitly forbids "while I'm here" fixes. AC-9 as written ("Google dictionary sections
+grouped by part of speech") cannot be verified against `master` until that follow-up task exists.
+
 ## Starting state — read this first
 
 Reverso is **not** committed code being retired. `git status` shows it as work in flight: the

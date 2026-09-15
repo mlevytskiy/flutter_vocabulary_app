@@ -73,3 +73,18 @@ is quoted, or an observation on a real device. Where a task says "on device", it
 
 Resolved — see *Starting-state decision* above: the staged Reverso additions are unstaged, not
 committed-then-removed. task-01 starts from a clean tree.
+
+## Known gap — the dots popup has no real Google Translate results on `master`
+
+Confirmed on device during task-00 step 1 (2026-09-15): the translation "dots" popup
+(`_buildTranslationDotsButton` in `lib/features/word_input/word_input_screen.dart`) is a
+**hardcoded stub** on `master` — three fixed placeholder strings, not real translations. There is
+no `google_translate_service.dart`, no `googleInfo`, no `_buildGoogleSection` in this branch. See
+[task-01's note](./task-01-remove-reverso.md#note--the-google-section-popup-this-task-describes-isnt-on-master)
+for the full detail.
+
+The real thing — `translation_repository` / `remote_translation_repository` / `translate_api` and
+the popup content itself (`translation_options_content.dart` / `translation_options_menu.dart`
+under `packages/feature_word_list/`) — already exists on branch `chore/architecture-migration` and
+should be brought over (or reimplemented against the simplified architecture) as its own task; it
+is not covered by task-00 or task-01.

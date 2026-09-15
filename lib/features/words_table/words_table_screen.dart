@@ -1,20 +1,20 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import '../models/word_pair.dart';
+import '../../core/models/word_pair.dart';
+import '../../core/providers.dart';
 
-class WordsTableScreen extends StatefulWidget {
-  final List<WordPair> wordPairs;
-
-  const WordsTableScreen({super.key, required this.wordPairs});
+class WordsTableScreen extends ConsumerStatefulWidget {
+  const WordsTableScreen({super.key});
 
   @override
-  State<WordsTableScreen> createState() => _WordsTableScreenState();
+  ConsumerState<WordsTableScreen> createState() => _WordsTableScreenState();
 }
 
-class _WordsTableScreenState extends State<WordsTableScreen> {
-  String _generateCloseUpB2Format() {
+class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
+  String _generateCloseUpB2Format(List<WordPair> wordPairs) {
     final buffer = StringBuffer();
 
     // Add header
@@ -23,15 +23,15 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
     buffer.writeln('#tags column:3');
 
     // Add word pairs
-    for (var pair in widget.wordPairs) {
+    for (var pair in wordPairs) {
       buffer.writeln('${pair.word}\t${pair.translation}\t');
     }
 
     return buffer.toString();
   }
 
-  Future<void> _shareWords() async {
-    if (widget.wordPairs.isEmpty) {
+  Future<void> _shareWords(List<WordPair> wordPairs) async {
+    if (wordPairs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No words to share')),
       );
@@ -40,7 +40,7 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
 
     try {
       // Generate content
-      final content = _generateCloseUpB2Format();
+      final content = _generateCloseUpB2Format(wordPairs);
 
       // Get current date for filename
       final now = DateTime.now();
@@ -71,6 +71,7 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final wordPairs = ref.watch(validPairsProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Words Table'),
@@ -79,7 +80,7 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
-              onPressed: _shareWords,
+              onPressed: () => _shareWords(wordPairs),
               icon: const Icon(Icons.share),
               label: const Text('Share'),
               style: ElevatedButton.styleFrom(
@@ -90,7 +91,7 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
           ),
         ],
       ),
-      body: widget.wordPairs.isEmpty
+      body: wordPairs.isEmpty
           ? const Center(
               child: Text(
                 'No words added yet',
@@ -131,12 +132,12 @@ class _WordsTableScreenState extends State<WordsTableScreen> {
                       ),
                     ],
                     rows: List<DataRow>.generate(
-                      widget.wordPairs.length,
+                      wordPairs.length,
                       (index) => DataRow(
                         cells: [
                           DataCell(Text('${index + 1}')),
-                          DataCell(Text(widget.wordPairs[index].word)),
-                          DataCell(Text(widget.wordPairs[index].translation)),
+                          DataCell(Text(wordPairs[index].word)),
+                          DataCell(Text(wordPairs[index].translation)),
                         ],
                       ),
                     ),

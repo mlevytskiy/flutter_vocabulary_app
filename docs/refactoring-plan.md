@@ -19,7 +19,10 @@ updated_at: "2026-09-15"
 1. Open app → one empty row, focus in the Word field.
 2. Type an English word → the lightning icon appears per `docs/lightning_icon_rules.md`; tap it →
    translation fills; the **dots popup** (`popup_menu_2`, same look, same position, same options)
-   shows alternatives; picking one replaces the translation.
+   shows alternatives; picking one replaces the translation. (On `master` today those "options"
+   are a hardcoded 3-item stub, not real Google Translate results — see
+   [`docs/tasks/README.md`'s "Known gap"](./tasks/README.md#known-gap--the-dots-popup-has-no-real-google-translate-results-on-master).
+   "Same options" means the stub is unchanged, not that it suddenly shows real translations.)
 3. Type a Ukrainian translation first → the Word-side lightning fills the English word.
 4. The **FAB** (`flutter_speed_dial`): same open/close animation, same icon sizes, same children,
    same order.

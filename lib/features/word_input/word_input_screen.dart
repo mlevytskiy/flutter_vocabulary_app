@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -11,21 +12,22 @@ import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:translator/translator.dart';
 
-import '../models/vocab_word.dart';
-import '../models/word_pair.dart';
-import '../services/photo_scaler.dart';
-import '../services/vocab_photo_service.dart';
-import '../widgets/synced_text_field_row.dart';
-import 'words_table_screen.dart';
+import '../../core/models/vocab_word.dart';
+import '../../core/models/word_pair.dart';
+import '../../core/providers.dart';
+import '../../core/services/photo_scaler.dart';
+import '../../core/services/vocab_photo_service.dart';
+import '../../core/widgets/synced_text_field_row.dart';
+import '../../router/routes.dart';
 
-class WordInputScreen extends StatefulWidget {
+class WordInputScreen extends ConsumerStatefulWidget {
   const WordInputScreen({super.key});
 
   @override
-  State<WordInputScreen> createState() => _WordInputScreenState();
+  ConsumerState<WordInputScreen> createState() => _WordInputScreenState();
 }
 
-class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingObserver {
+class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsBindingObserver {
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
   ];
@@ -54,7 +56,6 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
   final Map<int, CustomPopupMenuController> _popupControllers = {};
   bool _isDragMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
-  final VocabPhotoService _vocabPhotoService = VocabPhotoService();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
 
@@ -648,13 +649,8 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
 
   void _navigateToTableScreen() {
     final validPairs = _wordPairs.where((pair) => pair.isValid).toList();
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WordsTableScreen(wordPairs: validPairs),
-      ),
-    );
+    ref.read(validPairsProvider.notifier).state = validPairs;
+    const WordsTableRoute().go(context);
   }
 
   Future<void> _takeScreenshot() async {
@@ -735,7 +731,7 @@ class _WordInputScreenState extends State<WordInputScreen> with WidgetsBindingOb
       compressStopwatch.stop();
 
       final requestStopwatch = Stopwatch()..start();
-      final result = await _vocabPhotoService.analyzePhoto(
+      final result = await ref.read(vocabPhotoServiceProvider).analyzePhoto(
         bytes,
         mediaType: 'image/jpeg',
         translation: true,
