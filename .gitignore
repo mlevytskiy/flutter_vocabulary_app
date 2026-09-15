@@ -45,8 +45,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Secrets — never commit these (see *.example.dart for templates)
-lib/config/vocab_api_config.dart
+## Secrets — never commit these (see *.example.dart for templates)
+#lib/config/vocab_api_config.dart
 
 # Android signing keystore and key properties — never commit these
 android/key.properties
