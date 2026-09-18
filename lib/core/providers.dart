@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
+import 'services/pronunciation_service.dart';
 import 'services/vocab_photo_service.dart';
 import 'services/word_store.dart';
 
@@ -20,3 +21,6 @@ WordStore wordStore(Ref ref) => WordStore();
 @Riverpod(keepAlive: true)
 GoogleTranslateService googleTranslateService(Ref ref) =>
     GoogleTranslateService();
+
+@Riverpod(keepAlive: true)
+PronunciationService pronunciationService(Ref ref) => PronunciationService();

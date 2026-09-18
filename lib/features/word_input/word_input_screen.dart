@@ -15,6 +15,7 @@ import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/photo_scaler.dart';
+import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
@@ -104,6 +105,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     // instead of waiting on the debounce timer.
     if (state == AppLifecycleState.paused) {
       ref.read(wordInputNotifierProvider.notifier).flush();
+      ref.read(pronunciationServiceProvider).stop();
     }
   }
 
@@ -389,6 +391,29 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (!_isItemFocused(index)) return false;
     final wordHasTwoLetters = _wordControllers[index].text.length >= 2;
     return wordHasTwoLetters && !_isTranslationFilled(index);
+  }
+
+  /// Pronunciation buttons (docs/tasks/task-04-uk-us-pronunciation.md):
+  /// shown once the row has a translation to go with the word, regardless
+  /// of focus -- unlike the lightning icons, this isn't a "compose" action
+  /// gated to the row you're actively editing.
+  bool _shouldShowPronunciation(int index) {
+    return _translationControllers[index].text.trim().isNotEmpty;
+  }
+
+  /// Speaks the row's Word field in [accent]. A second tap (same row or a
+  /// different one) interrupts whatever is currently playing --
+  /// [PronunciationService.speak] always stops before it starts.
+  Future<void> _speak(int index, Accent accent) async {
+    final word = _wordControllers[index].text.trim();
+    if (word.isEmpty) return;
+    try {
+      await ref.read(pronunciationServiceProvider).speak(word, accent: accent);
+    } on PronunciationException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    }
   }
 
   /// Translate Translation -> Word. The Translation field can be in any
@@ -732,6 +757,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   }
 
   void _removeItem(int index) {
+    ref.read(pronunciationServiceProvider).stop();
     setState(() {
       if (index == 0) {
         // Для першого айтема тільки очищуємо поля
@@ -833,6 +859,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ref.read(pronunciationServiceProvider).stop();
     for (var controller in _wordControllers) {
       controller.dispose();
     }
@@ -861,6 +888,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       isLoadingTranslation: _isLoadingTranslation[index],
       shouldShowWordIcon: _shouldShowWordIcon(index),
       shouldShowTranslationIcon: _shouldShowTranslationIcon(index),
+      shouldShowPronunciation: _shouldShowPronunciation(index),
       hasTranslationOptions: _hasTranslationOptions[index],
       translationOptions: _translationOptions[index],
       popupController: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
@@ -868,6 +896,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       onFillWordWithAI: () => _fillWordWithAI(index),
       onFillWithAI: () => _fillWithAI(index),
       onSelectTranslation: (translation) => _selectTranslationOption(index, translation),
+      onSpeak: (accent) => _speak(index, accent),
     );
   }
 

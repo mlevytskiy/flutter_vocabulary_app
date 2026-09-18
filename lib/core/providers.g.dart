@@ -74,5 +74,23 @@ final googleTranslateServiceProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef GoogleTranslateServiceRef = ProviderRef<GoogleTranslateService>;
+String _$pronunciationServiceHash() =>
+    r'a04b5b4ea06bd7d29a7b0874172549524472bb26';
+
+/// See also [pronunciationService].
+@ProviderFor(pronunciationService)
+final pronunciationServiceProvider = Provider<PronunciationService>.internal(
+  pronunciationService,
+  name: r'pronunciationServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$pronunciationServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PronunciationServiceRef = ProviderRef<PronunciationService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
