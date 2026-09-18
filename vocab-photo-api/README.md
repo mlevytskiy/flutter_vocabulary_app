@@ -1,18 +1,38 @@
 # vocab-photo-api
 
 Cloudflare Worker that receives a photo from the Flutter app, sends it to Claude
-(Anthropic) with a vocabulary-extraction prompt, and returns the detected English
+(Anthropic) with a vocabulary-extraction prompt, and returns the **marked** English
 words with Ukrainian translations. Keeps the Anthropic API key off the mobile device.
 
 ## Endpoint
 
 `POST /analyze?context=<bool>&translation=<bool>&with_desc=<bool>&shortify_definishion=<bool>&limit=<int>`
 
+`/analyze` returns **only the words the photo shows as visually marked** — highlighter,
+underline, circle, box, pen or pencil stroke, an arrow pointing at the word. An unmarked
+word is never returned, however useful it looks, so a photo of a dense page with nothing
+marked on it comes back as `{"words":[],"timings":{...}}` with status `200`. **That empty
+array is a valid successful response, not an error** — the app shows its empty-result
+state for it. Marked text that is not meaningful English vocabulary (numbers, single
+letters, barcodes, UI chrome, Ukrainian words) is filtered out too, which is the other
+way an empty array happens.
+
 All query parameters are optional. If none of `context` / `translation` / `with_desc`
 are `true`, the worker defaults to `translation=true` (so a bare `POST /analyze` still
-returns translations, matching earlier behavior). `limit` is a maximum, not a target:
-if fewer words are found in the photo than `limit`, only the words actually found are
-returned — the model is explicitly told never to pad or invent extra entries.
+returns translations, matching earlier behavior).
+
+`limit` is a cap, not a target:
+
+- Fewer marked words in the photo than `limit` → only the marked ones come back. The
+  model is explicitly told never to pad or invent entries to reach the limit.
+- More marked words than `limit` → the **first `limit` in reading order** (top to bottom,
+  then left to right) are kept and the rest are dropped. There is no
+  "most useful for a learner" ranking; the marks already say what the owner wanted
+  (decision D2 in [`../docs/roadmap.md`](../docs/roadmap.md#decisions-so-far)). The
+  server also truncates the response to `limit` as a cheap backstop against a runaway
+  answer — the prompt, not that `slice`, is the mechanism.
+
+The app sends `limit=20` (`_photoWordCap` in `lib/features/word_input/word_input_screen.dart`).
 
 `translation` and `description` prefer any translation/definition already visible in
 the photo (glossary, subtitle, dictionary entry) over one Claude invents itself.

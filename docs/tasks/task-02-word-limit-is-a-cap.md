@@ -9,7 +9,7 @@
 | **Blocked on** | **D2** — when more words are highlighted than the maximum, which ones are dropped |
 | **Unlocks** | task-08 |
 | **Files** | `vocab-photo-api/src/index.ts` · `vocab-photo-api/README.md` · `lib/services/vocab_photo_service.dart` · `lib/screens/word_input_screen.dart` (the `limit:` argument only) |
-| **Status** | not started |
+| **Status** | code complete (steps 1-5); AC-1, AC-7 verified by grep, typecheck green. AC-3/4/5/6/8 are device/`curl` tests and are open. AC-2's `flutter analyze` half cannot pass as written — see Result below |
 
 ## Blocked on D2
 
@@ -93,8 +93,10 @@ The honest ones here are device tests. The Worker has **no test runner installed
 has `typecheck` and nothing else), and the behaviour under test is a model's, so a unit test would
 only prove the prompt string contains a word.
 
-- [ ] **AC-1** `grep -in highlight vocab-photo-api/src/index.ts` matches the prompt builder.
-- [ ] **AC-2** `cd vocab-photo-api && npm run typecheck` exits 0; `flutter analyze` exits 0.
+- [x] **AC-1** `grep -in highlight vocab-photo-api/src/index.ts` matches the prompt builder.
+      (`src/index.ts:95`, inside `buildSystemPrompt`.)
+- [~] **AC-2** `npm run typecheck` exits 0 ✅. `flutter analyze` exits **1**, on 5 pre-existing
+      info-level lints in files this task does not touch — see Result below.
 - [ ] **AC-3 — the defect itself.** Photograph a dense page of English text with **exactly 3 words
       highlighted**. The response contains exactly those 3 words. Not 4, not 20. Repeat on 3
       different pages; all 3 pass.
@@ -107,6 +109,67 @@ only prove the prompt string contains a word.
 - [ ] **AC-6** The `curl` in `vocab-photo-api/README.md` against a photo with 2 highlighted words
       returns both, each with a non-empty `translation` **and** a non-empty `description` —
       proving step 3's fix landed.
-- [ ] **AC-7** `grep -n "'false'" lib/services/vocab_photo_service.dart` returns no matches.
+- [x] **AC-7** `grep -n "'false'" lib/core/services/vocab_photo_service.dart` (moved by task-00)
+      returns no matches.
 - [ ] **AC-8** A photo with highlighted **Ukrainian** text, or highlighted numbers only, returns an
       empty array rather than guesses.
+
+## Result
+
+D2 was already answered in `docs/roadmap.md` — **reading order** — so step 2 took that branch:
+the app keeps sending `limit`, and the prompt drops the ranking clause.
+
+1. **Prompt teaches marked words** (`vocab-photo-api/src/index.ts`, `buildSystemPrompt`). Marked-word
+   selection is now the primary rule, stated both ways: return only words the photo shows as
+   visually marked (highlighter, underline, circle, box, pen/pencil stroke, arrow), and a word
+   counts as marked only if the mark is visible. The negative half is explicit — "A dense page of
+   valuable vocabulary with nothing marked on it yields an empty array — that is the correct
+   answer, not a failure" — and the closing line became "If the photo has no marked English
+   vocabulary — including a photo full of unmarked useful words — respond with an empty array: []".
+   The noise filter stayed and grew one clause for AC-8: marked text that is not English (Ukrainian,
+   for example) is skipped rather than guessed at. The user message is now "Extract the **marked**
+   vocabulary words from this photo."
+2. **`limit` reconciled with D2.** `limitLine` lost "keep only the N most useful/valuable ones for a
+   learner" and now says: over the limit, keep the first N **in reading order (top to bottom, then
+   left to right)** and drop the rest, "do not rank them by how useful or valuable they look". The
+   no-limit branch also asks for reading order, so the server-side `words.slice(0, limit)` at
+   `handleAnalyze` truncates the right end of the list; it is commented as a backstop, not the
+   mechanism.
+3. **Query-param bug fixed.** `lib/core/services/vocab_photo_service.dart:48-49` now sends `'true'`
+   for `with_desc` and `shortify_definishion`. The photo call site has been asking for descriptions
+   and getting none since it was written; descriptions now come back for the first time, which is
+   why AC-6 exists and why AC-3 wants a re-check on a real photo.
+4. **The limit is justified, not surfaced.** Kept at 20 but lifted out of the call site into
+   `_photoWordCap` in `lib/features/word_input/word_input_screen.dart` with the reasoning next to
+   it: the brief puts a session at 5-10 words, so 20 is ~2x headroom for a generous session while
+   still bounding a page that has been scribbled over end to end. A settings screen was **not**
+   added — there is no settings surface in the app today and CLAUDE.md rule 5 says ask before
+   inventing structure. If the cap ever needs to be user-visible, that is its own task.
+5. **Contract written down** in `vocab-photo-api/README.md` `## Endpoint`: marked words only, the
+   empty array as a valid `200`, and `limit` as a cap with the reading-order drop rule and a pointer
+   to D2.
+
+### AC-2 cannot exit 0, and not because of this task
+
+`flutter analyze` reports **5 info-level issues, all of which predate this change** (verified by
+stashing the diff and re-running):
+
+- 3x `prefer_const_constructors` — `lib/features/word_input/widgets/word_row_item.dart:62,65,66`
+- 2x `depend_on_referenced_packages` for `path_provider` —
+  `lib/features/word_input/word_input_screen.dart:8`, `lib/features/words_table/words_table_screen.dart:5`
+
+This diff adds no new analyzer output. Neither group is task-02's: the `const` ones live in a widget
+file task-00 split out, and the `path_provider` ones need a `pubspec.yaml` dependency line, which
+CLAUDE.md rule 5 puts behind an explicit ask. Left alone deliberately — they belong in a
+lint-cleanup pass, or as a follow-up to task-00.
+
+### What still needs a phone
+
+AC-3 (3 highlighted words, 3 pages), AC-4 (nothing highlighted → empty state), AC-5 (over the cap →
+first N top-to-bottom), AC-6 (the README `curl` returning non-empty `translation` **and**
+`description`) and AC-8 (highlighted Ukrainian / numbers only → empty) are all model-behaviour
+tests. The Worker has no test runner, and a unit test here would only assert that a prompt string
+contains the word "highlighter" — which AC-1's grep already does. They need a deployed Worker
+(`npm run deploy`) and a real device pass. The app side of AC-4 is already in place: the result
+dialog renders "No vocabulary words found in this photo." when the list is empty
+(`lib/features/word_input/widgets/vocab_result_dialog.dart:55-56`).

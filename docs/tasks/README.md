@@ -12,7 +12,7 @@ Task files link to the roadmap and [`../idea-brief.md`](../idea-brief.md); they 
 |---|---|:---:|:---:|:---:|---|
 | [task-00](./task-00-restructure.md) — Restructure: feature folders, go_router, Riverpod, persistence | — | M (5 steps) | 0 | task-01 | done (`9a0deb4`, `5e18846`, `9da9291`) |
 | [task-01](./task-01-remove-reverso.md) — Reverso is gone from the app and the Worker | 1 | S | 1 | — | code complete (`8a6356f`, `b6e7b16`); AC-7..11 need a running Worker + device pass |
-| [task-02](./task-02-word-limit-is-a-cap.md) — The word limit is a cap, not a quota | 2 | S | 2 | — (D2 resolved: reading order) | not started |
+| [task-02](./task-02-word-limit-is-a-cap.md) — The word limit is a cap, not a quota | 2 | S | 2 | — (D2 resolved: reading order) | code complete; AC-1/7 + typecheck verified, AC-3/4/5/6/8 need a deployed Worker + device pass |
 | [task-03](./task-03-words-survive-restart.md) — Collected words survive an app restart | 3 | M | 2 | — | covered by task-00 step 3 (`5e18846`); AC-1..8 verified, AC-9..11 open |
 | [task-04](./task-04-uk-us-pronunciation.md) — Hear a word in UK and US pronunciation | 4 | S | 3 | — (D1 resolved: on-device TTS) | not started |
 | [task-05](./task-05-publish-session-link.md) — Publish a session to a durable shared link | 5 | M | 3 | — (D4 resolved: 30d TTL; D5 resolved: one photo, list-shaped) | not started |

@@ -45,8 +45,8 @@ class VocabPhotoService {
       queryParameters: {
         if (context) 'context': 'true',
         if (translation) 'translation': 'true',
-        if (withDesc) 'with_desc': 'false',
-        if (shortifyDefinition) 'shortify_definishion': 'false',
+        if (withDesc) 'with_desc': 'true',
+        if (shortifyDefinition) 'shortify_definishion': 'true',
         if (limit != null) 'limit': '$limit',
       },
     );

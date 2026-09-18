@@ -23,6 +23,14 @@ import 'widgets/word_row_item.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'word_input_notifier.dart';
 
+/// Cap on how many marked words one photo may contribute. Not a quota: the
+/// Worker returns only the words the photo shows as marked, and this bounds a
+/// runaway response (a page scribbled over end to end) instead of filling the
+/// list. `docs/idea-brief.md` puts a session at 5-10 words, so 20 leaves room
+/// for a generous session while keeping the result dialog scannable; over the
+/// cap the Worker keeps the first 20 in reading order (D2 in docs/roadmap.md).
+const int _photoWordCap = 20;
+
 class WordInputScreen extends ConsumerStatefulWidget {
   const WordInputScreen({super.key});
 
@@ -642,7 +650,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         translation: true,
         withDesc: true,
         shortifyDefinition: true,
-        limit: 20,
+        limit: _photoWordCap,
       );
       requestStopwatch.stop();
 
