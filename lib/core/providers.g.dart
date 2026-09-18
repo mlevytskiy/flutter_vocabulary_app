@@ -55,5 +55,24 @@ final wordStoreProvider = Provider<WordStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef WordStoreRef = ProviderRef<WordStore>;
+String _$googleTranslateServiceHash() =>
+    r'6afdf9f3d52ebdc231e65e17d05446c50f457432';
+
+/// See also [googleTranslateService].
+@ProviderFor(googleTranslateService)
+final googleTranslateServiceProvider =
+    Provider<GoogleTranslateService>.internal(
+  googleTranslateService,
+  name: r'googleTranslateServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$googleTranslateServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GoogleTranslateServiceRef = ProviderRef<GoogleTranslateService>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

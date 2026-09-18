@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
+import '../../../core/models/translation_result.dart';
 import '../../../core/widgets/synced_text_field_row.dart';
 import 'translation_dots_button.dart';
 
@@ -22,6 +23,10 @@ class WordRowItem extends StatelessWidget {
   final bool shouldShowWordIcon;
   final bool shouldShowTranslationIcon;
   final bool hasTranslationOptions;
+  /// Google's dictionary block for this row, shown inside the dots popup.
+  /// Null until a translate produced one (and dropped again when the Word
+  /// field changes) -- the popup then shows its placeholder message.
+  final TranslationResult? translationOptions;
   final CustomPopupMenuController popupController;
   final VoidCallback onRemove;
   final VoidCallback onFillWordWithAI;
@@ -42,6 +47,7 @@ class WordRowItem extends StatelessWidget {
     required this.shouldShowTranslationIcon,
     required this.hasTranslationOptions,
     required this.popupController,
+    this.translationOptions,
     required this.onRemove,
     required this.onFillWordWithAI,
     required this.onFillWithAI,
@@ -191,6 +197,7 @@ class WordRowItem extends StatelessWidget {
               const SizedBox(width: 4),
               TranslationDotsButton(
                 isFilled: hasTranslationOptions,
+                options: translationOptions,
                 controller: popupController,
                 onSelectTranslation: onSelectTranslation,
               ),

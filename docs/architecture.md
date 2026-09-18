@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-15"
+updated_at: "2026-09-18"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -23,9 +23,13 @@ lib/
     vocab_api_config.dart       the Worker URL + secret as constants — kept, gitignored, as today
     azure_config.dart           pre-existing, untouched by this plan
   core/
-    providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, wordStore
+    providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, wordStore,
+                                googleTranslateService
     models/                     word_pair.dart, vocab_word.dart — moved, unchanged
+                                translation_result.dart (new: Google's dictionary block)
     services/                   photo_scaler.dart, vocab_photo_service.dart, word_store.dart (new: persistence)
+                                google_translate_service.dart + translate_response_parser.dart
+                                (new: translate_a/single with dt=t,bd,at + the part-of-speech rule)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
@@ -36,6 +40,7 @@ lib/
         word_row_item.dart              _buildItem
         translation_dots_button.dart    _buildTranslationDotsButton (popup_menu_2 stays)
         vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog)
+        translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays)
     words_table/
       words_table_screen.dart         reads words from the notifier instead of a constructor arg
@@ -85,6 +90,11 @@ flowchart LR
   (`updatePair(index, word, translation)`, `removeAt`, `reorder`, `addAll`). The parallel lists in
   the screen are allowed to remain for now — they are a later, optional cleanup.
 - `WordsTableScreen` watches the notifier and no longer receives `List<WordPair>` via constructor.
+- `GoogleTranslateService` is the single translation entry point (`translate` for a plain
+  translation, `translateWord` for the part-of-speech rule). One request carries the dictionary
+  block too, and the screen keeps it per row in `_translationOptions` so the dots popup reuses it
+  without a second call — see `docs/lightning_icon_rules.md`. Retrofit/Dio were the parked
+  design's answer here; `docs/retrofit-translation-prompt.md` is the prompt to redo it that way.
 
 ## 4. Checklist for any change
 

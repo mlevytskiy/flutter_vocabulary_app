@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
 import 'services/vocab_photo_service.dart';
 import 'services/word_store.dart';
@@ -15,3 +16,7 @@ PhotoScaler photoScaler(Ref ref) => PhotoScaler.instance; // singleton stays for
 
 @Riverpod(keepAlive: true)
 WordStore wordStore(Ref ref) => WordStore();
+
+@Riverpod(keepAlive: true)
+GoogleTranslateService googleTranslateService(Ref ref) =>
+    GoogleTranslateService();

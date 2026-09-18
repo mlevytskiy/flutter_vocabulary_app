@@ -123,6 +123,30 @@ behaviour** both key off `_hasTranslationOptions[index]`:
   row. Tapping opens the "more options" popup
   (`_selectTranslationOption` per picked option).
 
+### What the popup contains
+
+The popup shows **Google's dictionary block for the Word field** —
+every translation Google knows for that word, grouped by part of speech
+in priority order (noun, verb, adjective, adverb, then any other group),
+each word a tappable chip that fills the Translation field
+(`lib/features/word_input/widgets/translation_options_content.dart`).
+
+That data is **not a second request**: the English → Ukrainian translate
+asks for the dictionary in the same call it uses to fill the Translation
+field (`dt=t&dt=bd&dt=at`, see `GoogleTranslateService`) and the whole
+`TranslationResult` is kept in `_translationOptions[index]` for the
+popup. Opening the popup never touches the network.
+
+Two cases show a `Tap the lightning icon to load translations.`
+placeholder instead of chips, because the dots are solid without a
+dictionary behind them:
+
+- the **smart-swap path** — it sets `_hasTranslationOptions` on a real
+  translation but has no dictionary for the *new* Word field content;
+- **after the Word field is edited** — `_translationOptions[index]` is
+  dropped on every keystroke in Word (the old dictionary described the
+  previous word), while the dots deliberately stay solid.
+
 The dots button has **no loading state of its own** — while a translate
 request is in flight (`_isLoadingTranslation[index] == true`), the dots
 simply stay in whatever state they were already in (empty or full) and
@@ -282,3 +306,14 @@ empty/full state is independent of this table — it depends only on
 - **2026-09-01 (later still):** Full (solid) dots changed from amber to
   purple, matching the empty (outlined) dots and the two lightning icons
   — the dots button no longer has an amber state at all.
+- **2026-09-18:** The popup stopped showing placeholder strings. The
+  English → Ukrainian translate now goes through
+  `lib/core/services/google_translate_service.dart`, which asks Google's
+  `translate_a/single` for the dictionary block and the ranked
+  alternatives in the same request, **picks the Translation field's value
+  out of that set by part of speech** (noun first, then verb, adjective,
+  adverb; for a noun group with no ranked match the word is re-asked as
+  `the <word>`) instead of taking Google's single one-line answer, and
+  hands the same set to the dots popup — see "What the popup contains"
+  above. The `translator` package is no longer used by the screen (all
+  three translate calls go through the service); it stays in `pubspec.yaml`.

@@ -9,8 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:translator/translator.dart';
 
+import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
@@ -43,6 +43,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // corners' spinners never interfere with each other.
   final List<bool> _isLoadingWordTranslation = [];
   final List<bool> _hasTranslationOptions = [];
+  // Google's dictionary block per row -- the set of translations grouped by
+  // part of speech that the last translate brought back, reused by the dots
+  // popup so opening it costs no second request. Dropped whenever the Word
+  // field changes, so the popup never shows another word's translations.
+  final List<TranslationResult?> _translationOptions = [];
   // "Translation filled" per docs/lightning_icon_rules.md: true once the
   // Translation field was auto-populated (AI translate, picking a popup
   // option, or photo recognition) -- independent of the >5-character rule.
@@ -182,6 +187,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         if (shouldResetWordFilledMark) {
           _wordMarkedFilled[index] = false;
         }
+        // The cached dictionary described the previous word, so it must not
+        // stay behind the dots button. The dots themselves keep their state
+        // (docs/lightning_icon_rules.md) -- the popup just falls back to its
+        // "tap the lightning icon" message.
+        _translationOptions[index] = null;
       }); // Оновити для показу іконки при >= 2 літерах
     });
 
@@ -199,6 +209,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       setState(() {
         if (shouldResetOptions) {
           _hasTranslationOptions[index] = false;
+          _translationOptions[index] = null;
         }
         if (shouldResetFilledMark) {
           _translationMarkedFilled[index] = false;
@@ -211,6 +222,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     _isLoadingTranslation.add(false);
     _isLoadingWordTranslation.add(false);
     _hasTranslationOptions.add(false);
+    _translationOptions.add(null);
     _translationMarkedFilled.add(false);
     _wordMarkedFilled.add(false);
     _wordFocusNodes.add(wordFocusNode);
@@ -245,6 +257,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _isLoadingTranslation.clear();
       _isLoadingWordTranslation.clear();
       _hasTranslationOptions.clear();
+      _translationOptions.clear();
       _translationMarkedFilled.clear();
       _wordMarkedFilled.clear();
       _wordFocusNodes.clear();
@@ -294,6 +307,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
     while (_translationMarkedFilled.length < target) {
       _translationMarkedFilled.add(false);
+    }
+    while (_translationOptions.length < target) {
+      _translationOptions.add(null);
     }
     while (_isLoadingWordTranslation.length < target) {
       _isLoadingWordTranslation.add(false);
@@ -369,7 +385,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
   /// Translate Translation -> Word. The Translation field can be in any
   /// language Google Translate supports (auto-detected -- from: 'auto'),
-  /// translated to English for the Word field. See
+  /// translated to English for the Word field. Only the plain translation is
+  /// used here: a dictionary block for the *Translation* field's language
+  /// would describe the wrong side of the row. See
   /// docs/lightning_icon_rules.md for the button's visibility rules.
   Future<void> _fillWordWithAI(int index) async {
     final translationText = _translationControllers[index].text.trim();
@@ -384,12 +402,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     try {
       // Google Translate: auto-detect source language -> English.
-      final translator = GoogleTranslator();
-      final translation = await translator.translate(
-        translationText,
-        from: 'auto',
-        to: 'en',
-      );
+      final translation =
+          await ref.read(googleTranslateServiceProvider).translate(
+                translationText,
+                from: 'auto',
+                to: 'en',
+              );
 
       _wordControllers[index].text = translation.text;
 
@@ -398,6 +416,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
       setState(() {
         _isLoadingWordTranslation[index] = false;
+        // The Word field just changed, so whatever dictionary the dots
+        // popup held described a different word.
+        _translationOptions[index] = null;
         if (gotRealTranslation) {
           // Got an actual translation (not just an echo of the input) ->
           // both fields count as "filled" per docs/lightning_icon_rules.md.
@@ -420,8 +441,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
   /// Translate Word -> Translation (the Translation icon's action). If
   /// the Word field's first letter is an English letter, behaves exactly
-  /// as before: English -> Ukrainian. Otherwise the Word field probably
-  /// holds what should have been the Translation (typed into the wrong
+  /// as before: English -> Ukrainian -- but through
+  /// [GoogleTranslateService.translateWord], which asks Google for the
+  /// dictionary block in the same request and picks the best single
+  /// translation out of that set by part of speech (noun first, then verb,
+  /// adjective, adverb) instead of taking Google's one-line answer. The
+  /// same set is kept for the dots popup, so it costs no extra request.
+  ///
+  /// Otherwise the Word field probably holds what should have been the
+  /// Translation (typed into the wrong
   /// field), so instead this auto-detects its language, translates to
   /// English, and -- only on a real translation -- swaps the two fields:
   /// the text the user typed moves to Translation, the English result
@@ -440,20 +468,23 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     await SchedulerBinding.instance.endOfFrame;
 
     try {
-      final translator = GoogleTranslator();
+      final translateService = ref.read(googleTranslateServiceProvider);
 
       if (wordStartsWithEnglishLetter) {
-        // Google Translate: English -> Ukrainian
+        // Google Translate: English -> Ukrainian, with the part-of-speech
+        // rule picking the best of the returned set.
         final translation =
-            await translator.translate(word, from: 'en', to: 'uk');
+            await translateService.translateWord(word, from: 'en', to: 'uk');
 
-        _translationControllers[index].text = translation.text;
+        _translationControllers[index].text = translation.best;
 
-        final gotRealTranslation = isRealTranslation(word, translation.text);
+        final gotRealTranslation = isRealTranslation(word, translation.best);
 
         setState(() {
           _isLoadingTranslation[index] = false;
           _hasTranslationOptions[index] = true;
+          // The whole set the request brought back, for the dots popup.
+          _translationOptions[index] = translation.result;
           if (gotRealTranslation) {
             // Got an actual translation (not just an echo of the input) ->
             // both fields count as "filled" per docs/lightning_icon_rules.md.
@@ -465,7 +496,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // Word doesn't start with an English letter -> auto-detect its
         // language and translate to English instead.
         final translation =
-            await translator.translate(word, from: 'auto', to: 'en');
+            await translateService.translate(word, from: 'auto', to: 'en');
         final gotRealTranslation = isRealTranslation(word, translation.text);
 
         if (gotRealTranslation) {
@@ -481,6 +512,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             // (e.g. translation-in-context alternatives), not just a
             // literal swap.
             _hasTranslationOptions[index] = true;
+            // The Word field now holds the English result, so the popup has
+            // no dictionary for it until the lightning is tapped again.
+            _translationOptions[index] = null;
             _wordMarkedFilled[index] = true;
             _translationMarkedFilled[index] = true;
           });
@@ -699,6 +733,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _isLoadingTranslation[0] = false;
         _isLoadingWordTranslation[0] = false;
         _hasTranslationOptions[0] = false;
+        _translationOptions[0] = null;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
         ref.read(wordInputNotifierProvider.notifier).updateAt(0, word: '', translation: '');
@@ -715,6 +750,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _isLoadingTranslation.removeAt(index);
         _isLoadingWordTranslation.removeAt(index);
         _hasTranslationOptions.removeAt(index);
+        _translationOptions.removeAt(index);
         _translationMarkedFilled.removeAt(index);
         _wordMarkedFilled.removeAt(index);
         _wordFocusNodes[index].dispose();
@@ -760,6 +796,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // 5. _hasTranslationOptions
       final hasOptions = _hasTranslationOptions.removeAt(oldIndex);
       _hasTranslationOptions.insert(newIndex, hasOptions);
+
+      // 5b. _translationOptions
+      final options = _translationOptions.removeAt(oldIndex);
+      _translationOptions.insert(newIndex, options);
 
       // 6. _translationMarkedFilled
       final markedFilled = _translationMarkedFilled.removeAt(oldIndex);
@@ -814,6 +854,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       shouldShowWordIcon: _shouldShowWordIcon(index),
       shouldShowTranslationIcon: _shouldShowTranslationIcon(index),
       hasTranslationOptions: _hasTranslationOptions[index],
+      translationOptions: _translationOptions[index],
       popupController: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
       onRemove: () => _removeItem(index),
       onFillWordWithAI: () => _fillWordWithAI(index),
