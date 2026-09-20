@@ -13,15 +13,16 @@ Task files link to the roadmap and [`../idea-brief.md`](../idea-brief.md); they 
 | [task-00](./task-00-restructure.md) — Restructure: feature folders, go_router, Riverpod, persistence | — | M (5 steps) | 0 | task-01 | done (`9a0deb4`, `5e18846`, `9da9291`) |
 | [task-01](./task-01-remove-reverso.md) — Reverso is gone from the app and the Worker | 1 | S | 1 | — | code complete (`8a6356f`, `b6e7b16`); AC-7..11 need a running Worker + device pass |
 | [task-02](./task-02-word-limit-is-a-cap.md) — The word limit is a cap, not a quota | 2 | S | 2 | — (D2 resolved: reading order) | code complete; AC-1/7 + typecheck verified, AC-3/4/5/6/8 need a deployed Worker + device pass |
-| [task-03](./task-03-words-survive-restart.md) — Collected words survive an app restart | 3 | M | 2 | — | covered by task-00 step 3 (`5e18846`); AC-1..8 verified, AC-9..11 open |
+| [task-03](./task-03-words-survive-restart.md) — Sessions: collected words survive an app restart (v2, `isar_community`) | 3 | M | 2 | — (D8 resolved: `isar_community`) | v1 done (`5e18846`); **v2 planned 2026-09-20**, not started |
 | [task-04](./task-04-uk-us-pronunciation.md) — Hear a word in UK and US pronunciation | 4 | S | 3 | — (D1 resolved: on-device TTS) | done; AC-1..4 verified on device, AC-5..10 not explicitly checked |
 | [task-05](./task-05-publish-session-link.md) — Publish a session to a durable shared link | 5 | M | 3 | — (D4 resolved: 30d TTL; D5 resolved: one photo, list-shaped) | not started |
 | [task-06](./task-06-partner-corrects-table.md) — The partner corrects the word table | 6 | M | 4 | — (D6 resolved: no names) | not started |
 | [task-07](./task-07-download-from-shared-page.md) — Download the AnkiDroid file from the shared page | 7 | S | 5 | — | not started |
 | [task-08](./task-08-review-and-mark-memorized.md) — Review words and mark one memorized | 8 | S | 3 | — | not started |
 | [task-09](./task-09-word-detail-recon.md) — Extra word detail (recon, not build) | 9 | fog | — | **D3** | not started |
+| [task-10](./task-10-side-menu-and-history.md) — Side menu and History: reach older sessions | 3 (second half) | S | 3 | task-03 v2 | not started |
 
-D1, D2, D4, D5, D6 are resolved in [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far);
+D1, D2, D4, D5, D6, D8 are resolved in [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far);
 only **D3** (task-09, a recon task that answers its own blocker) is still open.
 
 ## Starting-state decision (task-01)
@@ -40,8 +41,8 @@ can run in parallel (separate worktrees, separate sessions).
 ```
 wave 1:  01
 wave 0:  00   (the restructure — runs right after 01, one step per session)
-wave 2:  02  ∥  03     (03 is task-00 step 3, done; only AC-9..11 remain open)
-wave 3:  04  ∥  05  ∥  08
+wave 2:  02  ∥  03     (03 v1 is task-00 step 3, done; 03 v2 = Session + isar_community, planned)
+wave 3:  04  ∥  05  ∥  08  ∥  10   (10 needs 03 v2)
 wave 4:  06
 wave 5:  07
 ```
@@ -52,8 +53,8 @@ serialization below mostly disappears. Every task from wave 2 on is executed aga
 structure — read `CLAUDE.md` and `../architecture.md` first, and treat the `lib/screens/...` paths
 in the older task prompts as pointers to *behaviour*, not to locations.
 
-Only four of those orderings are real dependencies (roadmap → Dependency graph): 1→9, 3→8, 5→6,
-5→7. Everything else is serialized by **file conflict**, mostly because
+Only five of those orderings are real dependencies (roadmap → Dependency graph): 1→9, 3→8, 3→10,
+5→6, 5→7. Everything else is serialized by **file conflict**, mostly because
 `lib/screens/word_input_screen.dart` is 1282 lines and nearly every step reaches into it.
 
 ## How to check a task
@@ -62,7 +63,7 @@ This repo has two verification surfaces, and they are not symmetrical:
 
 | | Command | Notes |
 |---|---|---|
-| Flutter app | `flutter analyze` · `flutter test` | `test/word_store_test.dart` (added in task-00 step 3) is CI-safe, no network — 4 tests, all local `SharedPreferences` mocks |
+| Flutter app | `flutter analyze` · `flutter test` | `test/word_store_test.dart` (added in task-00 step 3) is CI-safe, no network — 4 tests, all local `SharedPreferences` mocks. After task-03 v2 it is replaced by `test/session_store_test.dart`, which calls `Isar.initializeIsarCore(download: true)` once — the first run downloads the native Isar library into the pub cache (network once, then offline) |
 | Worker | `cd vocab-photo-api && npm run typecheck` | **no test runner is installed**; behaviour is checked with `curl` + `npx wrangler tail` |
 
 So an acceptance criterion here is one of: a command that exits clean, a `curl` whose response body

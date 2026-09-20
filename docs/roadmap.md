@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-14"
+updated_at: "2026-09-20"
 ---
 
 # Roadmap — flutter_vocabulary_app
@@ -78,6 +78,7 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 - **D5** — the shared page renders one photo per session in v1; the session document stores `sources` as a list from day one so a second photo is an addition, not a migration → [`docs/tasks/task-05-publish-session-link.md`](./tasks/task-05-publish-session-link.md)
 - **D6** — no per-visitor names on the shared page; identity carries no behaviour in v1 → [`docs/tasks/task-06-partner-corrects-table.md`](./tasks/task-06-partner-corrects-table.md)
 - Architecture, simplified: one `lib/` with feature folders, go_router typed routes, Riverpod for services and the word list, `shared_preferences` for persistence; nothing else changes → [`architecture.md`](./architecture.md). The larger design (packages, Retrofit, Isar, ADRs) is parked on branch `chore/architecture-migration`.
+- **D8** (2026-09-20) — words are stored as **Sessions** in `isar_community` (+ `isar_community_flutter_libs`, `isar_community_generator`, `path_provider` made direct); `shared_preferences` stays only for the `current_session_id` pointer and as the v1 migration source. A session older than 5 minutes is offered back through a snackbar, not restored silently. Reasoning is the parked ADR-0004 on `chore/architecture-migration`, applied without the repository layer → [`docs/tasks/task-03-words-survive-restart.md`](./tasks/task-03-words-survive-restart.md), [`task-10`](./tasks/task-10-side-menu-and-history.md)
 - The Worker carries no KV/D1/R2/Durable-Object binding today, only a rate limiter — a persistent session store is a new binding → [`vocab-photo-api/wrangler.jsonc`](../vocab-photo-api/wrangler.jsonc)
 
 ## Dependency graph
