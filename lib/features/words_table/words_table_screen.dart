@@ -71,8 +71,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncPairs = ref.watch(wordInputNotifierProvider);
-    final wordPairs = (asyncPairs.valueOrNull ?? const <WordPair>[])
+    final asyncSession = ref.watch(wordInputNotifierProvider);
+    final wordPairs = (asyncSession.valueOrNull?.words ?? const <WordPair>[])
         .where((pair) => pair.isValid)
         .toList();
     return Scaffold(

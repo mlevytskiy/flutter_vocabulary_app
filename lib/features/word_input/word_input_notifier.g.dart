@@ -6,19 +6,17 @@ part of 'word_input_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$wordInputNotifierHash() => r'3e16f3df8130cdc7453413673567c15c5ece96bf';
+String _$wordInputNotifierHash() => r'1f687e8e066a6b6c7bcad2d7aebd25f36fd4494b';
 
-/// Owns the persisted word list. `WordInputScreen` keeps mirroring this into
+/// Owns the current [Session]. `WordInputScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
-/// mutation here right after making it, so this notifier is always a beat
-/// behind the screen, never the other way around -- except once, on first
-/// load, when the screen pulls the persisted list in to restore it.
+/// mutation here right after making it.
 ///
 /// Copied from [WordInputNotifier].
 @ProviderFor(WordInputNotifier)
 final wordInputNotifierProvider =
-    AsyncNotifierProvider<WordInputNotifier, List<WordPair>>.internal(
+    AsyncNotifierProvider<WordInputNotifier, Session>.internal(
   WordInputNotifier.new,
   name: r'wordInputNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -28,6 +26,6 @@ final wordInputNotifierProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$WordInputNotifier = AsyncNotifier<List<WordPair>>;
+typedef _$WordInputNotifier = AsyncNotifier<Session>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

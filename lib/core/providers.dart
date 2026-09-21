@@ -1,11 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'models/session.dart';
 import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
 import 'services/pronunciation_service.dart';
+import 'services/session_store.dart';
 import 'services/vocab_photo_service.dart';
-import 'services/word_store.dart';
 
 part 'providers.g.dart';
 
@@ -16,7 +17,7 @@ VocabPhotoService vocabPhotoService(Ref ref) => VocabPhotoService();
 PhotoScaler photoScaler(Ref ref) => PhotoScaler.instance; // singleton stays for now; provider is the door
 
 @Riverpod(keepAlive: true)
-WordStore wordStore(Ref ref) => WordStore();
+Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();
 
 @Riverpod(keepAlive: true)
 GoogleTranslateService googleTranslateService(Ref ref) =>
@@ -24,3 +25,9 @@ GoogleTranslateService googleTranslateService(Ref ref) =>
 
 @Riverpod(keepAlive: true)
 PronunciationService pronunciationService(Ref ref) => PronunciationService();
+
+@riverpod
+Future<Session?> sessionById(Ref ref, String sessionId) async {
+  final store = await ref.watch(sessionStoreProvider.future);
+  return store.byId(sessionId);
+}

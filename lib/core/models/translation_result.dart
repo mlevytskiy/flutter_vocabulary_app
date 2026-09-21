@@ -15,6 +15,16 @@ class DictionaryWord {
     required this.word,
     this.backTranslations = const [],
   });
+
+  Map<String, dynamic> toJson() => {
+        'word': word,
+        'backTranslations': backTranslations,
+      };
+
+  factory DictionaryWord.fromJson(Map<String, dynamic> json) => DictionaryWord(
+        word: json['word'] as String? ?? '',
+        backTranslations: (json['backTranslations'] as List<dynamic>?)?.cast<String>() ?? [],
+      );
 }
 
 /// One part-of-speech group from the dictionary block, e.g. pos = "noun".
@@ -31,6 +41,19 @@ class DictionaryEntry {
     final c = candidate.trim().toLowerCase();
     return words.any((w) => w.word.toLowerCase() == c);
   }
+
+  Map<String, dynamic> toJson() => {
+        'pos': pos,
+        'words': words.map((w) => w.toJson()).toList(),
+      };
+
+  factory DictionaryEntry.fromJson(Map<String, dynamic> json) => DictionaryEntry(
+        pos: json['pos'] as String? ?? '',
+        words: (json['words'] as List<dynamic>?)
+                ?.map((w) => DictionaryWord.fromJson(w as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
 }
 
 /// A raw translation: the primary text plus everything Google knows about
@@ -95,6 +118,23 @@ class TranslationResult {
     }
     return out;
   }
+
+  Map<String, dynamic> toJson() => {
+        'text': text,
+        'alternatives': alternatives,
+        'detectedSourceLanguage': detectedSourceLanguage,
+        'dictionary': dictionary.map((d) => d.toJson()).toList(),
+      };
+
+  factory TranslationResult.fromJson(Map<String, dynamic> json) => TranslationResult(
+        text: json['text'] as String? ?? '',
+        alternatives: (json['alternatives'] as List<dynamic>?)?.cast<String>() ?? [],
+        detectedSourceLanguage: json['detectedSourceLanguage'] as String? ?? '',
+        dictionary: (json['dictionary'] as List<dynamic>?)
+                ?.map((d) => DictionaryEntry.fromJson(d as Map<String, dynamic>))
+                .toList() ??
+            [],
+      );
 }
 
 /// A [TranslationResult] plus the single translation chosen by the

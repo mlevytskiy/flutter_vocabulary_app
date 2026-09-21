@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kReleaseMode;
@@ -19,9 +20,9 @@ import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
+import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
-import 'widgets/vocab_result_dialog.dart';
 import 'word_input_notifier.dart';
 
 /// Cap on how many marked words one photo may contribute. Not a quota: the
@@ -75,7 +76,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   final ScreenshotController _screenshotController = ScreenshotController();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
-  bool _restoredFromStore = false;
+
+  /// Which session the rows on screen were built from. Tracked as an id rather
+  /// than a bool because RESTORE swaps one session for another and the screen
+  /// has to rebuild its rows for the second one too.
+  String? _restoredSessionId;
+
+  /// True only while the "words from your last session are saved" snackbar is
+  /// up, so the first edit dismisses that one and never someone else's.
+  bool _restoreSnackBarVisible = false;
 
   @override
   void initState() {
@@ -184,14 +193,17 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     });
 
     wordController.addListener(() {
+      // Only a real edit dismisses the RESTORE snackbar: focus/selection changes
+      // also notify the controller (e.g. the post-restore requestFocus), and
+      // those must not take it down.
+      final wordChanged = wordController.text != _wordPairs[index].word;
+      if (wordChanged) _dismissRestoreSnackBar();
       _wordPairs[index].word = wordController.text;
-      ref.read(wordInputNotifierProvider.notifier).updateAt(index, word: wordController.text);
       _checkAndAddNewPair();
 
       // Якщо word повністю видалений, скинути "filled"-мітку
       final wordIsEmptyNow = wordController.text.isEmpty;
-      final shouldResetWordFilledMark =
-          wordIsEmptyNow && _wordMarkedFilled[index];
+      final shouldResetWordFilledMark = wordIsEmptyNow && _wordMarkedFilled[index];
 
       setState(() {
         if (shouldResetWordFilledMark) {
@@ -203,18 +215,21 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // "tap the lightning icon" message.
         _translationOptions[index] = null;
       }); // Оновити для показу іконки при >= 2 літерах
+      // Same guard for persistence: a no-op push still marks the session
+      // dirty and clears the notifier's restorableSessionId, which broke RESTORE.
+      if (wordChanged) _pushRow(index, word: wordController.text);
     });
 
     translationController.addListener(() {
+      final translationChanged = translationController.text != _wordPairs[index].translation;
+      if (translationChanged) _dismissRestoreSnackBar();
       _wordPairs[index].translation = translationController.text;
-      ref.read(wordInputNotifierProvider.notifier).updateAt(index, translation: translationController.text);
       _checkAndAddNewPair();
 
       // Якщо translation повністю видалений, скинути опції й "filled"-мітку
       final isEmptyNow = translationController.text.isEmpty;
       final shouldResetOptions = isEmptyNow && _hasTranslationOptions[index];
-      final shouldResetFilledMark =
-          isEmptyNow && _translationMarkedFilled[index];
+      final shouldResetFilledMark = isEmptyNow && _translationMarkedFilled[index];
 
       setState(() {
         if (shouldResetOptions) {
@@ -225,6 +240,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           _translationMarkedFilled[index] = false;
         }
       }); // Оновити для показу/приховування lightning-іконок (docs/lightning_icon_rules.md)
+      if (translationChanged) _pushRow(index, translation: translationController.text);
     });
 
     _wordControllers.add(wordController);
@@ -237,6 +253,64 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     _wordMarkedFilled.add(false);
     _wordFocusNodes.add(wordFocusNode);
     _translationFocusNodes.add(translationFocusNode);
+  }
+
+  /// The single funnel from the screen's parallel per-row lists into the
+  /// notifier. Everything the store keeps for a row travels together, so a
+  /// restored row looks exactly as it did before the kill: the text, the dots
+  /// state, the cached dictionary behind the dots, and the two lightning
+  /// "filled" marks (docs/lightning_icon_rules.md).
+  void _pushRow(int index, {String? word, String? translation}) {
+    if (index < 0 || index >= _hasTranslationOptions.length) return;
+    final options = _translationOptions[index];
+    ref.read(wordInputNotifierProvider.notifier).updateAt(
+          index,
+          word: word,
+          translation: translation,
+          hasTranslationOptions: _hasTranslationOptions[index],
+          translationOptions: options,
+          clearTranslationOptions: options == null,
+          wordMarkedFilled: _wordMarkedFilled[index],
+          translationMarkedFilled: _translationMarkedFilled[index],
+        );
+  }
+
+  /// The launch rule started a new session because the previous one had gone
+  /// cold (> 5 minutes). Offer it back for 7 seconds; ignoring it or typing
+  /// leaves the new session current and the old one in history.
+  void _showRestoreSnackBar() {
+    log("_showRestoreSnackBar called");
+    if (!mounted) return;
+    // Shown straight from the `ref.listen` callback rather than from a
+    // post-frame callback: that callback only ever runs if something else
+    // schedules a frame, which is not guaranteed here.
+    _restoreSnackBarVisible = true;
+    log("_showRestoreSnackBar context is mounted");
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+          SnackBar(
+            content: const Text('We kept the words you typed before'),
+            duration: const Duration(seconds: 7),
+            action: SnackBarAction(
+              label: 'RESTORE',
+              onPressed: () {
+                _restoreSnackBarVisible = false;
+                ref.read(wordInputNotifierProvider.notifier).restorePrevious();
+              },
+            ),
+          ),
+        )
+        .closed
+        .then((_) => _restoreSnackBarVisible = false);
+  }
+
+  /// Takes the RESTORE snackbar down on the first edit, so tapping RESTORE can
+  /// never discard words the user has already typed. Guarded by a flag so it
+  /// only ever hides that snackbar, not a translation error.
+  void _dismissRestoreSnackBar() {
+    if (!_restoreSnackBarVisible) return;
+    _restoreSnackBarVisible = false;
+    if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
   }
 
   /// Replaces the placeholder row from initState() with the persisted list,
@@ -261,7 +335,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     setState(() {
       _wordPairs
         ..clear()
-        ..addAll(pairs.map((p) => WordPair(word: p.word, translation: p.translation)));
+        ..addAll(pairs.map((p) => p.copy()));
       _wordControllers.clear();
       _translationControllers.clear();
       _isLoadingTranslation.clear();
@@ -276,6 +350,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
       for (var i = 0; i < _wordPairs.length; i++) {
         _addControllersForIndex(i);
+        // The parallel lists are what the UI actually indexes into, so the
+        // persisted extras have to land in them, not just in _wordPairs.
+        final pair = _wordPairs[i];
+        _hasTranslationOptions[i] = pair.hasTranslationOptions;
+        _translationOptions[i] = pair.translationOptions;
+        _wordMarkedFilled[i] = pair.wordMarkedFilled;
+        _translationMarkedFilled[i] = pair.translationMarkedFilled;
       }
       _checkAndAddNewPair();
     });
@@ -368,22 +449,19 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// icon's own hide condition -- see _shouldShowWordIcon for the separate,
   /// lower "2+ letters" threshold that triggers the Word icon.
   bool _isTranslationFilled(int index) {
-    return _translationControllers[index].text.length > 5 ||
-        _translationMarkedFilled[index];
+    return _translationControllers[index].text.length > 5 || _translationMarkedFilled[index];
   }
 
   /// "Item in focus" per docs/lightning_icon_rules.md: true while either
   /// the Word or the Translation field of this row currently has focus.
   bool _isItemFocused(int index) {
-    return _wordFocusNodes[index].hasFocus ||
-        _translationFocusNodes[index].hasFocus;
+    return _wordFocusNodes[index].hasFocus || _translationFocusNodes[index].hasFocus;
   }
 
   bool _shouldShowWordIcon(int index) {
     if (!_isItemFocused(index)) return false;
     final wordIsFullyEmpty = _wordControllers[index].text.isEmpty;
-    final translationHasTwoLetters =
-        _translationControllers[index].text.length >= 2;
+    final translationHasTwoLetters = _translationControllers[index].text.length >= 2;
     return wordIsFullyEmpty && translationHasTwoLetters;
   }
 
@@ -435,17 +513,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     try {
       // Google Translate: auto-detect source language -> English.
-      final translation =
-          await ref.read(googleTranslateServiceProvider).translate(
-                translationText,
-                from: 'auto',
-                to: 'en',
-              );
+      final translation = await ref.read(googleTranslateServiceProvider).translate(
+            translationText,
+            from: 'auto',
+            to: 'en',
+          );
 
       _wordControllers[index].text = translation.text;
 
-      final gotRealTranslation =
-          isRealTranslation(translationText, translation.text);
+      final gotRealTranslation = isRealTranslation(translationText, translation.text);
 
       setState(() {
         _isLoadingWordTranslation[index] = false;
@@ -459,6 +535,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           _translationMarkedFilled[index] = true;
         }
       });
+      _pushRow(index, word: _wordControllers[index].text);
     } catch (e) {
       setState(() {
         _isLoadingWordTranslation[index] = false;
@@ -506,8 +583,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       if (wordStartsWithEnglishLetter) {
         // Google Translate: English -> Ukrainian, with the part-of-speech
         // rule picking the best of the returned set.
-        final translation =
-            await translateService.translateWord(word, from: 'en', to: 'uk');
+        final translation = await translateService.translateWord(word, from: 'en', to: 'uk');
 
         _translationControllers[index].text = translation.best;
 
@@ -525,11 +601,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             _wordMarkedFilled[index] = true;
           }
         });
+        _pushRow(index, translation: _translationControllers[index].text);
       } else {
         // Word doesn't start with an English letter -> auto-detect its
         // language and translate to English instead.
-        final translation =
-            await translateService.translate(word, from: 'auto', to: 'en');
+        final translation = await translateService.translate(word, from: 'auto', to: 'en');
         final gotRealTranslation = isRealTranslation(word, translation.text);
 
         if (gotRealTranslation) {
@@ -551,6 +627,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             _wordMarkedFilled[index] = true;
             _translationMarkedFilled[index] = true;
           });
+          _pushRow(
+            index,
+            word: _wordControllers[index].text,
+            translation: _translationControllers[index].text,
+          );
         } else {
           // No distinct translation found -- leave both fields untouched.
           setState(() {
@@ -584,6 +665,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     setState(() {
       _translationMarkedFilled[index] = selectedTranslation.isNotEmpty;
     });
+    _pushRow(index, translation: selectedTranslation);
     // Popup закривається автоматично
   }
 
@@ -670,13 +752,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
       final requestStopwatch = Stopwatch()..start();
       final result = await ref.read(vocabPhotoServiceProvider).analyzePhoto(
-        bytes,
-        mediaType: 'image/jpeg',
-        translation: true,
-        withDesc: true,
-        shortifyDefinition: true,
-        limit: _photoWordCap,
-      );
+            bytes,
+            mediaType: 'image/jpeg',
+            translation: true,
+            withDesc: true,
+            shortifyDefinition: true,
+            limit: _photoWordCap,
+          );
       requestStopwatch.stop();
 
       if (mounted) {
@@ -733,10 +815,16 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           _wordMarkedFilled[0] = w.word.isNotEmpty;
           reusedFirstRow = true;
         } else {
-          _wordPairs.add(WordPair(word: w.word, translation: translation));
+          // The marks travel on the pair itself: these objects are handed to
+          // the notifier by addAll() below, so they must already carry them.
+          _wordPairs.add(WordPair(
+            word: w.word,
+            translation: translation,
+            wordMarkedFilled: w.word.isNotEmpty,
+            translationMarkedFilled: translation.isNotEmpty,
+          ));
           _addControllersForIndex(_wordPairs.length - 1);
-          _translationMarkedFilled[_wordPairs.length - 1] =
-              translation.isNotEmpty;
+          _translationMarkedFilled[_wordPairs.length - 1] = translation.isNotEmpty;
           _wordMarkedFilled[_wordPairs.length - 1] = w.word.isNotEmpty;
           appendedPairs.add(_wordPairs[_wordPairs.length - 1]);
         }
@@ -745,11 +833,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     });
 
     if (reusedFirstRow) {
-      ref.read(wordInputNotifierProvider.notifier).updateAt(
-            0,
-            word: _wordPairs[0].word,
-            translation: _wordPairs[0].translation,
-          );
+      _pushRow(0, word: _wordPairs[0].word, translation: _wordPairs[0].translation);
     }
     if (appendedPairs.isNotEmpty) {
       ref.read(wordInputNotifierProvider.notifier).addAll(appendedPairs);
@@ -770,7 +854,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _translationOptions[0] = null;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
-        ref.read(wordInputNotifierProvider.notifier).updateAt(0, word: '', translation: '');
+        _pushRow(0, word: '', translation: '');
       } else {
         // Для інших айтемів видаляємо повністю
         // Dispose контролерів перед видаленням
@@ -904,15 +988,20 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   Widget build(BuildContext context) {
     _ensureRowStateSynced(); // hot-reload safety net, see method doc above
 
-    // One-time restore: once the persisted list first resolves, replace the
-    // placeholder row created in initState() with what was saved. Later
-    // notifier updates (all driven by this screen's own mutations, via
-    // updateAt/removeAt/reorder/addAll below) must not re-trigger this.
-    ref.listen<AsyncValue<List<WordPair>>>(wordInputNotifierProvider, (previous, next) {
-      if (_restoredFromStore) return;
-      next.whenData((pairs) {
-        _restoredFromStore = true;
-        if (pairs.isNotEmpty) _restoreFromStore(pairs);
+    // Restore: once a session resolves, replace the placeholder row created in
+    // initState() with that session's words. Keyed on the session id, so the
+    // ordinary notifier updates below (all driven by this screen's own
+    // mutations, via updateAt/removeAt/reorder/addAll) never re-trigger it,
+    // while RESTORE swapping in the previous session does.
+    ref.listen(wordInputNotifierProvider, (previous, next) {
+      next.whenData((session) {
+        if (_restoredSessionId == session.sessionId) return;
+        _restoredSessionId = session.sessionId;
+        // Read before restoring: rebuilding the rows can itself mutate the
+        // notifier, which clears this.
+        final restorable = ref.read(wordInputNotifierProvider.notifier).restorableSessionId;
+        if (session.words.isNotEmpty) _restoreFromStore(session.words);
+        if (restorable != null) _showRestoreSnackBar();
       });
     });
 

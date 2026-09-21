@@ -23,6 +23,13 @@ dependencies:
   go_router: ^17.2.3
   shared_preferences: ^2.5.5
   flutter_tts: ^4.2.5
+  # isar_community pinned to 3.3.0-dev.1: it is the newest release still built
+  # against build 2.x / source_gen 2.x. Every later version (>=3.3.0-dev.2)
+  # requires build ^3/^4, which collides with riverpod_generator 2.x and
+  # go_router_builder 3.x. See docs/architecture.md rule 6.
+  isar_community: 3.3.0-dev.1
+  isar_community_flutter_libs: 3.3.0-dev.1
+  path_provider: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +38,7 @@ dev_dependencies:
   riverpod_generator: ^2.6.1
   build_runner: ^2.4.13
   go_router_builder: ^3.0.0
+  isar_community_generator: 3.3.0-dev.1
 
 flutter:
   uses-material-design: true

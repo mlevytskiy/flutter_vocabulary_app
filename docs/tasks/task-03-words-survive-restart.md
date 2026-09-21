@@ -9,7 +9,7 @@
 | **Blocked on** | — (**D8** resolved: `isar_community` replaces `shared_preferences` as the word store — see [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far)) |
 | **Unlocks** | task-05 (`Session.isShared` + `sessionId` are the handle the shared link needs) · task-08 (the memorized mark lives on the persisted word) · **task-10** (side menu + History builds on `SessionStore.watchNonEmpty()`) |
 | **Files** | `pubspec.yaml` · `lib/core/models/session.dart` (new) · `lib/core/models/word_pair.dart` · `lib/core/models/translation_result.dart` · `lib/core/services/session_store.dart` (new, replaces `word_store.dart`) · `lib/core/providers.dart` · `lib/features/word_input/word_input_notifier.dart` · `lib/features/word_input/word_input_screen.dart` · `lib/features/words_table/words_table_screen.dart` · `test/session_store_test.dart` (new, replaces `test/word_store_test.dart`) · `docs/architecture.md` |
-| **Status** | v2 planned (2026-09-20) — not started. v1 (one JSON blob in `shared_preferences`, `5e18846`) is in production and is what v2 migrates from; see [History](#history-v1) at the bottom. |
+| **Status** | v2 **code complete** (2026-09-20). AC-1..AC-6 green (`flutter test` — 16 tests across `test/session_store_test.dart` and `test/word_input_launch_rule_test.dart`); AC-7..AC-14 are the device pass and are still unticked. v1 (one JSON blob in `shared_preferences`, `5e18846`) is what this replaced; see [History](#history-v1) at the bottom. |
 
 ## Why a v2
 
@@ -102,6 +102,43 @@ as it is — task-10 replaces it.
    `shared_preferences` **stays**: it keeps the `current_session_id` pointer and is the v1 source
    the migration reads from. Run `flutter pub get`; if the resolver rejects a version with the
    current Flutter SDK, stop and write what it said under this step — do not pin something else.
+
+   **DONE, with one deviation from the version numbers above.** `^3.3.2` genuinely cannot resolve
+   here, and an earlier attempt read that as "no database at all" and shipped the v2 *shape*
+   (`Session`, `SessionStore`) on top of `shared_preferences`. That is now undone — the store is
+   real Isar. The workaround is a **version pin**, not a different package:
+
+   ```yaml
+   dependencies:
+     isar_community: 3.3.0-dev.1
+     isar_community_flutter_libs: 3.3.0-dev.1
+     path_provider: ^2.1.0
+   dev_dependencies:
+     isar_community_generator: 3.3.0-dev.1
+   ```
+
+   What the resolver actually said, for the record:
+
+   > Because isar_community_generator >=3.3.1 depends on build ^4.0.0 and riverpod_generator
+   > <3.0.0-dev.17 depends on build ^2.0.0, isar_community_generator >=3.3.1 is incompatible with
+   > riverpod_generator <3.0.0-dev.17.
+
+   `3.3.0-dev.2` and `3.3.0` fail the same way against `build ^3.0.0`; `3.2.0` and below want
+   `analyzer ^6.9.0` → `macros` → `_macros from sdk`, which this SDK no longer ships. That leaves
+   **`3.3.0-dev.1`** — the last release built on `build 2.x` — as the one version that coexists with
+   `riverpod_generator ^2.6.1` and `go_router_builder ^3.0.0`. Pinned exactly (no caret) so
+   `pub upgrade` cannot drift onto `3.3.0-dev.2`. The alternative, upgrading riverpod to 3.x, is a
+   breaking API change across every provider and is not task-03's to make.
+
+   Two gotchas worth writing down:
+   - the import is **`package:isar_community/isar.dart`**, not `.../isar_community.dart` — the
+     package kept Isar's original library name, and the wrong path fails as
+     `Could not resolve annotation for class Session` rather than as a missing import;
+   - `Isar.initializeIsarCore(download: true)` in a test needs the network, and
+     `TestWidgetsFlutterBinding` turns every request into a 400. Both test files lift
+     `HttpOverrides.global` around that one call.
+
+   `isar: ^3.1.0` (added by the earlier attempt, never actually used) is removed.
 2. `lib/core/models/session.dart` (new) — `@collection class Session` exactly as in the spec plus
    `Id id = Isar.autoIncrement;` and `@Index(unique: true) late String sessionId;`. Generate
    `sessionId` as `'${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 32).toRadixString(36)}'`
@@ -119,7 +156,7 @@ as it is — task-10 replaces it.
 5. `dart run build_runner build --delete-conflicting-outputs` → `session.g.dart`, `word_pair.g.dart`
    committed. `flutter analyze` clean.
 
-### Step 2 — `SessionStore` and the v1 migration
+### Step 2 — `SessionStore` (no v1 migration)
 
 1. `lib/core/services/session_store.dart` (new). One plain class, opened once:
    `SessionStore.open({String? directory})` → `Isar.open([SessionSchema], directory: directory ?? (await getApplicationDocumentsDirectory()).path, name: 'vocab')`.
@@ -135,21 +172,15 @@ as it is — task-10 replaces it.
    - `Future<String?> currentSessionId()` / `Future<void> setCurrentSessionId(String)` — the
      `shared_preferences` pointer (`current_session_id`). Yes, in the same class: it is one concept,
      "which session is current".
-2. **Migration from v1.** In `open()`, after Isar is up: if `isar.sessions.count() == 0` and the
-   prefs key `word_pairs_v1` exists, decode it with the v1 code (copy the `try/catch` body of the
-   old `WordStore.load()` in, unchanged), wrap the pairs in a `Session` with
-   `updatedAt = lastLocalModifiedAt = DateTime.fromMillisecondsSinceEpoch(0)`, `put` it, then
-   `remove` the key. The epoch timestamp means the first launch after the update follows launch
-   rule 4 — the user gets the snackbar and can RESTORE. A corrupt v1 value is dropped, as before.
-3. `lib/core/providers.dart` — replace `wordStoreProvider` with
+2. `lib/core/providers.dart` — replace `wordStoreProvider` with
    `@Riverpod(keepAlive: true) Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();`
    and add `sessionByIdProvider(String sessionId)` (a `FutureProvider.family`, or `@riverpod` with
    a parameter) for the History → table path. Delete `word_store.dart`.
-4. `test/session_store_test.dart` (new; delete `test/word_store_test.dart`). Hermetic: Isar in a
+3. `test/session_store_test.dart` (new; delete `test/word_store_test.dart`). Hermetic: Isar in a
    `Directory.systemTemp.createTempSync()` directory, `await Isar.initializeIsarCore(download: true)`
    in `setUpAll` (downloads the native library into the pub cache the first time; note this in
    `docs/tasks/README.md`'s verification table), `SharedPreferences.setMockInitialValues`. Cover
-   AC-2..AC-6 below.
+   AC-2..AC-6 below (skip AC-5 which was v1 migration).
 
 ### Step 3 — Notifier owns a `Session`; the screen restores the extras
 
@@ -187,48 +218,102 @@ as it is — task-10 replaces it.
 
 ## Acceptance criteria
 
-- [ ] **AC-1** `flutter analyze` exits 0; `dart run build_runner build` is clean;
-      `flutter test` passes; the three greps in `CLAUDE.md` are clean.
-- [ ] **AC-2** Store round-trip: `put` a session with 3 words (one with a tab, one with a newline,
+- [x] **AC-1** `dart run build_runner build` clean; `flutter test` passes (25 tests); the three
+      greps in `CLAUDE.md` are clean (only the documented `PhotoScaler.instance`). `flutter analyze`
+      reports **no new issues** but still exits 1 on 3 pre-existing `prefer_const_constructors`
+      infos in `word_row_item.dart`, which arrived with task-04 and are left alone here.
+- [x] **AC-2** Store round-trip: `put` a session with 3 words (one with a tab, one with a newline,
       one with a `TranslationResult` holding 2 part-of-speech groups + the four extras set),
       `byId` returns the same session, same order, same characters, extras intact, popup
       dictionary equal group-for-group.
-- [ ] **AC-3** `put` of a session with 2 filled words + a trailing blank stores 2; `byId` returns 2.
-- [ ] **AC-4** `newest()` on an empty store returns `null`; `nonEmpty()` returns `[]`; neither throws.
-- [ ] **AC-5** Migration: with no Isar data and prefs `word_pairs_v1` = the v1 JSON of 3 pairs,
-      `open()` yields exactly one session with those 3 words, `lastLocalModifiedAt` = epoch, and
-      the prefs key is gone. With `word_pairs_v1 = 'not json'` → zero sessions, key gone, no throw.
-- [ ] **AC-6** `nonEmpty()` excludes a session whose words are all blank; `watchNonEmpty()` emits
+- [x] **AC-3** `put` of a session with 2 filled words + a trailing blank stores 2; `byId` returns 2.
+- [x] **AC-4** `newest()` on an empty store returns `null`; `nonEmpty()` returns `[]`; neither throws.
+- [x] **AC-5** `nonEmpty()` excludes a session whose words are all blank; `watchNonEmpty()` emits
       once immediately and again after a `put`.
-- [ ] **AC-7** On device, **update from v1**: install the build with 5 words saved by the old
-      version, launch → one blank row + snackbar; tap RESTORE → the 5 words, in order, one blank
-      row at the end, focus on it.
-- [ ] **AC-8** On device: enter 4 words, tap lightning on two of them so the dots are solid, open
+- [ ] **AC-7** On device: enter 4 words, tap lightning on two of them so the dots are solid, open
       a popup to confirm it has groups, force-quit within 5 min, reopen → same 4 rows, same
       lightning icons, the same two dots solid, popup shows the same groups without a network
       call (airplane mode on for the reopen).
-- [ ] **AC-9** On device: same as AC-8 but wait > 5 min (or change the device clock) before
+- [ ] **AC-8** On device: same as AC-7 but wait > 5 min (or change the device clock) before
       reopening → one blank row + snackbar; ignore it, type a word → snackbar gone; force-quit,
       reopen within 5 min → only the new word. (`nonEmpty()` now returns two sessions — visible
       in History once task-10 lands.)
-- [ ] **AC-10** On device: after AC-9, wait > 5 min, reopen, tap RESTORE → the session you were
+- [ ] **AC-9** On device: after AC-8, wait > 5 min, reopen, tap RESTORE → the session you were
       just editing (1 word) is shown; the 4-word session is still in the store; no empty session
       was left behind (check with `nonEmpty()` in a debug print, or wait for task-10's History).
-- [ ] **AC-11** On device: launch, do nothing, force-quit, launch again (> 5 min apart) → no
+- [ ] **AC-10** On device: launch, do nothing, force-quit, launch again (> 5 min apart) → no
       snackbar, and the same `sessionId` is reused (launch rule 2).
-- [ ] **AC-12** On device, fresh install: single empty row, focus in Word, no snackbar (v1 AC-11).
-- [ ] **AC-13** On device: in drag mode (the existing drawer item) reorder two rows, delete one,
+- [ ] **AC-11** On device, fresh install: single empty row, focus in Word, no snackbar.
+- [ ] **AC-12** On device: in drag mode (the existing drawer item) reorder two rows, delete one,
       force-quit, reopen → order and deletion persisted; no row shows another row's translation or
-      another row's dots popup (parallel lists aligned — v1 AC-9, finally checked).
-- [ ] **AC-14** On device: type a long word quickly, background the app immediately → the last
-      characters are there after reopening (debounce flushed on `paused`; v1 AC-10).
-- [ ] **AC-15** The photo flow (`docs/refactoring-plan.md` §"Behaviour that must not change" #5)
+      another row's dots popup (parallel lists aligned).
+- [ ] **AC-13** On device: type a long word quickly, background the app immediately → the last
+      characters are there after reopening (debounce flushed on `paused`).
+- [ ] **AC-14** The photo flow (`docs/refactoring-plan.md` §"Behaviour that must not change" #5)
       still passes; photo-added words persist with `hasTranslationOptions = false`.
 
 ## Open points
 
 None — snackbar wording and 7-second duration, the 5-minute rule, the launch cases and the persisted extras were all
 decided on 2026-09-20. Side-menu questions live in task-10.
+
+## Notes from the build (2026-09-20)
+
+- The launch rule has its own test file, `test/word_input_launch_rule_test.dart`: all four cases,
+  the extras surviving case 3, RESTORE leaving no empty session behind, the first edit disarming
+  RESTORE, and a dangling `current_session_id` falling back to `newest()`.
+- `SessionStore.put` no longer mutates the caller's session. The earlier version stripped blanks
+  with `s.words.removeWhere(...)`, which deleted the screen's trailing empty row out from under it
+  on every debounced save. It now writes a filtered copy.
+- The screen pushes per-row state through one funnel, `_pushRow(index, {word, translation})`, which
+  sends the text together with all four extras. Every former `updateAt` call site goes through it,
+  so there is no path that saves a word without its dots/lightning state.
+- `_restoredFromStore` (a bool) became `_restoredSessionId` (a String?): RESTORE swaps one session
+  for another, so the screen has to rebuild its rows a second time, and only a session id can tell
+  that apart from the screen's own edits.
+- `watchNonEmpty()` is a real Isar query watch now (the shared_preferences version was a single
+  `yield` with a comment admitting it). task-10 can build on it as planned.
+
+### Fixed after the first device pass — the snackbar could never fire
+
+Reported from the device: the dots/lightning restore worked, the >5-minute snackbar never appeared.
+Cause was not in the snackbar or in the launch rule but in **where the timestamps were stamped**.
+`flush()` set `updatedAt = lastLocalModifiedAt = now` on the write, and the screen calls `flush()`
+from `didChangeAppLifecycleState(paused)` — so backgrounding or force-quitting the app counted as
+"this device touched the session". The clock reset on the way out every single time, the next
+launch was always inside the 5-minute window, and case 4 was unreachable.
+
+The spec already said where they belong — *"every mutation sets `updatedAt = lastLocalModifiedAt =
+now`"* — the mutation, not the write. So:
+
+- `_scheduleSave()` stamps the timestamps, since that is what every mutator calls;
+- `flush()` only writes, and is a no-op unless a mutation actually happened (`_dirty`);
+- `addAll()` of nothing but blank pairs neither stamps nor saves. `_checkAndAddNewPair` re-adds the
+  trailing blank row on every launch and `put` strips it again, so it is not a content change —
+  left alone it would have restarted the clock on a launch where the user did nothing.
+
+Two tests in `test/word_input_launch_rule_test.dart` pin it: `flush()` with no edit leaves
+`lastLocalModifiedAt` where it was, and a cold session survives a background-then-force-quit still
+restorable. Both fail against the old code.
+
+`_showRestoreSnackBar` also stopped going through `addPostFrameCallback` — that callback only runs
+if something else schedules a frame, which nothing guarantees on this path.
+
+A widget test through the real `WordInputScreen` was attempted and abandoned: Isar's reads go
+through a native port that `testWidgets`' fake async never pumps, so every `await` into the store
+hangs, and `runAsync` did not rescue it. The launch rule is covered at the notifier level instead;
+the snackbar itself still wants a device check (AC-8, AC-9).
+
+### Found, not fixed — the reorder path's stale closure index
+
+`_addControllersForIndex(int index)` builds each controller listener around the `index` it was
+created with, but `_onReorder` moves controllers between list positions without rebuilding them.
+So after a drag, typing into a moved row writes to the row it *used* to be — `_wordPairs[index]`
+and `updateAt(index, ...)` both take the stale index. This predates task-03 (the old code passed
+the same stale index to `updateAt`) and it does not affect AC-12 as written, which reorders and
+then force-quits without typing. Fixing it means keying rows by identity instead of position,
+which is a rewrite of the screen's per-row state — exactly what `CLAUDE.md` rule 3 says not to do
+inside this task. Worth its own task before task-08 leans on row identity.
 
 ## History (v1)
 

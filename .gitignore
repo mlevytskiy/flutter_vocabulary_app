@@ -52,3 +52,9 @@ app.*.map.json
 android/key.properties
 android/*.jks
 
+
+# Native Isar library, downloaded into the project root by
+# Isar.initializeIsarCore(download: true) the first time the store tests run.
+libisar.dylib
+libisar.so
+isar.dll
