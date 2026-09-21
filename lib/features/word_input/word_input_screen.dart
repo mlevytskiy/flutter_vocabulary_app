@@ -670,6 +670,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   }
 
   void _navigateToTableScreen() {
+    // The table has nothing to type into; drop the field's focus here so the
+    // keyboard does not follow the navigation (it otherwise can, since this
+    // screen stays in the stack underneath).
+    FocusManager.instance.primaryFocus?.unfocus();
     const WordsTableRoute().go(context);
   }
 

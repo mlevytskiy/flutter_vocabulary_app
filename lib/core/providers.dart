@@ -5,6 +5,7 @@ import 'models/session.dart';
 import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
 import 'services/pronunciation_service.dart';
+import 'services/session_publish_service.dart';
 import 'services/session_store.dart';
 import 'services/vocab_photo_service.dart';
 
@@ -25,6 +26,9 @@ GoogleTranslateService googleTranslateService(Ref ref) =>
 
 @Riverpod(keepAlive: true)
 PronunciationService pronunciationService(Ref ref) => PronunciationService();
+
+@Riverpod(keepAlive: true)
+SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();
 
 @riverpod
 Future<Session?> sessionById(Ref ref, String sessionId) async {

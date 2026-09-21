@@ -1,8 +1,9 @@
-export interface Env {
-  ANTHROPIC_API_KEY: string;
-  APP_SHARED_SECRET: string;
-  RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
-}
+import type { Env } from "./env";
+import { CORS_HEADERS, MAX_RAW_BYTES, isAllowedMediaType, jsonResponse, type AllowedMediaType } from "./http";
+import { matchRoute, type RouteContext, type RouteDefinition } from "./routing";
+import { sessionRoutes } from "./session/handlers";
+
+export type { Env } from "./env";
 
 interface Options {
   context: boolean;
@@ -18,18 +19,6 @@ interface VocabularyWord {
   translation?: string;
   description?: string;
 }
-
-const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
-type AllowedMediaType = (typeof ALLOWED_MEDIA_TYPES)[number];
-
-// ~7MB raw grows to ~9.3MB once base64-encoded for Anthropic, comfortably under its 10MB limit.
-const MAX_RAW_BYTES = 7 * 1024 * 1024;
-
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, x-app-secret",
-};
 
 function parseOptions(url: URL): Options {
   const limitParam = url.searchParams.get("limit");
@@ -118,17 +107,6 @@ Respond with ONLY a strict JSON array, no prose, no markdown code fences, in thi
 
 If the photo has no marked English vocabulary — including a photo full of unmarked useful words — \
 respond with an empty array: []`;
-}
-
-function jsonResponse(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "content-type": "application/json", ...CORS_HEADERS },
-  });
-}
-
-function isAllowedMediaType(value: unknown): value is AllowedMediaType {
-  return typeof value === "string" && (ALLOWED_MEDIA_TYPES as readonly string[]).includes(value);
 }
 
 function extractJsonArray(text: string): unknown {
@@ -243,14 +221,14 @@ async function callClaude(
   return { words: parsed, aiMs };
 }
 
-async function handleAnalyze(request: Request, env: Env, url: URL): Promise<Response> {
+async function handleAnalyze({ request, env, url }: RouteContext): Promise<Response> {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed, use POST" }, 405);
   }
 
   const mediaType = request.headers.get("content-type");
   if (!isAllowedMediaType(mediaType)) {
-    return jsonResponse({ error: `Content-Type header must be one of: ${ALLOWED_MEDIA_TYPES.join(", ")}` }, 400);
+    return jsonResponse({ error: "Content-Type header must be one of: image/jpeg, image/png, image/webp" }, 400);
   }
 
   const imageBytes = await request.arrayBuffer();
@@ -280,9 +258,14 @@ async function handleAnalyze(request: Request, env: Env, url: URL): Promise<Resp
   }
 }
 
-const ROUTES: Record<string, (request: Request, env: Env, url: URL) => Promise<Response>> = {
-  "/analyze": (request, env, url) => handleAnalyze(request, env, url),
-};
+// Every route declares whether it is public. Anything not marked `public: true`
+// -- /analyze, and the session writes -- is behind the shared secret and the
+// per-IP rate limiter. The shared page and its sources are public by
+// definition: the link is the only credential (docs/idea-brief.md §5).
+const ROUTES: RouteDefinition[] = [
+  { method: "POST", pattern: /^\/analyze$/, public: false, handler: handleAnalyze },
+  ...sessionRoutes,
+];
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -291,22 +274,28 @@ export default {
     }
 
     const url = new URL(request.url);
-    const route = ROUTES[url.pathname];
-    if (!route) {
+    const match = matchRoute(ROUTES, request.method, url.pathname);
+    if (!match) {
       return jsonResponse({ error: "Not found" }, 404);
     }
+    if ("methodNotAllowed" in match) {
+      return jsonResponse({ error: "Method not allowed" }, 405);
+    }
+    const { route, params } = match;
 
-    const providedSecret = request.headers.get("x-app-secret");
-    if (!env.APP_SHARED_SECRET || providedSecret !== env.APP_SHARED_SECRET) {
-      return jsonResponse({ error: "Unauthorized" }, 401);
+    if (!route.public) {
+      const providedSecret = request.headers.get("x-app-secret");
+      if (!env.APP_SHARED_SECRET || providedSecret !== env.APP_SHARED_SECRET) {
+        return jsonResponse({ error: "Unauthorized" }, 401);
+      }
+
+      const clientIp = request.headers.get("cf-connecting-ip") ?? "unknown";
+      const { success: withinRateLimit } = await env.RATE_LIMITER.limit({ key: clientIp });
+      if (!withinRateLimit) {
+        return jsonResponse({ error: "Too many requests, please slow down" }, 429);
+      }
     }
 
-    const clientIp = request.headers.get("cf-connecting-ip") ?? "unknown";
-    const { success: withinRateLimit } = await env.RATE_LIMITER.limit({ key: clientIp });
-    if (!withinRateLimit) {
-      return jsonResponse({ error: "Too many requests, please slow down" }, 429);
-    }
-
-    return route(request, env, url);
+    return route.handler({ request, env, url, params });
   },
 };

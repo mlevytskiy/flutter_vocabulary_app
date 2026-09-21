@@ -181,6 +181,19 @@ class WordInputNotifier extends _$WordInputNotifier {
     _scheduleSave();
   }
 
+  /// Records that a shared link now exists for the current session (task-05).
+  /// Not a content change: the timestamps are left alone so publishing does
+  /// not restart the 5-minute launch clock, and the write goes straight to the
+  /// store rather than through the debounce.
+  Future<void> markShared() async {
+    final session = state.valueOrNull;
+    if (session == null || session.isShared) return;
+    session.isShared = true;
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
+  }
+
   /// Cancels any pending debounced save and writes immediately. A no-op when
   /// nothing has changed since the last write — see [_dirty]. Blank pairs (the
   /// trailing empty row) are never persisted.

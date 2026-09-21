@@ -92,6 +92,24 @@ final pronunciationServiceProvider = Provider<PronunciationService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PronunciationServiceRef = ProviderRef<PronunciationService>;
+String _$sessionPublishServiceHash() =>
+    r'f1fa0f257c2278cdc3e762d3755c1f1baa8ecbfc';
+
+/// See also [sessionPublishService].
+@ProviderFor(sessionPublishService)
+final sessionPublishServiceProvider = Provider<SessionPublishService>.internal(
+  sessionPublishService,
+  name: r'sessionPublishServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sessionPublishServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SessionPublishServiceRef = ProviderRef<SessionPublishService>;
 String _$sessionByIdHash() => r'5a9ababfd50081224b9aaab6a0e5d20842921e11';
 
 /// Copied from Dart SDK

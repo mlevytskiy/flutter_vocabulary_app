@@ -24,7 +24,8 @@ lib/
     azure_config.dart           pre-existing, untouched by this plan
   core/
     providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, sessionStore,
-                                googleTranslateService, pronunciationService, sessionById
+                                googleTranslateService, pronunciationService, sessionPublishService,
+                                sessionById
     models/                     vocab_word.dart — moved, unchanged
                                 word_pair.dart (+.g) — Isar @embedded row: the two strings plus the
                                 dots/lightning extras that make a restored row look untouched
@@ -36,6 +37,7 @@ lib/
                                 google_translate_service.dart + translate_response_parser.dart
                                 (translate_a/single with dt=t,bd,at + the part-of-speech rule)
                                 pronunciation_service.dart (task-04)
+                                session_publish_service.dart (task-05: POST /sessions → public link)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
@@ -49,7 +51,8 @@ lib/
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays)
     words_table/
-      words_table_screen.dart         reads words from the notifier instead of a constructor arg
+      words_table_screen.dart         reads words from the notifier instead of a constructor arg;
+                                      Share → bottom sheet: file (TSV) or link (publish, task-05)
 ```
 
 No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder.

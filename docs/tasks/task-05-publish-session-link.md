@@ -8,8 +8,8 @@
 | **Depends on** | — |
 | **Blocked on** | **D4** — session/photo lifetime and deletion · **D5** — one photo per session or a scrollable set |
 | **Unlocks** | task-06, task-07 |
-| **Files** | `vocab-photo-api/src/session/` (new) · `vocab-photo-api/src/index.ts` · `vocab-photo-api/wrangler.jsonc` · `vocab-photo-api/README.md` · `lib/screens/words_table_screen.dart` · `lib/services/` (new) |
-| **Status** | not started |
+| **Files** | `vocab-photo-api/src/session/` (new) · `vocab-photo-api/src/{env,http,routing}.ts` (new) · `vocab-photo-api/src/index.ts` · `vocab-photo-api/wrangler.jsonc` · `vocab-photo-api/README.md` · `lib/features/words_table/words_table_screen.dart` · `lib/core/services/session_publish_service.dart` (new) · `lib/core/providers.dart` · `lib/features/word_input/word_input_notifier.dart` · `test/session_publish_service_test.dart` (new) |
+| **Status** | **code complete 2026-09-21** — AC-1..AC-12 verified against `wrangler dev`; AC-13..AC-17 need a deployed Worker (bindings created, KV id pasted) + a device pass. See [Findings](#findings-2026-09-21) |
 
 ## Blocked on D4 and D5
 
@@ -95,30 +95,32 @@ Do the following:
 
 ## Acceptance criteria
 
-- [ ] **AC-1** `cd vocab-photo-api && npm run typecheck` exits 0; `flutter analyze` exits 0.
-- [ ] **AC-2** `POST /sessions` with a valid secret and 5 word pairs returns `200` and a body
+- [x] **AC-1** `cd vocab-photo-api && npm run typecheck` exits 0; `flutter analyze` exits 0.
+      (`flutter analyze` reports only the 3 pre-existing `prefer_const_constructors` infos noted in
+      `README.md` — no new issues.)
+- [x] **AC-2** `POST /sessions` with a valid secret and 5 word pairs returns `200` and a body
       containing an id and a URL.
-- [ ] **AC-3** `POST /sessions` **without** `x-app-secret` returns `401`.
-- [ ] **AC-4** `POST /sessions` with an empty word list returns `400`.
-- [ ] **AC-5 — the public read.** `curl` the returned URL with **no headers at all** and get `200`
+- [x] **AC-3** `POST /sessions` **without** `x-app-secret` returns `401`.
+- [x] **AC-4** `POST /sessions` with an empty word list returns `400`.
+- [x] **AC-5 — the public read.** `curl` the returned URL with **no headers at all** and get `200`
       and HTML containing all 5 words and their translations.
-- [ ] **AC-6** `/analyze` still returns `401` without the secret — the auth restructuring did not
+- [x] **AC-6** `/analyze` still returns `401` without the secret — the auth restructuring did not
       make the expensive route public. Check this explicitly; it is the failure mode that costs
       money.
-- [ ] **AC-7** `GET /s/<a-random-uuid-that-was-never-created>` returns `404` with a human-readable
+- [x] **AC-7** `GET /s/<a-random-uuid-that-was-never-created>` returns `404` with a human-readable
       HTML page, not a JSON error.
-- [ ] **AC-8** The session id in the returned URL is a UUID — not an incrementing number, not a
+- [x] **AC-8** The session id in the returned URL is a UUID — not an incrementing number, not a
       short hash. Create two sessions back to back and confirm the ids are unrelated.
-- [ ] **AC-9** Restart the Worker (`npm run dev` stopped and started) and re-fetch a session URL
+- [x] **AC-9** Restart the Worker (`npm run dev` stopped and started) and re-fetch a session URL
       created before the restart — it still resolves. This is the difference between a store and an
       in-memory map.
-- [ ] **AC-10** The stored session document has the word entries and the sources as **separate,
+- [x] **AC-10** The stored session document has the word entries and the sources as **separate,
       tagged** structures — `jq` the raw KV value and confirm a photo is one entry in a `sources`
       list with a kind tag, not a top-level `photoUrl` field. This is the source-agnostic
       requirement, and it is the one thing here that is expensive to fix later.
-- [ ] **AC-11** If D5 says photos are shown: upload a photo to a session and confirm it renders on
+- [x] **AC-11** If D5 says photos are shown: upload a photo to a session and confirm it renders on
       the page next to the table, and that its public URL is reachable with no secret.
-- [ ] **AC-12** A payload over the size cap returns `413`, not a 500.
+- [x] **AC-12** A payload over the size cap returns `413`, not a 500.
 - [ ] **AC-13** On device: tap the new publish action on the Words Table screen with 5 words
       entered. A link appears, is on the clipboard, and opening it in the phone's browser shows the
       same 5 words.
@@ -129,3 +131,35 @@ Do the following:
       error message and the screen stays usable. No indefinite spinner.
 - [ ] **AC-17** The page is readable on a phone browser held in portrait — the partner is reading
       it on their own phone, not a desktop.
+
+## Findings (2026-09-21)
+
+- **Share UX.** The Words Table's Share button now opens a bottom sheet with two options —
+  **Share file** (the TSV via the system share sheet, unchanged) and **Share link** (publish).
+  Publishing copies the URL to the clipboard, marks the session `isShared`, and shows a dialog with
+  the link plus *Copy* / *Share…* / *Done*. The button shows a spinner and is disabled while the
+  request is in flight; the request itself times out after 20 s (AC-16).
+- **Photo upload is Worker-only for now.** `POST /sessions/<id>/sources` + the public
+  `GET /s/<id>/sources/<sourceId>` are built and verified (AC-11 via `curl`), but the app does not
+  call them: after `/analyze` the app keeps no copy of the photo, and the `Session` model has no
+  field to remember one. Wiring it needs either a photo path on `Session` (a model change —
+  `CLAUDE.md` rule 5, ask first) or a file-per-session convention on disk. Until then a published
+  page shows the table only, which is what AC-13/14 check.
+- **Auth model.** Routes are now `RouteDefinition` records (`src/routing.ts`) with a per-route
+  `public` flag; the `fetch` handler applies secret + rate limit to every non-public route.
+  `/analyze` and the two session writes are gated; `GET /s/…` is public. AC-6 re-checked explicitly.
+- **Bindings and deploy (2026-09-21).** `SESSIONS` (KV, 30-day `expirationTtl`) was created and
+  the Worker deployed (version `11e4e7ad`); production answers `401` on `/analyze` and
+  `POST /sessions` without the secret, `200` + HTML on a public `GET /s/<id>`, and the 404 page on an
+  unknown id. R2 was then enabled in the dashboard, the `vocab-photo-sources` bucket and its 30-day lifecycle rule
+  created, and the Worker redeployed with the `SOURCES` binding; a photo upload + public fetch was
+  verified byte-identical against production. The binding stays optional in code (503 without it).
+- **Each publish creates a new session** (new UUID, new link). Re-publishing after an edit yields a
+  second link rather than updating the first; task-06 may want to revisit that once the page is
+  editable.
+- Verified with `wrangler dev` on 2026-09-21: create (200, UUID id), no secret (401), empty and
+  blank-only lists (400), bad JSON (400), 333 KB payload (413), unknown id (404 HTML page), wrong
+  method (405), a `<b>` in a word rendered escaped, a 6-row list with one blank row rendered as 5
+  rows, photo upload + public fetch byte-identical, and the page + photo still resolving after the
+  Worker was stopped and restarted (AC-9). The raw KV document has `entries` and a tagged `sources`
+  list as separate top-level keys (AC-10).

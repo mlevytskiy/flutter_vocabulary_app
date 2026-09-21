@@ -25,7 +25,7 @@ class Session {
   /// moment it is restored from the snackbar. Drives the 5-minute launch rule.
   late DateTime lastLocalModifiedAt;
 
-  /// True once a shared link was created (task-05). Always false in v2.
+  /// True once a shared link was created for this session (task-05).
   bool isShared = false;
 
   List<WordPair> words = [];

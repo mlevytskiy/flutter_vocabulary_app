@@ -8,6 +8,8 @@
   },
   // Per-IP rate limit: 20 requests / 60s. Change namespace_id to any unused
   // positive integer string if it collides with another Worker on your account.
+  // Applies to the secret-gated routes only (/analyze, POST /sessions...); the
+  // public page and its sources are not rate-limited — see src/index.ts.
   "ratelimits": [
     {
       "name": "RATE_LIMITER",
@@ -16,6 +18,30 @@
         "limit": 20,
         "period": 60
       }
+    }
+  ],
+  // Published sessions (task-05): one JSON document per session, written with a
+  // 30-day expirationTtl (decision D4), so nothing ever needs deleting by hand.
+  // `wrangler dev` simulates the namespace locally under .wrangler/state; for
+  // production create one with `npx wrangler kv namespace create SESSIONS` and
+  // paste the id it prints here — see README.md.
+  "kv_namespaces": [
+    {
+      "binding": "SESSIONS",
+      "id": "c91ab09fd1ed406c8cfa6293e43ce4c8"
+    }
+  ],
+  // Raw bytes of a session's sources (the photo). R2 has no per-object TTL:
+  // add a lifecycle rule on the bucket that deletes objects older than 30 days
+  // so the photos age out with their session — see README.md. Locally,
+  // `wrangler dev` simulates the bucket under .wrangler/state.
+  // The Worker treats this binding as optional: without it the photo routes
+  // answer 503 and everything else works (R2 must be enabled on the account
+  // through the dashboard first; API error 10042 otherwise).
+  "r2_buckets": [
+    {
+      "binding": "SOURCES",
+      "bucket_name": "vocab-photo-sources"
     }
   ]
   // Secrets (ANTHROPIC_API_KEY, APP_SHARED_SECRET) are NOT set here.

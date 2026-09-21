@@ -15,7 +15,7 @@ Task files link to the roadmap and [`../idea-brief.md`](../idea-brief.md); they 
 | [task-02](./task-02-word-limit-is-a-cap.md) — The word limit is a cap, not a quota | 2 | S | 2 | — (D2 resolved: reading order) | code complete; AC-1/7 + typecheck verified, AC-3/4/5/6/8 need a deployed Worker + device pass |
 | [task-03](./task-03-words-survive-restart.md) — Sessions: collected words survive an app restart (v2, `isar_community`) | 3 | M | 2 | — (D8 resolved: `isar_community`) | v1 done (`5e18846`); **v2 code complete 2026-09-20** — AC-1..AC-6 green, AC-7..AC-14 need a device pass |
 | [task-04](./task-04-uk-us-pronunciation.md) — Hear a word in UK and US pronunciation | 4 | S | 3 | — (D1 resolved: on-device TTS) | done; AC-1..4 verified on device, AC-5..10 not explicitly checked |
-| [task-05](./task-05-publish-session-link.md) — Publish a session to a durable shared link | 5 | M | 3 | — (D4 resolved: 30d TTL; D5 resolved: one photo, list-shaped) | not started |
+| [task-05](./task-05-publish-session-link.md) — Publish a session to a durable shared link | 5 | M | 3 | — (D4 resolved: 30d TTL; D5 resolved: one photo, list-shaped) | **code complete 2026-09-21** — AC-1..12 verified on `wrangler dev`; AC-13..17 need bindings created + deploy + device pass. Photo upload is Worker-only (app keeps no photo) |
 | [task-06](./task-06-partner-corrects-table.md) — The partner corrects the word table | 6 | M | 4 | — (D6 resolved: no names) | not started |
 | [task-07](./task-07-download-from-shared-page.md) — Download the AnkiDroid file from the shared page | 7 | S | 5 | — | not started |
 | [task-08](./task-08-review-and-mark-memorized.md) — Review words and mark one memorized | 8 | S | 3 | — | not started |
@@ -63,7 +63,7 @@ This repo has two verification surfaces, and they are not symmetrical:
 
 | | Command | Notes |
 |---|---|---|
-| Flutter app | `flutter analyze` · `flutter test` | `test/session_store_test.dart` + `test/word_input_launch_rule_test.dart` (task-03 v2; they replaced `test/word_store_test.dart`) each call `Isar.initializeIsarCore(download: true)` in `setUpAll` — **the first run needs network**, it fetches the native Isar library (`libisar.dylib` / `libisar.so` / `isar.dll`) into the **project root** — gitignored — and every run after that is offline. `TestWidgetsFlutterBinding` forces every HTTP request to 400, so both files lift `HttpOverrides.global` for the duration of that one download and put it straight back |
+| Flutter app | `flutter analyze` · `flutter test` | `test/session_store_test.dart` + `test/word_input_launch_rule_test.dart` (task-03 v2; they replaced `test/word_store_test.dart`; `test/session_publish_service_test.dart` from task-05 is plain `MockClient`, no Isar) each call `Isar.initializeIsarCore(download: true)` in `setUpAll` — **the first run needs network**, it fetches the native Isar library (`libisar.dylib` / `libisar.so` / `isar.dll`) into the **project root** — gitignored — and every run after that is offline. `TestWidgetsFlutterBinding` forces every HTTP request to 400, so both files lift `HttpOverrides.global` for the duration of that one download and put it straight back |
 
 `flutter analyze` currently ends on 3 pre-existing `prefer_const_constructors` **infos** in
 `lib/features/word_input/widgets/word_row_item.dart` (they arrived with task-04 and are unrelated
