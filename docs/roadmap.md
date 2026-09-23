@@ -67,7 +67,7 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 |---|---|:---:|:---:|:---:|
 | D3 | Whether an English-description dictionary is the right thing for the word-detail slot at all, and if so whether `dictionaryapi.dev` is accepted as the source | grilling | human | 9 |
 | D7 | What the machine-translation source becomes for typed words once quality complaints appear — the photo path already uses a stronger context-aware translation than the typed path | research | agent | — |
-| ~~D9~~ | **Closed 2026-09-23 — option (c): a separate bottom-left FAB beside the untouched speed dial.** It honours the corner the report named without moving `take photo` or `screenshot`, which the owner did not ask to move. The speed dial's own inert settings child is wired to the same route rather than deleted, so no entry point leads nowhere | grilling | human | — |
+| ~~D9~~ | **Closed 2026-09-23 — option (c): a separate bottom-left FAB beside the untouched speed dial.** It honours the corner the report named without moving `take photo` or `screenshot`, which the owner did not ask to move. **Revised the same day:** the speed dial's inert settings child is *removed* rather than wired, on the owner's instruction, so the bottom-left button is the only settings entry point | grilling | human | — |
 
 ## Decisions so far
 

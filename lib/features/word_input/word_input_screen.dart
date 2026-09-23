@@ -1246,15 +1246,23 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           // The settings entry point: bottom-left, opposite the speed dial's
           // own bottom-right corner (D9 (c) in docs/roadmap.md). Kept out of
           // the Screenshot above, so it never appears in a shared screenshot.
+          //
+          // Mirrors the speed dial's plus button: same elevation, same white
+          // glyph on a filled circle, purple instead of red. The plain
+          // constructor, not `.small`, because `.small` switches the default
+          // shape to a 12px RoundedRectangleBorder and a square button would
+          // not read as the same control.
           Positioned(
             left: 16.0,
             bottom: 16.0,
-            child: FloatingActionButton.small(
+            child: FloatingActionButton(
               heroTag: null,
               onPressed: () => const SettingsRoute().push(context),
               tooltip: 'Settings',
-              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-              foregroundColor: Theme.of(context).colorScheme.primary,
+              elevation: 8.0,
+              shape: const CircleBorder(),
+              backgroundColor: Colors.purple[600],
+              foregroundColor: Colors.white,
               child: const Icon(Icons.settings),
             ),
           ),
@@ -1282,7 +1290,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       floatingActionButton: WordInputSpeedDial(
         onTakePhoto: _takePhotoForVocabulary,
         onScreenshot: _takeScreenshot,
-        onSettings: () => const SettingsRoute().push(context),
       ),
     );
   }

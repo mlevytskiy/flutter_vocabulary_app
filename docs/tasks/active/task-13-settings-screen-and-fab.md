@@ -9,7 +9,7 @@
 | **Blocked on** | **D9** — where the settings entry point goes (see below; the task proceeds on the recommendation) |
 | **Unlocks** | — (it is the first place a future preference has to live, so it unblocks nothing today) |
 | **Files** | `lib/router/routes.dart` · `lib/features/settings/settings_screen.dart` (new) · `lib/features/word_input/word_input_screen.dart` · `lib/features/word_input/widgets/word_input_speed_dial.dart` · `docs/architecture.md` |
-| **Status** | **code complete 2026-09-23** — D9 closed as option **(c)**: a separate bottom-left `FloatingActionButton.small` beside an untouched speed dial, whose own inert settings child is wired to the same route. The mode moved off the screen's `State` into `dragModeProvider`. AC-1 is green for every file this task touched; the repo-wide exit code is not 0, for reasons that predate it (see [Findings](#findings-2026-09-23)). AC-2..AC-9 are the device pass and are still unticked. |
+| **Status** | **code complete 2026-09-23** — D9 closed as option **(c)**: a separate bottom-left `FloatingActionButton` beside an untouched speed dial. Styled on the owner's follow-up request to match the dial's own plus button (white glyph on a filled `CircleBorder`, purple instead of red), and the dial's inert settings child was removed on that same request, so the corner button is the only entry point. The mode moved off the screen's `State` into `dragModeProvider`. AC-1 is green for every file this task touched; the repo-wide exit code is not 0, for reasons that predate it (see [Findings](#findings-2026-09-23)). AC-2..AC-9 are the device pass and are still unticked. |
 
 ## The report
 
@@ -147,6 +147,15 @@ Steps 1-7 are implemented. Six notes:
    (AC-7), and the settings FAB sits at bottom-left opposite it. It is also placed outside the
    `Screenshot` wrapper, so the settings button never appears in a shared screenshot.
 
+   **It is the plain `FloatingActionButton`, not `.small`** (corrected on the owner's follow-up
+   request for a filled circle). `FloatingActionButton.small` overrides the default shape to
+   `RoundedRectangleBorder(borderRadius: 12)` (`floating_action_button.dart:816`), so a `.small`
+   button renders as a rounded *square* however its colours are set; only the plain constructor
+   defaults to `CircleBorder` (`:754`). Colours are `Colors.purple[600]` on `Colors.white`, and
+   `elevation: 8.0` matches the dial's own button. `Colors.purple[600]` deliberately, not
+   `colorScheme.primary`: on this app's deep-purple seed that is a very dark tone and the white
+   glyph reads poorly on it.
+
 3. **`_buildRowItem` gained a `required bool isDragMode` parameter.** `build()` watches the
    preference once and passes it down, rather than every row watching the provider. That keeps the
    three readers (the `ReorderableListView` branch, the row argument, the reorder path) reading one
@@ -157,11 +166,13 @@ Steps 1-7 are implemented. Six notes:
    on top -- AC-6 would then have failed. It is not on `Session` and nothing about it reaches Isar
    (AC-9).
 
-5. **The speed dial's third child now calls the route; its orange colour and missing label are
-   unchanged.** D9 (c) keeps the corner FAB as the primary entry point, and an entry point that
-   leads nowhere is worse than none, so the child was wired rather than deleted. It stays unlabelled
-   to avoid a look change the owner did not ask for -- this is the option the task's
-   [Open points](#open-points) left open, resolved as "leave it as it is".
+5. **The speed dial's settings child is removed, not wired** (reversed on the owner's follow-up
+   request: "Remove settings from menu that we see when click on plus button"). The dial now
+   carries `take photo` and `screenshot` only, and its `onSettings` parameter is gone along with
+   the single call site that supplied it, so there is no unused parameter left behind. The
+   bottom-left FAB is the only settings entry point, which is why the child was *wired* in the
+   first pass and *removed* in the second -- both readings of D9 (c) agree that a settings entry
+   leading nowhere is worse than no entry, and the owner chose the single-entry version.
 
 6. **AC-1 does not fully tick, and the reason predates this task.** `flutter test` passes (46
    tests) and the three `CLAUDE.md` greps are clean, but `flutter analyze` exits **1**, not 0:
@@ -181,3 +192,19 @@ Steps 1-7 are implemented. Six notes:
 Not verified: AC-2 through AC-9, all of which need a device. The one worth checking first is AC-3,
 since the whole point of the change is that a switch on a different screen reaches the input
 screen's list, and that is a runtime fact about the provider's lifetime.
+
+## Update (2026-09-23, owner follow-up)
+
+Three changes after the first pass, all owner-requested:
+
+1. **The settings FAB is restyled** to match the speed dial's plus button: white glyph on a filled
+   purple circle, `CircleBorder`, `elevation: 8.0`. This required dropping `.small`, which is the
+   one FAB constructor whose default shape is not circular -- see Findings note 2.
+2. **The settings entry is removed from the speed dial**, and the `onSettings` parameter with it.
+3. **The roadmap's D9 record and Findings note 5 are corrected** to match: the corner button is the
+   only settings entry point.
+
+AC-7 changes meaning slightly as a result: the speed dial now renders two children where it
+rendered three, so "`take photo` and `screenshot` behave exactly as they did before" still holds,
+but "the settings entry point is where D9 said it would be" is now satisfied by the corner button
+alone. Still a device pass.
