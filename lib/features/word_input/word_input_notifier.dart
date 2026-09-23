@@ -13,7 +13,7 @@ part 'word_input_notifier.g.dart';
 /// How long a session stays "the current one" after this device last touched
 /// it. Past this, a launch starts a fresh session and offers the previous one
 /// back through the snackbar (see `docs/tasks/task-03-words-survive-restart.md`).
-const kSessionIdleWindow = Duration(seconds: 30); // TODO(test): restore to Duration(minutes: 5)
+const kSessionIdleWindow = Duration(minutes: 5);
 
 /// Owns the current [Session]. `WordInputScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its

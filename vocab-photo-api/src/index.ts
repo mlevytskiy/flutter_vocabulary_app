@@ -63,35 +63,18 @@ function buildSystemPrompt(options: Options): string {
     );
   }
 
-  // D2 (docs/roadmap.md): over the limit we keep the first N in reading order and
-  // drop the rest. No "most useful for a learner" ranking -- that is a judgement the
-  // owner can neither see nor predict, and the marks already say what they wanted.
   const limitLine = options.limit
-    ? `Return at most ${options.limit} marked words or phrases in total. If the photo has fewer than ` +
-      `${options.limit} marked words, return only the ones that are actually marked — never pad or invent ` +
-      `extra entries to reach the limit. If more than ${options.limit} words are marked, keep the first ` +
-      `${options.limit} in reading order (top to bottom, then left to right) and drop the rest — do not ` +
-      `rank them by how useful or valuable they look.`
-    : "Return every marked word or phrase you find, in reading order (top to bottom, then left to right).";
+    ? `Return at most ${options.limit} words or phrases in total. If you find fewer than ${options.limit}, ` +
+      `return only the ones you actually found — never pad or invent extra entries to reach the limit. ` +
+      `If you find more than ${options.limit} candidates, keep only the ${options.limit} most useful/valuable ones for a learner.`
+    : "Return every useful word or phrase you find.";
 
   return `You are a vocabulary-extraction assistant for a language learner \
 whose native language is Ukrainian and who is learning English.
 
-You will be given a photo of something the learner has been reading — a book page, packaging, a \
-sign, or a screen — on which they have visually marked the words they want to learn.
-
-Return ONLY the English words or short phrases that the photo shows as visually marked: \
-highlighter, underline, circle, box, pen or pencil stroke, an arrow pointing at the word, or any \
-other hand-made mark on or around the word. A word counts as marked only if you can actually see \
-its mark in the photo.
-
-Do NOT return a word that carries no mark, however useful it looks. A dense page of valuable \
-vocabulary with nothing marked on it yields an empty array — that is the correct answer, not a \
-failure. Never fill the response with unmarked words.
-
-Ignore noise, even when it is marked: numbers, single letters, barcodes, UI chrome, and words that \
-are not meaningful vocabulary. Ignore marked text that is not English (Ukrainian words, for \
-example) — this learner is collecting English vocabulary, so do not translate or guess at it.
+You will be given a photo. Find the useful English words or short phrases visible in it \
+(for example on packaging, signs, book pages, or screens). Ignore noise: numbers, single \
+letters, barcodes, UI chrome, and words that are not meaningful vocabulary.
 
 ${limitLine}
 
@@ -105,8 +88,7 @@ ${instructions.join("\n")}
 Respond with ONLY a strict JSON array, no prose, no markdown code fences, in this exact shape:
 [{${fields.join(", ")}}]
 
-If the photo has no marked English vocabulary — including a photo full of unmarked useful words — \
-respond with an empty array: []`;
+Izf no useful vocabulary is visible, respond with an empty array: []`;
 }
 
 function extractJsonArray(text: string): unknown {
@@ -114,6 +96,8 @@ function extractJsonArray(text: string): unknown {
   const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   const candidate = fenced ? fenced[1] : trimmed;
   return JSON.parse(candidate);
+
+
 }
 
 function isVocabularyWordArray(value: unknown, options: Options): value is VocabularyWord[] {
@@ -179,7 +163,7 @@ async function callClaude(
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } },
-            { type: "text", text: "Extract the marked vocabulary words from this photo." },
+            { type: "text", text: "Extract the vocabulary words from this photo." },
           ],
         },
       ],

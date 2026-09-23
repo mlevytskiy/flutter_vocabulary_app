@@ -66,13 +66,13 @@ class WordRowItem extends StatelessWidget {
     final dragHandle = isDragMode
         ? ReorderableDragStartListener(
             index: index,
-            child: SizedBox(
+            child: const SizedBox(
               width: 32,
               height: 44,
               child: Center(
                 child: Icon(
                   Icons.drag_indicator,
-                  color: const Color(0xFF7F77DD),
+                  color: Color(0xFF7F77DD),
                   size: 32,
                 ),
               ),

@@ -11,7 +11,12 @@ import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
-  const WordsTableScreen({super.key});
+  const WordsTableScreen({super.key, this.sessionId});
+
+  /// Null for the current session (the words the input screen is editing);
+  /// set when the screen was opened from a History row, in which case the
+  /// words are read from the store instead of the notifier (task-10).
+  final String? sessionId;
 
   @override
   ConsumerState<WordsTableScreen> createState() => _WordsTableScreenState();
@@ -140,7 +145,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       // The point is handing the URL over in the next five seconds: it is on
       // the clipboard before the dialog even opens.
       await Clipboard.setData(ClipboardData(text: published.url));
-      await ref.read(wordInputNotifierProvider.notifier).markShared();
+      // `markShared` flags the session the notifier holds, so it applies only
+      // when this screen is showing that session. A History row publishes the
+      // words without restamping the current session.
+      if (widget.sessionId == null) {
+        await ref.read(wordInputNotifierProvider.notifier).markShared();
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Link copied to clipboard')),
@@ -215,8 +225,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final asyncSession = ref.watch(wordInputNotifierProvider);
-    final wordPairs = (asyncSession.valueOrNull?.words ?? const <WordPair>[])
+    final sessionId = widget.sessionId;
+    final words = sessionId == null
+        ? ref.watch(wordInputNotifierProvider).valueOrNull?.words
+        : ref.watch(sessionByIdProvider(sessionId)).valueOrNull?.words;
+    final wordPairs = (words ?? const <WordPair>[])
         .where((pair) => pair.isValid)
         .toList();
     return Scaffold(

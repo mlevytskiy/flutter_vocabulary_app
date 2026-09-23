@@ -35,3 +35,12 @@ Future<Session?> sessionById(Ref ref, String sessionId) async {
   final store = await ref.watch(sessionStoreProvider.future);
   return store.byId(sessionId);
 }
+
+/// Every session that has at least one non-blank word, newest first, re-emitted
+/// after every write. The drawer rule on the input screen and the History
+/// screen (task-10) both read this one stream.
+@riverpod
+Stream<List<Session>> nonEmptySessions(Ref ref) async* {
+  final store = await ref.watch(sessionStoreProvider.future);
+  yield* store.watchNonEmpty();
+}

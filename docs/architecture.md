@@ -51,8 +51,12 @@ lib/
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays)
     words_table/
-      words_table_screen.dart         reads words from the notifier instead of a constructor arg;
+      words_table_screen.dart         reads words from the notifier (no sessionId) or from
+                                      sessionByIdProvider (a History row), read-only either way;
                                       Share → bottom sheet: file (TSV) or link (publish, task-05)
+    history/
+      history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
+                                      a row opens WordsTableScreen for that sessionId
 ```
 
 No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder.
@@ -107,6 +111,10 @@ flowchart LR
   N -->|put/byId/newest| W[sessionStoreProvider<br/>SessionStore: Isar 'vocab'<br/>+ current_session_id pointer]
   S -->|WordsTableRoute().go| T[WordsTableScreen]
   T -->|ref.watch| N
+  S -->|HistoryRoute().go| H[HistoryScreen]
+  H -->|watchNonEmpty| W
+  H -->|WordsTableRoute sessionId| T
+  T -->|sessionByIdProvider| W
 ```
 
 - `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced

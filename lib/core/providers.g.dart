@@ -260,5 +260,28 @@ class _SessionByIdProviderElement
   @override
   String get sessionId => (origin as SessionByIdProvider).sessionId;
 }
+
+String _$nonEmptySessionsHash() => r'5eed4773be16d0e53b15997c820df92de8d570d1';
+
+/// Every session that has at least one non-blank word, newest first, re-emitted
+/// after every write. The drawer rule on the input screen and the History
+/// screen (task-10) both read this one stream.
+///
+/// Copied from [nonEmptySessions].
+@ProviderFor(nonEmptySessions)
+final nonEmptySessionsProvider =
+    AutoDisposeStreamProvider<List<Session>>.internal(
+  nonEmptySessions,
+  name: r'nonEmptySessionsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$nonEmptySessionsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NonEmptySessionsRef = AutoDisposeStreamProviderRef<List<Session>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

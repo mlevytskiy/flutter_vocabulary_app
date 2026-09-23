@@ -9,7 +9,7 @@
 | **Blocked on** | — |
 | **Unlocks** | task-05 can put its "shared" badge on the History rows |
 | **Files** | `lib/router/routes.dart` · `lib/features/word_input/word_input_screen.dart` · `lib/features/history/history_screen.dart` (new) · `lib/features/words_table/words_table_screen.dart` · `lib/core/providers.dart` · `docs/architecture.md` |
-| **Status** | not started |
+| **Status** | **code complete 2026-09-22** — AC-1 green (`flutter analyze` 0, `build_runner` clean, `flutter test` 36 passing, the three greps clean). AC-2..AC-8 are the device pass and are still unticked. See [Findings](#findings-2026-09-22) |
 
 ## Behaviour (the spec)
 
@@ -60,7 +60,7 @@ exactly the four named above (drawer rule, drawer items, drag icon, History scre
 
 ## Acceptance criteria
 
-- [ ] **AC-1** `flutter analyze` exits 0; `dart run build_runner build` clean; `flutter test`
+- [x] **AC-1** `flutter analyze` exits 0; `dart run build_runner build` clean; `flutter test`
       passes; the three greps in `CLAUDE.md` are clean (`Navigator.pop` for closing the drawer is
       not `Navigator.push` and is fine).
 - [ ] **AC-2** On device, fresh install: single empty row, focus in Word, **no hamburger, no
@@ -84,3 +84,37 @@ exactly the four named above (drawer rule, drawer items, drag icon, History scre
 - Whether History should also list the current session (spec says yes, with a "current" chip).
 - Where the drag icon sits if the AppBar gets crowded by task-05's "Publish" action — left of
   "Next" for now.
+
+## Findings (2026-09-22)
+
+Steps 1-5 are implemented. Two deviations from the prompt, both deliberate:
+
+1. **The provider is `nonEmptySessions`, not `otherSessionsExist`.** The prompt named a boolean
+   provider, but the History screen needs the session *list* from the same stream, and a second
+   provider over the same `watchNonEmpty()` would have meant two subscriptions. So
+   `lib/core/providers.dart` exposes `Stream<List<Session>> nonEmptySessions`, and the input screen
+   derives `hasOtherSessions` from it locally (`sessions.any((s) => s.sessionId != current)`). Same
+   behaviour, one stream.
+2. **A History row uses `.push(context)`, not `.go(context)`.** The prompt said `.go`, but `go`
+   replaces the stack, so Back from the table would have gone to the input screen rather than to
+   History — AC-6 requires "back returns to History". `push` is the typed-route method on
+   `GoRouteData`, so rule 1 is intact (no `Navigator.push`, no string path). The drawer's History
+   item still uses `.go`, and the AppBar "Next" button still uses `const WordsTableRoute().go(...)`
+   with no id, as specified.
+
+Two things outside this task's scope were also fixed, because AC-1 covers the whole repo:
+
+- **`kSessionIdleWindow` was left at `Duration(seconds: 30)`** with a `TODO(test): restore to
+  Duration(minutes: 5)` from task-03. Two tests in `test/word_input_launch_rule_test.dart` seed a
+  session aged between those values and assert the launch reuses it, so they were failing before
+  this task started. Restored to the documented 5 minutes; all 36 tests pass.
+- **Three `prefer_const` infos in `word_row_item.dart`** (task-04's drag handle). Pure `const`
+  additions on an already-const subtree, no visual or behavioural effect.
+
+`markShared()` is now called only when `sessionId == null`. It stamps whatever session the notifier
+holds, so publishing from a History row would otherwise have flagged the *current* session instead
+of the one being shared. Publishing itself is unchanged.
+
+Not verified: AC-2 through AC-8, which all need a device. Also unverified is how the drawer behaves
+the moment a second session first becomes non-empty, since `watchNonEmpty()` re-emits on write and
+the hamburger should appear without a restart.

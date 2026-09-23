@@ -11,6 +11,7 @@ import 'package:popup_menu_2/popup_menu_2.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/models/session.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
@@ -1009,12 +1010,31 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       });
     });
 
+    // The drawer is only a way to reach *other* sessions, so it exists only
+    // when there is one to reach: with a single session there is no hamburger
+    // and no swipe-in drawer.
+    final currentSessionId =
+        ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId;
+    final sessions =
+        ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
+    final hasOtherSessions =
+        sessions.any((s) => s.sessionId != currentSessionId);
+
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
         title: const Text('English Vocabulary'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            onPressed: () => setState(() => _isDragMode = !_isDragMode),
+            icon: const Icon(Icons.drag_indicator),
+            tooltip: 'Drag and Drop мод',
+            isSelected: _isDragMode,
+            color: _isDragMode
+                ? Theme.of(context).colorScheme.primary
+                : null,
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
@@ -1029,44 +1049,38 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.inversePrimary,
+      drawer: hasOtherSessions
+          ? Drawer(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  DrawerHeader(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.inversePrimary,
+                    ),
+                    child: const Text(
+                      'Меню',
+                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.home),
+                    title: const Text('Main'),
+                    selected: true,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.history),
+                    title: const Text('History'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      const HistoryRoute().go(context);
+                    },
+                  ),
+                ],
               ),
-              child: const Text(
-                'Меню',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Головний екран'),
-              selected: !_isDragMode,
-              onTap: () {
-                setState(() {
-                  _isDragMode = false;
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.drag_indicator),
-              title: const Text('Drag and Drop мод'),
-              selected: _isDragMode,
-              onTap: () {
-                setState(() {
-                  _isDragMode = true;
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        ),
-      ),
+            )
+          : null,
       body: Stack(
         children: [
           Screenshot(
