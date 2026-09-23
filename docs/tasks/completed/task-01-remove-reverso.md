@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#1](../roadmap.md#steps) |
+| **Roadmap step** | [#1](../../roadmap.md#steps) |
 | **Size** | S |
 | **Wave** | 1 (alone — it is the only step touching the word-detail UI and the Worker route table in one change) |
 | **Depends on** | — |

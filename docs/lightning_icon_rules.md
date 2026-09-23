@@ -100,24 +100,26 @@ that starts with an English letter but contains other-language text past
 that point still takes the plain English → Ukrainian path.
 
 A successful translate action — whether the plain English → Ukrainian run
-or the smart-swap path — sets `_hasTranslationOptions[index] = true`,
-which is what turns the Translation dots button solid (see below). The
-smart-swap path sets it too (not just the plain path): a real translation
-there still means there's more to offer than the literal swap, e.g.
-translation-in-context alternatives.
+or the smart-swap path — puts Google's dictionary block in
+`_translationOptions[index]`, and **that cache is what turns the
+Translation dots button solid** (see below). Only the plain English →
+Ukrainian run leaves a block behind; the smart-swap path stores none,
+because the English result it just put in Word has no dictionary of its
+own yet, so the dots go outlined there and the popup offers its update
+icon instead of the "more options" chips.
 
 ## Translation dots button rule
 
 The dots button has no show/hide rule of its own — it is always rendered,
 for every row, regardless of focus. Its **appearance** and **tap
-behaviour** both key off `_hasTranslationOptions[index]`:
+behaviour** both key off the cached dictionary block (`_translationOptions`),
+which the button itself derives its state from — there is no second flag:
 
-- **Empty dots** (`Icons.circle_outlined`, purple) — the default, i.e.
-  `_hasTranslationOptions[index] == false`. Tapping does **nothing**
-  right now (`onPressed: null`) — there is currently no action wired to
-  this state.
+- **Empty dots** (`Icons.circle_outlined`, purple) — the default, i.e. no
+  cached dictionary block for this row. Tapping **still opens the popup**;
+  its body offers the update icon that loads a block.
 - **Full dots** (`Icons.circle`, purple — same color as empty) — shown once
-  `_hasTranslationOptions[index] == true`, i.e. once the Translation
+  a dictionary block is cached, i.e. once the Translation
   icon's action (either the plain English → Ukrainian run, or the
   smart-swap path — see below) has produced a real translation for this
   row. Tapping opens the "more options" popup
@@ -137,20 +139,31 @@ field (`dt=t&dt=bd&dt=at`, see `GoogleTranslateService`) and the whole
 `TranslationResult` is kept in `_translationOptions[index]` for the
 popup. Opening the popup never touches the network.
 
-Two cases show a `Tap the lightning icon to load translations.`
-placeholder instead of chips, because the dots are solid without a
-dictionary behind them:
+When there is no block to show, the popup offers an **update icon**
+(`Icons.refresh`) and a line saying which case applies, instead of the
+old dead-end `Tap the lightning icon to load translations.` message.
+Tapping the icon loads the block for whatever the Word field holds now.
+Two cases reach that state:
 
-- the **smart-swap path** — it sets `_hasTranslationOptions` on a real
-  translation but has no dictionary for the *new* Word field content;
-- **after the Word field is edited** — `_translationOptions[index]` is
-  dropped on every keystroke in Word (the old dictionary described the
-  previous word), while the dots deliberately stay solid.
+- the **smart-swap path** — the swapped-in English word has no dictionary
+  yet, so the dots go outlined with it;
+- **after the Word field is edited** — `translationOptions` is dropped on
+  every keystroke in Word (the old dictionary described the previous
+  word), which empties the dots too.
+
+The load runs the *same* `GoogleTranslateService.translateWord` call the
+Translation lightning makes, so the popup shows exactly the several
+alternatives that action produces. It writes nothing else: the
+Translation field and both "filled" marks are untouched, and picking a
+chip remains the only thing that changes the field. The update icon is
+disabled while the Word field holds fewer than 2 letters, since there is
+nothing to look up. A load that comes back without a dictionary leaves
+the icon in place with a short explainer.
 
 The dots button has **no loading state of its own** — while a translate
 request is in flight (`_isLoadingTranslation[index] == true`), the dots
 simply stay in whatever state they were already in (empty or full) and
-flip only once the request resolves and `_hasTranslationOptions` changes.
+flip only once the request resolves and the cached block changes.
 The loading spinner itself is shown separately, in the Translation icon's
 own overlay slot (see "Translation icon rule" above).
 
@@ -196,7 +209,7 @@ there's no "other field" input to compare against in those paths.
 | Word fully empty | `Word field` text is empty (0 characters) |
 | Translation filled | `Translation field` text length is more than 5, **or** it was populated automatically (AI translate, picking a popup translation option, or photo recognition) — hides the Translation icon (see above) |
 | Word filled | `Word field` text length > 5, **or** it was populated automatically (photo recognition, or a real translation via the Word icon — see "Successful-translation marking rule" above). Tracked in `_wordMarkedFilled`, but not currently wired to either icon's visibility |
-| Translation has options | `_hasTranslationOptions[index]` — drives the Translation dots button's empty/full state and its popup |
+| Translation has options | `_translationOptions[index]?.hasDictionary` — the cached block itself, which drives the Translation dots button's solid/outlined state and its popup. There is no separate flag; the old `_hasTranslationOptions` list was removed when the two could disagree |
 
 Note the two overlaid icons are **not symmetric in their thresholds**:
 the Word icon's own trigger ("Translation ≥2 letters") is intentionally a
@@ -219,7 +232,7 @@ worked example below).
 
 (All rows assume the row is focused, per Rule 0. The dots button's
 empty/full state is independent of this table — it depends only on
-`_hasTranslationOptions`.)
+whether a dictionary block is cached.)
 
 ## Implementation notes
 
@@ -249,8 +262,8 @@ empty/full state is independent of this table — it depends only on
   row's horizontal space as possible. The full (`CustomPopupMenu`) variant
   uses the same 22px-wide `SizedBox` with the dots centered inside via
   `Center` (no extra padding), matching the empty variant's footprint
-  exactly — so flipping `_hasTranslationOptions` between the two never
-  shifts the row's layout.
+  exactly — so flipping the dots between outlined and solid never shifts
+  the row's layout.
 - **Focus tracking:** every row has its own `FocusNode` for both fields
   (`_wordFocusNodes[index]`, `_translationFocusNodes[index]`, created in
   `_addControllersForIndex`), each with a listener that rebuilds the UI on
@@ -267,6 +280,28 @@ empty/full state is independent of this table — it depends only on
   sync.
 
 ## Changelog
+
+- **2026-09-23:** The dots popup no longer has a dead end. It used to show
+  `Tap the lightning icon to load translations.` whenever the dots were solid
+  without a cached block behind them, which two paths reached: editing the Word
+  field (the block is dropped per keystroke) and the smart-swap path. Worse, the
+  dots' solid state was a second hand-maintained flag (`_hasTranslationOptions`)
+  that never heard about the edit, so solid dots could open an empty popup.
+
+  Now the button derives its state from the cached block itself — solid means
+  there are chips in there, and the two cannot disagree. `_hasTranslationOptions`
+  is gone from the screen entirely (the `WordPair` field stays, still written and
+  still round-tripped, but nothing reads it for the dots any more).
+
+  Empty dots still open the popup: its body is now an **update icon**
+  (`Icons.refresh`) plus a line saying why there is nothing to show. Tapping it
+  runs the *same* `GoogleTranslateService.translateWord` call the Translation
+  lightning makes, so the popup shows exactly the alternatives that action
+  produces — several options, not one word. It writes nothing else: the
+  Translation field and both "filled" marks are untouched, so a hand-edited
+  translation survives the load and only picking a chip replaces it. The icon is
+  disabled below 2 letters of Word, since there is nothing to look up, and a load
+  that returns no dictionary leaves the icon in place with a short explainer.
 
 - **2026-09-01:** Original implementation — both the Word icon and the
   Translation icon (purple `electric_bolt`, turning into an amber

@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#9](../roadmap.md#steps) |
+| **Roadmap step** | [#9](../../roadmap.md#steps) |
 | **Size** | fog — no size and no shape yet |
 | **Wave** | — (never enters a wave; what gets scheduled is the recon, not the work) |
 | **Depends on** | **task-01** — it frees the word-detail slot this would occupy |

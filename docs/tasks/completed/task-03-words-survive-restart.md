@@ -2,11 +2,11 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#3](../roadmap.md#steps) |
+| **Roadmap step** | [#3](../../roadmap.md#steps) |
 | **Size** | M (4 steps, one commit each) |
 | **Wave** | 2 |
 | **Depends on** | task-00 (done) |
-| **Blocked on** | — (**D8** resolved: `isar_community` replaces `shared_preferences` as the word store — see [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far)) |
+| **Blocked on** | — (**D8** resolved: `isar_community` replaces `shared_preferences` as the word store — see [`../roadmap.md#decisions-so-far`](../../roadmap.md#decisions-so-far)) |
 | **Unlocks** | task-05 (`Session.isShared` + `sessionId` are the handle the shared link needs) · task-08 (the memorized mark lives on the persisted word) · **task-10** (side menu + History builds on `SessionStore.watchNonEmpty()`) |
 | **Files** | `pubspec.yaml` · `lib/core/models/session.dart` (new) · `lib/core/models/word_pair.dart` · `lib/core/models/translation_result.dart` · `lib/core/services/session_store.dart` (new, replaces `word_store.dart`) · `lib/core/providers.dart` · `lib/features/word_input/word_input_notifier.dart` · `lib/features/word_input/word_input_screen.dart` · `lib/features/words_table/words_table_screen.dart` · `test/session_store_test.dart` (new, replaces `test/word_store_test.dart`) · `docs/architecture.md` |
 | **Status** | v2 **code complete** (2026-09-20). AC-1..AC-6 green (`flutter test` — 16 tests across `test/session_store_test.dart` and `test/word_input_launch_rule_test.dart`); AC-7..AC-14 are the device pass and are still unticked. v1 (one JSON blob in `shared_preferences`, `5e18846`) is what this replaced; see [History](#history-v1) at the bottom. |
@@ -78,7 +78,7 @@ Let `prev` be the session recorded as current (pointer `current_session_id` in
 
 ### Side menu and History
 
-Split out to [`task-10-side-menu-and-history.md`](./task-10-side-menu-and-history.md).
+Split out to [`task-10-side-menu-and-history.md`](task-10-side-menu-and-history.md).
 This task only has to leave `SessionStore.watchNonEmpty()` and `nonEmpty()` in place for it.
 
 ## Prompt

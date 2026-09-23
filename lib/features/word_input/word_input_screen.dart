@@ -53,7 +53,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // Word), tracked separately from _isLoadingTranslation so the two
   // corners' spinners never interfere with each other.
   final List<bool> _isLoadingWordTranslation = [];
-  final List<bool> _hasTranslationOptions = [];
   // Google's dictionary block per row -- the set of translations grouped by
   // part of speech that the last translate brought back, reused by the dots
   // popup so opening it costs no second request. Dropped whenever the Word
@@ -211,9 +210,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           _wordMarkedFilled[index] = false;
         }
         // The cached dictionary described the previous word, so it must not
-        // stay behind the dots button. The dots themselves keep their state
-        // (docs/lightning_icon_rules.md) -- the popup just falls back to its
-        // "tap the lightning icon" message.
+        // stay behind the dots button. Dropping it also empties the dots
+        // again: the button's state is derived from this cache, so the two can
+        // never disagree (docs/lightning_icon_rules.md). Tapping the empty
+        // dots still opens the popup, which offers the update icon.
         _translationOptions[index] = null;
       }); // Оновити для показу іконки при >= 2 літерах
       // Same guard for persistence: a no-op push still marks the session
@@ -229,12 +229,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
       // Якщо translation повністю видалений, скинути опції й "filled"-мітку
       final isEmptyNow = translationController.text.isEmpty;
-      final shouldResetOptions = isEmptyNow && _hasTranslationOptions[index];
       final shouldResetFilledMark = isEmptyNow && _translationMarkedFilled[index];
 
       setState(() {
-        if (shouldResetOptions) {
-          _hasTranslationOptions[index] = false;
+        if (isEmptyNow) {
           _translationOptions[index] = null;
         }
         if (shouldResetFilledMark) {
@@ -248,7 +246,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
     _isLoadingWordTranslation.add(false);
-    _hasTranslationOptions.add(false);
     _translationOptions.add(null);
     _translationMarkedFilled.add(false);
     _wordMarkedFilled.add(false);
@@ -262,13 +259,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// state, the cached dictionary behind the dots, and the two lightning
   /// "filled" marks (docs/lightning_icon_rules.md).
   void _pushRow(int index, {String? word, String? translation}) {
-    if (index < 0 || index >= _hasTranslationOptions.length) return;
+    if (index < 0 || index >= _translationOptions.length) return;
     final options = _translationOptions[index];
     ref.read(wordInputNotifierProvider.notifier).updateAt(
           index,
           word: word,
           translation: translation,
-          hasTranslationOptions: _hasTranslationOptions[index],
+          // Derived, never set by hand: the flag the store keeps now always
+          // agrees with whether a block is actually stored.
+          hasTranslationOptions: options?.hasDictionary ?? false,
           translationOptions: options,
           clearTranslationOptions: options == null,
           wordMarkedFilled: _wordMarkedFilled[index],
@@ -341,7 +340,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _translationControllers.clear();
       _isLoadingTranslation.clear();
       _isLoadingWordTranslation.clear();
-      _hasTranslationOptions.clear();
       _translationOptions.clear();
       _translationMarkedFilled.clear();
       _wordMarkedFilled.clear();
@@ -354,7 +352,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // The parallel lists are what the UI actually indexes into, so the
         // persisted extras have to land in them, not just in _wordPairs.
         final pair = _wordPairs[i];
-        _hasTranslationOptions[i] = pair.hasTranslationOptions;
         _translationOptions[i] = pair.translationOptions;
         _wordMarkedFilled[i] = pair.wordMarkedFilled;
         _translationMarkedFilled[i] = pair.translationMarkedFilled;
@@ -439,10 +436,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // governed separately (unaffected by this rule).
   //
   // Translation dots button: sits *outside* the Translation field, always
-  // visible -- no focus or length gating, and no loading state of its own.
-  // Empty (outlined) dots by default; full (solid) dots once a translate
-  // has produced options for this row (`_hasTranslationOptions`) -- opens
-  // the "more options" popup. See _buildTranslationDotsButton.
+  // visible -- no focus or length gating, and no loading state of its own. Its
+  // appearance is derived from the cached dictionary itself (solid when
+  // `_translationOptions[index]` holds a block, outlined when it does not), so
+  // it cannot claim options that the popup would fail to show. Tapping it
+  // always opens the "more options" popup; when there is no cached block the
+  // popup offers an update icon that fetches one.
 
   /// "Translation filled" per docs/lightning_icon_rules.md: more than 5
   /// characters, OR auto-populated (AI translate, a picked popup option, or
@@ -478,6 +477,74 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// gated to the row you're actively editing.
   bool _shouldShowPronunciation(int index) {
     return _translationControllers[index].text.trim().isNotEmpty;
+  }
+
+  /// Whether this row's Word field has enough text for a dictionary lookup.
+  /// The same "2+ letters" bar the Translation icon uses: below it there is
+  /// nothing worth asking Google about, and the query would be empty.
+  bool _canLoadTranslationOptions(int index) {
+    return _wordControllers[index].text.trim().length >= 2;
+  }
+
+  /// Loads the dictionary block for this row's current Word field and hands it
+  /// to the dots popup. This is the dots popup's own "update icon" action --
+  /// the path that makes the block reachable after the cached one was dropped
+  /// (a Word-field edit, or the smart-swap path), which used to be a dead-end
+  /// "tap the lightning icon" message.
+  ///
+  /// It deliberately runs the *same* [GoogleTranslateService.translateWord]
+  /// call the Translation lightning makes, so the popup shows exactly the
+  /// several alternatives that action produces, in the same order -- one
+  /// source of truth for "what else could this word be".
+  ///
+  /// Unlike that action it writes nothing: the Translation field and both
+  /// "filled" marks are left alone, because the user asked for extra options,
+  /// not for their translation to be replaced. Picking a chip is what changes
+  /// the field, via [_selectTranslationOption].
+  ///
+  /// Returns the block so the popup can render it immediately, or null when
+  /// the request failed or Google had no dictionary for the word.
+  Future<TranslationResult?> _loadTranslationOptions(int index) async {
+    if (index < 0 || index >= _wordControllers.length) return null;
+    if (!_canLoadTranslationOptions(index)) return null;
+
+    final word = _wordControllers[index].text.trim();
+
+    setState(() {
+      // Reuses the Translation icon's own in-flight flag: it is the same kind
+      // of request on the same row, and its spinner slot is the one already
+      // wired for it. A second per-row list would need mirroring in remove,
+      // reorder, restore and the hot-reload pad for no visible difference.
+      _isLoadingTranslation[index] = true;
+    });
+
+    try {
+      final translation = await ref
+          .read(googleTranslateServiceProvider)
+          .translateWord(word, from: 'en', to: 'uk');
+
+      if (mounted) {
+        setState(() {
+          _isLoadingTranslation[index] = false;
+          // The block is the state the dots' solid/outlined appearance is
+          // derived from, so storing it is also what makes the dots fill in.
+          _translationOptions[index] = translation.result;
+        });
+      }
+      _pushRow(index);
+
+      return translation.result;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingTranslation[index] = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Translation error: $e')),
+        );
+      }
+      return null;
+    }
   }
 
   /// Speaks the row's Word field in [accent]. A second tap (same row or a
@@ -592,8 +659,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
         setState(() {
           _isLoadingTranslation[index] = false;
-          _hasTranslationOptions[index] = true;
-          // The whole set the request brought back, for the dots popup.
+          // The whole set the request brought back, for the dots popup. This
+          // is also what makes the dots solid -- they read the block itself.
           _translationOptions[index] = translation.result;
           if (gotRealTranslation) {
             // Got an actual translation (not just an echo of the input) ->
@@ -617,13 +684,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
           setState(() {
             _isLoadingTranslation[index] = false;
-            // A real translation came back here too -> offer the same
-            // "more options" popup as the plain English->Ukrainian path
-            // (e.g. translation-in-context alternatives), not just a
-            // literal swap.
-            _hasTranslationOptions[index] = true;
-            // The Word field now holds the English result, so the popup has
-            // no dictionary for it until the lightning is tapped again.
+            // The Word field now holds the English result, so there is no
+            // dictionary for it yet. The dots go outlined with it, and the
+            // popup offers the update icon -- which is how the alternatives
+            // the old comment promised here are still reachable, just on a
+            // deliberate tap instead of a stale block.
             _translationOptions[index] = null;
             _wordMarkedFilled[index] = true;
             _translationMarkedFilled[index] = true;
@@ -855,7 +920,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _wordPairs[0] = WordPair(word: '', translation: '');
         _isLoadingTranslation[0] = false;
         _isLoadingWordTranslation[0] = false;
-        _hasTranslationOptions[0] = false;
         _translationOptions[0] = null;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
@@ -872,7 +936,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _translationControllers.removeAt(index);
         _isLoadingTranslation.removeAt(index);
         _isLoadingWordTranslation.removeAt(index);
-        _hasTranslationOptions.removeAt(index);
         _translationOptions.removeAt(index);
         _translationMarkedFilled.removeAt(index);
         _wordMarkedFilled.removeAt(index);
@@ -916,11 +979,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       final isLoadingWord = _isLoadingWordTranslation.removeAt(oldIndex);
       _isLoadingWordTranslation.insert(newIndex, isLoadingWord);
 
-      // 5. _hasTranslationOptions
-      final hasOptions = _hasTranslationOptions.removeAt(oldIndex);
-      _hasTranslationOptions.insert(newIndex, hasOptions);
-
-      // 5b. _translationOptions
+      // 5. _translationOptions
       final options = _translationOptions.removeAt(oldIndex);
       _translationOptions.insert(newIndex, options);
 
@@ -978,8 +1037,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       shouldShowWordIcon: _shouldShowWordIcon(index),
       shouldShowTranslationIcon: _shouldShowTranslationIcon(index),
       shouldShowPronunciation: _shouldShowPronunciation(index),
-      hasTranslationOptions: _hasTranslationOptions[index],
       translationOptions: _translationOptions[index],
+      canLoadTranslationOptions: _canLoadTranslationOptions(index),
+      onLoadTranslations: () => _loadTranslationOptions(index),
       popupController: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
       onRemove: () => _removeItem(index),
       onFillWordWithAI: () => _fillWordWithAI(index),

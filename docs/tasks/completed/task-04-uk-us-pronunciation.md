@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#4](../roadmap.md#steps) |
+| **Roadmap step** | [#4](../../roadmap.md#steps) |
 | **Size** | S |
 | **Wave** | 3 (parallel with task-05 and task-08 — disjoint file sets) |
 | **Depends on** | — |

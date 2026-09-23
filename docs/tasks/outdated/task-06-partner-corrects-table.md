@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#6](../roadmap.md#steps) |
+| **Roadmap step** | [#6](../../roadmap.md#steps) |
 | **Size** | M |
 | **Wave** | 4 (alone — same `vocab-photo-api/src/session/` zone as task-07) |
 | **Depends on** | **task-05** — there is no page to correct until a session is published |

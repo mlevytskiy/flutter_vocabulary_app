@@ -25,12 +25,19 @@ class WordRowItem extends StatelessWidget {
   final bool shouldShowWordIcon;
   final bool shouldShowTranslationIcon;
   final bool shouldShowPronunciation;
-  final bool hasTranslationOptions;
 
-  /// Google's dictionary block for this row, shown inside the dots popup.
-  /// Null until a translate produced one (and dropped again when the Word
-  /// field changes) -- the popup then shows its placeholder message.
+  /// Google's dictionary block for this row, shown inside the dots popup. Null
+  /// until a translate produced one, and dropped again when the Word field
+  /// changes -- the popup then offers its update icon instead. The dots button
+  /// derives its solid/outlined state from this same value.
   final TranslationResult? translationOptions;
+
+  /// Whether the Word field holds enough text for a dictionary lookup.
+  final bool canLoadTranslationOptions;
+
+  /// Loads the dictionary block for this row's current Word field. The screen
+  /// owns the request; the popup renders what comes back.
+  final Future<TranslationResult?> Function() onLoadTranslations;
   final CustomPopupMenuController popupController;
   final VoidCallback onRemove;
   final VoidCallback onFillWordWithAI;
@@ -51,9 +58,10 @@ class WordRowItem extends StatelessWidget {
     required this.shouldShowWordIcon,
     required this.shouldShowTranslationIcon,
     required this.shouldShowPronunciation,
-    required this.hasTranslationOptions,
     required this.popupController,
+    required this.onLoadTranslations,
     this.translationOptions,
+    this.canLoadTranslationOptions = true,
     required this.onRemove,
     required this.onFillWordWithAI,
     required this.onFillWithAI,
@@ -242,8 +250,9 @@ class WordRowItem extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   TranslationDotsButton(
-                    isFilled: hasTranslationOptions,
                     options: translationOptions,
+                    canLoadOptions: canLoadTranslationOptions,
+                    onLoadTranslations: onLoadTranslations,
                     controller: popupController,
                     onSelectTranslation: onSelectTranslation,
                   ),

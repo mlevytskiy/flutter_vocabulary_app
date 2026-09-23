@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#2](../roadmap.md#steps) |
+| **Roadmap step** | [#2](../../roadmap.md#steps) |
 | **Size** | S |
 | **Wave** | 2 (parallel with task-03 — Worker + `test/` vs app files, disjoint) |
 | **Depends on** | — |

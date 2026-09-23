@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-20"
+updated_at: "2026-09-23"
 ---
 
 # Roadmap — flutter_vocabulary_app
@@ -30,6 +30,9 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 7 | Download the AnkiDroid file straight from the shared page | `idea-brief.md` §7 Recommendation | S | idea |
 | 8 | Review collected words on the device and mark one memorized | `idea-brief.md` §5 Out of scope | S | idea |
 | 9 | Extra word detail now that Reverso is out → see [Not yet specified](#not-yet-specified) | `idea-brief.md` §8 Open questions | fog | idea |
+| 11 | The dots popup shows the translations it already has, and can load them on tap — the "Tap the lightning icon" dead end goes | owner report 2026-09-23 → [task-11](tasks/active/task-11-dots-popup-loads-translations.md) | S | code complete 2026-09-23 |
+| 12 | Tapping the dots closes the keyboard, so the popup is not squeezed above it | owner report 2026-09-23 → [task-12](tasks/active/task-12-hide-keyboard-on-dots-tap.md) | S | task |
+| 13 | A Settings screen, reachable from the FAB corner; the drag-and-drop option moves into it and out of the top bar | owner report 2026-09-23 → [task-13](tasks/active/task-13-settings-screen-and-fab.md) | M | task |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker
@@ -64,6 +67,7 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 |---|---|:---:|:---:|:---:|
 | D3 | Whether an English-description dictionary is the right thing for the word-detail slot at all, and if so whether `dictionaryapi.dev` is accepted as the source | grilling | human | 9 |
 | D7 | What the machine-translation source becomes for typed words once quality complaints appear — the photo path already uses a stronger context-aware translation than the typed path | research | agent | — |
+| D9 | Where the settings entry point lives on the input screen: the speed dial's existing (inert) settings child, the whole speed dial moved to the bottom-left, or a separate bottom-left FAB beside an untouched speed dial. The report says "settings FAB … left bottom corner of options (near the take photo and screenshot button)", which is both | grilling | human | 13 |
 
 ## Decisions so far
 
@@ -72,13 +76,13 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 - A link is the only credential on the shared page — no accounts, no permissions → [`docs/idea-brief.md`](./idea-brief.md)
 - The shared session is designed source-agnostic from the start, so a future capture source is an addition rather than a rewrite → [`docs/idea-brief.md`](./idea-brief.md)
 - Reverso is out; its Worker endpoints return a flat 403 from Cloudflare IPs and the device-direct path is unverified → [`vocab-photo-api/README.md`](../vocab-photo-api/README.md)
-- **D1** — UK/US pronunciation is on-device TTS (`flutter_tts`, en-GB/en-US locale switch): offline, no key, UK+US always guaranteed → [`docs/tasks/task-04-uk-us-pronunciation.md`](./tasks/task-04-uk-us-pronunciation.md)
-- **D2** — over the word limit, the Worker keeps the first N highlighted words in reading order and drops the rest; the prompt's "most useful/valuable" ranking clause is removed → [`docs/tasks/task-02-word-limit-is-a-cap.md`](./tasks/task-02-word-limit-is-a-cap.md)
-- **D4** — a published session (and its photos) lives for a 30-day TTL via Cloudflare KV `expirationTtl`; no delete endpoint in v1 → [`docs/tasks/task-05-publish-session-link.md`](./tasks/task-05-publish-session-link.md)
-- **D5** — the shared page renders one photo per session in v1; the session document stores `sources` as a list from day one so a second photo is an addition, not a migration → [`docs/tasks/task-05-publish-session-link.md`](./tasks/task-05-publish-session-link.md)
-- **D6** — no per-visitor names on the shared page; identity carries no behaviour in v1 → [`docs/tasks/task-06-partner-corrects-table.md`](./tasks/task-06-partner-corrects-table.md)
+- **D1** — UK/US pronunciation is on-device TTS (`flutter_tts`, en-GB/en-US locale switch): offline, no key, UK+US always guaranteed → [`docs/tasks/task-04-uk-us-pronunciation.md`](tasks/completed/task-04-uk-us-pronunciation.md)
+- **D2** — over the word limit, the Worker keeps the first N highlighted words in reading order and drops the rest; the prompt's "most useful/valuable" ranking clause is removed → [`docs/tasks/task-02-word-limit-is-a-cap.md`](tasks/completed/task-02-word-limit-is-a-cap.md)
+- **D4** — a published session (and its photos) lives for a 30-day TTL via Cloudflare KV `expirationTtl`; no delete endpoint in v1 → [`docs/tasks/task-05-publish-session-link.md`](tasks/completed/task-05-publish-session-link.md)
+- **D5** — the shared page renders one photo per session in v1; the session document stores `sources` as a list from day one so a second photo is an addition, not a migration → [`docs/tasks/task-05-publish-session-link.md`](tasks/completed/task-05-publish-session-link.md)
+- **D6** — no per-visitor names on the shared page; identity carries no behaviour in v1 → [`docs/tasks/task-06-partner-corrects-table.md`](tasks/outdated/task-06-partner-corrects-table.md)
 - Architecture, simplified: one `lib/` with feature folders, go_router typed routes, Riverpod for services and the word list, `shared_preferences` for persistence; nothing else changes → [`architecture.md`](./architecture.md). The larger design (packages, Retrofit, Isar, ADRs) is parked on branch `chore/architecture-migration`.
-- **D8** (2026-09-20) — words are stored as **Sessions** in `isar_community` (+ `isar_community_flutter_libs`, `isar_community_generator`, `path_provider` made direct); `shared_preferences` stays only for the `current_session_id` pointer and as the v1 migration source. A session older than 5 minutes is offered back through a snackbar, not restored silently. Reasoning is the parked ADR-0004 on `chore/architecture-migration`, applied without the repository layer → [`docs/tasks/task-03-words-survive-restart.md`](./tasks/task-03-words-survive-restart.md), [`task-10`](./tasks/task-10-side-menu-and-history.md)
+- **D8** (2026-09-20) — words are stored as **Sessions** in `isar_community` (+ `isar_community_flutter_libs`, `isar_community_generator`, `path_provider` made direct); `shared_preferences` stays only for the `current_session_id` pointer and as the v1 migration source. A session older than 5 minutes is offered back through a snackbar, not restored silently. Reasoning is the parked ADR-0004 on `chore/architecture-migration`, applied without the repository layer → [`docs/tasks/task-03-words-survive-restart.md`](tasks/completed/task-03-words-survive-restart.md), [`task-10`](tasks/completed/task-10-side-menu-and-history.md)
 - The Worker carries no KV/D1/R2/Durable-Object binding today, only a rate limiter — a persistent session store is a new binding → [`vocab-photo-api/wrangler.jsonc`](../vocab-photo-api/wrangler.jsonc)
 
 ## Dependency graph
@@ -89,9 +93,11 @@ flowchart LR
   s3["3 · Words survive restart"] -->|"the memorized mark needs a local store to live in"| s8["8 · Review and mark memorized"]
   s5["5 · Session published to a link"] -->|"there is no page to correct until a session is published"| s6["6 · Partner corrects the table"]
   s5 -->|"the download has to sit on the shared page"| s7["7 · Download from the shared page"]
+  s13["13 · Settings screen and FAB"] -->|"the drag-mode toggle has no home once it leaves the AppBar"| s10["10 · Side menu and History (drag toggle)"]
 ```
 
-Four edges, and that is all of them. Everything else in the execution path below is serialized by
+Five edges, and that is all of them — the fifth is step 13 taking over the drag-mode toggle that
+step 10 installed in the AppBar. Everything else in the execution path below is serialized by
 **file conflict, not dependency** — `lib/screens/word_input_screen.dart` is 1282 lines and most
 steps reach into it, so the zone column is doing more work here than the graph is.
 
@@ -104,6 +110,7 @@ steps reach into it, so the zone column is doing more work here than the graph i
 | 3 | 4 ∥ 5 ∥ 8 | 4: `lib/widgets/synced_text_field_row.dart` · 5: `vocab-photo-api/src/session/` (new) + `lib/screens/words_table_screen.dart` · 8: a new screen in `lib/screens/` + `lib/main.dart` (three disjoint file sets) | 6, 7 |
 | 4 | 6 | `vocab-photo-api/src/session/` (new) — same zone as 7, so the two cannot share a wave | 7 |
 | 5 | 7 | `vocab-photo-api/src/session/` (new) | — |
+| 6 | 11 → 12 → 13 | all three: `lib/features/word_input/word_input_screen.dart` (+ `translation_options_content.dart` for 11, `translation_dots_button.dart` for 11 and 12, a new `lib/features/settings/` for 13) — **one zone, one order**: 11 owns the popup's behaviour, 12 adds an unfocus to the same tap, 13 rewires the drag flag the AppBar toggle reads | — |
 
 Step 9 never enters a wave: it has no size and no shape yet, so what gets scheduled is its recon
 pass, not the work.

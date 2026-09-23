@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#8](../roadmap.md#steps) |
+| **Roadmap step** | [#8](../../roadmap.md#steps) |
 | **Size** | S |
 | **Wave** | 3 (parallel with task-04 and task-05 — a new screen plus `main.dart`, disjoint from both) |
 | **Depends on** | **task-03** — the memorized mark needs a local store to live in |

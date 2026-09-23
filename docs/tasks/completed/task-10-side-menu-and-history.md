@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#3](../roadmap.md#steps) (second half — split from task-03 on 2026-09-20) |
+| **Roadmap step** | [#3](../../roadmap.md#steps) (second half — split from task-03 on 2026-09-20) |
 | **Size** | S |
 | **Wave** | 3 (after task-03; disjoint from task-04/05/08 except `routes.dart`, which gains one route) |
 | **Depends on** | **task-03 v2** — `Session`, `SessionStore.watchNonEmpty()`, `sessionByIdProvider` |

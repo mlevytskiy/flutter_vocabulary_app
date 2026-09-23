@@ -2,7 +2,7 @@
 
 |  |  |
 |---|---|
-| **Roadmap step** | [#7](../roadmap.md#steps) |
+| **Roadmap step** | [#7](../../roadmap.md#steps) |
 | **Size** | S |
 | **Wave** | 5 (alone — same `vocab-photo-api/src/session/` zone as task-06) |
 | **Depends on** | **task-05** — the download has to sit on the shared page |
