@@ -79,7 +79,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   final List<FocusNode> _wordFocusNodes = [];
   final List<FocusNode> _translationFocusNodes = [];
   final Map<int, CustomPopupMenuController> _popupControllers = {};
-  bool _isDragMode = false;
   final ScreenshotController _screenshotController = ScreenshotController();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
@@ -1082,11 +1081,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     super.dispose();
   }
 
-  Widget _buildRowItem(int index) {
+  Widget _buildRowItem(int index, {required bool isDragMode}) {
     return WordRowItem(
       key: ValueKey(index),
       index: index,
-      isDragMode: _isDragMode,
+      isDragMode: isDragMode,
       wordController: _wordControllers[index],
       translationController: _translationControllers[index],
       wordFocusNode: _wordFocusNodes[index],
@@ -1163,6 +1162,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final currentSessionId = ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId;
     final sessions = ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
     final hasOtherSessions = sessions.any((s) => s.sessionId != currentSessionId);
+    // The one place the reorder preference is read. Written by the Settings
+    // screen (task-13); this screen only reads it.
+    final isDragMode = ref.watch(dragModeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -1170,13 +1172,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         title: const Text('English Vocabulary'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            onPressed: () => setState(() => _isDragMode = !_isDragMode),
-            icon: const Icon(Icons.drag_indicator),
-            tooltip: 'Drag and Drop мод',
-            isSelected: _isDragMode,
-            color: _isDragMode ? Theme.of(context).colorScheme.primary : null,
-          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
@@ -1227,12 +1222,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         children: [
           Screenshot(
             controller: _screenshotController,
-            child: _isDragMode
+            child: isDragMode
                 ? ReorderableListView.builder(
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
                     onReorder: _reorderItems,
-                    itemBuilder: (context, index) => _buildRowItem(index),
+                    itemBuilder: (context, index) =>
+                        _buildRowItem(index, isDragMode: true),
                     proxyDecorator: (child, index, animation) {
                       return Material(
                         color: Colors.transparent,
@@ -1243,8 +1239,24 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 : ListView.builder(
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
-                    itemBuilder: (context, index) => _buildRowItem(index),
+                    itemBuilder: (context, index) =>
+                        _buildRowItem(index, isDragMode: false),
                   ),
+          ),
+          // The settings entry point: bottom-left, opposite the speed dial's
+          // own bottom-right corner (D9 (c) in docs/roadmap.md). Kept out of
+          // the Screenshot above, so it never appears in a shared screenshot.
+          Positioned(
+            left: 16.0,
+            bottom: 16.0,
+            child: FloatingActionButton.small(
+              heroTag: null,
+              onPressed: () => const SettingsRoute().push(context),
+              tooltip: 'Settings',
+              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+              foregroundColor: Theme.of(context).colorScheme.primary,
+              child: const Icon(Icons.settings),
+            ),
           ),
           if (_isAnalyzingPhoto)
             Container(
@@ -1270,6 +1282,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       floatingActionButton: WordInputSpeedDial(
         onTakePhoto: _takePhotoForVocabulary,
         onScreenshot: _takeScreenshot,
+        onSettings: () => const SettingsRoute().push(context),
       ),
     );
   }

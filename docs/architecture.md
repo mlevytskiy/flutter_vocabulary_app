@@ -25,7 +25,7 @@ lib/
   core/
     providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, sessionStore,
                                 googleTranslateService, pronunciationService, sessionPublishService,
-                                sessionById
+                                sessionById; plus the dragMode display preference (task-13)
     models/                     vocab_word.dart — moved, unchanged
                                 word_pair.dart (+.g) — Isar @embedded row: the two strings plus the
                                 dots/lightning extras that make a restored row look untouched
@@ -57,6 +57,9 @@ lib/
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
                                       a row opens WordsTableScreen for that sessionId
+    settings/
+      settings_screen.dart            the drag-and-drop mode switch (task-13); reads and writes
+                                      dragModeProvider, which the input screen reads
 ```
 
 No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder.
@@ -115,6 +118,9 @@ flowchart LR
   H -->|watchNonEmpty| W
   H -->|WordsTableRoute sessionId| T
   T -->|sessionByIdProvider| W
+  S -->|SettingsRoute push| G[SettingsScreen]
+  G -->|toggle| D[dragModeProvider]
+  D -->|watch| S
 ```
 
 - `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced

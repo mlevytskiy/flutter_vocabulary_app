@@ -44,3 +44,16 @@ Stream<List<Session>> nonEmptySessions(Ref ref) async* {
   final store = await ref.watch(sessionStoreProvider.future);
   yield* store.watchNonEmpty();
 }
+
+/// Whether the word list is in drag-and-drop (reorder) mode. A pure display
+/// preference: it lives here rather than on `Session` because it is not
+/// session data and must never reach Isar (task-13), and `keepAlive` because
+/// the Settings screen is the only writer while the input screen is the only
+/// reader -- autoDispose would drop the value when Settings is popped.
+@Riverpod(keepAlive: true)
+class DragMode extends _$DragMode {
+  @override
+  bool build() => false;
+
+  void toggle() => state = !state;
+}

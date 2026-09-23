@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/history/history_screen.dart';
+import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
 import '../features/words_table/words_table_screen.dart';
 
@@ -12,6 +13,7 @@ part 'routes.g.dart';
   routes: [
     TypedGoRoute<WordsTableRoute>(path: 'table'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
+    TypedGoRoute<SettingsRoute>(path: 'settings'),
   ],
 )
 class WordInputRoute extends GoRouteData with _$WordInputRoute {
@@ -39,6 +41,15 @@ class HistoryRoute extends GoRouteData with _$HistoryRoute {
 
   @override
   Widget build(BuildContext context, GoRouterState state) => const HistoryScreen();
+}
+
+/// A plain pushed screen, not a dialog: it is where preferences live, and
+/// more rows are expected here than the one it ships with (task-13).
+class SettingsRoute extends GoRouteData with _$SettingsRoute {
+  const SettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const SettingsScreen();
 }
 
 final appRouter = GoRouter(routes: $appRoutes);

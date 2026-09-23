@@ -22,6 +22,10 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           path: 'history',
           factory: _$HistoryRoute._fromState,
         ),
+        GoRouteData.$route(
+          path: 'settings',
+          factory: _$SettingsRoute._fromState,
+        ),
       ],
     );
 
@@ -83,6 +87,28 @@ mixin _$HistoryRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/history',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$SettingsRoute on GoRouteData {
+  static SettingsRoute _fromState(GoRouterState state) => const SettingsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/settings',
       );
 
   @override

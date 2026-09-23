@@ -283,5 +283,25 @@ final nonEmptySessionsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef NonEmptySessionsRef = AutoDisposeStreamProviderRef<List<Session>>;
+String _$dragModeHash() => r'6c8be31e69381c41da06163dfa7a77cfa9c1bb89';
+
+/// Whether the word list is in drag-and-drop (reorder) mode. A pure display
+/// preference: it lives here rather than on `Session` because it is not
+/// session data and must never reach Isar (task-13), and `keepAlive` because
+/// the Settings screen is the only writer while the input screen is the only
+/// reader -- autoDispose would drop the value when Settings is popped.
+///
+/// Copied from [DragMode].
+@ProviderFor(DragMode)
+final dragModeProvider = NotifierProvider<DragMode, bool>.internal(
+  DragMode.new,
+  name: r'dragModeProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$dragModeHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$DragMode = Notifier<bool>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

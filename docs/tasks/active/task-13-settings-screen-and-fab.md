@@ -9,7 +9,7 @@
 | **Blocked on** | **D9** — where the settings entry point goes (see below; the task proceeds on the recommendation) |
 | **Unlocks** | — (it is the first place a future preference has to live, so it unblocks nothing today) |
 | **Files** | `lib/router/routes.dart` · `lib/features/settings/settings_screen.dart` (new) · `lib/features/word_input/word_input_screen.dart` · `lib/features/word_input/widgets/word_input_speed_dial.dart` · `docs/architecture.md` |
-| **Status** | not started |
+| **Status** | **code complete 2026-09-23** — D9 closed as option **(c)**: a separate bottom-left `FloatingActionButton.small` beside an untouched speed dial, whose own inert settings child is wired to the same route. The mode moved off the screen's `State` into `dragModeProvider`. AC-1 is green for every file this task touched; the repo-wide exit code is not 0, for reasons that predate it (see [Findings](#findings-2026-09-23)). AC-2..AC-9 are the device pass and are still unticked. |
 
 ## The report
 
@@ -128,3 +128,56 @@ task-10's spec for how the drag toggle got into the AppBar. One commit.
   screen built to take more.
 - If D9 lands on the speed dial's existing child instead of a corner FAB, whether the third child
   should get a label (`Settings`) like its two siblings have.
+
+## Findings (2026-09-23)
+
+Steps 1-7 are implemented. Six notes:
+
+1. **The new FAB carries `heroTag: null`, and that is load-bearing.** Flutter's `FloatingActionButton`
+   defaults its tag to `const _DefaultHeroTag()`, and `Heroes._allHeroesFor` throws
+   "There are multiple heroes that share the same tag within a subtree" when two heroes in one
+   route share a tag. A second default-tagged FAB on this screen would therefore have asserted on
+   navigation. `flutter_speed_dial` 7.0.0 passes a null `heroTag` through to its inner FAB
+   (`animated_floating_button.dart:85`), so the speed dial renders no `Hero` at all and could not
+   have collided -- but the new FAB still had to opt out explicitly. Verified in the SDK source,
+   not assumed.
+
+2. **The FAB is `Positioned` inside the body's `Stack`, not the `floatingActionButton:` slot.** The
+   speed dial keeps its own slot, so `Scaffold` drives its scale/fade animation exactly as before
+   (AC-7), and the settings FAB sits at bottom-left opposite it. It is also placed outside the
+   `Screenshot` wrapper, so the settings button never appears in a shared screenshot.
+
+3. **`_buildRowItem` gained a `required bool isDragMode` parameter.** `build()` watches the
+   preference once and passes it down, rather than every row watching the provider. That keeps the
+   three readers (the `ReorderableListView` branch, the row argument, the reorder path) reading one
+   value from one place, as the prompt's step 4 asks.
+
+4. **`dragModeProvider` is `@Riverpod(keepAlive: true)`.** `autoDispose` would drop the value the
+   moment the Settings screen popped, since the input screen is not watching it while Settings is
+   on top -- AC-6 would then have failed. It is not on `Session` and nothing about it reaches Isar
+   (AC-9).
+
+5. **The speed dial's third child now calls the route; its orange colour and missing label are
+   unchanged.** D9 (c) keeps the corner FAB as the primary entry point, and an entry point that
+   leads nowhere is worse than none, so the child was wired rather than deleted. It stays unlabelled
+   to avoid a look change the owner did not ask for -- this is the option the task's
+   [Open points](#open-points) left open, resolved as "leave it as it is".
+
+6. **AC-1 does not fully tick, and the reason predates this task.** `flutter test` passes (46
+   tests) and the three `CLAUDE.md` greps are clean, but `flutter analyze` exits **1**, not 0:
+   9 infos, none of them in a file this task touched.
+   - 8 are in `lib/features/word_input/widgets/MyCustomPopupMenuController.dart` (a bad file name,
+     four unnecessary string-interpolation braces, three missing `@override`s). `git log --follow`
+     shows that file was added by `124e55c`, task-11's own fix commit on 2026-09-23 -- so it
+     postdates the "`flutter analyze` 0 issues" note in tasks 10 and 11.
+   - 1 is `prefer_const_constructors` in `test/dots_survive_word_focus_test.dart`, one of the
+     untracked probe tests already in the working tree when this task started.
+   - Analyzed alone, **the five files this task changed report "No issues found"**.
+
+   Left unfixed deliberately: `MyCustomPopupMenuController` is task-11's debugging shim with
+   `print` statements in it, and cleaning it up is neither this task's job nor a change to a file
+   this task's spec lists. Fixing it would also silently make someone else's task look finished.
+
+Not verified: AC-2 through AC-9, all of which need a device. The one worth checking first is AC-3,
+since the whole point of the change is that a switch on a different screen reaches the input
+screen's list, and that is a runtime fact about the provider's lifetime.

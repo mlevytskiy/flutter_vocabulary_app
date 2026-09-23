@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
 /// The word-input screen's floating speed-dial FAB: take a photo, take a
-/// screenshot, or (placeholder, not implemented yet) settings.
+/// screenshot, or open the Settings screen.
 class WordInputSpeedDial extends StatelessWidget {
   final VoidCallback onTakePhoto;
   final VoidCallback onScreenshot;
+  final VoidCallback onSettings;
 
   const WordInputSpeedDial({
     super.key,
     required this.onTakePhoto,
     required this.onScreenshot,
+    required this.onSettings,
   });
 
   @override
@@ -48,9 +50,7 @@ class WordInputSpeedDial extends StatelessWidget {
           child: const Icon(Icons.settings),
           backgroundColor: Colors.orange,
           foregroundColor: Colors.white,
-          onTap: () {
-            // Placeholder for future feature
-          },
+          onTap: onSettings,
         ),
       ],
     );

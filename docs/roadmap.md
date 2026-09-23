@@ -32,7 +32,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 9 | Extra word detail now that Reverso is out → see [Not yet specified](#not-yet-specified) | `idea-brief.md` §8 Open questions | fog | idea |
 | 11 | The dots popup shows the translations it already has, and can load them on tap — the "Tap the lightning icon" dead end goes | owner report 2026-09-23 → [task-11](tasks/active/task-11-dots-popup-loads-translations.md) | S | code complete 2026-09-23 |
 | 12 | Tapping the dots closes the keyboard, so the popup is not squeezed above it | owner report 2026-09-23 → [task-12](tasks/active/task-12-hide-keyboard-on-dots-tap.md) | S | task |
-| 13 | A Settings screen, reachable from the FAB corner; the drag-and-drop option moves into it and out of the top bar | owner report 2026-09-23 → [task-13](tasks/active/task-13-settings-screen-and-fab.md) | M | task |
+| 13 | A Settings screen, reachable from the FAB corner; the drag-and-drop option moves into it and out of the top bar | owner report 2026-09-23 → [task-13](tasks/active/task-13-settings-screen-and-fab.md) | M | code complete 2026-09-23 |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker
@@ -67,7 +67,7 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 |---|---|:---:|:---:|:---:|
 | D3 | Whether an English-description dictionary is the right thing for the word-detail slot at all, and if so whether `dictionaryapi.dev` is accepted as the source | grilling | human | 9 |
 | D7 | What the machine-translation source becomes for typed words once quality complaints appear — the photo path already uses a stronger context-aware translation than the typed path | research | agent | — |
-| D9 | Where the settings entry point lives on the input screen: the speed dial's existing (inert) settings child, the whole speed dial moved to the bottom-left, or a separate bottom-left FAB beside an untouched speed dial. The report says "settings FAB … left bottom corner of options (near the take photo and screenshot button)", which is both | grilling | human | 13 |
+| ~~D9~~ | **Closed 2026-09-23 — option (c): a separate bottom-left FAB beside the untouched speed dial.** It honours the corner the report named without moving `take photo` or `screenshot`, which the owner did not ask to move. The speed dial's own inert settings child is wired to the same route rather than deleted, so no entry point leads nowhere | grilling | human | — |
 
 ## Decisions so far
 
@@ -83,6 +83,7 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 - **D6** — no per-visitor names on the shared page; identity carries no behaviour in v1 → [`docs/tasks/task-06-partner-corrects-table.md`](tasks/outdated/task-06-partner-corrects-table.md)
 - Architecture, simplified: one `lib/` with feature folders, go_router typed routes, Riverpod for services and the word list, `shared_preferences` for persistence; nothing else changes → [`architecture.md`](./architecture.md). The larger design (packages, Retrofit, Isar, ADRs) is parked on branch `chore/architecture-migration`.
 - **D8** (2026-09-20) — words are stored as **Sessions** in `isar_community` (+ `isar_community_flutter_libs`, `isar_community_generator`, `path_provider` made direct); `shared_preferences` stays only for the `current_session_id` pointer and as the v1 migration source. A session older than 5 minutes is offered back through a snackbar, not restored silently. Reasoning is the parked ADR-0004 on `chore/architecture-migration`, applied without the repository layer → [`docs/tasks/task-03-words-survive-restart.md`](tasks/completed/task-03-words-survive-restart.md), [`task-10`](tasks/completed/task-10-side-menu-and-history.md)
+- **D9** (2026-09-23) — the settings entry point is a **separate bottom-left FAB** beside an untouched speed dial, not the speed dial's own child and not the speed dial relocated; the drag-and-drop mode moves off the input screen's `State` into `dragModeProvider` (`keepAlive`, never Isar-backed — it is a display preference, not session data) → [`docs/tasks/task-13-settings-screen-and-fab.md`](tasks/active/task-13-settings-screen-and-fab.md)
 - The Worker carries no KV/D1/R2/Durable-Object binding today, only a rate limiter — a persistent session store is a new binding → [`vocab-photo-api/wrangler.jsonc`](../vocab-photo-api/wrangler.jsonc)
 
 ## Dependency graph
