@@ -281,6 +281,35 @@ whether a dictionary block is cached.)
 
 ## Changelog
 
+- **2026-09-23 (later still):** The dots popup's close icon now hides the menu
+  through the screen's own handler (`_closeTranslationOptions` in
+  `word_input_screen.dart`, threaded `screen → WordRowItem →
+  TranslationDotsButton` as `onClose`), and picking a translation chip goes
+  through that same handler, so both exits from the popup close it one way.
+  Opening the popup is unchanged.
+
+  This replaces handing the tap to the popup package and relying on its
+  outside-tap detection, which keys off a single rectangle the package records
+  during layout and never recomputes on its own (`shouldRelayout => false`).
+  That rectangle is a library-level global shared by every open menu, so it is
+  only sound while exactly one menu is open — which is why the screen keeps one
+  `CustomPopupMenuController` per row rather than sharing one. Verified in
+  `test/dots_popup_close_test.dart`: one controller per row, tap the close icon,
+  the row's handler fires and the menu hides.
+
+- **2026-09-23 (later):** Opening the Translation dots popup now drops the
+  row's focus (`FocusManager.instance.primaryFocus?.unfocus()`, fired from the
+  screen the moment the popup opens). This closes the keyboard so the popup gets
+  the full height between the app bar and the bottom of the screen — with the
+  keyboard up, its body (and the close button at its bottom) was being squeezed
+  into the strip above the keyboard and could end up unreachable. A consequence
+  of Rule 0: unfocusing hides that row's two lightning icons while the popup is
+  open, and they return when the row is focused again. The dots button itself is
+  unaffected (it is not gated by Rule 0). Rule 0 is unchanged; this is only a
+  note about what opening the popup now triggers. The Translation lightning
+  icon's own tap keeps its focus deliberately — its visibility depends on the
+  row staying focused, and unfocusing it would hide the icon mid-request.
+
 - **2026-09-23:** The dots popup no longer has a dead end. It used to show
   `Tap the lightning icon to load translations.` whenever the dots were solid
   without a cached block behind them, which two paths reached: editing the Word

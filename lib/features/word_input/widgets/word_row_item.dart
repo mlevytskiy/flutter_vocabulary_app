@@ -39,6 +39,16 @@ class WordRowItem extends StatelessWidget {
   /// owns the request; the popup renders what comes back.
   final Future<TranslationResult?> Function() onLoadTranslations;
   final CustomPopupMenuController popupController;
+
+  /// Called when the dots popup opens, so the screen can drop the keyboard
+  /// before the popup is laid out. Not wired to the lightning icons -- their
+  /// visibility depends on the row keeping focus.
+  final VoidCallback onOpenTranslationOptions;
+
+  /// Closes the dots popup from its own close icon. Owned by the screen, so
+  /// the menu is hidden at one predictable point rather than left to the popup
+  /// package's outside-tap detection.
+  final VoidCallback onCloseTranslationOptions;
   final VoidCallback onRemove;
   final VoidCallback onFillWordWithAI;
   final VoidCallback onFillWithAI;
@@ -60,6 +70,8 @@ class WordRowItem extends StatelessWidget {
     required this.shouldShowPronunciation,
     required this.popupController,
     required this.onLoadTranslations,
+    required this.onOpenTranslationOptions,
+    required this.onCloseTranslationOptions,
     this.translationOptions,
     this.canLoadTranslationOptions = true,
     required this.onRemove,
@@ -255,6 +267,8 @@ class WordRowItem extends StatelessWidget {
                     onLoadTranslations: onLoadTranslations,
                     controller: popupController,
                     onSelectTranslation: onSelectTranslation,
+                    onOpen: onOpenTranslationOptions,
+                    onClose: onCloseTranslationOptions,
                   ),
                 ],
               ),

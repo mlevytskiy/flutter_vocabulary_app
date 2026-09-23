@@ -32,11 +32,26 @@ class TranslationDotsButton extends StatelessWidget {
   /// Fetches the block for the row's current Word field. Owned by the screen.
   final Future<TranslationResult?> Function() onLoadTranslations;
 
+  /// Fired at the moment the popup opens, before its overlay is laid out. The
+  /// screen uses it to drop the keyboard so the popup gets the full height
+  /// between the app bar and the bottom of the screen (otherwise its body --
+  /// including the close button at the bottom -- can be squeezed under the
+  /// keyboard). Only the dots use this; the lightning icons must keep focus.
+  final VoidCallback onOpen;
+
+  /// Fired by the popup's own close icon. The screen hides that row's menu, at
+  /// the same predictable point the open path uses, rather than leaving the tap
+  /// to the package's outside-tap detection -- which keys off a menu rectangle
+  /// the package only refreshes during layout. Owned by the screen.
+  final VoidCallback onClose;
+
   const TranslationDotsButton({
     super.key,
     required this.controller,
     required this.onSelectTranslation,
     required this.onLoadTranslations,
+    required this.onOpen,
+    required this.onClose,
     this.options,
     this.canLoadOptions = true,
   });
@@ -64,6 +79,11 @@ class TranslationDotsButton extends StatelessWidget {
       child: CustomPopupMenu(
         controller: controller,
         pressType: PressType.singleClick,
+        // Fires on every visibility change; unfocus only when opening, so the
+        // keyboard is already gone before the overlay measures its height.
+        menuOnChange: (isShowing) {
+          if (isShowing) onOpen();
+        },
         showArrow: true,
         arrowColor: Colors.black87,
         arrowSize: 10,
@@ -86,10 +106,10 @@ class TranslationDotsButton extends StatelessWidget {
                   canLoad: canLoadOptions,
                   onLoadTranslations: onLoadTranslations,
                   onSelectTranslation: (text) {
-                    controller.hideMenu();
+                    onClose();
                     onSelectTranslation(text);
                   },
-                  onClose: controller.hideMenu,
+                  onClose: onClose,
                 ),
               ),
             ),

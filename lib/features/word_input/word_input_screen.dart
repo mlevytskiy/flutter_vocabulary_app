@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopupMenuController.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
@@ -58,6 +59,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // popup so opening it costs no second request. Dropped whenever the Word
   // field changes, so the popup never shows another word's translations.
   final List<TranslationResult?> _translationOptions = [];
+  // The trimmed Word text each cached block in _translationOptions was fetched
+  // for. The dots show a block only while the current Word still equals this,
+  // so editing the word hides it and reverting the edit brings the same block
+  // back -- the cache itself is never dropped on a keystroke (see
+  // _effectiveOptions and docs/lightning_icon_rules.md).
+  final List<String?> _optionsWord = [];
   // "Translation filled" per docs/lightning_icon_rules.md: true once the
   // Translation field was auto-populated (AI translate, picking a popup
   // option, or photo recognition) -- independent of the >5-character rule.
@@ -209,12 +216,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         if (shouldResetWordFilledMark) {
           _wordMarkedFilled[index] = false;
         }
-        // The cached dictionary described the previous word, so it must not
-        // stay behind the dots button. Dropping it also empties the dots
-        // again: the button's state is derived from this cache, so the two can
-        // never disagree (docs/lightning_icon_rules.md). Tapping the empty
-        // dots still opens the popup, which offers the update icon.
-        _translationOptions[index] = null;
+        // The cached dictionary is NOT dropped here. It stays keyed to the word
+        // it was fetched for (_optionsWord[index]); the dots derive their state
+        // from _effectiveOptions, which hides the block while the Word text
+        // differs and shows the same block again once the text is reverted. A
+        // bare focus/selection notification (this listener also fires on those)
+        // therefore leaves the dots untouched. The empty-dots popup still
+        // offers the update icon whenever the block is hidden.
       }); // Оновити для показу іконки при >= 2 літерах
       // Same guard for persistence: a no-op push still marks the session
       // dirty and clears the notifier's restorableSessionId, which broke RESTORE.
@@ -234,6 +242,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       setState(() {
         if (isEmptyNow) {
           _translationOptions[index] = null;
+          _optionsWord[index] = null;
         }
         if (shouldResetFilledMark) {
           _translationMarkedFilled[index] = false;
@@ -247,6 +256,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     _isLoadingTranslation.add(false);
     _isLoadingWordTranslation.add(false);
     _translationOptions.add(null);
+    _optionsWord.add(null);
     _translationMarkedFilled.add(false);
     _wordMarkedFilled.add(false);
     _wordFocusNodes.add(wordFocusNode);
@@ -260,7 +270,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// "filled" marks (docs/lightning_icon_rules.md).
   void _pushRow(int index, {String? word, String? translation}) {
     if (index < 0 || index >= _translationOptions.length) return;
-    final options = _translationOptions[index];
+    // Persist only what the dots actually show: a block whose word no longer
+    // matches is hidden, so it must not be written either. This keeps restore
+    // able to re-key a persisted block to the restored word (see
+    // _restoreFromStore and _effectiveOptions).
+    final options = _effectiveOptions(index);
     ref.read(wordInputNotifierProvider.notifier).updateAt(
           index,
           word: word,
@@ -341,11 +355,20 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _isLoadingTranslation.clear();
       _isLoadingWordTranslation.clear();
       _translationOptions.clear();
+      _optionsWord.clear();
       _translationMarkedFilled.clear();
       _wordMarkedFilled.clear();
       _wordFocusNodes.clear();
       _translationFocusNodes.clear();
-      _popupControllers.clear();
+      // Keep each surviving row's popup controller. CustomPopupMenu binds the
+      // controller it is first handed in its own initState and never rebinds
+      // (no didUpdateWidget), so a row whose State outlives this rebuild -- row
+      // 0 is keyed ValueKey(0) and always does -- must be given back the very
+      // same controller instance. Clearing the map handed that live State a
+      // fresh controller it never adopted, so its popup showed on the old one
+      // while the close icon hid the new one (the split hashCodes in the logs).
+      // Drop only controllers for indices that no longer exist.
+      _popupControllers.removeWhere((index, _) => index >= _wordPairs.length);
 
       for (var i = 0; i < _wordPairs.length; i++) {
         _addControllersForIndex(i);
@@ -353,6 +376,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // persisted extras have to land in them, not just in _wordPairs.
         final pair = _wordPairs[i];
         _translationOptions[i] = pair.translationOptions;
+        // A block is only ever persisted while it matched the row's Word (see
+        // _pushRow), so the restored block is keyed to the restored Word.
+        _optionsWord[i] =
+            pair.translationOptions != null ? pair.word.trim() : null;
         _wordMarkedFilled[i] = pair.wordMarkedFilled;
         _translationMarkedFilled[i] = pair.translationMarkedFilled;
       }
@@ -399,6 +426,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
     while (_translationOptions.length < target) {
       _translationOptions.add(null);
+    }
+    while (_optionsWord.length < target) {
+      _optionsWord.add(null);
     }
     while (_isLoadingWordTranslation.length < target) {
       _isLoadingWordTranslation.add(false);
@@ -504,6 +534,21 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   ///
   /// Returns the block so the popup can render it immediately, or null when
   /// the request failed or Google had no dictionary for the word.
+  /// The cached dictionary block for this row, but only while it still
+  /// describes the current Word. Editing the Word hides the block; reverting
+  /// the edit shows the same block again -- the cache is never dropped on a
+  /// keystroke. An empty Word shows nothing. The dots' solid/outlined state and
+  /// the popup body are both derived from this, so they can never disagree
+  /// (docs/lightning_icon_rules.md).
+  TranslationResult? _effectiveOptions(int index) {
+    if (index < 0 || index >= _translationOptions.length) return null;
+    final opts = _translationOptions[index];
+    if (opts == null) return null;
+    final current = _wordControllers[index].text.trim();
+    if (current.isEmpty) return null;
+    return _optionsWord[index] == current ? opts : null;
+  }
+
   Future<TranslationResult?> _loadTranslationOptions(int index) async {
     if (index < 0 || index >= _wordControllers.length) return null;
     if (!_canLoadTranslationOptions(index)) return null;
@@ -519,9 +564,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     });
 
     try {
-      final translation = await ref
-          .read(googleTranslateServiceProvider)
-          .translateWord(word, from: 'en', to: 'uk');
+      final translation = await ref.read(googleTranslateServiceProvider).translateWord(word, from: 'en', to: 'uk');
 
       if (mounted) {
         setState(() {
@@ -529,6 +572,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           // The block is the state the dots' solid/outlined appearance is
           // derived from, so storing it is also what makes the dots fill in.
           _translationOptions[index] = translation.result;
+          // Key it to the word it was fetched for, so it survives edits and
+          // reappears on revert (see _effectiveOptions).
+          _optionsWord[index] = word;
         });
       }
       _pushRow(index);
@@ -596,6 +642,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // The Word field just changed, so whatever dictionary the dots
         // popup held described a different word.
         _translationOptions[index] = null;
+        _optionsWord[index] = null;
         if (gotRealTranslation) {
           // Got an actual translation (not just an echo of the input) ->
           // both fields count as "filled" per docs/lightning_icon_rules.md.
@@ -662,6 +709,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           // The whole set the request brought back, for the dots popup. This
           // is also what makes the dots solid -- they read the block itself.
           _translationOptions[index] = translation.result;
+          _optionsWord[index] = word;
           if (gotRealTranslation) {
             // Got an actual translation (not just an echo of the input) ->
             // both fields count as "filled" per docs/lightning_icon_rules.md.
@@ -690,6 +738,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             // the old comment promised here are still reachable, just on a
             // deliberate tap instead of a stale block.
             _translationOptions[index] = null;
+            _optionsWord[index] = null;
             _wordMarkedFilled[index] = true;
             _translationMarkedFilled[index] = true;
           });
@@ -921,6 +970,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _isLoadingTranslation[0] = false;
         _isLoadingWordTranslation[0] = false;
         _translationOptions[0] = null;
+        _optionsWord[0] = null;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
         _pushRow(0, word: '', translation: '');
@@ -937,6 +987,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _isLoadingTranslation.removeAt(index);
         _isLoadingWordTranslation.removeAt(index);
         _translationOptions.removeAt(index);
+        _optionsWord.removeAt(index);
         _translationMarkedFilled.removeAt(index);
         _wordMarkedFilled.removeAt(index);
         _wordFocusNodes[index].dispose();
@@ -983,6 +1034,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       final options = _translationOptions.removeAt(oldIndex);
       _translationOptions.insert(newIndex, options);
 
+      // 5b. _optionsWord (travels with its block)
+      final optionsWord = _optionsWord.removeAt(oldIndex);
+      _optionsWord.insert(newIndex, optionsWord);
+
       // 6. _translationMarkedFilled
       final markedFilled = _translationMarkedFilled.removeAt(oldIndex);
       _translationMarkedFilled.insert(newIndex, markedFilled);
@@ -997,8 +1052,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       final translationFocusNode = _translationFocusNodes.removeAt(oldIndex);
       _translationFocusNodes.insert(newIndex, translationFocusNode);
 
-      // 8. _popupControllers - очищуємо Map (найпростіше рішення)
-      _popupControllers.clear();
+      // 8. _popupControllers: prune only out-of-range indices, never clear.
+      // Clearing handed each surviving row's live State (kept alive across the
+      // reorder by its ValueKey) a fresh controller the package never rebinds
+      // to -- see _restoreFromStore. Row count is unchanged here, so this drops
+      // nothing; it just stops orphaning the controllers those States hold.
+      _popupControllers.removeWhere((index, _) => index >= _wordPairs.length);
 
       ref.read(wordInputNotifierProvider.notifier).reorder(oldIndex, newIndex);
     });
@@ -1037,16 +1096,44 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       shouldShowWordIcon: _shouldShowWordIcon(index),
       shouldShowTranslationIcon: _shouldShowTranslationIcon(index),
       shouldShowPronunciation: _shouldShowPronunciation(index),
-      translationOptions: _translationOptions[index],
+      translationOptions: _effectiveOptions(index),
       canLoadTranslationOptions: _canLoadTranslationOptions(index),
       onLoadTranslations: () => _loadTranslationOptions(index),
-      popupController: _popupControllers.putIfAbsent(index, () => CustomPopupMenuController()),
+      popupController: _popupControllers.putIfAbsent(index, () => MyCustomPopupMenuController()),
       onRemove: () => _removeItem(index),
       onFillWordWithAI: () => _fillWordWithAI(index),
       onFillWithAI: () => _fillWithAI(index),
       onSelectTranslation: (translation) => _selectTranslationOption(index, translation),
+      onOpenTranslationOptions: _onOpenTranslationOptions,
+      onCloseTranslationOptions: () => _closeTranslationOptions(index),
       onSpeak: (accent) => _speak(index, accent),
     );
+  }
+
+  /// Drops the keyboard as the dots popup opens, so its body gets the full
+  /// height between the app bar and the bottom of the screen instead of being
+  /// squeezed into the strip above the keyboard (where the close button ends up
+  /// unreachable). Same unfocus [_navigateToTableScreen] makes for the same
+  /// reason. Only the dots use this -- the lightning icons keep their focus,
+  /// since their visibility is gated on the row staying focused (Rule 0,
+  /// docs/lightning_icon_rules.md). Unfocusing here therefore hides that row's
+  /// two lightning icons while the popup is open; they return when the row is
+  /// focused again.
+  void _onOpenTranslationOptions() {
+    FocusManager.instance.primaryFocus?.unfocus();
+  }
+
+  /// Closes the dots popup from its own close icon.
+  ///
+  /// The popup package would normally dismiss the menu when a tap lands outside
+  /// the panel it measured, but that measurement is a single rectangle it only
+  /// refreshes during layout (`shouldRelayout => false`), so the close button
+  /// must not depend on it. Hiding the menu here is the screen's own call, made
+  /// at the same predictable point the open path uses.
+  void _closeTranslationOptions(int index) {
+    setState(() {
+      _popupControllers[index]?.hideMenu();
+    });
   }
 
   @override
@@ -1073,12 +1160,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     // The drawer is only a way to reach *other* sessions, so it exists only
     // when there is one to reach: with a single session there is no hamburger
     // and no swipe-in drawer.
-    final currentSessionId =
-        ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId;
-    final sessions =
-        ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
-    final hasOtherSessions =
-        sessions.any((s) => s.sessionId != currentSessionId);
+    final currentSessionId = ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId;
+    final sessions = ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
+    final hasOtherSessions = sessions.any((s) => s.sessionId != currentSessionId);
 
     return Scaffold(
       appBar: AppBar(
@@ -1091,9 +1175,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             icon: const Icon(Icons.drag_indicator),
             tooltip: 'Drag and Drop мод',
             isSelected: _isDragMode,
-            color: _isDragMode
-                ? Theme.of(context).colorScheme.primary
-                : null,
+            color: _isDragMode ? Theme.of(context).colorScheme.primary : null,
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),

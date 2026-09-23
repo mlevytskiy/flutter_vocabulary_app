@@ -8,8 +8,10 @@
 | **Depends on** | **task-11** (same file; this one is a two-line edit once 11 has landed) |
 | **Blocked on** | — |
 | **Unlocks** | task-13 (same file again) |
-| **Files** | `lib/features/word_input/widgets/translation_dots_button.dart` · `lib/features/word_input/word_input_screen.dart` |
-| **Status** | not started |
+| **Files** | `lib/features/word_input/widgets/translation_dots_button.dart` · `lib/features/word_input/widgets/word_row_item.dart` · `lib/features/word_input/word_input_screen.dart` |
+| **Status** | done — unfocus fires from `menuOnChange`(open) via a new `onOpen` callback threaded `screen → WordRowItem → TranslationDotsButton`. The "close icon doesn't work" half of the report is addressed separately: the close icon now calls a screen-owned `_closeTranslationOptions` handler, threaded as `onClose` the same way `onOpen` is, and picking a chip goes through that same handler — so the close path no longer depends on the popup package's outside-tap detection. Covered by `test/dots_popup_close_test.dart` (one controller per row, close icon hides the menu and the row's own handler fires) and `test/dots_close_race_test.dart` (the popup survives the keyboard dismissing right after the tap). Analyse clean, suite green. Needs an on-device pass for AC-2…AC-6, which a widget test cannot check.
+
+**Note for whoever picks this up:** the popup package keeps its menu hit-rectangle in a library-level global that every open menu writes during layout. It is only sound with exactly one menu open, so the screen's one-controller-per-row rule is load-bearing, not tidiness. An early version of the close test shared a single controller across 14 rows and reproduced a dead close button that the app itself does not have. |
 
 ## The report
 
