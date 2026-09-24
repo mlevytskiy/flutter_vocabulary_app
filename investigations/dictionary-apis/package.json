@@ -5,10 +5,10 @@
   "description": "Compare free/cheap English dictionary APIs for the vocab app's \"extra word detail\" need.",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.12"
   },
   "scripts": {
-    "probe": "echo 'probe: not implemented yet (task-16)'",
+    "probe": "node src/probe.mjs",
     "build": "echo 'build: comparison page not implemented yet (task-17)'",
     "serve": "echo 'serve: comparison page not implemented yet (task-17)'"
   }
