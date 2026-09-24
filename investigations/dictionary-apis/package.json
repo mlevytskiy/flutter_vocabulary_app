@@ -1,0 +1,15 @@
+{
+  "name": "dictionary-apis-investigation",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Compare free/cheap English dictionary APIs for the vocab app's \"extra word detail\" need.",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "probe": "echo 'probe: not implemented yet (task-16)'",
+    "build": "echo 'build: comparison page not implemented yet (task-17)'",
+    "serve": "echo 'serve: comparison page not implemented yet (task-17)'"
+  }
+}
