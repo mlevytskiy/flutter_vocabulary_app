@@ -180,31 +180,69 @@ C4Container
 
 ## 6. Runtime view
 
-<!-- 🎯 Why: the RUNTIME FLOW of 1–2 critical scenarios — who talks to whom, when, in what order.
-     Without §6, §5 is just boxes with no life.
-     📋 Write: a Mermaid sequenceDiagram. Participants are names from §5 (don't invent new ones).
-     Messages are semantic («saves a draft»), NO HTTP verbs / paths / status codes — endpoint-level
-     sequences arrive at the `api` stage.
-     📌 e.g. «author → web: composes draft → web → content API: save». Seed the primary flow(s) here;
-     the `sequences` stage then covers every §5 AC (no cap). Never N/A for M+; XS/S keeps ≥1 happy-path flow. -->
+Participants are the §5 containers. Messages are semantic; the endpoint-level contract arrives at the `api` stage.
 
-**Critical flow 1: <flow name>**
+**Critical flow 1: filling a typed word's definition (lightning), with the not-found and unavailable branches** — spec AC-05, AC-06, AC-07; the senses list (AC-08) reuses the stored senses and takes the same path only when none are stored.
 
 ```mermaid
 sequenceDiagram
-    actor Actor
-    participant Web
-    participant Service
-    participant Store
-    Actor->>Web: <action>
-    Web->>Service: <call>
-    Service->>Store: <write>
-    Store-->>Service: ok
-    Service-->>Web: result
-    Web-->>Actor: confirmation
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Session store
+    participant Worker as vocab-photo-api Worker
+    participant MW as Merriam-Webster
+    Learner->>App: taps the definition lightning for a typed word
+    App->>App: shows progress on the icon
+    App->>Worker: define the word (app secret)
+    Worker->>MW: look up the word (secret key)
+    alt entries found
+        MW-->>Worker: entries
+        Worker->>Worker: keep headword matches, collect short senses
+        Worker-->>App: senses
+        App->>App: fills the definition with the first sense
+        App->>Store: saves definition and senses on the row
+        App-->>Learner: definition shown
+    else unknown word
+        MW-->>Worker: spelling suggestions
+        Worker-->>App: not found, with suggestions
+        App-->>Learner: no definition found, did you mean these, field left empty
+    else dictionary unreachable or allowance used up
+        MW-->>Worker: failure or no answer in time
+        Worker-->>App: temporarily unavailable
+        App-->>Learner: definitions temporarily unavailable, field unchanged
+    end
 ```
 
-**Critical flow 2: <e.g. async event propagation>** — <if applicable, otherwise N/A>.
+**Critical flow 2: publishing in definition mode and the partner opening the link** — spec AC-16, AC-17, AC-19, AC-20.
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Worker as vocab-photo-api Worker
+    participant KV as Published sessions
+    participant Page as Shared page
+    actor Partner as partner
+    Learner->>App: publishes the session
+    App->>Worker: publish entries with definitions and the detail mode
+    alt every field within limits
+        Worker->>KV: stores the document for 30 days
+        Worker-->>App: shared link
+        App-->>Learner: link ready
+    else a definition is too long
+        Worker-->>App: refused, names the word
+        App-->>Learner: shorten the definition of that word
+    end
+    Partner->>Page: opens the link
+    Page->>KV: reads the document
+    alt document has a detail mode
+        Page-->>Partner: word plus the columns that mode shows
+    else document from before this feature
+        Page-->>Partner: word and translation, as before
+    end
+    Partner->>Page: downloads the AnkiDroid file
+    Page-->>Partner: file with fixed word, translation, definition places
+```
 
 ## 7. Deployment view
 
