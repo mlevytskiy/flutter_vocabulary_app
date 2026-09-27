@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/session.dart';
+import 'services/dictionary_service.dart';
 import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
 import 'services/pronunciation_service.dart';
@@ -27,6 +28,10 @@ GoogleTranslateService googleTranslateService(Ref ref) =>
 
 @Riverpod(keepAlive: true)
 PronunciationService pronunciationService(Ref ref) => PronunciationService();
+
+/// Dictionary senses for the definition field, via the Worker (ADR-0002).
+@Riverpod(keepAlive: true)
+DictionaryService dictionaryService(Ref ref) => DictionaryService();
 
 @Riverpod(keepAlive: true)
 SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();

@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-06", "AC-07"]
 files_hint: ["lib/core/services/dictionary_service.dart", "lib/core/models/definition_result.dart", "lib/core/providers.dart", "lib/core/providers.g.dart", "test/dictionary_service_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Add DictionaryService and DefinitionResult in the app

@@ -92,6 +92,25 @@ final pronunciationServiceProvider = Provider<PronunciationService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PronunciationServiceRef = ProviderRef<PronunciationService>;
+String _$dictionaryServiceHash() => r'55c5a3e42d3dab60fb9f17e0724c51e347330b20';
+
+/// Dictionary senses for the definition field, via the Worker (ADR-0002).
+///
+/// Copied from [dictionaryService].
+@ProviderFor(dictionaryService)
+final dictionaryServiceProvider = Provider<DictionaryService>.internal(
+  dictionaryService,
+  name: r'dictionaryServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$dictionaryServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef DictionaryServiceRef = ProviderRef<DictionaryService>;
 String _$sessionPublishServiceHash() =>
     r'f1fa0f257c2278cdc3e762d3755c1f1baa8ecbfc';
 
@@ -304,7 +323,7 @@ final dragModeProvider = NotifierProvider<DragMode, bool>.internal(
 
 typedef _$DragMode = Notifier<bool>;
 String _$wordDetailModeNotifierHash() =>
-    r'28e72097edeb289a03d22f20b11a35ac5ec2be47';
+    r'45973bab20f05a4640eaf6cb6cbd04bff4126d76';
 
 /// The learner's word detail mode. Unlike drag mode it survives a restart, so
 /// it is persisted under one preferences key; it is still a display preference

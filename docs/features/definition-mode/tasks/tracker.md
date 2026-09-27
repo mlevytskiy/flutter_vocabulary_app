@@ -12,7 +12,7 @@
 | T5 | [Accept definitions and the detail mode in published sessions](./t5-worker-session-contract.md) | ports | Maksym | S | — | done |
 | T6 | [Render shared-page columns from the detail mode](./t6-shared-page-columns.md) | ui | Maksym | S | T5 | done |
 | T7 | [Write the fixed definition column in the Worker AnkiDroid file](./t7-worker-anki-definition-column.md) | ports | Maksym | S | T5 | done |
-| T8 | [Add DictionaryService and DefinitionResult in the app](./t8-dictionary-service.md) | app | Maksym | S | — | todo |
+| T8 | [Add DictionaryService and DefinitionResult in the app](./t8-dictionary-service.md) | app | Maksym | S | — | done |
 | T9 | [Store photo descriptions as definitions](./t9-photo-description-to-definition.md) | app | Maksym | S | T1 | todo |
 | T10 | [Keep per-row definition state in the input screen and notifier](./t10-row-definition-state.md) | app | Maksym | M | T1 | todo |
 | T11 | [Lay out word rows per word detail mode](./t11-row-layouts-per-mode.md) | ui | Maksym | M | T2, T10 | todo |
