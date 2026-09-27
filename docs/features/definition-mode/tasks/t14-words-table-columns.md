@@ -7,7 +7,7 @@ acs: ["AC-12", "AC-14"]
 files_hint: ["lib/features/words_table/words_table_screen.dart", "test/words_table_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T14 — Show words-table columns per mode with the filled rule

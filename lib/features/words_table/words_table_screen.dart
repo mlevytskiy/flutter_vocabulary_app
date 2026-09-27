@@ -229,9 +229,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final words = sessionId == null
         ? ref.watch(wordInputNotifierProvider).valueOrNull?.words
         : ref.watch(sessionByIdProvider(sessionId)).valueOrNull?.words;
+    // definition-mode: every filled row -- a word plus a translation or a
+    // definition -- whatever the mode (spec AC-12); the mode picks columns.
     final wordPairs = (words ?? const <WordPair>[])
-        .where((pair) => pair.isValid)
+        .where((pair) => pair.isFilled)
         .toList();
+    final detailMode = ref.watch(wordDetailModeProvider);
+    final showTranslation = detailMode != WordDetailMode.definition;
+    final showDefinition = detailMode != WordDetailMode.translation;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Words Table'),
@@ -271,6 +276,10 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: DataTable(
+                    // Wrapped definitions need taller rows; translation mode
+                    // keeps the table's default fixed row height.
+                    dataRowMaxHeight:
+                        showDefinition ? double.infinity : null,
                     headingRowColor: WidgetStateProperty.all(
                       Theme.of(context).colorScheme.primaryContainer,
                     ),
@@ -278,25 +287,33 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                       color: Colors.grey.shade300,
                       width: 1,
                     ),
-                    columns: const [
-                      DataColumn(
+                    columns: [
+                      const DataColumn(
                         label: Text(
                           '#',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      DataColumn(
+                      const DataColumn(
                         label: Text(
                           'Word',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
-                      DataColumn(
-                        label: Text(
-                          'Translation',
-                          style: TextStyle(fontWeight: FontWeight.bold),
+                      if (showTranslation)
+                        const DataColumn(
+                          label: Text(
+                            'Translation',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ),
+                      if (showDefinition)
+                        const DataColumn(
+                          label: Text(
+                            'Definition',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                     ],
                     rows: List<DataRow>.generate(
                       wordPairs.length,
@@ -304,7 +321,15 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                         cells: [
                           DataCell(Text('${index + 1}')),
                           DataCell(Text(wordPairs[index].word)),
-                          DataCell(Text(wordPairs[index].translation)),
+                          if (showTranslation)
+                            DataCell(Text(wordPairs[index].translation)),
+                          if (showDefinition)
+                            // Definitions run long: wrap within a column
+                            // instead of stretching the table sideways.
+                            DataCell(ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 280),
+                              child: Text(wordPairs[index].definition),
+                            )),
                         ],
                       ),
                     ),

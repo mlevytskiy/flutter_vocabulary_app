@@ -18,7 +18,7 @@
 | T11 | [Lay out word rows per word detail mode](./t11-row-layouts-per-mode.md) | ui | Maksym | M | T2, T10 | done |
 | T12 | [Fill a definition from the lightning icon](./t12-definition-lightning.md) | ui | Maksym | S | T8, T11 | done |
 | T13 | [Pick a sense from the definition dots popup](./t13-definition-senses-popup.md) | ui | Maksym | M | T8, T11 | done |
-| T14 | [Show words-table columns per mode with the filled rule](./t14-words-table-columns.md) | ui | Maksym | S | T1, T2 | todo |
+| T14 | [Show words-table columns per mode with the filled rule](./t14-words-table-columns.md) | ui | Maksym | S | T1, T2 | done |
 | T15 | [Write the fixed definition column in the app AnkiDroid export](./t15-app-anki-definition-column.md) | app | Maksym | S | T1, T2, T7 | todo |
 | T16 | [Publish definitions and the detail mode](./t16-publish-definitions.md) | app | Maksym | S | T1, T2, T5 | todo |
 | T17 | [Update architecture docs and the deploy checklist](./t17-docs-and-deploy-checklist.md) | docs | Maksym | S | T4, T5, T6, T7, T16 | todo |
