@@ -47,3 +47,27 @@ Translation lightnings on the shared page (US-08, US-09) need a source of transl
 
 - Spec: [[../spec.md]] US-08, US-09, AC-16, AC-17, AC-18, §8 OQ-1
 - SAD: [[../sad.md]] §3, §4, §11
+
+## Spike result
+
+**2026-09-27 — T1 passed: the endpoint answers a page script in all four target browsers.**
+
+Setup: `vocab-photo-api/spike/translate.html`, served by `npx wrangler dev -c spike/wrangler.jsonc --ip 0.0.0.0` (port 8791, reachable from a phone on the same Wi-Fi at `http://<mac-lan-ip>:8791`). The page's own script calls `translate_a/single?client=gtx&sl=en&tl=uk&dt=t&q=<word>` with plain `fetch`, one word every 400 ms, and parses `data[0]` the way `translate_response_parser.dart` does.
+
+| Browser | Result | 429s | Notes |
+|---|---|---|---|
+| Chrome 154, macOS | **19 / 20** — CORS allowed, body readable | none | all 20 answered HTTP 200 |
+| Opera 135 (Chromium 151), macOS | **19 / 20** | none | extra run, same engine as Chrome; identical answers, including `recieve` → `отримати` and `blorptastic` echoed |
+| Safari 26.6.2, macOS | **19 / 20** | none | identical answers |
+| Safari 26.6.1, iOS 18.7 (iPhone) | **19 / 20** | none | identical answers; page reached over LAN |
+| Chrome 153, Android 10 | **19 / 20** | none | identical answers; page reached over LAN |
+
+Findings:
+
+- **CORS:** a page script on another origin can read the response — no preflight needed for a plain GET.
+- **Response shape:** unchanged from the app — `[[["яблуко","apple",…]],null,"en",…]`; `data[0][*][0]` joined is the translation, `data[2]` the detected language.
+- **Misspellings are auto-corrected**, not reported: `recieve` → `отримати`. So AC-17 will fire only for words the service cannot map at all.
+- **"Nothing found" = the word echoed back:** `blorptastic` → `blorptastic` (HTTP 200). T15 must treat a translation equal to the word (case-insensitive) as "nothing found for this word" (AC-17).
+- **Server-side calls are refused:** from the same Mac, `curl` gets HTTP 429 ("automated queries") even with a browser user agent, while the browser gets 200. Evidence against option 2 (Worker proxy) as a fallback: Cloudflare's addresses may be throttled the same way.
+
+**Verdict:** option 1 holds — Chrome and Safari, desktop and phone, each translated 19 / 20 (the 20th is the deliberate nonsense word, correctly reported as not found), with no 429s and no CORS error. ADR-0007 stays Accepted; T15 may proceed. The echo rule above is the AC-17 detection rule for translation lightnings.

@@ -1,0 +1,7 @@
+// T1 spike only — never deployed. See serve.js.
+{
+	"name": "vocab-photo-api-spike",
+	"main": "serve.js",
+	"compatibility_date": "2025-01-01",
+	"dev": { "port": 8791 }
+}

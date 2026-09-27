@@ -9,7 +9,7 @@
 | **Blocked on** | **D10** — where the Merriam-Webster key lives and who calls the API (see below; the task proceeds on the recommendation) |
 | **Unlocks** | a follow-up for what the words table, the AnkiDroid export and the shared page do with definitions (see [Open points](#open-points)) |
 | **Files** | `lib/core/providers.dart` · `lib/features/settings/settings_screen.dart` · `lib/features/word_input/widgets/word_row_item.dart` · `lib/features/word_input/word_input_screen.dart` · `lib/core/models/word_pair.dart` (+ `.g.dart`) · `lib/core/services/dictionary_service.dart` (new) · `lib/config/vocab_api_config.dart` · `docs/lightning_icon_rules.md` · `docs/architecture.md` |
-| **Status** | **todo** — planned only. Nothing is implemented yet, on the owner's instruction |
+| **Status** | **done 2026-09-27** — built through the SDD feature [`docs/features/definition-mode/`](../../features/definition-mode/) (T1–T16, merged to `master` at `bef0688`), which supersedes the plan below: D10 went to (b), so the Worker's `/define` route holds the Merriam-Webster key (ADR-0002), and the Definition field got a dots popup of senses (T13). The words table, AnkiDroid export and shared page were covered in the same feature (T14–T16). T17's deploy checklist and the licence question (`spec.md` §8) remain with the owner |
 
 ## The report
 

@@ -7,7 +7,7 @@ acs: ["AC-16", "AC-17"]
 files_hint: ["vocab-photo-api/spike/translate.html", "docs/features/good-looking-web/adr/0007-call-the-translation-endpoint-from-the-partners-browser.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Spike: get a translation from the free endpoint in the partner's browser
@@ -22,10 +22,10 @@ A throwaway page served by `wrangler dev` calls `translate.googleapis.com/transl
 
 ## Definition of Done
 
-- [ ] The spike page returns translations for ≥18 of 20 words in Chrome and Safari, or the blocking error is quoted
-- [ ] ADR-0007 has a dated `## Spike result` section with the verdict
-- [ ] Spike file removed or kept under `vocab-photo-api/spike/` excluded from deploy
-- [ ] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
+- [x] The spike page returns translations for ≥18 of 20 words in Chrome and Safari, or the blocking error is quoted
+- [x] ADR-0007 has a dated `## Spike result` section with the verdict
+- [x] Spike file removed or kept under `vocab-photo-api/spike/` excluded from deploy
+- [x] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
 
 ## Notes
 

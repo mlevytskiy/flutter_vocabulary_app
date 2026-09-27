@@ -5,8 +5,8 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
-| [T1](t1-spike-browser-translation.md) | Spike: get a translation from the free endpoint in the partner's browser | tests | Maksym | S | — | todo |
-| [T2](t2-worker-test-harness.md) | Add a node:test harness that runs against wrangler dev | tests | Maksym | S | — | todo |
+| [T1](t1-spike-browser-translation.md) | Spike: get a translation from the free endpoint in the partner's browser | tests | Maksym | S | — | done |
+| [T2](t2-worker-test-harness.md) | Add a node:test harness that runs against wrangler dev | tests | Maksym | S | — | done |
 | [T3](t3-d1-schema.md) | Create the D1 schema for sessions, rows, cell revisions, photo slots and counters | migration | Maksym | M | — | todo |
 | [T4](t4-d1-store-and-legacy-import.md) | Move session storage to D1, with a lazy import of pre-feature KV links | infra | Maksym | M | T2, T3 | todo |
 | [T5](t5-publish-contract-photos-and-republish.md) | Accept declared photos, row photo ids and republish tokens in the publish contract | ports | Maksym | M | T4 | todo |

@@ -316,6 +316,19 @@ Worker ships **before** any app build that publishes definitions or looks them u
 6. Open a link published **before** this deploy: it must render exactly as before.
 7. Only now install the new app build.
 
+## Tests
+
+```bash
+npm test
+```
+
+`scripts/test.mjs` starts `wrangler dev` on a free port with fresh local bindings (a
+throwaway `--persist-to` directory, so every run starts empty), runs
+`node --test "test/**/*.test.mjs"` against it, and stops it. The secrets come from
+`.dev.vars`, or `.dev.vars.example` when there is none. Shared helpers (`baseUrl`,
+`appHeaders()`, `publish()`) live in `test/helpers.mjs`. The tests only work through
+`npm test`, because they need the address it passes in.
+
 ## Rate limiting
 
 `wrangler.jsonc` configures a per-IP limit of 20 requests / 60 seconds via the Workers

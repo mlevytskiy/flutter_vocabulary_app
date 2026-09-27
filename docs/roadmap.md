@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-23"
+updated_at: "2026-09-27"
 ---
 
 # Roadmap — flutter_vocabulary_app
@@ -26,7 +26,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 3 | Collected words survive an app restart | `idea-brief.md` §7 Recommendation | M | idea |
 | 4 | Hear a word in UK and US pronunciation | `idea-brief.md` §7 Recommendation | S | idea |
 | 5 | Publish a session to a durable shared link the partner can open and read | `idea-brief.md` §1 Raw idea | M | idea |
-| 6 | The partner corrects the word table on the shared page | `idea-brief.md` §1 Raw idea | M | idea |
+| 6 | The partner corrects the word table on the shared page | `idea-brief.md` §1 Raw idea | M | absorbed into 15 |
 | 7 | Download the AnkiDroid file straight from the shared page | `idea-brief.md` §7 Recommendation | S | idea |
 | 8 | Review collected words on the device and mark one memorized | `idea-brief.md` §5 Out of scope | S | idea |
 | 9 | Extra word detail now that Reverso is out → see [Not yet specified](#not-yet-specified) | `idea-brief.md` §8 Open questions | fog | idea |
@@ -34,6 +34,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 12 | Tapping the dots closes the keyboard, so the popup is not squeezed above it | owner report 2026-09-23 → [task-12](tasks/completed/task-12-hide-keyboard-on-dots-tap.md) | S | task |
 | 13 | A Settings screen, reachable from the FAB corner; the drag-and-drop option moves into it and out of the top bar | owner report 2026-09-23 → [task-13](tasks/completed/task-13-settings-screen-and-fab.md) | M | code complete 2026-09-23 |
 | 14 | A Settings option: show a **definition** instead of, or beside, the translation. Definition rows go vertical (Word on top, Definition under it) | owner report 2026-09-27 → [task-19](tasks/active/task-19-definition-mode-setting.md) · [spec](features/definition-mode/spec.md) | M | spec'd |
+| 15 | The shared page becomes a working table: full-width spreadsheet layout (separate phone layout), source photos beside their words, edit / add / delete rows, per-cell and per-column autofill within a per-page allowance — absorbs step 6 | owner report 2026-09-27 → [spec](features/good-looking-web/spec.md) | M | spec'd |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T1 spike — browser translation</title>
+<style>
+  body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #ccc; padding: 4px 6px; text-align: left; vertical-align: top; }
+  .ok { color: #070; } .empty { color: #a60; } .err { color: #b00; }
+  pre { white-space: pre-wrap; word-break: break-all; }
+</style>
+</head>
+<body>
+<h1>T1 spike: translate.googleapis.com from the browser</h1>
+<p>Throwaway page for ADR-0007. Calls the endpoint with <code>fetch</code> once per word, one at a time, 400 ms apart.</p>
+<p><button id="run">Run 20 words</button> <span id="summary"></span></p>
+<p id="ua"></p>
+<table>
+  <thead><tr><th>#</th><th>Word</th><th>HTTP</th><th>Translation</th><th>Detail</th></tr></thead>
+  <tbody id="out"></tbody>
+</table>
+<h2>Copyable result</h2>
+<pre id="report"></pre>
+<script>
+// 19 real words plus one misspelling ("recieve") and one nonsense word ("blorptastic").
+const WORDS = [
+  'apple', 'house', 'run', 'beautiful', 'quickly', 'although', 'bridge', 'knowledge',
+  'to look after', 'weather', 'thoroughly', 'reluctant', 'squirrel', 'give up',
+  'breakthrough', 'awkward', 'nevertheless', 'wholesome', 'recieve', 'blorptastic',
+];
+
+// Same rule as lib/core/services/translate_response_parser.dart:
+// data[0] is a list of segments; join each segment's first element, then trim.
+function parseTranslation(data) {
+  const segments = data[0];
+  if (!Array.isArray(segments)) return '';
+  return segments
+    .map((s) => (Array.isArray(s) ? s[0] : null))
+    .filter((t) => typeof t === 'string')
+    .join('')
+    .trim();
+}
+
+async function translate(word) {
+  const url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=uk&dt=t&q='
+    + encodeURIComponent(word);
+  let res;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    // A CORS block surfaces here as a TypeError with no status.
+    return { status: 'network', text: '', detail: String(e) };
+  }
+  const body = await res.text();
+  if (!res.ok) return { status: res.status, text: '', detail: body.slice(0, 120) };
+  try {
+    const data = JSON.parse(body);
+    const text = parseTranslation(data);
+    return { status: res.status, text, detail: 'detected=' + data[2] + ' raw=' + body.slice(0, 80) };
+  } catch (e) {
+    return { status: res.status, text: '', detail: 'parse: ' + e + ' body=' + body.slice(0, 80) };
+  }
+}
+
+function cell(tr, value, cls) {
+  const td = document.createElement('td');
+  td.textContent = value;
+  if (cls) td.className = cls;
+  tr.appendChild(td);
+}
+
+document.getElementById('ua').textContent = navigator.userAgent;
+
+document.getElementById('run').addEventListener('click', async () => {
+  const out = document.getElementById('out');
+  out.textContent = '';
+  const lines = [navigator.userAgent];
+  let translated = 0;
+  for (let i = 0; i < WORDS.length; i++) {
+    const w = WORDS[i];
+    const r = await translate(w);
+    // The endpoint echoes unknown words back; count that as "nothing found" (AC-17).
+    const found = r.text !== '' && r.text.toLowerCase() !== w.toLowerCase();
+    if (found) translated++;
+    const tr = document.createElement('tr');
+    cell(tr, String(i + 1));
+    cell(tr, w);
+    cell(tr, String(r.status), r.status === 200 ? 'ok' : 'err');
+    cell(tr, r.text || '—', found ? 'ok' : 'empty');
+    cell(tr, r.detail);
+    out.appendChild(tr);
+    lines.push([i + 1, w, r.status, r.text, found ? 'found' : 'not-found'].join('\t'));
+    await new Promise((ok) => setTimeout(ok, 400));
+  }
+  const summary = translated + ' / ' + WORDS.length + ' translated';
+  document.getElementById('summary').textContent = summary;
+  lines.push(summary);
+  document.getElementById('report').textContent = lines.join('\n');
+});
+</script>
+</body>
+</html>
