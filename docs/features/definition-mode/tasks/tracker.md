@@ -21,6 +21,6 @@
 | T14 | [Show words-table columns per mode with the filled rule](./t14-words-table-columns.md) | ui | Maksym | S | T1, T2 | done |
 | T15 | [Write the fixed definition column in the app AnkiDroid export](./t15-app-anki-definition-column.md) | app | Maksym | S | T1, T2, T7 | done |
 | T16 | [Publish definitions and the detail mode](./t16-publish-definitions.md) | app | Maksym | S | T1, T2, T5 | done |
-| T17 | [Update architecture docs and the deploy checklist](./t17-docs-and-deploy-checklist.md) | docs | Maksym | S | T4, T5, T6, T7, T16 | todo |
+| T17 | [Update architecture docs and the deploy checklist](./t17-docs-and-deploy-checklist.md) | docs | Maksym | S | T4, T5, T6, T7, T16 | blocked — deploy + licence (owner) |
 
 **Total:** 17 tasks, ~10.5 person-days (S ≈ ½ day, M ≈ 1 day).

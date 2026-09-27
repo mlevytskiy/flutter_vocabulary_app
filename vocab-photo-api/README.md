@@ -11,6 +11,7 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | Route | Auth | What |
 |---|---|---|
 | `POST /analyze` | secret + rate limit | photo in, marked words out |
+| `POST /define` | secret + rate limit | a word's dictionary senses (definition-mode) |
 | `POST /sessions` | secret + rate limit | publish a word list, get a link |
 | `POST /sessions/<id>/sources` | secret + rate limit | attach a photo to a published session |
 | `GET /s/<id>` | **public** | the page a person reads |
@@ -160,6 +161,22 @@ request is HTML-escaped on render. Sent with `cache-control: no-store` so the pa
 shows stale words once it becomes editable (task-06). A missing or expired id returns a
 **`404` HTML page** saying the list is gone — a human is reading this URL, not a client.
 
+### `POST /define` — secret-gated
+
+Body: `{ "word": "…" }` (≤ 100 characters). The Worker asks the Merriam-Webster Collegiate
+API with the `MW_API_KEY` secret (4 s timeout), keeps entries whose headword matches the word
+(compounds like *direct current* are dropped when *direct* itself has entries) and answers one
+of exactly three shapes — never Merriam-Webster's raw format:
+
+- `200 { "outcome": "senses", "word", "senses": [ … ] }` — short senses, dictionary order.
+- `200 { "outcome": "not_found", "word", "suggestions": [ … ] }` — spelling suggestions (≤ 5).
+- `503 { "outcome": "unavailable", "error" }` — timeout, bad key, exhausted allowance, outage.
+
+Successful answers are cached in the `DEFINITIONS` KV namespace for 30 days, keyed by the
+lowercased word; misses and failures are never cached. One log line per lookup
+(`define <cache hit|found|not found|unavailable> "<word>" <ms>`), readable with
+`npx wrangler tail`.
+
 ### `GET /s/<id>/sources/<sourceId>` — public
 
 The bytes of one attached photo, with its stored content type and a long
@@ -221,6 +238,13 @@ npx wrangler r2 bucket lifecycle add vocab-photo-sources expire-sources --expire
 
 The `SESSIONS` namespace exists and its id is in `wrangler.jsonc` (created 2026-09-21).
 
+**Dictionary cache (definition-mode):** create it once and replace the placeholder id in
+`wrangler.jsonc`:
+
+```bash
+npx wrangler kv namespace create DEFINITIONS     # prints an id → replace REPLACE_WITH_DEFINITIONS_NAMESPACE_ID
+```
+
 The `vocab-photo-sources` R2 bucket exists with the 30-day `expire-sources` lifecycle rule
 (R2 enabled and bucket created 2026-09-21). The Worker still treats `SOURCES` as optional in
 code: without the binding the photo routes answer `503` and everything else works.
@@ -263,6 +287,7 @@ code: without the binding the photo routes answer `503` and everything else work
    ```bash
    npx wrangler secret put ANTHROPIC_API_KEY
    npx wrangler secret put APP_SHARED_SECRET
+   npx wrangler secret put MW_API_KEY        # Merriam-Webster Collegiate key (definition-mode)
    ```
 
 3. Deploy:
@@ -274,6 +299,22 @@ code: without the binding the photo routes answer `503` and everything else work
    Wrangler will print your live URL, e.g. `https://vocab-photo-api.<your-subdomain>.workers.dev`.
    Use `<that URL>/analyze` from the Flutter app, sending the same `x-app-secret` value
    you set in step 2.
+
+### Deploying definition-mode (checklist)
+
+Order matters: an older Worker silently drops definitions and has no `/define` route, so the
+Worker ships **before** any app build that publishes definitions or looks them up.
+
+1. Answer the open licence question (definition-mode `sad.md` §11): may Merriam-Webster's
+   free-tier text be cached, shown on a public shared link and exported? If not, remove the
+   `DEFINITIONS` cache before deploying.
+2. `npx wrangler kv namespace create DEFINITIONS` and paste the id into `wrangler.jsonc`.
+3. `npx wrangler secret put MW_API_KEY`.
+4. `npm run typecheck && npm run deploy`.
+5. Smoke-test the live Worker:
+   `curl -X POST <url>/define -H "x-app-secret: <secret>" -d '{"word":"tenacious"}'` → `senses`.
+6. Open a link published **before** this deploy: it must render exactly as before.
+7. Only now install the new app build.
 
 ## Rate limiting
 

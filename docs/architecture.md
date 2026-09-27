@@ -25,19 +25,25 @@ lib/
   core/
     providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, sessionStore,
                                 googleTranslateService, pronunciationService, sessionPublishService,
-                                sessionById; plus the dragMode display preference (task-13)
+                                sessionById, dictionaryService (definition-mode); plus the
+                                dragMode display preference (task-13) and the persisted
+                                wordDetailMode preference (definition-mode)
     models/                     vocab_word.dart — moved, unchanged
                                 word_pair.dart (+.g) — Isar @embedded row: the two strings plus the
                                 dots/lightning extras that make a restored row look untouched
                                 session.dart (+.g) — Isar @collection: a set of words with an
                                 identity and timestamps (task-03)
                                 translation_result.dart (Google's dictionary block)
+                                definition_result.dart (the Worker's dictionary answer:
+                                senses / not found / unavailable; definition-mode)
     services/                   photo_scaler.dart, vocab_photo_service.dart,
                                 session_store.dart (persistence: Isar + the current-session pointer)
                                 google_translate_service.dart + translate_response_parser.dart
                                 (translate_a/single with dt=t,bd,at + the part-of-speech rule)
                                 pronunciation_service.dart (task-04)
-                                session_publish_service.dart (task-05: POST /sessions → public link)
+                                session_publish_service.dart (task-05: POST /sessions → public link;
+                                sends the word detail mode + definitions, definition-mode)
+                                dictionary_service.dart (definition-mode: POST /define on the Worker)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
@@ -58,8 +64,10 @@ lib/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
                                       a row opens WordsTableScreen for that sessionId
     settings/
-      settings_screen.dart            the drag-and-drop mode switch (task-13); reads and writes
-                                      dragModeProvider, which the input screen reads
+      settings_screen.dart            the drag-and-drop mode switch (task-13) and the word
+                                      detail mode — translation / definition / both
+                                      (definition-mode); writes dragModeProvider and
+                                      wordDetailModeProvider, which the input screen reads
 ```
 
 No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder.
@@ -121,6 +129,10 @@ flowchart LR
   S -->|SettingsRoute push| G[SettingsScreen]
   G -->|toggle| D[dragModeProvider]
   D -->|watch| S
+  G -->|set| M[wordDetailModeProvider<br/>persisted preference]
+  M -->|watch| S
+  M -->|watch| T
+  S -->|define| X[dictionaryServiceProvider<br/>Worker /define]
 ```
 
 - `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced

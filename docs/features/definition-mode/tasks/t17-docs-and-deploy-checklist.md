@@ -7,7 +7,7 @@ acs: ["AC-17"]
 files_hint: ["docs/architecture.md", "vocab-photo-api/README.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "blocked"
 ---
 
 # T17 — Update architecture docs and the deploy checklist
@@ -29,3 +29,8 @@ Derives from [sad §7 deployment, §11 deploy-order risk](../sad.md).
 ## Notes
 
 —
+
+## Status (2026-09-27)
+
+- Done: `docs/architecture.md` (DictionaryService, DefinitionResult, the persisted `wordDetailModeProvider`, Settings → mode → screens/table edges, the `/define` edge); `vocab-photo-api/README.md` (`POST /define` contract, `DEFINITIONS` namespace creation, `MW_API_KEY` secret, and the ordered "Deploying definition-mode" checklist).
+- **Blocked on the owner:** the DoD's end-to-end run on the real Worker (create `DEFINITIONS`, set `MW_API_KEY`, deploy, smoke-test `/define`, confirm a pre-feature link still renders) is an outward-facing deploy, and the licence open question (sad §11) must be answered first. Not done in this session.
