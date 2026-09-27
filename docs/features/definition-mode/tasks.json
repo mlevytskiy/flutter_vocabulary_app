@@ -1,0 +1,320 @@
+{
+  "slug": "definition-mode",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add definition fields and the filled-row helper to WordPair",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-11",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "Unit tests: JSON round trip and `copy()` keep all three new fields; defaults are empty/null/false. Session-store test: a session saved before this change loads with empty definitions and no error (AC-13). Unit test: `isFilled` is true for word+definition with no translation, and for word+translation with no definition (AC-12). `dart run build_runner build --delete-conflicting-outputs` clean; `flutter analyze` adds no issue.",
+      "files_hint": [
+        "lib/core/models/word_pair.dart",
+        "lib/core/models/word_pair.g.dart",
+        "test/word_pair_test.dart",
+        "test/session_store_test.dart"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add the persisted word detail mode provider",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "Unit test: fresh preferences → `translation`; after `set(definition)` a new container reads `definition` (survives restart). Unknown stored value falls back to `translation`. `build_runner` clean; `flutter analyze` adds no issue.",
+      "files_hint": [
+        "lib/core/providers.dart",
+        "lib/core/providers.g.dart",
+        "test/word_detail_mode_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the three-way word detail mode to Settings",
+      "layer": "ui",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "Widget test: three options shown, Translation selected on a fresh install; tapping Definition updates the provider. The drag-and-drop row is unchanged.",
+      "files_hint": [
+        "lib/features/settings/settings_screen.dart",
+        "test/settings_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the Worker dictionary route with the 30-day cache",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "`npm run typecheck` clean. Against `wrangler dev` with a real key: `tenacious` → senses (first = \"persistent in maintaining…\"-style short sense); `determinated` → not found with suggestions including \"determined\"; a bogus key → temporarily unavailable; second `tenacious` call logs `cache hit`. Missing or wrong app secret is rejected like the other routes.",
+      "files_hint": [
+        "vocab-photo-api/src/define.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/src/routing.ts",
+        "vocab-photo-api/src/env.ts",
+        "vocab-photo-api/wrangler.jsonc"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Accept definitions and the detail mode in published sessions",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-16",
+        "AC-17",
+        "AC-19"
+      ],
+      "dod": "`npm run typecheck` clean. curl: a create request with definitions + `detail: definition` stores both; a 501-character definition is refused with a message naming the word (AC-19); an old-shape request (no definition, no detail) still succeeds (AC-17).",
+      "files_hint": [
+        "vocab-photo-api/src/session/types.ts",
+        "vocab-photo-api/src/session/handlers.ts",
+        "vocab-photo-api/src/session/store.ts"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Render shared-page columns from the detail mode",
+      "layer": "ui",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-16",
+        "AC-17",
+        "AC-18"
+      ],
+      "dod": "`npm run typecheck` clean. Against `wrangler dev`: pages for each of the three modes show the right columns; a document stored without `detail`/`definition` renders exactly as before; a definition containing `<script>` renders as text. An unknown session id still reveals nothing (AC-18).",
+      "files_hint": [
+        "vocab-photo-api/src/session/page.ts"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Write the fixed definition column in the Worker AnkiDroid file",
+      "layer": "ports",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-17",
+        "AC-20"
+      ],
+      "dod": "`npm run typecheck` clean. curl the page download for each mode: 4 columns, hidden column empty, tabs/newlines/markup escaped by `ankiField`. README format section matches the file byte for byte on a sample.",
+      "files_hint": [
+        "vocab-photo-api/src/session/anki.ts",
+        "vocab-photo-api/README.md"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Add DictionaryService and DefinitionResult in the app",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "Unit tests with `MockClient`: senses parsed; not-found returns suggestions; a 5xx, malformed body and timeout all return unavailable (AC-07). `build_runner` clean; `flutter analyze` adds no issue.",
+      "files_hint": [
+        "lib/core/services/dictionary_service.dart",
+        "lib/core/models/definition_result.dart",
+        "lib/core/providers.dart",
+        "lib/core/providers.g.dart",
+        "test/dictionary_service_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Store photo descriptions as definitions",
+      "layer": "app",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "Test: a photo result with translation + description fills both; one with description only leaves translation empty and fills the definition (AC-10). Test or log check: the dictionary service is never called during photo import (AC-09).",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "test/photo_words_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Keep per-row definition state in the input screen and notifier",
+      "layer": "app",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-13"
+      ],
+      "dod": "Notifier tests: definition saved and restored; reorder and remove keep definitions aligned with their words. Test: editing the word clears stored senses, keeps definition text. Existing widget tests (dots close race, row-0 identity) still pass.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/features/word_input/word_input_notifier.dart",
+        "lib/features/word_input/word_input_notifier.g.dart",
+        "test/word_input_notifier_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Lay out word rows per word detail mode",
+      "layer": "ui",
+      "deps": [
+        "T2",
+        "T10"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-11"
+      ],
+      "dod": "Widget tests: each mode builds the expected fields and hides the others. Screenshot comparison on one device: translation mode identical before/after (AC-02). Switching modes on a 30-row session changes layout only; all texts intact (AC-11).",
+      "files_hint": [
+        "lib/features/word_input/widgets/word_row_item.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/word_row_layout_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Fill a definition from the lightning icon",
+      "layer": "ui",
+      "deps": [
+        "T8",
+        "T11"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-07"
+      ],
+      "dod": "Widget tests with a fake service: fills first sense; not-found leaves the field empty and shows suggestions; unavailable leaves the field unchanged and translation icons still work. Timing log line around the lookup is emitted (for spec §6 p95 checks).",
+      "files_hint": [
+        "lib/features/word_input/widgets/word_row_item.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/features/word_input/lightning_rules.dart",
+        "docs/lightning_icon_rules.md",
+        "test/definition_lightning_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Pick a sense from the definition dots popup",
+      "layer": "ui",
+      "deps": [
+        "T8",
+        "T11"
+      ],
+      "acs": [
+        "AC-08"
+      ],
+      "dod": "Widget tests: stored senses open without a lookup; tapping a sense replaces the text; with no senses, opening triggers one lookup and shows the result. Existing dots close-race tests still pass.",
+      "files_hint": [
+        "lib/features/word_input/widgets/definition_dots_button.dart",
+        "lib/features/word_input/widgets/definition_options_content.dart",
+        "lib/features/word_input/widgets/word_row_item.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/definition_senses_popup_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Show words-table columns per mode with the filled rule",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T2"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-14"
+      ],
+      "dod": "Widget test: a definition-only row is listed in every mode; columns match each mode.",
+      "files_hint": [
+        "lib/features/words_table/words_table_screen.dart",
+        "test/words_table_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Write the fixed definition column in the app AnkiDroid export",
+      "layer": "app",
+      "deps": [
+        "T1",
+        "T2",
+        "T7"
+      ],
+      "acs": [
+        "AC-15"
+      ],
+      "dod": "Byte-level tests for each mode, including a definition with tabs, newlines and markup; output matches the README sample from T7.",
+      "files_hint": [
+        "lib/features/words_table/anki_export.dart",
+        "lib/features/words_table/words_table_screen.dart",
+        "test/anki_export_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Publish definitions and the detail mode",
+      "layer": "app",
+      "deps": [
+        "T1",
+        "T2",
+        "T5"
+      ],
+      "acs": [
+        "AC-16",
+        "AC-19"
+      ],
+      "dod": "MockClient tests: body carries definitions and `detail` per mode; the too-long refusal surfaces the word in the error.",
+      "files_hint": [
+        "lib/core/services/session_publish_service.dart",
+        "lib/features/words_table/words_table_screen.dart",
+        "test/session_publish_service_test.dart"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Update architecture docs and the deploy checklist",
+      "layer": "docs",
+      "deps": [
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T16"
+      ],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "Checklist followed once end to end on the real Worker; an existing pre-feature link renders unchanged (AC-17). Licence open question (sad §11) answered before this deploy.",
+      "files_hint": [
+        "docs/architecture.md",
+        "vocab-photo-api/README.md"
+      ]
+    }
+  ]
+}
