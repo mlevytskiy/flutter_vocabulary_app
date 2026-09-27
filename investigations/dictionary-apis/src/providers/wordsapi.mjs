@@ -1,7 +1,7 @@
 import { timedFetch, parseJson, baseUrl } from '../lib/http.mjs';
 import { found, failed, skipped } from '../lib/result.mjs';
 
-// Unverified without a key. Pronunciation is IPA text only, no audio.
+// Pronunciation is IPA text only, no audio.
 export const id = 'wordsapi';
 const HOST = 'wordsapiv1.p.rapidapi.com';
 const BASE = baseUrl(id, `https://${HOST}/words/`);

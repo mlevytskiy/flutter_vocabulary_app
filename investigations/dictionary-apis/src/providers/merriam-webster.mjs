@@ -1,7 +1,6 @@
 import { timedFetch, parseJson, baseUrl } from '../lib/http.mjs';
 import { found, failed, skipped } from '../lib/result.mjs';
 
-// Unverified without a key — see task-16 open points.
 export const id = 'merriam-webster';
 const BASE = baseUrl(id, 'https://www.dictionaryapi.com/api/v3/references/collegiate/json/');
 
@@ -17,8 +16,11 @@ export async function probe(word) {
     return found(r, { definitions: [], extra: { suggestions: entries.slice(0, 5) } });
   }
 
-  const definitions = entries.flatMap((e) => e.shortdef ?? []);
-  const file = entries.find((e) => e.hwi?.prs?.[0]?.sound?.audio)?.hwi.prs[0].sound.audio;
+  // MW also returns compounds and run-ons (`direct` → `direct current`); keep headword matches when there are any.
+  const own = entries.filter((e) => e.meta?.id?.split(':')[0].toLowerCase() === word.toLowerCase());
+  const use = own.length ? own : entries;
+  const definitions = use.flatMap((e) => e.shortdef ?? []);
+  const file = use.find((e) => e.hwi?.prs?.[0]?.sound?.audio)?.hwi.prs[0].sound.audio;
   return found(r, { definitions, audio: { brE: null, amE: file ? audioUrl(file) : null } });
 }
 

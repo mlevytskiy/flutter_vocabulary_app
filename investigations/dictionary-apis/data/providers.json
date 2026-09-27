@@ -108,7 +108,7 @@
       "registration": "self-serve",
       "probeable": true,
       "excluded": false,
-      "note": "Definitions are minimal; one sense."
+      "note": "One definition string with the senses numbered inline (Webster 1913-style); the adapter splits it. No audio. Returned nothing for inflected forms (flustered, circumstances) on 2026-09-27."
     },
     {
       "id": "datamuse",
