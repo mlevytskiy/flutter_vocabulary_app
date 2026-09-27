@@ -29,7 +29,7 @@ Task files link to the roadmap and [`../idea-brief.md`](../idea-brief.md); they 
 | [task-16](completed/task-16-dictionary-api-probe-harness.md) — Probe harness: fetch, measure, record | 9 (recon) | M | 7 | task-14, task-15 | **done 2026-09-24** |
 | [task-17](completed/task-17-dictionary-api-comparison-page.md) — Static comparison page (descriptions + cost + 10-word tables) | 9 (recon) | M | 7 | task-15, task-16 | **done 2026-09-27** |
 | [task-18](completed/task-18-run-comparison-and-findings.md) — Run the comparison, populate the page, write findings | 9 (recon) | M | 8 | task-16, task-17 | **done 2026-09-27** — findings in [`investigations/dictionary-apis/README.md`](../../investigations/dictionary-apis/README.md#findings-probe-run-2026-09-27---warm) |
-| [task-19](active/task-19-definition-mode-setting.md) — A Settings option: translation / definition / both; definition rows go vertical | 14 | L | 9 | **D10** (key location); task-13 (same screen file) | not started — planned only |
+| [task-19](completed/task-19-definition-mode-setting.md) — A Settings option: translation / definition / both; definition rows go vertical | 14 | L | 9 | — (D10 resolved: Worker `/define`) | **done 2026-09-27** — via [`docs/features/definition-mode/`](../features/definition-mode/), merged at `bef0688` |
 
 D1, D2, D3, D4, D5, D6, D8, D9 are resolved in [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far).
 **D3** closed 2026-09-27 on the task-14..18 investigation: the word-detail source is the
