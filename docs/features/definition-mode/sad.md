@@ -279,72 +279,64 @@ The app is built and installed on the owner's phone as today; the Worker is depl
 
 ## 9. Architecture decisions
 
-<!-- 🎯 Why: the REVERSE INDEX onto the adr/ folder. `ls adr/` gives the files; §9 gives the
-     semantics — why they exist, which SAD section they attach to, what status.
-     📋 Write: a 4-column table, one row per ADR. Mixed status is fine.
-     📌 e.g. «0001 | Store content as a table of typed blocks | Accepted | §4». -->
-
 | # | Title | Status | Section |
 |---|---|---|---|
-| <NNNN> | <imperative — e.g. "Use a sliding-window counter for rate limiting"> | Accepted | §<N> |
-| <NNNN> | <imperative — e.g. "Co-locate the worker in the API process"> | Accepted | §<N> |
+| [0001](./adr/0001-change-app-worker-and-shared-page-as-three-surfaces.md) | Change the app, the Worker API and the shared page as three surfaces | Accepted | §4 |
+| [0002](./adr/0002-proxy-dictionary-lookups-through-the-worker.md) | Proxy dictionary lookups through the Worker | Accepted | §4 |
+| [0003](./adr/0003-store-definition-text-and-senses-on-the-word-row.md) | Store the definition text and its senses on the word row | Accepted | §4 |
+| [0004](./adr/0004-record-the-detail-mode-in-the-published-session.md) | Record the detail mode in the published session | Accepted | §4 |
+| [0005](./adr/0005-export-anki-files-with-a-fixed-definition-column.md) | Export AnkiDroid files with a fixed definition column | Accepted | §4 |
 
-ADR files live under `docs/features/<slug>/adr/NNNN-<title>.md`.
+ADR files live under `docs/features/definition-mode/adr/NNNN-<title>.md`. Inline decisions (no ADR, below the blast-radius gate): the mode preference's storage (§4 seed 1), extending existing modules (§5), the 30-day dictionary cache (§7), the §8 conventions.
 
 ## 10. Quality requirements
 
-<!-- 🎯 Why: the QUALITY TREE — take a goal from §1 and break it into concrete leaves: tests,
-     metrics, configs, drills. ⭐ Without §10, §1 is a manifesto. With §10 each declaration maps
-     to something PROVABLE.
-     📋 Write: per §1 goal — When / Then / How-verify. Numbers from spec §6 NFR VERBATIM (don't
-     round ≤250ms to ≤300ms — that's a critic F6 hit).
-     📌 e.g. «p95 ≤ 500 ms on a block update, verified by a 100 req/s load test». -->
+**QG-1. Data integrity and compatibility**
+- **When:** the learner switches both → definition → translation → both on a session with translations and definitions; opens a session created before this feature; or the partner opens a link published before this feature.
+- **Then:** every translation and definition is exactly as before (spec AC-11); the older session opens normally with empty definitions (AC-13); the old link shows word and translation as before, and its AnkiDroid download works (AC-17). Rows with a word and a definition but no translation count as filled in every mode (AC-12).
+- **How verify:** unit tests on `WordPair` (JSON round trip, copy, empty defaults) and on the "filled" helper; a session-store test that loads a pre-feature session; against `wrangler dev`, store a document without `detail` or `definition` and fetch its page and file.
 
-Each top-3 goal from §1 expanded into a full scenario:
+**QG-2. Graceful degradation and quota safety**
+- **When:** the dictionary cannot be reached or its daily allowance is used up, and the learner taps the definition lightning or opens the senses list; or the learner takes a photo in any mode.
+- **Then:** the definition stays as it was, the learner is told definitions are temporarily unavailable, and translation features keep working (AC-07). Dictionary lookups happen "only on a learner tap — 0 per photo, 0 per keystroke" (spec §6).
+- **How verify:** a unit test of the dictionary service with the Worker answering "temporarily unavailable" and timing out; a widget check that the field is unchanged; the Worker log shows no lookup lines during a photo capture.
 
-**QG-1. <quality attribute>**
-- **When:** <trigger condition>
-- **Then:** <expected behaviour with numbers from spec §6 NFR>
-- **How verify:** <test / chaos drill / load test / metric>
-
-**QG-2. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
-
-**QG-3. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-3. Responsiveness**
+- **When:** the learner taps the lightning for a typed word, or opens the senses list, on mobile data.
+- **Then:** "lightning tap until definition filled" ≤ 1,000 ms p95, and "senses list open until senses shown" ≤ 1,500 ms p95 (spec §6).
+- **How verify:** "on-device timing log around the lookup, 20 taps over a week" (spec §6), split by cache hit vs dictionary call from the Worker log.
 
 ## 11. Risks and technical debt
 
-<!-- 🎯 Why: ⭐ collects EVERYTHING that can break — not only the technical. Without §11 risks get
-     discussed at standups and lost; debt lives only in the head of whoever accepted it.
-     📋 Write: a risk/debt table — severity — mitigation — owner. Accepted debt in its own block.
-     📌 The first risk is often a product risk, not a technical one. That's normal. -->
-
-<!-- Severity literals: Low / Medium / High for regular risks; "Open question" for rows created by
-     a Save-as-OQ resolution during the Socratic walk (see references/socratic.md). -->
-
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| <e.g. Worker lag may reach hours during a downstream outage> | Medium | <alert >10 min, on-call playbook, retry backoff> | <DevOps> |
-| <e.g. No event-schema versioning in v1> | Medium | <ADR-NNNN planned for v2, tolerate unknown fields> | <Backend> |
-| Open architectural decision: <decision-headline> | Open question | Resolve before <stage trigger or YYYY-MM-DD>; <inline rationale from the Save-as-OQ> | <owner> |
+| Deploy-order skew: an app released before the Worker publishes definitions that the old Worker silently drops, and has no dictionary route | Medium | Worker first, then the app — a checklist step in the Worker task; the app shows "temporarily unavailable" if the route is missing | Maksym |
+| Translation-mode layout regression (CLAUDE.md rule 3 scoped by the §2 override) | Medium | Translation branch left untouched in `word_row_item.dart`; screenshot comparison before/after on one device (spec AC-02) | Maksym |
+| A third field per row adds to the fragile dots popup / focus logic around row 0 | Medium | Widget tests for the definition dots and lightning; re-run the existing close-race and row-0 tests; same popup package and controller pattern as translation | Maksym |
+| Dictionary allowance exhausted (abuse or heavy use) | Low | Tap-only lookups, stored senses per row, 30-day Worker cache, per-lookup log lines (§7) | Maksym |
+| AnkiDroid needs a 3-field note type once for the new column | Low | Import steps in `vocab-photo-api/README.md` and the app's share sheet copy | Maksym |
+| `lib/config/vocab_api_config.dart` is tracked by git despite CLAUDE.md rule 4 | Low | Accepted — the dictionary key goes to a Worker secret instead (ADR-0002); untracking the file is a separate clean-up | Maksym |
+| Open architectural decision: may the free dictionary's text be cached, shown on a public shared link and exported? | Open question | Resolve before the first Worker deploy; if no, drop the cache (§7) and keep dictionary senses on the device only — spec §8 | Maksym |
+| Open architectural decision: should editing a word clear its hidden (not shown in the current mode) definition or translation? | Open question | Resolve before `sdd:tasks`; default now: kept, like translations today — spec §8 | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
-- <e.g. the entity is immutable / unversioned — OK for v1, may need audit versioning in v2>
+- `lib/features/word_input/word_input_screen.dart` grows beyond its ~1,300 lines with parallel per-row definition lists; the parallel-lists clean-up stays optional ([`docs/architecture.md`](../../architecture.md) §3).
+- Photo definitions (one contextual sentence from the photo analysis) read differently from dictionary senses (short, generic); both are stored as the same field.
 
 ## 12. Glossary
 
-<!-- 🎯 Why: ⭐ the DOMAIN GLOSSARY that ends arguments a year later («checkpoint — weekly or
-     biweekly? quarter — calendar or fiscal?»).
-     📋 Write: a term / meaning table. Business + technical terms mixed.
-     📌 e.g. «Lesson | a unit inside a course made of blocks (text, video)». -->
-
 | Term | Meaning |
 |---|---|
-| <e.g. domain object A> | <its meaning in this domain> |
-| <e.g. domain object B> | <its meaning> |
-| <e.g. domain invariant name> | <the rule, in plain language> |
+| learner | The phone owner who collects words into sessions and exports them ([`CONTEXT.md`](../../../CONTEXT.md)). |
+| partner | Opens a session's shared link; no app, no account. |
+| session | A set of words collected together, stored on the learner's device. |
+| word row | One line of a session: an English word with its details. |
+| translation | The Ukrainian equivalent of an English word in a word row. |
+| definition | A short English explanation of a word's meaning — from the photo analysis or picked from the dictionary's senses ([feature `CONTEXT.md`](./CONTEXT.md)). |
+| word detail mode | The learner's choice in Settings — translation, definition or both — applied to every word row and every output. |
+| senses | The dictionary's short meanings for a word; stored on the row and cached by the Worker; the senses list lets the learner pick one. |
+| detail | The word detail mode recorded in a published session; absent in documents from before this feature, which read as translation. |
+| filled row | A word row with a non-empty word and a translation or a definition — the same rule in every mode. |
+| dictionary route | The Worker path the app calls to get a word's senses; it holds the dictionary key and returns one of three outcomes. |
+| dictionary cache | The Worker's 30-day store of successful lookups, keyed by the lowercased word. |
+
