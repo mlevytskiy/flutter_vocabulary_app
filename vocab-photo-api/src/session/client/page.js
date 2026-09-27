@@ -55,6 +55,8 @@ const LABELS = { word: "Word", translation: "Translation", definition: "Definiti
 const SAVED_FOR_MS = 2000;
 const UNDO_MS = 5000;
 const NOTICE_MS = 6000;
+/** A field in the Undo toast shows at most this many words (then "…"). */
+const TOAST_WORDS = 8;
 
 document.documentElement.classList.add("js");
 
@@ -343,17 +345,39 @@ function listGone() {
  * (`.toasts` is aria-live). Returns the toast so an action can be added.
  * @param {string} text
  * @param {number} ms how long it stays
+ * @param {{ text: string, className: string }[]} [parts] shown after the message on the same line
+ * @param {HTMLButtonElement} [action] a button beside the message
  */
-function toast(text, ms) {
+function toast(text, ms, parts = [], action) {
   const box = main?.querySelector(".toasts");
   const el = document.createElement("div");
   el.className = "toast";
-  const p = document.createElement("span");
-  p.textContent = text;
-  el.append(p);
+  const body = document.createElement("div");
+  body.className = parts.length ? "toast-body one-line" : "toast-body";
+  body.append(text);
+  parts.forEach((part, i) => {
+    // The separator is text too, so a screen reader and a copy keep it.
+    body.append(i === 0 ? " " : " · ");
+    const span = document.createElement("span");
+    span.className = part.className;
+    span.textContent = part.text;
+    body.append(span);
+  });
+  el.append(body);
+  if (action) el.append(action);
+  // Filled before it is added, so a screen reader reads it whole.
   box?.append(el);
   const timer = window.setTimeout(() => el.remove(), ms);
   return { el, close: () => { window.clearTimeout(timer); el.remove(); } };
+}
+
+/**
+ * The first few words of a cell for a toast, on one line.
+ * @param {string} text
+ */
+function clip(text) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  return words.length > TOAST_WORDS ? `${words.slice(0, TOAST_WORDS).join(" ")}…` : words.join(" ");
 }
 
 /** A random row id the Worker accepts (`[A-Za-z0-9-]{1,64}`). */
@@ -409,11 +433,16 @@ function deleteRow(row) {
   if (state.gone || row.pendingDelete) return;
   row.pendingDelete = true;
   row.tr.classList.add("pending-delete");
-  const shown = toast("Row deleted.", UNDO_MS);
   const undo = document.createElement("button");
   undo.type = "button";
   undo.textContent = "Undo";
-  shown.el.append(undo);
+  // Which row it was: its word, translation and definition as the page shows them.
+  const parts = [];
+  for (const field of FIELDS) {
+    const text = clip(read(row.cells[field]));
+    if (text) parts.push({ text, className: `toast-${field}` });
+  }
+  const shown = toast("Row deleted:", UNDO_MS, parts, undo);
   const timer = window.setTimeout(() => void commitDelete(row), UNDO_MS);
   undo.addEventListener("click", () => {
     window.clearTimeout(timer);

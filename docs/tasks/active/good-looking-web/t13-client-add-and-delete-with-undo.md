@@ -42,7 +42,9 @@ it. A refusal (`rows_full`, too long, no connection) leaves the row `new` and ma
 saved with the reason. An added row that never got text is simply not stored.
 
 Delete adds `pending-delete` (hidden in place, so Undo brings it back where it was with its
-`data-source`) and a "Row deleted. Undo" toast; each delete has its own 5-second timer. When the
+`data-source`) and a "Row deleted: word · translation · definition  Undo" toast naming the row
+on one line: empty fields left out, each at most 8 words (then "…"), the line cut with "…" at
+`max-width: 20rem`. Each delete has its own 5-second timer. When the
 timer runs out, the delete waits for any save of that row still in flight and then sends the
 three revisions. A `new` row is dropped without a request. `200` / `unknown_row` removes the row.
 `409` brings it back with the other partner's text (idle cells take it; a cell with unsaved text

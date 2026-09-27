@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 /// definition-mode T14: the words table lists every filled row and shows the
@@ -19,11 +20,14 @@ void main() {
       WordPair(word: 'orphan'),
     ];
 
-  Future<void> pumpTable(WidgetTester tester, WordDetailMode mode) async {
+  Future<void> pumpTable(WidgetTester tester, WordDetailMode mode,
+      {SessionPublishService? publisher}) async {
     SharedPreferences.setMockInitialValues({'word_detail_mode': mode.name});
     final container = ProviderContainer(overrides: [
       sessionByIdProvider(session.sessionId)
           .overrideWith((ref) async => session),
+      if (publisher != null)
+        sessionPublishServiceProvider.overrideWithValue(publisher),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
@@ -67,4 +71,26 @@ void main() {
     expect(find.text('заява'), findsOneWidget);
     expect(find.text('to ask for'), findsOneWidget);
   });
+
+  testWidgets('the Share button stops spinning once the link dialog is up',
+      (tester) async {
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: _FakePublisher());
+    await tester.tap(find.text('Share'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Share link'));
+    // The clipboard write goes through a platform channel: let it answer.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Link ready'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+}
+
+class _FakePublisher extends SessionPublishService {
+  @override
+  Future<PublishedSession> publish(List<WordPair> pairs,
+          {WordDetailMode detail = WordDetailMode.translation}) async =>
+      PublishedSession(id: 'id', url: 'https://example.test/s/id');
 }

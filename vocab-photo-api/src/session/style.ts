@@ -78,9 +78,16 @@ export const STYLE = `
   tr.changed td { animation: changed 3s ease-out; }
   @keyframes changed { from { background: #fff3c4; } to { background: transparent; } }
   .toasts { position: fixed; left: 12px; bottom: 16px; z-index: 3; display: flex; flex-direction: column;
-            gap: 8px; max-width: min(28rem, calc(100vw - 104px)); }
+            gap: 8px; max-width: min(28rem, calc(100vw - 24px)); }
+  /* Clear of the phone's photo button (bottom right), when there is one. */
+  .has-photos .toasts { max-width: min(28rem, calc(100vw - 104px)); }
   .toast { display: flex; align-items: center; gap: 12px; margin: 0; padding: 10px 12px; border-radius: 6px;
            background: #1b1b1b; color: #fff; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+  .toast-body { min-width: 0; }
+  .toast-body.one-line { max-width: 20rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toast-word { font-weight: 600; }
+  .toast-definition { opacity: 0.8; }
+  .toast button { flex: none; }
   .toast button { font: inherit; font-weight: 600; padding: 4px 8px; border: 0; border-radius: 4px;
                   background: none; color: #8ab4f8; cursor: pointer; }
   .banner { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; background: #fdecea; color: #b3261e; }

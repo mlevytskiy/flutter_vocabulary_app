@@ -93,7 +93,7 @@
 		{
 			"binding": "DB",
 			"database_name": "vocab-sessions",
-			"database_id": "REPLACE_WITH_VOCAB_SESSIONS_DATABASE_ID",
+			"database_id": "bfa6857e-a913-4b61-8fbf-34f9cc734e45",
 			"migrations_dir": "migrations"
 		}
 	]

@@ -153,6 +153,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         await ref.read(wordInputNotifierProvider.notifier).markShared();
       }
       if (!mounted) return;
+      // Publishing is over: the button stops spinning while the dialog is up.
+      setState(() => _isPublishing = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Link copied to clipboard')),
       );
