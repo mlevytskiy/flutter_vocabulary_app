@@ -15,27 +15,22 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 1. Introduction and goals
 
-<!-- 🎯 Why: durable memory of «what + the three dominant qualities + who cares». A year from
-     now nobody recalls which three qualities were critical for this system.
-     📋 Write: 1 ¶ intent + 3 lines of top-3 quality goals + a stakeholders table.
-     ¶4 is the override slot — critic `Override` resolutions emit «Decision override: <headline>
-     — rationale: <reason>» bullets here so downstream skills see the deliberate choice. -->
-
-**Intent.** <One paragraph from spec §2 Goals — what we're building and for whom.>
+**Intent.** Turn the shared page from a read-only printout into a working tool for the partner at the learner's table: a spreadsheet-like word table that anyone holding the link can edit, whose columns take the width their content needs up to a per-column maximum, in a wide layout (table beside a photo pager that highlights each photo's rows) and a phone layout (table scrolling both ways, photos in a swipeable dialog). Translation and definition cells, and each of those two columns, get a lightning for autofill; definition autofill is bounded by a per-page allowance so shared pages can never use the app's share of the dictionary quota. On the app side, the learner's phone keeps each source photo with the rows recognised from it and publishes the photos only when "include photos" is on. Edits live only on the shared page and in the AnkiDroid file downloaded from it — nothing flows back into the app (spec §2, §3).
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
-1. <e.g. "Availability under partial failure of a downstream module">
-2. <e.g. "Read performance for the dashboard under data-scale growth">
-3. <e.g. "Recoverability with <30 min RTO">
+1. **Edit integrity under concurrent editing** — no lost edits: every save either lands or comes back as a conflict the partner resolves; other partners' saved edits appear within 10 s without reload.
+2. **A bounded public write surface** — shared pages never use the app's reserved share of the dictionary quota; the per-page allowance, the row / field / session-size limits and a write rate limit hold; photos of a session published without them cannot be reached at all.
+3. **Readable on any device** — a 100-row table renders readably on a phone on 4G within the spec's first-render target, with no page-level sideways scroll at 360 px.
 
 **Stakeholders.**
 
 | Role | Interest | Sign-off owner? |
 |---|---|---|
-| <author role from glossary> | <feature usage> | No |
-| <consumer role from glossary> | <read usage> | No |
-| Tech Lead | SAD approval | Yes |
+| partner | Reads, edits, adds, deletes and autofills words on the shared page; downloads the AnkiDroid file | No |
+| learner | Publishes a session, chooses whether its source photos go out; receives the corrected list through the downloaded file | No |
+| Tech Lead (Maksym) | SAD approval | Yes |
+| Security Lead (Maksym) | Security review of the new public write surface and the published photos (spec §6.1) | Yes |
 
 <!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
 
