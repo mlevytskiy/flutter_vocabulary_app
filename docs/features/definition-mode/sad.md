@@ -33,30 +33,25 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 2. Constraints
 
-<!-- 🎯 Why: §4 strategy only works when §2 has fixed WHAT IS ALREADY FIXED — stack, versions,
-     deadline, regulatory. This is an input, not an output.
-     📋 Write: four blocks — Technical / Organisational / Conventions / Regulatory.
-     📌 Pin versions («<datastore> 18», not «<datastore>»); «Q3 deadline — hard», not «ideally».
-     Never N/A — every feature inherits at least Conventions + Technical. -->
-
 **Technical.**
-- <Language + version>
-- <Framework(s) + version>
-- <Datastore(s) + version>
-- <Architecture convention — e.g. the layering style from the project convention file>
+- App: Flutter, Dart SDK `>=3.0.0 <4.0.0`; `flutter_riverpod` / `riverpod_annotation` 2.6.x with `riverpod_generator` (providers in `lib/core/providers.dart`); `go_router` 17.2.3 with typed routes.
+- Persistence: `isar_community` **pinned exactly to `3.3.0-dev.1`** (the last release on `build 2.x`, see [`docs/architecture.md`](../../architecture.md) rule 6) — any new field on `WordPair` means a `build_runner` regeneration and committed `.g.dart`; `shared_preferences` 2.5.5 already holds the `current_session_id` pointer.
+- Network: `http` 1.2.2 — the only HTTP client; the dictionary call uses it (no new package).
+- Worker (`vocab-photo-api/`): TypeScript 5.6, `wrangler` 4, `compatibility_date` 2025-01-01. Published sessions live in the `SESSIONS` KV namespace with a 30-day TTL; `parseEntries` (`src/session/types.ts`) keeps **only** `word` and `translation`, caps each field at 500 characters and a session at 500 entries. The photo endpoint already supports `with_desc=true`, and the app already requests it.
+- Worker verification: no test runner — `npm run typecheck` plus `wrangler dev` + curl.
 
 **Organisational.**
-- <Effort budget — e.g. 3 person-weeks>
-- <Deadline — e.g. 2026-Q3 hard>
-- <Team composition>
+- One owner (Maksym) builds, reviews and deploys; no deadline; effort budget ≈ 1 week.
+- Worker deploy is a manual `wrangler deploy` by the owner.
 
 **Conventions.**
-- <Link to the project's convention file>
-- <Naming, ID strategy, error-handling pattern>
+- [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2: typed routes only; services via providers; screen data in a `@riverpod` notifier, controllers/focus/loading flags in widget `State`; no new or removed packages; no new domain models (a new field on `WordPair` is not a new model).
+- Override — CLAUDE.md rule 3 ("do not change how anything looks") is scoped to structural refactors. This feature changes the row layout **only in definition and both modes**, as the spec asks; translation mode stays pixel-identical (spec AC-02) and its code is branched around, not rewritten. Risk tracked in §11.
+- Verification per [`docs/tasks/README.md`](../../tasks/README.md) "How to check a task": `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test`, the `CLAUDE.md` greps, and `npm run typecheck` in `vocab-photo-api/`.
 
 **Regulatory / external.**
-- <e.g. data-retention / deletion behaviour per ADR-NNNN>
-- <e.g. applicable compliance controls, or N/A with a reason>
+- The dictionary's free key is non-commercial, 1,000 calls/day; whether its text may appear on a public shared link and in exported files is an open question (spec §8) — tracked in §11.
+- No personal data added (spec §6.1). Published sessions stay readable by anyone holding the link for 30 days (D4).
 
 ## 3. Context and scope
 
