@@ -55,37 +55,46 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 3. Context and scope
 
-<!-- 🎯 Why: draws the SYSTEM BOUNDARY — who talks to it from outside, where the trust zone ends.
-     Without §3, §5 and §8 (authorization) blur — unclear what's «inside» vs «outside».
-     📋 Write: 2–3 sentences of business context + an external-systems table + a C4Context block.
-     📌 «External: none (deliberate, no third-party in v1)» is itself a decision worth stating.
-     Trust boundary — the line past which you don't trust data without checking it.
-     Never N/A — greenfield still draws the planned actors + external systems. -->
+The learner collects English words on their phone — from a photo of a highlighted page or by typing — and now sees each word's definition beside or instead of its translation, according to one word detail mode. Definitions come from two places: the photo analysis writes a context-fitting one for photo words, and an external dictionary supplies senses for typed words on demand. Definitions then leave the phone the same ways words already do: in the AnkiDroid file and on the partner's shared page.
 
-<Business context in 2–3 sentences. What the system does for whom.>
-
-<!-- brownfield: <one-line scan summary> (or «N/A — greenfield repo» if no source existed) -->
+<!-- brownfield: Flutter app (feature folders, Riverpod providers, Isar sessions, typed go_router routes) + a Cloudflare Worker (`vocab-photo-api/`) that analyses photos via an AI model and publishes sessions to a 30-day KV-backed shared page; the Worker's publish validation currently keeps only word + translation. No architecture-map.md; scanned 2026-09-27. -->
 
 **External systems (in / out):**
 
 | Actor or system | Type | Interaction |
 |---|---|---|
-| <author role> | Person | <what they do> |
-| <external service> | System (internal/external) | <interaction> |
-| <identity provider> | System (external) | <provides auth tokens> |
+| learner | Person | chooses the word detail mode; captures, types, fills and edits definitions; exports and publishes |
+| partner | Person | opens the shared link in a browser; reads definitions; downloads the AnkiDroid file from the page |
+| Merriam-Webster Collegiate API | System (external) | answers a word with short senses, or with spelling suggestions for an unknown word — **new** in this feature |
+| Anthropic Messages API | System (external) | photo analysis: returns highlighted words with translation and a context-fitting description — unchanged, already asked for descriptions |
+| Google Translate endpoint | System (external) | translations and alternative translations — unchanged by this feature |
+| AnkiDroid | System (external) | imports the exported file on the learner's or the partner's device — file format changes (a definition column) |
 
-**C4 Context (L1):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. -->
+**Trust boundary.** Everything returned by the dictionary and the photo analysis, and everything the learner types, is untrusted text: it is escaped wherever it is rendered as HTML (shared page, AnkiDroid file) and bounded in length where it crosses into the Worker.
+
+**C4 Context (L1):**
 
 ```mermaid
 C4Context
-    title <feature> — System Context
+    title definition-mode — System Context
 
-    Person(actor, "<Actor role>", "<intent>")
-    System(app, "<Our system>", "<one-sentence description>")
-    System_Ext(ext, "<External system>", "<one-sentence description>")
+    Person(learner, "learner", "Collects words on the phone; picks translation, definition or both")
+    Person(partner, "partner", "Opens the shared link in a browser")
 
-    Rel(actor, app, "<interaction>", "<protocol>")
-    Rel(app, ext, "<interaction>", "<protocol>")
+    System(vocab, "Vocabulary app + vocab-photo-api Worker", "Collects words with translations and definitions; exports and publishes them")
+
+    System_Ext(mw, "Merriam-Webster Collegiate API", "Short dictionary senses, spelling suggestions")
+    System_Ext(ai, "Anthropic Messages API", "Photo analysis: words, translation, context description")
+    System_Ext(gt, "Google Translate", "Translations and alternatives")
+    System_Ext(anki, "AnkiDroid", "Imports the flashcard file")
+
+    Rel(learner, vocab, "Chooses mode, fills definitions, exports, publishes")
+    Rel(partner, vocab, "Reads the shared page, downloads the file")
+    Rel(vocab, mw, "Looks up senses for a typed word", "HTTPS")
+    Rel(vocab, ai, "Analyses a photo", "HTTPS")
+    Rel(vocab, gt, "Translates a word", "HTTPS")
+    Rel(learner, anki, "Imports the exported file")
+    Rel(partner, anki, "Imports the downloaded file")
 ```
 
 ## 4. Solution strategy
