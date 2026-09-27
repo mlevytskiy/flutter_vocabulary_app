@@ -44,7 +44,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   // The format itself moved to anki_export.dart so the shared page's download
   // (task-07) and this file can be kept byte-identical against one spec.
   String _generateCloseUpB2Format(List<WordPair> wordPairs) =>
-      generateAnkiFile(wordPairs);
+      generateAnkiFile(wordPairs, detail: ref.read(wordDetailModeProvider));
 
   Future<void> _shareWords(List<WordPair> wordPairs) async {
     if (wordPairs.isEmpty) {

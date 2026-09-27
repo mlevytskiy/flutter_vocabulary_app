@@ -1,4 +1,5 @@
 import '../../core/models/word_pair.dart';
+import '../../core/providers.dart' show WordDetailMode;
 
 /// The AnkiDroid import file ("Close-up B2 format"). The SAME format lives in
 /// the Worker (`vocab-photo-api/src/session/anki.ts`) for the download on the
@@ -16,20 +17,30 @@ String ankiField(String value) => value
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;');
 
-String generateAnkiFile(List<WordPair> wordPairs) {
+/// Fixed columns in every mode (definition-mode, ADR-0005): word,
+/// translation, definition, tags. The column [detail] hides is written empty,
+/// so a column never changes meaning between exports.
+String generateAnkiFile(
+  List<WordPair> wordPairs, {
+  WordDetailMode detail = WordDetailMode.translation,
+}) {
+  final showTranslation = detail != WordDetailMode.definition;
+  final showDefinition = detail != WordDetailMode.translation;
   final buffer = StringBuffer();
 
   // Add header
   buffer.writeln('#separator:tab');
   buffer.writeln('#html:true');
-  buffer.writeln('#tags column:3');
+  buffer.writeln('#tags column:4');
 
-  // Add word pairs. A row with both fields blank is never written: the input
+  // Add word pairs. A row with every field blank is never written: the input
   // screen keeps a trailing empty row by design and it must not become an
   // empty card.
   for (var pair in wordPairs) {
     if (pair.isEmpty) continue;
-    buffer.writeln('${ankiField(pair.word)}\t${ankiField(pair.translation)}\t');
+    final translation = showTranslation ? ankiField(pair.translation) : '';
+    final definition = showDefinition ? ankiField(pair.definition) : '';
+    buffer.writeln('${ankiField(pair.word)}\t$translation\t$definition\t');
   }
 
   return buffer.toString();

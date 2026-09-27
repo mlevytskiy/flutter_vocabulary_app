@@ -7,7 +7,7 @@ acs: ["AC-15"]
 files_hint: ["lib/features/words_table/anki_export.dart", "lib/features/words_table/words_table_screen.dart", "test/anki_export_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T15 — Write the fixed definition column in the app AnkiDroid export
