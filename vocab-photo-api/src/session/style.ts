@@ -55,7 +55,7 @@ export const STYLE = `
              border: 1px dashed #999; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
   .no-translation td.c-translation .v, .no-definition td.c-definition .v { display: none; }
 
-  .v[contenteditable]:focus { outline: 2px solid #2962ff; outline-offset: 3px; border-radius: 2px; }
+  .v:focus { outline: 2px solid #2962ff; outline-offset: 3px; border-radius: 2px; }
   td[data-state="saving"] .v { opacity: 0.6; }
   td[data-state="unsaved"], td[data-state="conflict"] { background: #fff1f0; box-shadow: inset 3px 0 #d93025; }
   .cell-note { font-size: 0.8rem; margin: 4px 0 0; max-width: max(var(--w-word), 12rem); }
