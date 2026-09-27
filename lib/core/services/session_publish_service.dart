@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
+import '../models/source_photo.dart';
 import '../models/word_pair.dart';
 import '../providers.dart' show WordDetailMode;
 
@@ -22,7 +23,26 @@ class PublishedSession {
   final String url;
   final DateTime? expiresAt;
 
-  PublishedSession({required this.id, required this.url, this.expiresAt});
+  /// Lets the next publish of this session overwrite the same link
+  /// (ADR-0008). Null from a Worker that predates republishing.
+  final String? editToken;
+
+  /// The photos the request declared, in pager order: their bytes still have
+  /// to be uploaded (ADR-0006).
+  final List<SourcePhoto> declaredSources;
+
+  /// Linked photos past the first 10 taken, which the page will not show
+  /// (spec OQ-3). Their rows are published unlinked.
+  final List<SourcePhoto> leftOutSources;
+
+  PublishedSession({
+    required this.id,
+    required this.url,
+    this.expiresAt,
+    this.editToken,
+    this.declaredSources = const [],
+    this.leftOutSources = const [],
+  });
 }
 
 /// Publishes the current word list to the Worker as a public, read-only page
@@ -31,6 +51,9 @@ class PublishedSession {
 /// the link next to it.
 class SessionPublishService {
   static const _timeout = Duration(seconds: 20);
+
+  /// The most photos a published session holds (the Worker's `MAX_SOURCES`).
+  static const maxSources = 10;
 
   final http.Client _client;
 
@@ -43,11 +66,20 @@ class SessionPublishService {
   ///
   /// [detail] is the learner's word detail mode at publishing time; the page
   /// and its AnkiDroid download show the columns it shows (definition-mode,
-  /// ADR-0004). A field the mode hides is sent empty; definitions are sent
-  /// only when the mode shows them.
+  /// ADR-0004). Every stored translation and definition is sent whatever the
+  /// mode, and the page decides which columns to show (AC-27).
+  ///
+  /// [sources] are the session's photos when "include photos" is on; empty
+  /// means off, and then neither `sources` nor any `sourceId` is sent (AC-24).
+  /// Only photos with a linked row are declared, the first [maxSources] by
+  /// taken time (spec OQ-3). [publishedId] and [editToken] ask the Worker to
+  /// overwrite the earlier link (ADR-0008).
   Future<PublishedSession> publish(
     List<WordPair> pairs, {
     WordDetailMode detail = WordDetailMode.translation,
+    List<SourcePhoto> sources = const [],
+    String? publishedId,
+    String? editToken,
   }) async {
     if (VocabApiConfig.appSecret.isEmpty) {
       throw SessionPublishException(
@@ -55,16 +87,25 @@ class SessionPublishService {
       );
     }
 
-    final showTranslation = detail != WordDetailMode.definition;
-    final showDefinition = detail != WordDetailMode.translation;
+    final kept = [for (final pair in pairs) if (!pair.isEmpty) pair];
+    final linkedIds = {for (final pair in kept) pair.sourceId};
+    final linked = [
+      for (final photo in sources)
+        if (linkedIds.contains(photo.id)) photo,
+    ]..sort((a, b) => a.takenAt.compareTo(b.takenAt));
+    final declared = linked.take(maxSources).toList();
+    final leftOut = linked.skip(maxSources).toList();
+    final declaredIds = {for (final photo in declared) photo.id};
+
     final entries = [
-      for (final pair in pairs)
-        if (!pair.isEmpty)
-          {
-            'word': pair.word.trim(),
-            'translation': showTranslation ? pair.translation.trim() : '',
-            if (showDefinition) 'definition': pair.definition.trim(),
-          },
+      for (final pair in kept)
+        {
+          'word': pair.word.trim(),
+          'translation': pair.translation.trim(),
+          if (pair.definition.trim().isNotEmpty)
+            'definition': pair.definition.trim(),
+          if (declaredIds.contains(pair.sourceId)) 'sourceId': pair.sourceId,
+        },
     ];
     if (entries.isEmpty) {
       throw SessionPublishException('There are no words to publish');
@@ -80,7 +121,19 @@ class SessionPublishService {
               'content-type': 'application/json; charset=utf-8',
               'x-app-secret': VocabApiConfig.appSecret,
             },
-            body: jsonEncode({'detail': detail.name, 'entries': entries}),
+            body: jsonEncode({
+              'detail': detail.name,
+              'entries': entries,
+              if (declared.isNotEmpty)
+                'sources': [
+                  for (var i = 0; i < declared.length; i++)
+                    {'id': declared[i].id, 'order': i},
+                ],
+              if (publishedId != null && editToken != null) ...{
+                'publishedId': publishedId,
+                'editToken': editToken,
+              },
+            }),
           )
           // A stalled connection must not leave the screen behind a spinner
           // forever (AC-16): the person is waiting to hand over a link.
@@ -116,6 +169,9 @@ class SessionPublishService {
       id: id,
       url: url,
       expiresAt: expiresAt != null ? DateTime.tryParse(expiresAt) : null,
+      editToken: decoded['editToken'] as String?,
+      declaredSources: declared,
+      leftOutSources: leftOut,
     );
   }
 }

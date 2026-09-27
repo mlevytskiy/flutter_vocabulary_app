@@ -220,14 +220,23 @@ class WordInputNotifier extends _$WordInputNotifier {
     _scheduleSave();
   }
 
-  /// Records that a shared link now exists for the current session (task-05).
+  /// Records that a shared link now exists for the current session (task-05),
+  /// and the published id and edit token a republish sends back (ADR-0008).
   /// Not a content change: the timestamps are left alone so publishing does
   /// not restart the 5-minute launch clock, and the write goes straight to the
   /// store rather than through the debounce.
-  Future<void> markShared() async {
+  Future<void> markShared({String? publishedId, String? editToken}) async {
     final session = state.valueOrNull;
-    if (session == null || session.isShared) return;
-    session.isShared = true;
+    if (session == null) return;
+    if (session.isShared &&
+        session.publishedId == publishedId &&
+        session.editToken == editToken) {
+      return;
+    }
+    session
+      ..isShared = true
+      ..publishedId = publishedId
+      ..editToken = editToken;
     state = AsyncData(session);
     final store = await ref.read(sessionStoreProvider.future);
     await store.put(session);

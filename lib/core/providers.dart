@@ -6,6 +6,7 @@ import 'models/session.dart';
 import 'services/dictionary_service.dart';
 import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
+import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
 import 'services/session_publish_service.dart';
 import 'services/session_store.dart';
@@ -40,6 +41,12 @@ DictionaryService dictionaryService(Ref ref) => DictionaryService();
 
 @Riverpod(keepAlive: true)
 SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();
+
+/// Background upload of the photos a publish declared (good-looking-web T18).
+/// keepAlive, so uploads outlive the words table (sad §8).
+@Riverpod(keepAlive: true)
+PhotoUploadService photoUploadService(Ref ref) =>
+    PhotoUploadService(store: ref.watch(sourcePhotoStoreProvider));
 
 @riverpod
 Future<Session?> sessionById(Ref ref, String sessionId) async {

@@ -135,4 +135,22 @@ void main() {
     container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
     expect(words(), hasLength(2));
   });
+
+  // good-looking-web T18 (ADR-0008): the id and token a publish returns are
+  // kept, so the next publish overwrites the same link.
+  test('markShared stores the published id and edit token', () async {
+    final notifier = await seeded([WordPair(word: 'tea', translation: 'чай')]);
+    await notifier.flush();
+    final session = container.read(wordInputNotifierProvider).value!;
+    final touched = session.lastLocalModifiedAt;
+
+    await notifier.markShared(publishedId: 'pub-1', editToken: 'tok-1');
+    await notifier.markShared(publishedId: 'pub-1', editToken: 'tok-2');
+
+    final stored = await store.byId(session.sessionId);
+    expect(stored!.isShared, isTrue);
+    expect(stored.publishedId, 'pub-1');
+    expect(stored.editToken, 'tok-2');
+    expect(stored.lastLocalModifiedAt, touched); // not a content change
+  });
 }

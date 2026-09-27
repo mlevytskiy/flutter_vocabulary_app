@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
@@ -91,6 +92,9 @@ void main() {
 class _FakePublisher extends SessionPublishService {
   @override
   Future<PublishedSession> publish(List<WordPair> pairs,
-          {WordDetailMode detail = WordDetailMode.translation}) async =>
+          {WordDetailMode detail = WordDetailMode.translation,
+          List<SourcePhoto> sources = const [],
+          String? publishedId,
+          String? editToken}) async =>
       PublishedSession(id: 'id', url: 'https://example.test/s/id');
 }

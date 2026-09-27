@@ -148,6 +148,27 @@ final sessionPublishServiceProvider = Provider<SessionPublishService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SessionPublishServiceRef = ProviderRef<SessionPublishService>;
+String _$photoUploadServiceHash() =>
+    r'8c9008e9902f73f6fe215aff73ac7796edf87107';
+
+/// Background upload of the photos a publish declared (good-looking-web T18).
+/// keepAlive, so uploads outlive the words table (sad §8).
+///
+/// Copied from [photoUploadService].
+@ProviderFor(photoUploadService)
+final photoUploadServiceProvider = Provider<PhotoUploadService>.internal(
+  photoUploadService,
+  name: r'photoUploadServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$photoUploadServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef PhotoUploadServiceRef = ProviderRef<PhotoUploadService>;
 String _$sessionByIdHash() => r'5a9ababfd50081224b9aaab6a0e5d20842921e11';
 
 /// Copied from Dart SDK

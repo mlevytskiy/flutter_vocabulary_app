@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import '../../core/models/session.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
@@ -140,18 +142,23 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
     try {
+      final session = _session();
       final published =
           await ref.read(sessionPublishServiceProvider).publish(wordPairs,
-              detail: ref.read(wordDetailModeProvider));
+              detail: ref.read(wordDetailModeProvider),
+              // Photos stay off until the share sheet's "include photos"
+              // switch exists (good-looking-web T19, AC-23, AC-24).
+              sources: const [],
+              publishedId: session?.publishedId,
+              editToken: session?.editToken);
+      // Never awaited: the link dialog does not wait for photos (AC-37).
+      ref
+          .read(photoUploadServiceProvider)
+          .enqueue(published.id, published.declaredSources);
       // The point is handing the URL over in the next five seconds: it is on
       // the clipboard before the dialog even opens.
       await Clipboard.setData(ClipboardData(text: published.url));
-      // `markShared` flags the session the notifier holds, so it applies only
-      // when this screen is showing that session. A History row publishes the
-      // words without restamping the current session.
-      if (widget.sessionId == null) {
-        await ref.read(wordInputNotifierProvider.notifier).markShared();
-      }
+      await _rememberPublished(published);
       if (!mounted) return;
       // Publishing is over: the button stops spinning while the dialog is up.
       setState(() => _isPublishing = false);
@@ -173,6 +180,51 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       }
     } finally {
       if (mounted) setState(() => _isPublishing = false);
+    }
+  }
+
+  /// The session this screen shows: the notifier's for the current one, the
+  /// stored one for a History row.
+  Session? _session() {
+    final sessionId = widget.sessionId;
+    return sessionId == null
+        ? ref.read(wordInputNotifierProvider).valueOrNull
+        : ref.read(sessionByIdProvider(sessionId)).valueOrNull;
+  }
+
+  /// Keeps the published id and edit token so the next publish overwrites the
+  /// same link (ADR-0008). `markShared` also flags the current session; a
+  /// History row is written to the store without restamping anything.
+  Future<void> _rememberPublished(PublishedSession published) async {
+    final sessionId = widget.sessionId;
+    // A History row may be the session the notifier holds: update it there,
+    // or its next save would write the old id and token back.
+    final current = ref.exists(wordInputNotifierProvider)
+        ? ref.read(wordInputNotifierProvider).valueOrNull
+        : null;
+    if (sessionId == null || current?.sessionId == sessionId) {
+      await ref.read(wordInputNotifierProvider.notifier).markShared(
+          publishedId: published.id, editToken: published.editToken);
+      return;
+    }
+    // The link dialog does not wait for opening the store.
+    unawaited(_rememberForHistoryRow(sessionId, published));
+  }
+
+  Future<void> _rememberForHistoryRow(
+      String sessionId, PublishedSession published) async {
+    try {
+      final store = await ref.read(sessionStoreProvider.future);
+      final stored = await store.byId(sessionId);
+      if (stored == null) return;
+      stored
+        ..publishedId = published.id
+        ..editToken = published.editToken;
+      await store.put(stored);
+      ref.invalidate(sessionByIdProvider(sessionId));
+    } catch (_) {
+      // The link is out already; missing the token only means the next
+      // publish makes a new link instead of overwriting this one.
     }
   }
 
