@@ -1,10 +1,18 @@
-import { detailOf, type SessionDocument, type SessionEntry, type SessionSource } from "./types";
+import { STYLE } from "./style";
+import type { StoredRow, StoredSession, StoredSource } from "./types";
 
 /**
- * Server-rendered HTML for the public page. No build step, no framework:
- * plain markup and inline CSS, written for a phone held in portrait. Every
- * value that came from a request goes through `escapeHtml` -- a word field
- * that renders as markup on a page handed to someone else is the obvious hole.
+ * Server-rendered HTML for the public page (ADR-0002). The table is complete
+ * and readable before the browser script (src/session/client/page.js) runs;
+ * the script only adds editing and the rest on top. Every value that came
+ * from a request goes through `escapeHtml` -- a word field that renders as
+ * markup on a page handed to someone else is the obvious hole (AC-33).
+ *
+ * The data the script needs rides on attributes: the session and its
+ * revision on <main>, the row id and source photo on <tr>, the field and
+ * its revision on <td>. Cell text sits in `<div class="v">` with
+ * `white-space: pre-wrap`, so a definition keeps its line break and the
+ * script reads back exactly the stored text.
  */
 
 export function escapeHtml(value: string): string {
@@ -16,42 +24,8 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-const STYLE = `
-  :root { color-scheme: light dark; }
-  * { box-sizing: border-box; }
-  body { margin: 0; font: 16px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif;
-         background: #fafafa; color: #1b1b1b; }
-  main { max-width: 640px; margin: 0 auto; padding: 16px; }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; }
-  h2 { font-size: 1.05rem; margin: 24px 0 8px; }
-  .meta { color: #666; font-size: 0.9rem; margin: 0 0 16px; }
-  table { width: 100%; border-collapse: collapse; background: #fff;
-          border: 1px solid #ddd; border-radius: 6px; overflow: hidden; }
-  th, td { padding: 10px 8px; text-align: left; vertical-align: top;
-           border-bottom: 1px solid #e6e6e6; overflow-wrap: anywhere; }
-  th { background: #eee; font-weight: 600; font-size: 0.9rem; }
-  td.n { color: #888; width: 2.5em; text-align: right; }
-  tr:last-child td { border-bottom: 0; }
-  .actions { margin: 0 0 16px; }
-  .btn { display: inline-block; padding: 10px 16px; border-radius: 6px; background: #2962ff;
-         color: #fff; font-weight: 600; text-decoration: none; }
-  .btn:active { background: #1e4fd6; }
-  figure { margin: 0; }
-  figure img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid #ddd; }
-  .gone { text-align: center; padding: 48px 0; color: #444; }
-  .credit { color: #666; font-size: 0.8rem; margin: 8px 0 0; }
-  @media (prefers-color-scheme: dark) {
-    body { background: #121212; color: #ececec; }
-    table { background: #1c1c1c; border-color: #333; }
-    th { background: #262626; }
-    th, td { border-color: #2e2e2e; }
-    .meta, td.n, .credit { color: #9a9a9a; }
-    figure img { border-color: #333; }
-    .gone { color: #ccc; }
-  }
-`;
-
-function shell(title: string, body: string): string {
+function shell(title: string, body: string, scriptPath?: string): string {
+  const script = scriptPath ? `\n<script type="module" src="${escapeHtml(scriptPath)}"></script>` : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -59,12 +33,10 @@ function shell(title: string, body: string): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${escapeHtml(title)}</title>
-<style>${STYLE}</style>
+<style>${STYLE}</style>${script}
 </head>
 <body>
-<main>
 ${body}
-</main>
 </body>
 </html>
 `;
@@ -76,75 +48,124 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
-function renderSource(sessionId: string, source: SessionSource): string {
-  switch (source.kind) {
-    case "photo": {
-      const src = `/s/${encodeURIComponent(sessionId)}/sources/${encodeURIComponent(source.id)}`;
-      return `<figure><img src="${escapeHtml(src)}" alt="The photo these words were collected from" loading="lazy"></figure>`;
-    }
-    default:
-      return "";
-  }
+type Field = "word" | "translation" | "definition";
+
+const FIELD_TITLES: Record<Field, string> = { word: "Word", translation: "Translation", definition: "Definition" };
+
+/**
+ * Translation and Definition show when any row holds text in them; an
+ * all-empty one collapses to a narrow "add" control (AC-21, AC-22, AC-27).
+ * The page decides from the data, not from the learner's word detail mode.
+ */
+function collapsedColumns(session: StoredSession): Field[] {
+  const fields: Field[] = ["translation", "definition"];
+  return fields.filter((field) => session.rows.every((row) => row[field] === ""));
+}
+
+function sourceUrl(sessionId: string, sourceId: string): string {
+  return `/s/${encodeURIComponent(sessionId)}/sources/${encodeURIComponent(sourceId)}`;
+}
+
+/** A card needs a word: the download leaves out a row whose word is blank (AC-31). */
+function needsWord(row: StoredRow): boolean {
+  return row.word.trim() === "";
+}
+
+function renderCell(row: StoredRow, field: Field): string {
+  const rev = field === "word" ? row.wordRev : field === "translation" ? row.translationRev : row.definitionRev;
+  const mark =
+    field === "word" ? `<p class="needs-word-mark">not in the download — needs a word</p>` : "";
+  return `<td class="c-${field}" data-field="${field}" data-rev="${rev}"><div class="v">${escapeHtml(row[field])}</div>${mark}</td>`;
+}
+
+function renderRow(row: StoredRow): string {
+  const source = row.sourceId !== null ? ` data-source="${escapeHtml(row.sourceId)}"` : "";
+  const cls = needsWord(row) ? ` class="needs-word"` : "";
+  return `<tr data-row="${escapeHtml(row.id)}"${source}${cls}><td class="n"></td>${renderCell(row, "word")}${renderCell(row, "translation")}${renderCell(row, "definition")}</tr>`;
+}
+
+function renderHeader(field: Field, collapsed: boolean): string {
+  const title = FIELD_TITLES[field];
+  const content = collapsed
+    ? `<button type="button" class="add-col" data-open="${field}" aria-label="Add ${title}">+ ${title}</button>`
+    : title;
+  return `<th class="c-${field}" scope="col">${content}</th>`;
 }
 
 /**
- * The columns the learner's word detail mode showed at publishing time
- * (ADR-0004). A document from before definition-mode has no `detail` and reads
- * as translation, which renders exactly the page it always did.
+ * The photo pager (wide layout) and the photo button (phone layout), from the
+ * declared slots in order. A slot whose bytes never arrived is an empty
+ * placeholder in its place. No slots (none declared, or "include photos"
+ * off) renders neither (AC-08, AC-24, AC-26).
  */
-function columnsFor(doc: SessionDocument): { title: string; value: (e: SessionEntry) => string }[] {
-  const translation = { title: "Translation", value: (e: SessionEntry) => e.translation };
-  const definition = { title: "Definition", value: (e: SessionEntry) => e.definition ?? "" };
-  switch (detailOf(doc)) {
-    case "definition":
-      return [definition];
-    case "both":
-      return [translation, definition];
-    default:
-      return [translation];
-  }
+function renderPhotos(session: StoredSession): string {
+  const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
+  if (slots.length === 0) return "";
+  const total = slots.length;
+  const slide = (slot: StoredSource, i: number): string => {
+    const position = `${i + 1} of ${total}`;
+    const picture =
+      slot.status === "arrived"
+        ? `<img src="${escapeHtml(sourceUrl(session.id, slot.id))}" alt="Source photo ${position}" loading="lazy">`
+        : `<div class="placeholder" role="img" aria-label="Source photo ${position}, not available">Photo not available</div>`;
+    return `<figure class="slide" data-source="${escapeHtml(slot.id)}">${picture}<figcaption>${position}</figcaption></figure>`;
+  };
+  const thumbs = slots
+    .slice(0, 3)
+    .map((slot) =>
+      slot.status === "arrived"
+        ? `<img class="thumb" src="${escapeHtml(sourceUrl(session.id, slot.id))}" alt="" loading="lazy">`
+        : `<span class="thumb"></span>`
+    )
+    .join("");
+  const label = total === 1 ? "Show the source photo" : `Show the ${total} source photos`;
+  return `<aside class="photos" aria-label="Source photos">
+<div class="pager-track">
+${slots.map(slide).join("\n")}
+</div>
+<div class="pager-nav" hidden><button type="button" data-pager="prev">Previous photo</button> <button type="button" data-pager="next">Next photo</button></div>
+</aside>
+<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>`;
 }
 
-export function renderSessionPage(doc: SessionDocument): string {
-  const columns = columnsFor(doc);
-  const showsDefinitions = columns.some((c) => c.title === "Definition");
-  const rows = doc.entries
-    .map(
-      (entry, i) =>
-        `<tr><td class="n">${i + 1}</td><td>${escapeHtml(entry.word)}</td>${columns
-          // A definition is "definition: …\nexample: …": keep its line break.
-          .map((c) => `<td>${escapeHtml(c.value(entry)).replace(/\n/g, "<br>")}</td>`)
-          .join("")}</tr>`
-    )
-    .join("\n");
-  const head = columns.map((c) => `<th>${c.title}</th>`).join("");
-  // Dictionary text is shown with its source named (spec §8 licence default).
-  const credit = showsDefinitions ? `\n<p class="credit">Definitions: Merriam-Webster</p>` : "";
-  const count = doc.entries.length;
-  const sources = doc.sources.map((s) => renderSource(doc.id, s)).filter((html) => html !== "");
-  const sourcesHtml =
-    sources.length > 0
-      ? `<section><h2>${sources.length === 1 ? "Source" : "Sources"}</h2>\n${sources.join("\n")}\n</section>`
-      : "";
-  const body = `<h1>Vocabulary</h1>
-<p class="meta">${count} ${count === 1 ? "word" : "words"} · published ${escapeHtml(formatDate(doc.createdAt))} · available until ${escapeHtml(formatDate(doc.expiresAt))}</p>
-<p class="actions"><a class="btn" href="/s/${encodeURIComponent(doc.id)}/words.txt" download>Download for AnkiDroid</a></p>
+export function renderSessionPage(session: StoredSession, scriptPath: string): string {
+  const collapsed = collapsedColumns(session);
+  const count = session.rows.length;
+  const photos = renderPhotos(session);
+  const classes = [photos ? "has-photos" : "", ...collapsed.map((field) => `no-${field}`)].filter((c) => c !== "");
+  const head = (["word", "translation", "definition"] as Field[])
+    .map((field) => renderHeader(field, collapsed.includes(field)))
+    .join("");
+  const body = `<main data-session="${escapeHtml(session.id)}" data-rev="${session.rev}"${classes.length > 0 ? ` class="${classes.join(" ")}"` : ""}>
+<h1>Vocabulary</h1>
+<p class="meta">${count} ${count === 1 ? "word" : "words"} · published ${escapeHtml(formatDate(session.createdAt))} · available until ${escapeHtml(formatDate(session.expiresAt))}</p>
+<p class="actions"><a class="btn" href="/s/${encodeURIComponent(session.id)}/words.txt" download>Download for AnkiDroid</a></p>
+<div class="layout">
+<div class="table-area">
+<div class="table-scroll">
 <table>
-<thead><tr><th>#</th><th>Word</th>${head}</tr></thead>
+<thead><tr><th class="n" scope="col">#</th>${head}</tr></thead>
 <tbody>
-${rows}
+${session.rows.map(renderRow).join("\n")}
 </tbody>
-</table>${credit}
-${sourcesHtml}`;
-  return shell(`Vocabulary — ${count} ${count === 1 ? "word" : "words"}`, body);
+</table>
+</div>
+<p class="credit">Definitions: Merriam-Webster</p>
+</div>
+${photos}
+</div>
+</main>`;
+  return shell(`Vocabulary — ${count} ${count === 1 ? "word" : "words"}`, body, scriptPath);
 }
 
 export function renderNotFoundPage(): string {
   return shell(
     "This word list is gone",
-    `<div class="gone">
+    `<main>
+<div class="gone">
 <h1>This word list is gone</h1>
 <p>Shared lists stay up for 30 days. This one has expired, or the link is not quite right.</p>
-</div>`
+</div>
+</main>`
   );
 }

@@ -7,7 +7,7 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json",
     "test": "node scripts/test.mjs",
     "test:long": "VOCAB_API_LONG_TESTS=1 node scripts/test.mjs test/rows.test.mjs"
   },

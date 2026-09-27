@@ -167,8 +167,8 @@ test("a republish with the token keeps the link and expiry and replaces rows and
   assert.equal((await get(`/s/${first.id}/sources/${oldPhoto}`)).status, 404);
 
   const page = await (await get(`/s/${first.id}`)).text();
-  assert.match(page, /<td>kettle<\/td>/);
-  assert.doesNotMatch(page, /<td>(apple|pear)<\/td>/);
+  assert.match(page, /<div class="v">kettle<\/div>/);
+  assert.doesNotMatch(page, /<div class="v">(apple|pear)<\/div>/);
 
   // A second republish raises the revision again; it never goes back.
   await publish({ publishedId: first.id, editToken: first.editToken, entries: [{ word: "cup", translation: "чашка" }] });

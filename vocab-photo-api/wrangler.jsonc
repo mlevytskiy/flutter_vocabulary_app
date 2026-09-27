@@ -6,6 +6,16 @@
 	"observability": {
 		"enabled": true
 	},
+	// The shared page's browser script (ADR-0002) is bundled as text, not code:
+	// `import script from "./client/page.js"` yields its source, which the
+	// Worker serves at /assets/page-<hash>.js (src/session/assets.ts).
+	"rules": [
+		{
+			"type": "Text",
+			"globs": ["**/client/*.js"],
+			"fallthrough": false
+		}
+	],
 	// Daily clean-up at 03:00 UTC (good-looking-web, sad §7): deletes sessions past
 	// their 30 days with their rows, photo slots and page autofill counters
 	// (src/session/cleanup.ts). Locally, `wrangler dev --test-scheduled` exposes

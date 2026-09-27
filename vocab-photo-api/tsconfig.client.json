@@ -1,0 +1,20 @@
+{
+  // The shared page's browser script (ADR-0002): plain JavaScript with JSDoc,
+  // type-checked against the DOM, not the Workers runtime. `npm run typecheck`
+  // runs this config after tsconfig.json.
+  "compilerOptions": {
+    "target": "es2021",
+    "lib": ["es2021", "dom", "dom.iterable"],
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "types": [],
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/session/client/*.js"]
+}

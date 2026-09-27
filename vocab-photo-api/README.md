@@ -16,6 +16,7 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
 | `GET /s/<id>` | **public** | the page a person reads |
 | `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
+| `GET /assets/page-<hash>.js` | **public** | the page's browser script (versioned, cached a year) |
 | `POST /s/<id>/cells` | **public** + page write limit | save one cell with a revision check |
 | `POST /s/<id>/rows` | **public** + page write limit | add a row when its first cell gets text |
 | `POST /s/<id>/rows/delete` | **public** + page write limit | delete a row nobody changed meanwhile |
@@ -195,11 +196,29 @@ nothing, so the app can retry freely. Answer: `{ "sourceId", "url", "pageUrl" }`
 
 ### `GET /s/<id>` — public
 
-Server-rendered HTML with inline CSS, written for a phone in portrait: the numbered word
-table, then the attached photo(s). No build step, no framework. Every value from the
-request is HTML-escaped on render. Sent with `cache-control: no-store` so the page never
-shows stale words once it becomes editable (task-06). A missing or expired id returns a
-**`404` HTML page** saying the list is gone — a human is reading this URL, not a client.
+Server-rendered HTML (`src/session/page.ts`) with its CSS inlined (`src/session/style.ts`);
+the table is complete before any script runs (ADR-0002). Columns: row number, Word,
+Translation, Definition, chosen from the data: a column with no text in any row collapses to
+a narrow "+ Translation"/"+ Definition" control (AC-21, AC-22). Each column is capped by a CSS
+custom property max width and longer text wraps, so rows grow taller, never the table wider.
+Two layouts on one DOM, switched by a media query alone (AC-36): from **900 px** the table
+sits beside a sticky photo pager; below it the table scrolls both ways inside its own box and
+the page never scrolls sideways, with a stacked (or single) thumbnail photo button instead of
+the pager. The breakpoint and the widths are provisional (spec OQ-5) and live at the top of
+`style.ts`. Photos come from the declared slots in order; a slot whose bytes never arrived is
+an empty placeholder; no slots, no photo area or button. A row with a blank word is marked
+"not in the download — needs a word" (AC-31).
+
+Every value from the request is HTML-escaped on render. Sent with `cache-control: no-store`
+and a Content-Security-Policy (sad §8): `default-src 'none'`, scripts only from this origin,
+the inline `<style>` allowed by its sha256, images only from this origin, `connect-src` this
+origin plus `https://translate.googleapis.com`; plus `referrer-policy: same-origin` so the
+link never leaks as a referrer. The page loads `src/session/client/page.js` (plain JavaScript
+with JSDoc, checked by `npm run typecheck` through `tsconfig.client.json`), which wrangler
+bundles as text (`rules` in `wrangler.jsonc`) and the Worker serves at
+`/assets/page-<hash>.js` with a one-year immutable cache; only the current hash answers.
+A missing or expired id returns a **`404` HTML page** saying the list is gone — a human is
+reading this URL, not a client.
 
 ### `POST /define` — secret-gated
 

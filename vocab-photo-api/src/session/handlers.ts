@@ -1,6 +1,7 @@
 import { MAX_RAW_BYTES, htmlResponse, isAllowedMediaType, jsonResponse } from "../http";
 import type { RouteContext, RouteDefinition } from "../routing";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
+import { pageAssets, pageHeaders } from "./assets";
 import { renderNotFoundPage, renderSessionPage } from "./page";
 import {
   createSession,
@@ -19,6 +20,11 @@ import {
   parseSources,
   toDocument,
 } from "./types";
+
+/** The "this word list is gone" page, the same for an unknown and an expired id (AC-32). */
+async function gonePage(): Promise<Response> {
+  return htmlResponse(renderNotFoundPage(), 404, await pageHeaders());
+}
 
 function publicUrl(url: URL, sessionId: string): string {
   return `${url.origin}/s/${sessionId}`;
@@ -122,9 +128,10 @@ async function handleUploadSource({ request, env, url, params }: RouteContext): 
 async function handleSessionPage({ env, params }: RouteContext): Promise<Response> {
   const session = await loadSession(env, params.id);
   if (!session) {
-    return htmlResponse(renderNotFoundPage(), 404);
+    return gonePage();
   }
-  return htmlResponse(renderSessionPage(toDocument(session)));
+  const { scriptPath } = await pageAssets();
+  return htmlResponse(renderSessionPage(session, scriptPath), 200, await pageHeaders());
 }
 
 /**
@@ -137,7 +144,7 @@ async function handleSessionPage({ env, params }: RouteContext): Promise<Respons
 async function handleAnkiDownload({ env, params }: RouteContext): Promise<Response> {
   const session = await loadSession(env, params.id);
   if (!session) {
-    return htmlResponse(renderNotFoundPage(), 404);
+    return gonePage();
   }
   return new Response(renderAnkiFileFor(toDocument(session)), {
     status: 200,
@@ -156,7 +163,7 @@ async function handleAnkiDownload({ env, params }: RouteContext): Promise<Respon
 async function handleGetSource({ env, params }: RouteContext): Promise<Response> {
   const object = await getSourceObject(env, params.id, params.sourceId);
   if (!object) {
-    return htmlResponse(renderNotFoundPage(), 404);
+    return gonePage();
   }
   return new Response(object.body, {
     status: 200,

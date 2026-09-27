@@ -15,6 +15,8 @@ test("an unknown session id answers the gone page", async () => {
   assert.doesNotMatch(html, /<table/i);
   assert.doesNotMatch(html, /<img/i);
   assert.doesNotMatch(html, /contenteditable/i);
+  assert.doesNotMatch(html, /<script/i);
+  assert.match(res.headers.get("content-security-policy") ?? "", /default-src 'none'/);
 });
 
 // Checks the harness itself: the secret from the dev-vars file opens the
