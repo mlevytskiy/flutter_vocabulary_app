@@ -24,6 +24,12 @@ class WordRowItem extends StatelessWidget {
   final WordDetailMode detailMode;
   final TextEditingController definitionController;
   final FocusNode definitionFocusNode;
+
+  /// The Definition lightning (spec AC-05): its spinner, whether it shows
+  /// (see `shouldShowDefinitionIcon`), and the lookup it triggers.
+  final bool isLoadingDefinition;
+  final bool shouldShowDefinitionIcon;
+  final VoidCallback onFillDefinition;
   final bool isDragMode;
   final TextEditingController wordController;
   final TextEditingController translationController;
@@ -70,6 +76,9 @@ class WordRowItem extends StatelessWidget {
     this.detailMode = WordDetailMode.translation,
     required this.definitionController,
     required this.definitionFocusNode,
+    this.isLoadingDefinition = false,
+    this.shouldShowDefinitionIcon = false,
+    required this.onFillDefinition,
     required this.isDragMode,
     required this.wordController,
     required this.translationController,
@@ -298,11 +307,7 @@ class WordRowItem extends StatelessWidget {
                   Padding(
                     padding: EdgeInsets.only(
                         left: dragHandleWidth, right: dotsButtonSlot),
-                    child: _detailField(context,
-                        controller: definitionController,
-                        focusNode: definitionFocusNode,
-                        label: 'Definition',
-                        minLines: 2),
+                    child: _definitionFieldWithIcon(context),
                   ),
                 ],
               ],
@@ -336,16 +341,50 @@ class WordRowItem extends StatelessWidget {
                   label: 'Word',
                   minLines: 1),
               const SizedBox(height: 12),
-              _detailField(context,
-                  controller: definitionController,
-                  focusNode: definitionFocusNode,
-                  label: 'Definition',
-                  minLines: 2),
+              _definitionFieldWithIcon(context),
             ],
           ),
         ),
         const SizedBox(width: 4),
         const SizedBox(width: 22),
+      ],
+    );
+  }
+
+  /// The Definition field with its lightning overlaid on the top-right
+  /// corner, the same slot and look as the Translation icon.
+  Widget _definitionFieldWithIcon(BuildContext context) {
+    return Stack(
+      children: [
+        _detailField(context,
+            controller: definitionController,
+            focusNode: definitionFocusNode,
+            label: 'Definition',
+            minLines: 2),
+        if (isLoadingDefinition || shouldShowDefinitionIcon)
+          Positioned(
+            top: 2,
+            right: 2,
+            child: isLoadingDefinition
+                ? const Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    ),
+                  )
+                : Material(
+                    color: Colors.transparent,
+                    child: IconButton(
+                      icon: const Icon(Icons.electric_bolt),
+                      color: Colors.purple[600],
+                      iconSize: 28,
+                      tooltip: 'Look up definition',
+                      onPressed: onFillDefinition,
+                    ),
+                  ),
+          ),
       ],
     );
   }

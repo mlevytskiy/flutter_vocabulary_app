@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-06", "AC-07"]
 files_hint: ["lib/features/word_input/widgets/word_row_item.dart", "lib/features/word_input/word_input_screen.dart", "lib/features/word_input/lightning_rules.dart", "docs/lightning_icon_rules.md", "test/definition_lightning_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T12 — Fill a definition from the lightning icon

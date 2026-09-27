@@ -167,6 +167,33 @@ flip only once the request resolves and the cached block changes.
 The loading spinner itself is shown separately, in the Translation icon's
 own overlay slot (see "Translation icon rule" above).
 
+## Definition icon rule (definition-mode)
+
+Shown only in the **definition** and **both** word detail modes, where the row
+has a Definition field. Overlaid on that field's **top-right corner**, the same
+slot, size and purple `Icons.electric_bolt` as the Translation icon (tooltip
+"Look up definition").
+
+- **Focus gate:** Rule 0 applies — the row counts as focused when its Word,
+  Translation *or* Definition field has focus.
+- **Shown iff** the Word has 2+ letters **and** the Definition is not yet
+  "filled": more than 5 characters, or auto-populated (a lightning fill, a
+  picked sense, or a photo description). Pure predicate:
+  `shouldShowDefinitionIcon` in `lib/features/word_input/lightning_rules.dart`.
+- **Tap:** asks the Worker's dictionary route for the Word. Senses → the first
+  sense fills the field, every sense is kept for the definition dots popup,
+  and the field is marked filled. Unknown word → the field stays as it was and
+  a snackbar offers the dictionary's spelling suggestions. Dictionary
+  unreachable or out of allowance → the field stays as it was and a snackbar
+  says definitions are temporarily unavailable. A new message replaces the
+  previous one rather than queueing.
+- **Spinner:** replaces the icon while the lookup runs (`_isLoadingDefinition`).
+- **Word edits:** the stored senses stay keyed to the Word they were fetched
+  for — hidden (and not persisted) while the Word differs; the definition text
+  itself is never cleared by a Word edit.
+- In definition mode the **Word icon** (Translation → Word) is not built: there
+  is no Translation field to translate from.
+
 ## Successful-translation marking rule
 
 Whenever either translate action (the Word icon's Translation→Word, the

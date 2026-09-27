@@ -895,6 +895,45 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
   }
 
+  /// The Definition lightning (spec AC-05..AC-07, sad §6 flow 1): asks the
+  /// dictionary for the row's Word and fills the first sense, keeping every
+  /// sense for the senses list. A miss never touches the field: an unknown
+  /// word shows the dictionary's suggestions, an outage says so.
+  Future<void> _fillDefinition(int index) async {
+    if (index < 0 || index >= _wordControllers.length) return;
+    final word = _wordControllers[index].text.trim();
+    if (word.length < 2) return;
+
+    setState(() => _isLoadingDefinition[index] = true);
+    final result = await ref.read(dictionaryServiceProvider).define(word);
+    if (!mounted || index >= _wordControllers.length) return;
+    setState(() => _isLoadingDefinition[index] = false);
+
+    switch (result.kind) {
+      case DefinitionKind.senses:
+        setState(() {
+          _definitionSenses[index] = result.senses;
+          _sensesWord[index] = word;
+          _definitionMarkedFilled[index] = true;
+        });
+        // The controller listener persists the text; this push carries the
+        // senses and the mark along with it.
+        _definitionControllers[index].text = result.firstSense!;
+        _pushRow(index, definition: result.firstSense!);
+      case DefinitionKind.notFound:
+        final hint = result.suggestions.isEmpty ? '' : ' — did you mean: ${result.suggestions.join(', ')}';
+        // A newer lookup's message replaces the previous one instead of
+        // queueing behind it.
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text('No definition found for "$word"$hint')));
+      case DefinitionKind.unavailable:
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(const SnackBar(content: Text('Definitions are temporarily unavailable')));
+    }
+  }
+
   void _selectTranslationOption(int index, String selectedTranslation) {
     _translationControllers[index].text = selectedTranslation;
     // Auto-populated -> counts as "filled" regardless of length.
@@ -1242,6 +1281,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       detailMode: detailMode,
       definitionController: _definitionControllers[index],
       definitionFocusNode: _definitionFocusNodes[index],
+      isLoadingDefinition: _isLoadingDefinition[index],
+      shouldShowDefinitionIcon: shouldShowDefinitionIcon(
+        rowFocused: _isItemFocused(index),
+        word: _wordControllers[index].text,
+        definition: _definitionControllers[index].text,
+        marked: _definitionMarkedFilled[index],
+      ),
+      onFillDefinition: () => _fillDefinition(index),
       isDragMode: isDragMode,
       wordController: _wordControllers[index],
       translationController: _translationControllers[index],

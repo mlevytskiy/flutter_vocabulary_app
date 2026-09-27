@@ -33,12 +33,16 @@ void main() {
     WordDetailMode mode = WordDetailMode.translation,
     TextEditingController? definition,
     bool shouldShowWordIcon = false,
+    bool shouldShowDefinitionIcon = false,
+    VoidCallback? onFillDefinition,
   }) =>
       WordRowItem(
         index: 0,
         detailMode: mode,
         definitionController: definition ?? TextEditingController(),
         definitionFocusNode: FocusNode(),
+        shouldShowDefinitionIcon: shouldShowDefinitionIcon,
+        onFillDefinition: onFillDefinition ?? () {},
         isDragMode: isDragMode,
         wordController: word,
         translationController: translation,
@@ -164,6 +168,24 @@ void main() {
           definition: TextEditingController(text: 'hidden but kept'),
         ));
     expect(fieldLabelled('Definition'), findsNothing);
+  });
+
+  testWidgets('the definition lightning is tappable in both layouts',
+      (tester) async {
+    for (final mode in [WordDetailMode.definition, WordDetailMode.both]) {
+      var taps = 0;
+      await pumpRow(
+          tester,
+          translationRow(
+            word: TextEditingController(text: 'claim'),
+            translation: TextEditingController(text: 'заява'),
+            mode: mode,
+            shouldShowDefinitionIcon: true,
+            onFillDefinition: () => taps++,
+          ));
+      await tester.tap(find.byTooltip('Look up definition'));
+      expect(taps, 1, reason: '$mode');
+    }
   });
 }
 
