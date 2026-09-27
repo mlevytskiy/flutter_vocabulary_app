@@ -246,25 +246,19 @@ sequenceDiagram
 
 ## 7. Deployment view
 
-<!-- 🎯 Why: the TOPOLOGY DevOps must know without reading the deploy charts — how many replicas,
-     where the background worker lives, AT WHAT NUMBERS we scale.
-     📋 Write: 2–3 sentences on topology + monitoring + concrete threshold numbers.
-     📌 e.g. «500 authors → partition by quarter» (not «we'll think about scale later»).
-     🎯 N/A allowed for XS/S that reuses an existing deployment unit with no change.
-     Deployment-diagram scaffold → templates/deployment.md. -->
+The app is built and installed on the owner's phone as today; the Worker is deployed with `wrangler deploy` from `vocab-photo-api/`. This feature adds one Worker secret — the dictionary key, stored with `wrangler secret put MW_API_KEY`, never in git or in the app — and one KV namespace, `DEFINITIONS`, declared in `wrangler.jsonc` beside `SESSIONS`. **Deploy order: Worker first, then the app** (ADR-0004): an older Worker silently drops definitions and has no dictionary route.
 
-<Topology in 2–3 sentences. Where it runs, replicas, scaling thresholds.>
+**Dictionary cache (inline decision, not an ADR).** The Worker caches each **successful** lookup — the word's short senses — in `DEFINITIONS`, keyed by the lowercased word, for **30 days** (the same lifetime as published sessions; KV expiry, no clean-up job). "Not found" and failures are never cached, so an outage cannot stick. The alternative, no cache, was rejected to stretch the 1,000/day allowance across repeated words. If the licence check (§11) rules out storing dictionary text, the fix is deleting the namespace and the cache read/write — about an hour. *Note: the §5 container diagram was approved before this decision and does not draw `DEFINITIONS`; it is a second KV store owned by the Worker, alongside "Published sessions".*
 
 **Monitoring:**
-- <Metrics — e.g. `<metric_name>`>
-- <Alerts — e.g. «worker lag > 10 min → page on-call»>
-- <Tracing — e.g. spans on the request boundary>
+- One Worker log line per lookup: outcome (`cache hit` / `found` / `not found` / `unavailable`) and duration — read with `npx wrangler tail`.
+- Daily lookups that reached the dictionary = `found` + `not found` + `unavailable`; the provider's own dashboard is the authority on the 1,000/day count.
+- App side: the existing debug-log timing pattern (a stopwatch around the request, as the photo request does) around the definition lookup, for the spec §6 latency checks.
 
 **Scaling thresholds:**
-- <e.g. comfortable in one table up to N rows/year>
-- <e.g. partition by quarter above N rows/year>
-
-<!-- For XS/S with no deployment change: <!-- N/A: reuses existing deployment unit, no infra change --> -->
+- Comfortable while dictionary-reaching lookups stay under ~500/day (half the free allowance).
+- Above ~500/day on any day: check cache hit rate first; if the free allowance is still at risk, a paid plan or a per-day cap in the Worker becomes an owner decision.
+- `DEFINITIONS` stays small: one entry per distinct word looked up in 30 days.
 
 ## 8. Crosscutting concepts
 
