@@ -15,4 +15,6 @@ export interface Env {
   MW_API_KEY: string;
   /** Successful dictionary lookups, one key per lowercased word, 30-day TTL (sad §7). */
   DEFINITIONS: KVNamespace;
+  /** Editable sessions, rows, cell revisions, photo slots and autofill counters (good-looking-web, ADR-0003). Schema in `migrations/`. */
+  DB: D1Database;
 }

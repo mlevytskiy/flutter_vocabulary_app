@@ -245,6 +245,17 @@ The `SESSIONS` namespace exists and its id is in `wrangler.jsonc` (created 2026-
 npx wrangler kv namespace create DEFINITIONS     # prints an id → replace REPLACE_WITH_DEFINITIONS_NAMESPACE_ID
 ```
 
+**Sessions database (good-looking-web, ADR-0003):** D1 bound as `DB`, schema in
+`migrations/`. Create it once near the owner, replace the placeholder id in `wrangler.jsonc`,
+then apply the schema:
+
+```bash
+npx wrangler d1 create vocab-sessions --location weur   # prints an id → replace REPLACE_WITH_VOCAB_SESSIONS_DATABASE_ID
+npx wrangler d1 migrations apply DB --remote            # --local for wrangler dev
+# Revert a migration by hand (never picked up by `migrations apply`):
+npx wrangler d1 execute DB --local --file migrations/down/0001_sessions.sql
+```
+
 The `vocab-photo-sources` R2 bucket exists with the 30-day `expire-sources` lifecycle rule
 (R2 enabled and bucket created 2026-09-21). The Worker still treats `SOURCES` as optional in
 code: without the binding the photo routes answer `503` and everything else works.

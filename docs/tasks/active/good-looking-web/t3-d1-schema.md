@@ -7,7 +7,7 @@ acs: ["AC-11", "AC-12", "AC-15b", "AC-18", "AC-18b"]
 files_hint: ["docs/features/good-looking-web/migrations/0001_sessions.up.sql", "docs/features/good-looking-web/migrations/0001_sessions.down.sql", "vocab-photo-api/wrangler.jsonc"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Create the D1 schema for sessions, rows, cell revisions, photo slots and counters
@@ -22,9 +22,9 @@ Tables: `sessions` (id, created_at, expires_at, rev, detail, edit_token_hash); `
 
 ## Definition of Done
 
-- [ ] Staged migration is promoted to `vocab-photo-api/migrations/`, then `wrangler d1 migrations apply --local` applies it and the down file reverts it cleanly
-- [ ] `npm run typecheck` clean with the new `DB` binding in `env.ts`
-- [ ] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
+- [x] Staged migration is promoted to `vocab-photo-api/migrations/`, then `wrangler d1 migrations apply --local` applies it and the down file reverts it cleanly
+- [x] `npm run typecheck` clean with the new `DB` binding in `env.ts`
+- [x] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
 
 ## Notes
 

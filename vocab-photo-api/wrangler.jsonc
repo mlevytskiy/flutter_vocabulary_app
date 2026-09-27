@@ -51,6 +51,21 @@
 			"binding": "SOURCES",
 			"bucket_name": "vocab-photo-sources"
 		}
+	],
+	// Editable sessions (good-looking-web, ADR-0003): sessions, rows, cell
+	// revisions, photo slots and the autofill counters. Schema in migrations/
+	// (the revert files in migrations/down/ are applied by hand, never by
+	// `migrations apply`). `wrangler dev` simulates it locally; apply the schema
+	// there with `npx wrangler d1 migrations apply DB --local`. For production
+	// create it near the owner (sad §11) and replace the placeholder id:
+	// `npx wrangler d1 create vocab-sessions --location weur`.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "vocab-sessions",
+			"database_id": "REPLACE_WITH_VOCAB_SESSIONS_DATABASE_ID",
+			"migrations_dir": "migrations"
+		}
 	]
 	// Secrets (ANTHROPIC_API_KEY, APP_SHARED_SECRET, MW_API_KEY) are NOT set here.
 	// Set them with `npx wrangler secret put <NAME>` (production) and in
