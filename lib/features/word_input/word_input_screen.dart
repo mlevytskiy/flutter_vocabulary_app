@@ -377,8 +377,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _translationOptions[i] = pair.translationOptions;
         // A block is only ever persisted while it matched the row's Word (see
         // _pushRow), so the restored block is keyed to the restored Word.
-        _optionsWord[i] =
-            pair.translationOptions != null ? pair.word.trim() : null;
+        _optionsWord[i] = pair.translationOptions != null ? pair.word.trim() : null;
         _wordMarkedFilled[i] = pair.wordMarkedFilled;
         _translationMarkedFilled[i] = pair.translationMarkedFilled;
       }
@@ -1227,8 +1226,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
                     onReorder: _reorderItems,
-                    itemBuilder: (context, index) =>
-                        _buildRowItem(index, isDragMode: true),
+                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true),
                     proxyDecorator: (child, index, animation) {
                       return Material(
                         color: Colors.transparent,
@@ -1239,8 +1237,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 : ListView.builder(
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
-                    itemBuilder: (context, index) =>
-                        _buildRowItem(index, isDragMode: false),
+                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false),
                   ),
           ),
           // The settings entry point: bottom-left, opposite the speed dial's
@@ -1261,7 +1258,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               tooltip: 'Settings',
               elevation: 8.0,
               shape: const CircleBorder(),
-              backgroundColor: Colors.purple[600],
+              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
               foregroundColor: Colors.white,
               child: const Icon(Icons.settings),
             ),
