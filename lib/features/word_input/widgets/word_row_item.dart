@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../../core/models/translation_result.dart';
+import '../../../core/providers.dart' show WordDetailMode;
 import '../../../core/services/pronunciation_service.dart';
 import '../../../core/widgets/synced_text_field_row.dart';
 import 'pronunciation_buttons.dart';
@@ -15,6 +16,14 @@ import 'translation_dots_button.dart';
 /// call sites.
 class WordRowItem extends StatelessWidget {
   final int index;
+
+  /// definition-mode: which detail fields the row shows. Translation mode is
+  /// the pre-feature row, untouched; definition mode stacks Word over
+  /// Definition at full width; both keeps the translation row and adds the
+  /// Definition underneath (spec AC-02..AC-04).
+  final WordDetailMode detailMode;
+  final TextEditingController definitionController;
+  final FocusNode definitionFocusNode;
   final bool isDragMode;
   final TextEditingController wordController;
   final TextEditingController translationController;
@@ -58,6 +67,9 @@ class WordRowItem extends StatelessWidget {
   const WordRowItem({
     super.key,
     required this.index,
+    this.detailMode = WordDetailMode.translation,
+    required this.definitionController,
+    required this.definitionFocusNode,
     required this.isDragMode,
     required this.wordController,
     required this.translationController,
@@ -124,9 +136,12 @@ class WordRowItem extends StatelessWidget {
           final fieldsAreaWidth =
               cardConstraints.maxWidth - dragHandleWidth - dotsButtonSlot;
           final wordFieldWidth = (fieldsAreaWidth - fieldSpacing) / 2;
+          // In definition mode the Word field spans the whole fields area.
+          final definitionOnly = detailMode == WordDetailMode.definition;
           // The Word field's right edge, measured from the card's own left
           // edge -- the same coordinate space the top strip's Row uses.
-          final topStripWordFieldRightEdge = dragHandleWidth + wordFieldWidth;
+          final topStripWordFieldRightEdge = dragHandleWidth +
+              (definitionOnly ? fieldsAreaWidth : wordFieldWidth);
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -168,113 +183,201 @@ class WordRowItem extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 5),
-              // Row з drag handle та Stack з полями
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  if (dragHandle != null) ...[
-                    dragHandle,
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        // Must match the `spacing` passed to SyncedTextFieldRow
-                        // below, so the Word icon's right edge lines up with the
-                        // boundary between the Word and Translation fields (same
-                        // padding pattern the Translation icon uses on the
-                        // stack's own right edge). `fieldSpacing` comes from the
-                        // outer LayoutBuilder, which the top strip also reads.
-                        final wordFieldRightEdge =
-                            (constraints.maxWidth - fieldSpacing) / 2;
-                        return Stack(
-                          children: [
-                            SyncedTextFieldRow(
-                              leftController: wordController,
-                              rightController: translationController,
-                              leftLabel: 'Word',
-                              rightLabel: 'Translation',
-                              leftHint: 'Word',
-                              rightHint: 'Translation',
-                              leftFocusNode: wordFocusNode,
-                              rightFocusNode: translationFocusNode,
-                              spacing: fieldSpacing,
-                            ),
-                            if (isLoadingWordTranslation || shouldShowWordIcon)
-                              Positioned(
-                                top: 2,
-                                // End of the Word field, mirroring the Translation
-                                // icon's `right: 2` (see docs/lightning_icon_rules.md).
-                                right: constraints.maxWidth -
-                                    wordFieldRightEdge +
-                                    2,
-                                child: isLoadingWordTranslation
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(12.0),
-                                        child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2.5),
-                                        ),
-                                      )
-                                    : Material(
-                                        color: Colors.transparent,
-                                        child: IconButton(
-                                          icon: const Icon(Icons.electric_bolt),
-                                          color: Colors.purple[600],
-                                          iconSize: 28,
-                                          tooltip: 'AI Translate (to Word)',
-                                          onPressed: onFillWordWithAI,
-                                        ),
-                                      ),
+              if (definitionOnly)
+                _buildDefinitionOnlyRow(context, dragHandle)
+              else ...[
+                // Row з drag handle та Stack з полями
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    if (dragHandle != null) ...[
+                      dragHandle,
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Must match the `spacing` passed to SyncedTextFieldRow
+                          // below, so the Word icon's right edge lines up with the
+                          // boundary between the Word and Translation fields (same
+                          // padding pattern the Translation icon uses on the
+                          // stack's own right edge). `fieldSpacing` comes from the
+                          // outer LayoutBuilder, which the top strip also reads.
+                          final wordFieldRightEdge =
+                              (constraints.maxWidth - fieldSpacing) / 2;
+                          return Stack(
+                            children: [
+                              SyncedTextFieldRow(
+                                leftController: wordController,
+                                rightController: translationController,
+                                leftLabel: 'Word',
+                                rightLabel: 'Translation',
+                                leftHint: 'Word',
+                                rightHint: 'Translation',
+                                leftFocusNode: wordFocusNode,
+                                rightFocusNode: translationFocusNode,
+                                spacing: fieldSpacing,
                               ),
-                            if (isLoadingTranslation ||
-                                shouldShowTranslationIcon)
-                              Positioned(
-                                top: 2,
-                                right: 2,
-                                child: isLoadingTranslation
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(12.0),
-                                        child: SizedBox(
-                                          width: 24,
-                                          height: 24,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2.5),
+                              if (isLoadingWordTranslation ||
+                                  shouldShowWordIcon)
+                                Positioned(
+                                  top: 2,
+                                  // End of the Word field, mirroring the Translation
+                                  // icon's `right: 2` (see docs/lightning_icon_rules.md).
+                                  right: constraints.maxWidth -
+                                      wordFieldRightEdge +
+                                      2,
+                                  child: isLoadingWordTranslation
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(12.0),
+                                          child: SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2.5),
+                                          ),
+                                        )
+                                      : Material(
+                                          color: Colors.transparent,
+                                          child: IconButton(
+                                            icon:
+                                                const Icon(Icons.electric_bolt),
+                                            color: Colors.purple[600],
+                                            iconSize: 28,
+                                            tooltip: 'AI Translate (to Word)',
+                                            onPressed: onFillWordWithAI,
+                                          ),
                                         ),
-                                      )
-                                    : Material(
-                                        color: Colors.transparent,
-                                        child: IconButton(
-                                          icon: const Icon(Icons.electric_bolt),
-                                          color: Colors.purple[600],
-                                          iconSize: 28,
-                                          tooltip: 'AI Translate',
-                                          onPressed: onFillWithAI,
+                                ),
+                              if (isLoadingTranslation ||
+                                  shouldShowTranslationIcon)
+                                Positioned(
+                                  top: 2,
+                                  right: 2,
+                                  child: isLoadingTranslation
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(12.0),
+                                          child: SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2.5),
+                                          ),
+                                        )
+                                      : Material(
+                                          color: Colors.transparent,
+                                          child: IconButton(
+                                            icon:
+                                                const Icon(Icons.electric_bolt),
+                                            color: Colors.purple[600],
+                                            iconSize: 28,
+                                            tooltip: 'AI Translate',
+                                            onPressed: onFillWithAI,
+                                          ),
                                         ),
-                                      ),
-                              ),
-                          ],
-                        );
-                      },
+                                ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  TranslationDotsButton(
-                    options: translationOptions,
-                    canLoadOptions: canLoadTranslationOptions,
-                    onLoadTranslations: onLoadTranslations,
-                    controller: popupController,
-                    onSelectTranslation: onSelectTranslation,
-                    onOpen: onOpenTranslationOptions,
-                    onClose: onCloseTranslationOptions,
+                    const SizedBox(width: 4),
+                    TranslationDotsButton(
+                      options: translationOptions,
+                      canLoadOptions: canLoadTranslationOptions,
+                      onLoadTranslations: onLoadTranslations,
+                      controller: popupController,
+                      onSelectTranslation: onSelectTranslation,
+                      onOpen: onOpenTranslationOptions,
+                      onClose: onCloseTranslationOptions,
+                    ),
+                  ],
+                ),
+                if (detailMode == WordDetailMode.both) ...[
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: EdgeInsets.only(
+                        left: dragHandleWidth, right: dotsButtonSlot),
+                    child: _detailField(context,
+                        controller: definitionController,
+                        focusNode: definitionFocusNode,
+                        label: 'Definition',
+                        minLines: 2),
                   ),
                 ],
-              ),
+              ],
             ],
           );
         },
+      ),
+    );
+  }
+
+  /// Definition mode (spec AC-03): Word on top, Definition underneath, both
+  /// across the full fields area. No Translation field, no translation dots
+  /// and no Word lightning -- there is no translation to translate from. The
+  /// right-hand slot stays reserved so the fields keep the same width as in
+  /// the other modes.
+  Widget _buildDefinitionOnlyRow(BuildContext context, Widget? dragHandle) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (dragHandle != null) ...[
+          dragHandle,
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _detailField(context,
+                  controller: wordController,
+                  focusNode: wordFocusNode,
+                  label: 'Word',
+                  minLines: 1),
+              const SizedBox(height: 12),
+              _detailField(context,
+                  controller: definitionController,
+                  focusNode: definitionFocusNode,
+                  label: 'Definition',
+                  minLines: 2),
+            ],
+          ),
+        ),
+        const SizedBox(width: 4),
+        const SizedBox(width: 22),
+      ],
+    );
+  }
+
+  /// A full-width field styled exactly like `SyncedTextFieldRow`'s fields
+  /// (outline border, 12/16 padding, bodyLarge with a forced strut).
+  Widget _detailField(
+    BuildContext context, {
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required int minLines,
+  }) {
+    final style =
+        Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+    return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      style: style,
+      strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
+      minLines: minLines,
+      maxLines: null,
+      keyboardType: TextInputType.multiline,
+      textInputAction: TextInputAction.newline,
+      textAlignVertical: TextAlignVertical.top,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: label,
+        border: const OutlineInputBorder(borderSide: BorderSide(width: 1)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+        isDense: false,
       ),
     );
   }

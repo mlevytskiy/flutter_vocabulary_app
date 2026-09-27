@@ -613,7 +613,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// of focus -- unlike the lightning icons, this isn't a "compose" action
   /// gated to the row you're actively editing.
   bool _shouldShowPronunciation(int index) {
-    return _translationControllers[index].text.trim().isNotEmpty;
+    // definition-mode: a definition is a detail to go with the word too, so a
+    // definition-only row (definition mode) still gets its flags.
+    return _translationControllers[index].text.trim().isNotEmpty ||
+        _definitionControllers[index].text.trim().isNotEmpty;
   }
 
   /// Whether this row's Word field has enough text for a dictionary lookup.
@@ -1231,10 +1234,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     super.dispose();
   }
 
-  Widget _buildRowItem(int index, {required bool isDragMode}) {
+  Widget _buildRowItem(int index,
+      {required bool isDragMode, required WordDetailMode detailMode}) {
     return WordRowItem(
       key: ValueKey(index),
       index: index,
+      detailMode: detailMode,
+      definitionController: _definitionControllers[index],
+      definitionFocusNode: _definitionFocusNodes[index],
       isDragMode: isDragMode,
       wordController: _wordControllers[index],
       translationController: _translationControllers[index],
@@ -1315,6 +1322,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     // The one place the reorder preference is read. Written by the Settings
     // screen (task-13); this screen only reads it.
     final isDragMode = ref.watch(dragModeProvider);
+    final detailMode = ref.watch(wordDetailModeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -1377,7 +1385,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
                     onReorder: _reorderItems,
-                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true),
+                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true, detailMode: detailMode),
                     proxyDecorator: (child, index, animation) {
                       return Material(
                         color: Colors.transparent,
@@ -1388,7 +1396,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 : ListView.builder(
                     padding: const EdgeInsets.all(16.0),
                     itemCount: _wordPairs.length,
-                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false),
+                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
                   ),
           ),
           // The settings entry point: bottom-left, opposite the speed dial's

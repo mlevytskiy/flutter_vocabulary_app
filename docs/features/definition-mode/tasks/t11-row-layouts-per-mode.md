@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-03", "AC-04", "AC-11"]
 files_hint: ["lib/features/word_input/widgets/word_row_item.dart", "lib/features/word_input/word_input_screen.dart", "test/word_row_layout_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T11 — Lay out word rows per word detail mode
@@ -30,3 +30,9 @@ Translation mode: the existing `SyncedTextFieldRow` branch untouched. Definition
 ## Notes
 
 Rule 3 override is scoped: never rewrite the translation branch.
+
+## Verification (2026-09-27)
+
+- The on-device screenshot comparison was not run (no device in this session). In its place, `test/word_row_layout_test.dart` pins the translation-mode rectangles (card, Word, Translation, dots, close, lightning) recorded from the pre-feature `WordRowItem` at bcef61f — short texts and long texts in drag mode — and they still match after the change (AC-02). A device check is still worth doing once.
+- Definition mode: Word over Definition, same left edge and width, no Translation field, no translation dots, no Word lightning (AC-03). Both: the top line equals the translation-mode row; Definition spans Word's left to Translation's right underneath (AC-04).
+- Pronunciation flags now also show for a definition-only row (translation or definition non-empty).
