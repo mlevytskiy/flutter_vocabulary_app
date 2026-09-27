@@ -1507,9 +1507,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           // constructor, not `.small`, because `.small` switches the default
           // shape to a 12px RoundedRectangleBorder and a square button would
           // not read as the same control.
+          //
+          // The Scaffold lifts the speed dial above the bottom safe area (the
+          // home indicator); this button lives in the body, which extends
+          // under it, so it adds that same inset to stay on the plus button's
+          // line. With the keyboard up the inset is 0, as it is for the dial.
           Positioned(
             left: 16.0,
-            bottom: 16.0,
+            bottom: 16.0 + MediaQuery.paddingOf(context).bottom,
             child: FloatingActionButton(
               heroTag: null,
               onPressed: () => const SettingsRoute().push(context),
