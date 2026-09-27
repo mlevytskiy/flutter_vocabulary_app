@@ -66,37 +66,46 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 3. Context and scope
 
-<!-- 🎯 Why: draws the SYSTEM BOUNDARY — who talks to it from outside, where the trust zone ends.
-     Without §3, §5 and §8 (authorization) blur — unclear what's «inside» vs «outside».
-     📋 Write: 2–3 sentences of business context + an external-systems table + a C4Context block.
-     📌 «External: none (deliberate, no third-party in v1)» is itself a decision worth stating.
-     Trust boundary — the line past which you don't trust data without checking it.
-     Never N/A — greenfield still draws the planned actors + external systems. -->
+The learner collects English words on the phone, from a photo of a book page or by typing, and publishes a session as a time-limited link. The partner opens that link in a browser at the learner's table, reads the words beside the pages they came from, corrects, adds and removes words, fills missing translations and definitions with a tap, and downloads the corrected list as an AnkiDroid file. The learner's own copy in the app never changes; the downloaded file is the only way the page's edits come back.
 
-<Business context in 2–3 sentences. What the system does for whom.>
-
-<!-- brownfield: <one-line scan summary> (or «N/A — greenfield repo» if no source existed) -->
+<!-- brownfield: Flutter app (feature folders, Riverpod providers, Isar sessions, typed go_router routes; photos discarded after /analyze) + a Cloudflare Worker (`vocab-photo-api/`) with SESSIONS/DEFINITIONS KV, a SOURCES R2 bucket and a per-IP rate limiter; the shared page is a server-rendered template with no client JS; a photo upload route exists but is unused. No architecture-map.md; scanned 2026-09-27. -->
 
 **External systems (in / out):**
 
 | Actor or system | Type | Interaction |
 |---|---|---|
-| <author role> | Person | <what they do> |
-| <external service> | System (internal/external) | <interaction> |
-| <identity provider> | System (external) | <provides auth tokens> |
+| partner | Person | Opens the shared link in any browser; reads, edits, adds, deletes and autofills words; views source photos; downloads the AnkiDroid file |
+| learner | Person | Takes photos and types words in the app; publishes a session with or without its source photos; imports the downloaded file |
+| Merriam-Webster Collegiate API | System (external) | Definition autofill — reached only through the Worker, which meters it (per-page allowance + the app's reserved share of 1,000 calls/day) |
+| Google Translate endpoint (`translate.googleapis.com/translate_a/single`) | System (external) | Translation autofill on the shared page (spec OQ-1 default: called from the partner's browser, not metered); the app's own translations are unchanged |
+| Anthropic Messages API | System (external) | Photo analysis in the app — unchanged; the photo it analysed is now kept and linked to the rows it produced |
+| AnkiDroid | System (external) | Imports the file downloaded from the shared page — fixed column places unchanged (definition-mode ADR-0005) |
 
-**C4 Context (L1):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. -->
+**Trust boundary.** The link is the only credential, now for writing as well as reading. Everything that arrives from a browser — cell text, row operations, autofill requests — is untrusted: validated against the session limits and rate-limited in the Worker, and rendered only as text on the page and in the file (spec §6.1). Text returned by the dictionary and the translation endpoint is equally untrusted and is treated the same way.
+
+**C4 Context (L1):**
 
 ```mermaid
 C4Context
-    title <feature> — System Context
+    title good-looking-web — System Context
 
-    Person(actor, "<Actor role>", "<intent>")
-    System(app, "<Our system>", "<one-sentence description>")
-    System_Ext(ext, "<External system>", "<one-sentence description>")
+    Person(learner, "learner", "Collects words from photos and typing; publishes a session with or without its photos")
+    Person(partner, "partner", "Opens the shared link in a browser; edits, autofills and downloads the list")
 
-    Rel(actor, app, "<interaction>", "<protocol>")
-    Rel(app, ext, "<interaction>", "<protocol>")
+    System(vocab, "Vocabulary app + vocab-photo-api Worker", "Keeps sessions and their source photos on the phone; publishes them as an editable shared page")
+
+    System_Ext(mw, "Merriam-Webster Collegiate API", "Dictionary senses for definition autofill")
+    System_Ext(gt, "Google Translate endpoint", "Translations for translation autofill")
+    System_Ext(ai, "Anthropic Messages API", "Photo analysis: highlighted words with translations")
+    System_Ext(anki, "AnkiDroid", "Imports the flashcard file")
+
+    Rel(learner, vocab, "Photographs pages, publishes sessions and photos")
+    Rel(partner, vocab, "Reads, edits, autofills, downloads the file", "HTTPS")
+    Rel(vocab, mw, "Looks up definitions, metered", "HTTPS")
+    Rel(partner, gt, "Translation autofill from the browser", "HTTPS")
+    Rel(vocab, ai, "Analyses a photo", "HTTPS")
+    Rel(partner, anki, "Imports the downloaded file")
+    Rel(learner, anki, "Imports the downloaded file")
 ```
 
 ## 4. Solution strategy
