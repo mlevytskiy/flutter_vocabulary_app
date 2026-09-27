@@ -4,7 +4,7 @@ owner: "Maksym (learner, app owner)"
 reviewers: ["Maksym (Tech Lead)"]
 updated_at: "2026-09-27"
 feature_size: "M"
-target_surfaces: []  # filled in §4 — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
+target_surfaces: [mobile-app, backend-service, web-frontend]
 ---
 
 # Software Architecture Document — definition-mode
@@ -99,17 +99,14 @@ C4Context
 
 ## 4. Solution strategy
 
-<!-- 🎯 Why: the 3–4 STRATEGIC PILLARS every ADR grows from. Without §4 each ADR looks random —
-     there's no umbrella. ⭐ The densest section — the blast-radius gate fires almost always here
-     (decisions are irreversible + multi-module).
-     📋 Write: 3–4 choices; each a heading + 2–3 sentences of rationale.
-     📌 «Store content as a table of typed blocks» is a pillar — ADR-0001 grows from it. -->
+**Target surfaces:** `mobile-app` (the Flutter app), `backend-service` (the vocab-photo-api Worker: publish API and the new dictionary route), `web-frontend` (the partner's shared page and its AnkiDroid download) — [ADR-0001](./adr/0001-change-app-worker-and-shared-page-as-three-surfaces.md). UI architecture per surface is fixed by the repo, not re-decided: the app stays Flutter (cross-platform, feature folders, Riverpod); the page stays server-rendered HTML from the Worker with no client-side build.
 
 **Top strategic choices (the seeds for ADRs):**
 
-1. **<e.g. Module isolation through events>** — <2–3 sentences citing quality goals + constraints>.
-2. **<e.g. Single-store persistence>** — <2–3 sentences>.
-3. **<e.g. Server-rendered read side>** — <2–3 sentences>.
+1. **One word detail mode drives every view, never the data** — the mode is a learner preference (kept across restarts on the device, outside sessions) that decides what rows show and what the table, file and page carry; it never adds or deletes a stored translation or definition, and "filled" is mode-independent (word plus translation or definition). Serves quality goal 1. Inline decision — the preference lives beside the drag-mode preference, persisted with the store the app already uses for small settings.
+2. **Dictionary behind our Worker** — the app asks the Worker for a word's senses; the Worker holds the dictionary key as a secret and normalises the answer (headword filter, spelling suggestions). Serves quality goals 2 and 3 — [ADR-0002](./adr/0002-proxy-dictionary-lookups-through-the-worker.md).
+3. **Definitions stored like translations** — each row keeps the chosen definition text and the senses already fetched, so reopening the senses list costs no lookup; photo descriptions are stored instead of discarded. Serves quality goals 1 and 2 — [ADR-0003](./adr/0003-store-definition-text-and-senses-on-the-word-row.md).
+4. **A versioned-by-default shared contract** — published sessions carry an optional definition per entry and the mode at publishing time; documents without a mode read as translation-only, so old links render as today; the Worker ships before the app — [ADR-0004](./adr/0004-record-the-detail-mode-in-the-published-session.md). The AnkiDroid file gains a fixed definition column, identical from the app and from the page — [ADR-0005](./adr/0005-export-anki-files-with-a-fixed-definition-column.md).
 
 Each tactical decision in later sections should trace to one of these seeds. Tactical decisions that *contradict* a strategic choice are red flags — surface them in §11.
 
