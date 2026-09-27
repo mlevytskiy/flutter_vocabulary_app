@@ -2,8 +2,8 @@ import { MAX_RAW_BYTES, htmlResponse, isAllowedMediaType, jsonResponse } from ".
 import type { RouteContext, RouteDefinition } from "../routing";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
 import { renderNotFoundPage, renderSessionPage } from "./page";
-import { addPhotoSource, createSession, getSession, getSourceObject, hasSourceStorage } from "./store";
-import { MAX_SESSION_JSON_BYTES, MAX_SOURCES, parseDetail, parseEntries } from "./types";
+import { addPhotoSource, createSession, getSourceObject, hasSourceStorage, loadSession } from "./store";
+import { MAX_SESSION_JSON_BYTES, MAX_SOURCES, parseDetail, parseEntries, toDocument } from "./types";
 
 const ID_PATTERN = "[A-Za-z0-9-]{1,64}";
 
@@ -43,8 +43,8 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
     return jsonResponse({ error: detail.error }, 400);
   }
 
-  const doc = await createSession(env, parsed.entries, detail.detail);
-  return jsonResponse({ id: doc.id, url: publicUrl(url, doc.id), expiresAt: doc.expiresAt });
+  const session = await createSession(env, parsed.entries, detail.detail);
+  return jsonResponse({ id: session.id, url: publicUrl(url, session.id), expiresAt: session.expiresAt });
 }
 
 /** POST /sessions/:id/sources -- secret-gated. Raw image bytes, like /analyze. */
@@ -56,11 +56,11 @@ async function handleAddSource({ request, env, url, params }: RouteContext): Pro
   if (!isAllowedMediaType(mediaType)) {
     return jsonResponse({ error: "Content-Type header must be one of: image/jpeg, image/png, image/webp" }, 400);
   }
-  const doc = await getSession(env, params.id);
-  if (!doc) {
+  const session = await loadSession(env, params.id);
+  if (!session) {
     return jsonResponse({ error: "Session not found" }, 404);
   }
-  if (doc.sources.length >= MAX_SOURCES) {
+  if (session.sources.length >= MAX_SOURCES) {
     return jsonResponse({ error: `A session holds at most ${MAX_SOURCES} sources` }, 400);
   }
 
@@ -72,21 +72,21 @@ async function handleAddSource({ request, env, url, params }: RouteContext): Pro
     return jsonResponse({ error: "Image is too large" }, 413);
   }
 
-  const source = await addPhotoSource(env, doc, bytes, mediaType);
+  const source = await addPhotoSource(env, session, bytes, mediaType);
   return jsonResponse({
     sourceId: source.id,
-    url: `${publicUrl(url, doc.id)}/sources/${source.id}`,
-    pageUrl: publicUrl(url, doc.id),
+    url: `${publicUrl(url, session.id)}/sources/${source.id}`,
+    pageUrl: publicUrl(url, session.id),
   });
 }
 
 /** GET /s/:id -- public. The page a person reads. */
 async function handleSessionPage({ env, params }: RouteContext): Promise<Response> {
-  const doc = await getSession(env, params.id);
-  if (!doc) {
+  const session = await loadSession(env, params.id);
+  if (!session) {
     return htmlResponse(renderNotFoundPage(), 404);
   }
-  return htmlResponse(renderSessionPage(doc));
+  return htmlResponse(renderSessionPage(toDocument(session)));
 }
 
 /**
@@ -97,11 +97,11 @@ async function handleSessionPage({ env, params }: RouteContext): Promise<Respons
  * AnkiDroid.
  */
 async function handleAnkiDownload({ env, params }: RouteContext): Promise<Response> {
-  const doc = await getSession(env, params.id);
-  if (!doc) {
+  const session = await loadSession(env, params.id);
+  if (!session) {
     return htmlResponse(renderNotFoundPage(), 404);
   }
-  return new Response(renderAnkiFileFor(doc), {
+  return new Response(renderAnkiFileFor(toDocument(session)), {
     status: 200,
     headers: {
       "content-type": "text/plain; charset=utf-8",

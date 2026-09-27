@@ -1,8 +1,9 @@
 // `npm test`: starts `wrangler dev` on a free port with fresh local bindings
-// (D1/KV/R2/rate limiters simulated under a throwaway --persist-to dir), waits
-// until it answers, runs `node --test` over test/**/*.test.mjs against it, then
-// stops it. No package beyond wrangler itself (sad §10).
-import { spawn } from "node:child_process";
+// (D1/KV/R2/rate limiters simulated under a throwaway --persist-to dir, with the
+// D1 migrations applied), waits until it answers, runs `node --test` over
+// test/**/*.test.mjs against it, then stops it. No package beyond wrangler
+// itself (sad §10).
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -53,6 +54,17 @@ const inspectorPort = await freePort();
 const baseUrl = `http://127.0.0.1:${port}`;
 const stateDir = mkdtempSync(join(tmpdir(), "vocab-photo-api-test-"));
 
+const migrate = spawnSync(
+  "npx",
+  ["wrangler", "d1", "migrations", "apply", "DB", "--local", "--persist-to", stateDir],
+  { cwd: root, encoding: "utf8", env: { ...process.env, CI: "1" } },
+);
+if (migrate.status !== 0) {
+  console.error("--- wrangler d1 migrations apply output ---\n" + migrate.stdout + migrate.stderr);
+  rmSync(stateDir, { recursive: true, force: true });
+  process.exit(1);
+}
+
 let log = "";
 const worker = spawn(
   "npx",
@@ -92,8 +104,14 @@ try {
   await waitUntilUp(baseUrl, worker, 60_000);
   code = await run(process.execPath, ["--test", "test/**/*.test.mjs"], {
     cwd: root,
-    env: { ...process.env, VOCAB_API_BASE_URL: baseUrl, VOCAB_API_DEV_VARS: join(root, devVars) },
+    env: {
+      ...process.env,
+      VOCAB_API_BASE_URL: baseUrl,
+      VOCAB_API_DEV_VARS: join(root, devVars),
+      VOCAB_API_STATE_DIR: stateDir,
+    },
   });
+  if (code !== 0) console.error("--- wrangler dev output ---\n" + log);
 } catch (err) {
   console.error(String(err));
   console.error("--- wrangler dev output ---\n" + log);

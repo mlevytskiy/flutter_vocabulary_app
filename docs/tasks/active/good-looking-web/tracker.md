@@ -8,7 +8,7 @@
 | [T1](t1-spike-browser-translation.md) | Spike: get a translation from the free endpoint in the partner's browser | tests | Maksym | S | — | done |
 | [T2](t2-worker-test-harness.md) | Add a node:test harness that runs against wrangler dev | tests | Maksym | S | — | done |
 | [T3](t3-d1-schema.md) | Create the D1 schema for sessions, rows, cell revisions, photo slots and counters | migration | Maksym | M | — | done |
-| [T4](t4-d1-store-and-legacy-import.md) | Move session storage to D1, with a lazy import of pre-feature KV links | infra | Maksym | M | T2, T3 | todo |
+| [T4](t4-d1-store-and-legacy-import.md) | Move session storage to D1, with a lazy import of pre-feature KV links | infra | Maksym | M | T2, T3 | done |
 | [T5](t5-publish-contract-photos-and-republish.md) | Accept declared photos, row photo ids and republish tokens in the publish contract | ports | Maksym | M | T4 | todo |
 | [T6](t6-save-cell-with-revision-check.md) | Save cells with a per-cell revision check and limits | ports | Maksym | M | T4 | todo |
 | [T7](t7-add-delete-rows-and-write-limit.md) | Add and delete rows, and rate-limit page writes | ports | Maksym | M | T6 | todo |

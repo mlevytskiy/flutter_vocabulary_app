@@ -104,10 +104,13 @@ credential** (`docs/idea-brief.md` §5), which is why the session id is a
 `crypto.randomUUID()` and never anything sequential.
 
 A session lives for **30 days** (decision D4 in
-[`../docs/roadmap.md`](../docs/roadmap.md#decisions-so-far)): the KV document is written
-with `expirationTtl` and simply disappears, so there is no delete endpoint and no
-"anyone holding the URL can destroy the list" surface. Attaching a photo keeps the
-original expiry (the document is rewritten with the same absolute `expiration`).
+[`../docs/roadmap.md`](../docs/roadmap.md#decisions-so-far)): the session is stored in the
+`DB` D1 database with its `expires_at`, and from then on an expired session reads exactly
+like an unknown id, so there is no delete endpoint and no "anyone holding the URL can
+destroy the list" surface. Attaching a photo keeps the original expiry. Links published
+before D1 (good-looking-web) were KV documents written with `expirationTtl`: the first
+open of such a link imports it into D1 with its original dates, and `SESSIONS` KV is
+only read, never written.
 
 The stored document is **source-agnostic** — a word table plus a tagged list of whatever
 the words came from. A photo is one `{ "kind": "photo", ... }` item in `sources`, never a
@@ -334,10 +337,12 @@ npm test
 ```
 
 `scripts/test.mjs` starts `wrangler dev` on a free port with fresh local bindings (a
-throwaway `--persist-to` directory, so every run starts empty), runs
+throwaway `--persist-to` directory, so every run starts empty, with the D1 migrations
+applied), runs
 `node --test "test/**/*.test.mjs"` against it, and stops it. The secrets come from
 `.dev.vars`, or `.dev.vars.example` when there is none. Shared helpers (`baseUrl`,
-`appHeaders()`, `publish()`) live in `test/helpers.mjs`. The tests only work through
+`appHeaders()`, `publish()`, `get()`, and `d1()` / `kvPut()` / `kvDelete()` for reading
+and seeding the local state `wrangler dev` serves from) live in `test/helpers.mjs`. The tests only work through
 `npm test`, because they need the address it passes in.
 
 ## Rate limiting
@@ -347,7 +352,7 @@ Rate Limiting binding, as a backstop against runaway Anthropic API costs. Adjust
 `simple.limit` / `simple.period` there if needed (`period` must be `10` or `60`).
 
 It applies to the **secret-gated** routes only (`/analyze`, `POST /sessions`,
-`POST /sessions/<id>/sources`). The public page and its photo are plain KV/R2 reads and
+`POST /sessions/<id>/sources`). The public page and its photo are plain D1/R2 reads and
 are not rate-limited, so a partner refreshing the page never hits `429`.
 
 ## Notes

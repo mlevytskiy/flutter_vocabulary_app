@@ -40,12 +40,80 @@ export type SessionSource = PhotoSource;
 export interface SessionDocument {
   id: string;
   createdAt: string;
-  /** When the KV key expires (D4: 30 days after creation). Shown on the page. */
+  /** When the session expires (D4: 30 days after creation). Shown on the page. */
   expiresAt: string;
   /** Absent before definition-mode — read it through `detailOf`. */
   detail?: SessionDetail;
   entries: SessionEntry[];
   sources: SessionSource[];
+}
+
+/**
+ * One row as D1 stores it (good-looking-web, ADR-0004): a stable id, its place
+ * in the table, and each cell with the session revision of its last change.
+ */
+export interface StoredRow {
+  id: string;
+  position: number;
+  /** The photo slot this row was recognised from; null for a typed row. */
+  sourceId: string | null;
+  word: string;
+  wordRev: number;
+  translation: string;
+  translationRev: number;
+  definition: string;
+  definitionRev: number;
+}
+
+/** A photo slot (ADR-0006): declared at publish, "arrived" once its bytes are in R2. */
+export interface StoredSource {
+  id: string;
+  ord: number;
+  mediaType: string | null;
+  bytes: number | null;
+  status: "pending" | "arrived";
+  arrivedRev: number | null;
+}
+
+/** A session loaded from D1: its live rows in table order and its photo slots in order. */
+export interface StoredSession {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  /** The session revision: goes up with every write (ADR-0004). */
+  rev: number;
+  /** The revision of the last republish; 0 when never republished (ADR-0008). */
+  replacedRev: number;
+  detail: SessionDetail;
+  rows: StoredRow[];
+  sources: StoredSource[];
+}
+
+/**
+ * The document shape the page and the AnkiDroid file are rendered from. Only
+ * arrived photos are listed: a pending slot has no bytes to show yet.
+ */
+export function toDocument(session: StoredSession): SessionDocument {
+  return {
+    id: session.id,
+    createdAt: session.createdAt,
+    expiresAt: session.expiresAt,
+    detail: session.detail,
+    entries: session.rows.map((row) =>
+      row.definition === ""
+        ? { word: row.word, translation: row.translation }
+        : { word: row.word, translation: row.translation, definition: row.definition }
+    ),
+    sources: session.sources
+      .filter((source) => source.status === "arrived")
+      .map((source) => ({
+        kind: "photo",
+        id: source.id,
+        mediaType: source.mediaType ?? "application/octet-stream",
+        bytes: source.bytes ?? 0,
+        addedAt: session.createdAt,
+      })),
+  };
 }
 
 /** D4 -- a published session and its sources live this long, then the store drops them. */

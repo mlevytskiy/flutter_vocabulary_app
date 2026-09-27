@@ -7,7 +7,7 @@ acs: ["AC-26", "AC-27", "AC-32"]
 files_hint: ["vocab-photo-api/src/session/store.ts", "vocab-photo-api/src/session/types.ts", "vocab-photo-api/src/session/handlers.ts", "vocab-photo-api/src/env.ts", "vocab-photo-api/test/store.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Move session storage to D1, with a lazy import of pre-feature KV links
@@ -22,11 +22,11 @@ status: "todo"
 
 ## Definition of Done
 
-- [ ] node test: publish → page shows the rows from D1
-- [ ] node test: a document seeded into local KV opens once, is imported, and a second open reads D1 (AC-26 for old links)
-- [ ] node test: expired and unknown ids get byte-identical gone pages (AC-32)
-- [ ] `npm run typecheck` clean
-- [ ] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
+- [x] node test: publish → page shows the rows from D1
+- [x] node test: a document seeded into local KV opens once, is imported, and a second open reads D1 (AC-26 for old links)
+- [x] node test: expired and unknown ids get byte-identical gone pages (AC-32)
+- [x] `npm run typecheck` clean
+- [x] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
 
 ## Notes
 
