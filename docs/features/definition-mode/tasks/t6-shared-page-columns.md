@@ -7,7 +7,7 @@ acs: ["AC-16", "AC-17", "AC-18"]
 files_hint: ["vocab-photo-api/src/session/page.ts"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Render shared-page columns from the detail mode
@@ -30,3 +30,10 @@ The page picks columns from `detail`: translation → word + translation (today'
 ## Notes
 
 —
+
+## Verification (2026-09-27, `wrangler dev`)
+
+- RED: a `detail: definition` session rendered `Word | Translation` before the change.
+- After: definition → `# | Word | Definition` + "Definitions: Merriam-Webster"; both → `# | Word | Translation | Definition` + credit; a request without `detail` → `# | Word | Translation`, no credit (unchanged page, AC-17).
+- A definition containing `<script>alert(1)</script>` renders as escaped text.
+- Unknown session id → 404 "This word list is gone" (AC-18). `tsc --noEmit` exit 0.

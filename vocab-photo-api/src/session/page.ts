@@ -1,4 +1,4 @@
-import type { SessionDocument, SessionSource } from "./types";
+import { detailOf, type SessionDocument, type SessionEntry, type SessionSource } from "./types";
 
 /**
  * Server-rendered HTML for the public page. No build step, no framework:
@@ -39,12 +39,13 @@ const STYLE = `
   figure { margin: 0; }
   figure img { display: block; width: 100%; height: auto; border-radius: 6px; border: 1px solid #ddd; }
   .gone { text-align: center; padding: 48px 0; color: #444; }
+  .credit { color: #666; font-size: 0.8rem; margin: 8px 0 0; }
   @media (prefers-color-scheme: dark) {
     body { background: #121212; color: #ececec; }
     table { background: #1c1c1c; border-color: #333; }
     th { background: #262626; }
     th, td { border-color: #2e2e2e; }
-    .meta, td.n { color: #9a9a9a; }
+    .meta, td.n, .credit { color: #9a9a9a; }
     figure img { border-color: #333; }
     .gone { color: #ccc; }
   }
@@ -86,13 +87,38 @@ function renderSource(sessionId: string, source: SessionSource): string {
   }
 }
 
+/**
+ * The columns the learner's word detail mode showed at publishing time
+ * (ADR-0004). A document from before definition-mode has no `detail` and reads
+ * as translation, which renders exactly the page it always did.
+ */
+function columnsFor(doc: SessionDocument): { title: string; value: (e: SessionEntry) => string }[] {
+  const translation = { title: "Translation", value: (e: SessionEntry) => e.translation };
+  const definition = { title: "Definition", value: (e: SessionEntry) => e.definition ?? "" };
+  switch (detailOf(doc)) {
+    case "definition":
+      return [definition];
+    case "both":
+      return [translation, definition];
+    default:
+      return [translation];
+  }
+}
+
 export function renderSessionPage(doc: SessionDocument): string {
+  const columns = columnsFor(doc);
+  const showsDefinitions = columns.some((c) => c.title === "Definition");
   const rows = doc.entries
     .map(
       (entry, i) =>
-        `<tr><td class="n">${i + 1}</td><td>${escapeHtml(entry.word)}</td><td>${escapeHtml(entry.translation)}</td></tr>`
+        `<tr><td class="n">${i + 1}</td><td>${escapeHtml(entry.word)}</td>${columns
+          .map((c) => `<td>${escapeHtml(c.value(entry))}</td>`)
+          .join("")}</tr>`
     )
     .join("\n");
+  const head = columns.map((c) => `<th>${c.title}</th>`).join("");
+  // Dictionary text is shown with its source named (spec §8 licence default).
+  const credit = showsDefinitions ? `\n<p class="credit">Definitions: Merriam-Webster</p>` : "";
   const count = doc.entries.length;
   const sources = doc.sources.map((s) => renderSource(doc.id, s)).filter((html) => html !== "");
   const sourcesHtml =
@@ -103,11 +129,11 @@ export function renderSessionPage(doc: SessionDocument): string {
 <p class="meta">${count} ${count === 1 ? "word" : "words"} · published ${escapeHtml(formatDate(doc.createdAt))} · available until ${escapeHtml(formatDate(doc.expiresAt))}</p>
 <p class="actions"><a class="btn" href="/s/${encodeURIComponent(doc.id)}/words.txt" download>Download for AnkiDroid</a></p>
 <table>
-<thead><tr><th>#</th><th>Word</th><th>Translation</th></tr></thead>
+<thead><tr><th>#</th><th>Word</th>${head}</tr></thead>
 <tbody>
 ${rows}
 </tbody>
-</table>
+</table>${credit}
 ${sourcesHtml}`;
   return shell(`Vocabulary — ${count} ${count === 1 ? "word" : "words"}`, body);
 }
