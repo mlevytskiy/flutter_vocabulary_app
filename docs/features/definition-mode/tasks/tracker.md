@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|---|
 | T1 | [Add definition fields and the filled-row helper to WordPair](./t1-word-pair-definition-fields.md) | domain | Maksym | S | — | done |
 | T2 | [Add the persisted word detail mode provider](./t2-word-detail-mode-provider.md) | infra | Maksym | S | — | done |
-| T3 | [Add the three-way word detail mode to Settings](./t3-settings-word-detail-mode.md) | ui | Maksym | S | T2 | todo |
+| T3 | [Add the three-way word detail mode to Settings](./t3-settings-word-detail-mode.md) | ui | Maksym | S | T2 | done |
 | T4 | [Add the Worker dictionary route with the 30-day cache](./t4-worker-dictionary-route.md) | ports | Maksym | M | — | todo |
 | T5 | [Accept definitions and the detail mode in published sessions](./t5-worker-session-contract.md) | ports | Maksym | S | — | todo |
 | T6 | [Render shared-page columns from the detail mode](./t6-shared-page-columns.md) | ui | Maksym | S | T5 | todo |

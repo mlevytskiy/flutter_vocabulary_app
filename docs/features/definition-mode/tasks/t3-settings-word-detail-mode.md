@@ -7,7 +7,7 @@ acs: ["AC-01"]
 files_hint: ["lib/features/settings/settings_screen.dart", "test/settings_screen_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Add the three-way word detail mode to Settings
