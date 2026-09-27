@@ -141,7 +141,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     setState(() => _isPublishing = true);
     try {
       final published =
-          await ref.read(sessionPublishServiceProvider).publish(wordPairs);
+          await ref.read(sessionPublishServiceProvider).publish(wordPairs,
+              detail: ref.read(wordDetailModeProvider));
       // The point is handing the URL over in the next five seconds: it is on
       // the clipboard before the dialog even opens.
       await Clipboard.setData(ClipboardData(text: published.url));

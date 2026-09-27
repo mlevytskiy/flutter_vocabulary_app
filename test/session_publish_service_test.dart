@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
+import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
 
 void main() {
@@ -45,6 +46,7 @@ void main() {
       expect(request.headers['content-type'], startsWith('application/json'));
       final body = jsonDecode(utf8.decode(request.bodyBytes));
       expect(body, {
+        'detail': 'translation',
         'entries': [
           {'word': 'receipt', 'translation': 'квитанція'},
           {'word': 'shelf', 'translation': 'полиця'},
@@ -117,6 +119,48 @@ void main() {
           isA<SessionPublishException>()
               .having((e) => e.message, 'message', contains('502')),
         ),
+      );
+    });
+  });
+
+  // definition-mode T16 (ADR-0004, spec AC-16, AC-19).
+  group('definitions and the detail mode', () {
+    final pairs = [
+      WordPair(word: 'claim', translation: 'заява', definition: 'to ask for'),
+      WordPair(word: 'gated', definition: 'having a gate'),
+    ];
+
+    test('definition mode sends definitions and hides translations', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish(pairs, detail: WordDetailMode.definition);
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
+      expect(body, {
+        'detail': 'definition',
+        'entries': [
+          {'word': 'claim', 'translation': '', 'definition': 'to ask for'},
+          {'word': 'gated', 'translation': '', 'definition': 'having a gate'},
+        ],
+      });
+    });
+
+    test('both sends translations and definitions', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish(pairs, detail: WordDetailMode.both);
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
+      expect(body['detail'], 'both');
+      expect(body['entries'][0],
+          {'word': 'claim', 'translation': 'заява', 'definition': 'to ask for'});
+    });
+
+    test('a too-long definition surfaces the Worker message naming the word',
+        () async {
+      final service = serviceAnswering(400, {
+        'error': 'The definition of "gated" is too long (at most 500 characters)',
+      });
+      expect(
+        () => service.publish(pairs, detail: WordDetailMode.definition),
+        throwsA(isA<SessionPublishException>().having(
+            (e) => e.message, 'message', contains('"gated"'))),
       );
     });
   });

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
 import '../models/word_pair.dart';
+import '../providers.dart' show WordDetailMode;
 
 class SessionPublishException implements Exception {
   final String message;
@@ -39,17 +40,31 @@ class SessionPublishService {
   /// Blank pairs — the trailing empty row the input screen always keeps — are
   /// dropped here so they can never reach the page. Throws
   /// [SessionPublishException] when nothing is left to publish.
-  Future<PublishedSession> publish(List<WordPair> pairs) async {
+  ///
+  /// [detail] is the learner's word detail mode at publishing time; the page
+  /// and its AnkiDroid download show the columns it shows (definition-mode,
+  /// ADR-0004). A field the mode hides is sent empty; definitions are sent
+  /// only when the mode shows them.
+  Future<PublishedSession> publish(
+    List<WordPair> pairs, {
+    WordDetailMode detail = WordDetailMode.translation,
+  }) async {
     if (VocabApiConfig.appSecret.isEmpty) {
       throw SessionPublishException(
         'Vocab API secret is not configured. Fill in lib/config/vocab_api_config.dart.',
       );
     }
 
+    final showTranslation = detail != WordDetailMode.definition;
+    final showDefinition = detail != WordDetailMode.translation;
     final entries = [
       for (final pair in pairs)
         if (!pair.isEmpty)
-          {'word': pair.word.trim(), 'translation': pair.translation.trim()},
+          {
+            'word': pair.word.trim(),
+            'translation': showTranslation ? pair.translation.trim() : '',
+            if (showDefinition) 'definition': pair.definition.trim(),
+          },
     ];
     if (entries.isEmpty) {
       throw SessionPublishException('There are no words to publish');
@@ -65,7 +80,7 @@ class SessionPublishService {
               'content-type': 'application/json; charset=utf-8',
               'x-app-secret': VocabApiConfig.appSecret,
             },
-            body: jsonEncode({'entries': entries}),
+            body: jsonEncode({'detail': detail.name, 'entries': entries}),
           )
           // A stalled connection must not leave the screen behind a spinner
           // forever (AC-16): the person is waiting to hand over a link.

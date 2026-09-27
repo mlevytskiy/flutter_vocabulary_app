@@ -7,7 +7,7 @@ acs: ["AC-16", "AC-19"]
 files_hint: ["lib/core/services/session_publish_service.dart", "lib/features/words_table/words_table_screen.dart", "test/session_publish_service_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T16 — Publish definitions and the detail mode
