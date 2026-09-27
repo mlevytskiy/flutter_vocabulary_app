@@ -9,7 +9,7 @@
   },
   "scripts": {
     "probe": "node src/probe.mjs",
-    "build": "echo 'build: comparison page not implemented yet (task-17)'",
-    "serve": "echo 'serve: comparison page not implemented yet (task-17)'"
+    "build": "node src/build.mjs",
+    "serve": "python3 -m http.server 8000"
   }
 }
