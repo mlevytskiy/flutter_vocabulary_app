@@ -30,7 +30,7 @@ Every publish creates a new link today. A forwarded link can be vandalised (spec
 
 ## Decision outcome
 
-**Chosen:** option 1. The first publish returns, besides the link, a random edit token; the app stores the published id and the token on its `Session`. A republish sends both; the Worker (keeping only a hash of the token) replaces the session's rows and photo slots in D1, keeps its original expiry (D4) and resets the revision history so open pages reload the list. If the link has expired or the token does not match, the Worker creates a new link instead. The share sheet warns before a republish that the page's edits will be replaced.
+**Chosen:** option 1. The first publish returns, besides the link, a random edit token; the app stores the published id and the token on its `Session`. A republish sends both; the Worker (keeping only a hash of the token) replaces the session's rows and photo slots in D1, keeps its original expiry (D4) and raises the session revision, recording "replaced at revision R"; the revision never goes back, so the change feed answers any page whose cursor is below R with a reload marker and the page reloads the list (ADR-0005). If the link has expired or the token does not match, the Worker creates a new link instead. The share sheet warns before a republish that the page's edits will be replaced.
 
 ## Consequences
 

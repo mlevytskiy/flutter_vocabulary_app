@@ -27,7 +27,7 @@ The Worker renders the shared page today as a template string with inline CSS an
 ## Considered options
 
 1. **Server-rendered table + plain-JavaScript enhancement** — the Worker renders the complete table as today; one framework-free script, served by the Worker, adds editing and the rest on top.
-2. **Client-side SPA on a small framework (Preact or Lit)** — the Worker serves a shell and the data; the browser builds the table.
+2. **Client-side SPA on a small framework (Preact or Lit)** — the Worker serves a shell and the data; the browser builds the table. (A live option: CLAUDE.md rule 5 allows a new package when the owner approves, and the owner was asked — sad §1 decision override.)
 
 ## Decision outcome
 

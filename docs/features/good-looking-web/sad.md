@@ -9,9 +9,6 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 
 # Software Architecture Document — good-looking-web
 
-<!-- 12 Arc42 sections. Empty section → <!-- N/A: <one-line reason> -->. -->
-<!-- C4 Context (L1) lives inline in §3. C4 Container (L2) lives inline in §5. -->
-<!-- Numbers in §10 come VERBATIM from spec.md §6 NFR — no inventing, no rounding. -->
 
 ## 1. Introduction and goals
 
@@ -19,7 +16,7 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
-1. **Edit integrity under concurrent editing** — no lost edits: every save either lands or comes back as a conflict the partner resolves; other partners' saved edits appear within 10 s without reload.
+1. **Edit integrity under concurrent editing** — no lost edits: every save either lands or comes back as a conflict the partner resolves; other partners' saved edits appear within 10 s without reload on a page that is in use (see the override below).
 2. **A bounded public write surface** — shared pages never use the app's reserved share of the dictionary quota; the per-page allowance, the row / field / session-size limits and a write rate limit hold; photos of a session published without them cannot be reached at all.
 3. **Readable on any device** — a 100-row table renders readably on a phone on 4G within the spec's first-render target, with no page-level sideways scroll at 360 px.
 
@@ -32,19 +29,23 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 | Tech Lead (Maksym) | SAD approval | Yes |
 | Security Lead (Maksym) | Security review of the new public write surface and the published photos (spec §6.1) | Yes |
 
-<!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
+**Decision overrides (critic resolution, 2026-09-27):**
+
+- Decision override: the "≤ 10 s, without reload" target (spec §6, AC-12) applies to a shared page that is in use — rationale: the owner asked that an idle page stop polling after 5 minutes without interaction so abandoned tabs send no empty requests (§6, ADR-0005); the first interaction triggers an immediate catch-up from the last seen revision. Spec §6 and AC-12 were amended the same day. Risk tracked in §11.
+- Decision override: ADR-0002 keeps "SPA on Preact or Lit" and ADR-0001 keeps "backend-service + web-frontend" as considered options although the critic flagged them as strawmen — rationale: CLAUDE.md rule 5 forbids new packages *without asking*, and the owner was asked, so the SPA was a live alternative; the two-surface option would still have built the app work, only filed under backend tasks, so it changed classification, not feasibility.
 
 ## 2. Constraints
 
 **Technical.**
 - Worker (`vocab-photo-api/`): TypeScript 5.6, `wrangler` 4, `compatibility_date` 2025-01-01, **no runtime npm dependencies** (only `typescript`, `wrangler`, `@cloudflare/workers-types` as dev dependencies).
-- Worker bindings today (`wrangler.jsonc`): `SESSIONS` KV — one JSON `SessionDocument` per published session under `session:<id>`, written with a 30-day `expirationTtl` (D4); `DEFINITIONS` KV — the dictionary cache (30-day TTL); `SOURCES` R2 — photo bytes under `sessions/<sessionId>/sources/<sourceId>`, an optional binding (photo routes answer 503 without it); `RATE_LIMITER` — 20 requests / 60 s per IP, applied to the secret-gated routes only (the public page and its sources are not rate-limited).
+- Worker bindings today (`wrangler.jsonc`): `SESSIONS` KV — one JSON `SessionDocument` per published session under `session:<id>`, written with a 30-day `expirationTtl` (D4); `DEFINITIONS` KV — the dictionary cache (30-day TTL); `SOURCES` R2 — photo bytes under `sessions/<sessionId>/sources/<sourceId>`, an optional binding (without it the upload route answers 503 and serving a photo answers not-found); `RATE_LIMITER` — 20 requests / 60 s per IP, applied to the secret-gated routes only (the public page and its sources are not rate-limited).
 - Photo publishing half-exists: `POST /sessions/<id>/sources` (secret-gated) stores a photo in R2 and appends a `PhotoSource` to the document; `GET /s/<id>/sources/<sourceId>` serves it publicly. The app has never called the upload route.
 - Session limits live in `src/session/types.ts`: `MAX_ENTRIES` 500, `MAX_FIELD_CHARS` 500, `MAX_SESSION_JSON_BYTES` 256 KB, `MAX_SOURCES` 10 — spec §6 keeps them unchanged.
 - **Workers KV semantics:** eventually consistent (a write can take up to ~60 s to be visible at other edge locations), last-write-wins with no compare-and-swap, about 1 write per second per key. On KV alone, spec AC-11 / AC-12 and the "0 lost edits" NFR cannot be guaranteed; the store for editable sessions is a §4 decision.
 - Shared page (`src/session/page.ts`): HTML built from template strings with inline CSS; every value passes `escapeHtml`; **no client-side JavaScript and no bundler** today. The AnkiDroid file (`src/session/anki.ts`) is built on the fly from the stored document, with definition-mode ADR-0005's fixed column places.
 - Dictionary: Merriam-Webster Collegiate free key — 1,000 calls/day, non-commercial; `/define` (secret-gated) caches hits in `DEFINITIONS`; the daily limit is not counted in code today.
 - App: Flutter, Dart SDK `>=3.0.0 <4.0.0`; `flutter_riverpod` / `riverpod_annotation` 2.6.x with `riverpod_generator`; `go_router` typed routes; `isar_community` **pinned exactly to `3.3.0-dev.1`** ([`docs/architecture.md`](../../architecture.md) rule 6) — any new field on `Session` / `WordPair` needs a `build_runner` regeneration and committed `.g.dart`; `http` is the only HTTP client; `image_picker` + `screenshot` capture photos.
+- App publish today (`lib/core/services/session_publish_service.dart`): a field the word detail mode hides is sent empty, and definitions are sent only when the mode shows them — this feature changes that to "send every stored translation and definition" (spec AC-27, §5).
 - App photo handling today: a photo is scaled (`PhotoScaler`), sent to `/analyze`, then discarded; `WordPair` has no link to a photo and `Session` has no photo list.
 - Worker verification: no test runner — `npm run typecheck` plus `wrangler dev` + curl.
 
@@ -116,7 +117,7 @@ C4Context
 2. **Server-rendered table, enhanced with plain JavaScript** ([ADR-0002](adr/0002-render-the-table-on-the-server-and-enhance-it-with-plain-javascript.md)) — the Worker still renders the complete table, so it is readable before any script runs (quality goal 3); one framework-free script served by the Worker adds editing, conflicts, Undo, polling, the pager and the dialog. The two layouts are CSS media queries on one DOM, so a width change never re-renders or loses typed text (AC-36). No new package, no build step.
 3. **Editable sessions and autofill counters in D1** ([ADR-0003](adr/0003-store-editable-sessions-and-autofill-counters-in-d1.md)) — KV cannot give "0 lost edits" (sad §2), so sessions, rows, cell revisions, photo slots and both counters move to one D1 database with conditional writes. New publishes go to D1; links published before this feature are imported from `SESSIONS` KV on first open. A daily cron trigger deletes sessions past their 30 days (D4).
 4. **Optimistic concurrency with a revision per cell** ([ADR-0004](adr/0004-detect-edit-conflicts-with-a-revision-per-cell.md)) — every write raises the session's revision; each cell remembers the revision of its last change; a save applies only if the cell is still at the revision the partner started from, else both values come back for the partner to choose (AC-11). Delete-with-Undo is client-side: the delete is sent after 5 s with the row's three cell revisions, so a change made meanwhile cancels it (AC-15, AC-15b).
-5. **Polling for changes since the last seen revision** ([ADR-0005](adr/0005-poll-for-changes-since-the-last-seen-revision.md)) — every ~5 s, paused while the tab is hidden; the answer carries changed cells, new rows, deleted-row tombstones and newly arrived photos (AC-12, AC-37).
+5. **Polling for changes since the last seen revision** ([ADR-0005](adr/0005-poll-for-changes-since-the-last-seen-revision.md)) — every ~5 s while the page is in use: paused while the tab is hidden, stopped after 5 minutes without interaction, with an immediate catch-up poll on return (§6); the answer carries changed cells, new rows, deleted-row tombstones and newly arrived photos (AC-12, AC-37).
 6. **Photos declared at publish, bytes uploaded after** ([ADR-0006](adr/0006-declare-source-photos-in-the-publish-payload-and-upload-bytes-after.md)) — the app ids each photo when it is taken; the publish request lists up to 10 photos and each row's photo id; the link dialog opens at once and the bytes follow in the background with retries; an undelivered photo is a placeholder in its place (AC-37). With "include photos" off, nothing about photos is sent (AC-24).
 7. **Translation autofill from the partner's browser** ([ADR-0007](adr/0007-call-the-translation-endpoint-from-the-partners-browser.md)) — the page calls the same free translation endpoint the app uses, unmetered (spec OQ-1 default); a spike in Chrome and Safari is the first task, with a Worker proxy as the fallback if it fails.
 8. **Republishing overwrites the same link** ([ADR-0008](adr/0008-overwrite-the-same-link-when-a-session-is-republished.md)) — the app keeps the published id and an edit token on its `Session`; a republish replaces the page's rows and photos under the same link and expiry, after a warning in the share sheet (spec OQ-4 default).
@@ -124,7 +125,7 @@ C4Context
 **Tactical decisions that follow (inline, no ADR):**
 
 - **Metering** lives in D1 beside the data (ADR-0003): a definition lookup from a page first takes one unit of that page's allowance (50 per UTC day) and one unit of the all-pages share (500 per UTC day), both as "increment only while below the limit"; if either is spent, the page gets "paused until 00:00 UTC" (AC-18, AC-18b). Every lookup counts, found or not; a column autofill counts one per cell (AC-20). The app's own `/define` calls are not counted — pages simply stop at 500 of the 1,000 (AC-29). Translation autofill is not metered (choice 7).
-- **Column autofill** runs in the browser as a sequence of single-cell lookups in table order (AC-19, AC-20), each saved like a partner's edit (choice 4), so it reports progress and stops cleanly when the allowance runs out.
+- **Column autofill** runs in the browser as a sequence of single-cell lookups in table order (AC-19, AC-20), each saved like a partner's edit (choice 4) — one cell per request, no batch route, paced at no more than 3 saves per second so a 500-cell Translation column takes about 3 minutes and stays well inside the write limit (§8, AC-35). A Definition cell is written by the Worker inside the metered lookup itself. It reports progress and stops cleanly when the allowance runs out.
 - **Columns shown** are derived from the data, not from the published detail mode (spec §1 decision revising definition-mode ADR-0004 for the page): a column with no text collapses to an "add" control local to that partner's page (AC-21, AC-22). The downloaded file keeps definition-mode ADR-0005's fixed places and is built from D1 (AC-30, AC-31).
 - **Numbers kept at the spec's defaults:** 50 lookups per page per day and 500 for all pages (spec OQ-2), the first 10 photos taken (spec OQ-3), the layout breakpoint and column maximum widths chosen at `screens` (spec OQ-5) — see §11.
 
@@ -163,7 +164,7 @@ lib/ (Flutter app)
 ├── core/services/
 │   ├── source_photo_store.dart     NEW: writes / reads / deletes kept photo files in the app documents dir
 │   ├── photo_upload_service.dart   NEW: background upload of declared photos with retries (AC-37)
-│   └── session_publish_service.dart  + sources, sourceId, republish token; returns the token
+│   └── session_publish_service.dart  + sources, sourceId, republish token; sends every stored translation and definition whatever the mode (AC-27); returns the token
 ├── core/providers.dart     + sourcePhotoStoreProvider, photoUploadServiceProvider
 └── features/
     ├── word_input/         on a photo: keep its file, tag recognised rows with its id
@@ -239,7 +240,7 @@ sequenceDiagram
             PageA-->>PartnerA: both values shown, partner chooses one
         end
     end
-    loop about every 5 s while visible
+    loop about every 5 s while visible and in use
         PageB->>Api: changes since the last seen revision
         Api->>D1: read cells, rows and photo slots changed after it
         D1-->>Api: changed items
@@ -248,7 +249,7 @@ sequenceDiagram
     PageB->>PageB: applies changes, holds any for a cell being typed in
 ```
 
-**Polling stops when nobody is using the page** (owner's remark during design, 2026-09-27). The page polls only while it is visible **and** the partner has interacted with it in the last 5 minutes: a tap, click, key press, scroll or focus on a cell counts as activity, and so does the partner's own save or autofill. After 5 minutes without activity the page stops polling and shows a quiet "updates paused" hint, so a forgotten or abandoned tab stops sending empty requests. The first interaction after that resumes polling with an immediate catch-up poll from the last seen revision, so nothing is missed (ADR-0004's revisions make the catch-up exact). A hidden tab pauses at once, as before. The hint's look is decided at `screens`.
+**Polling stops when nobody is using the page** (owner's remark during design, 2026-09-27). The page polls only while it is visible **and** the partner has interacted with it in the last 5 minutes: a tap, click, key press, scroll or focus on a cell counts as activity, and so does the partner's own save or autofill. After 5 minutes without activity the page stops polling and shows a quiet "updates paused" hint, so a forgotten or abandoned tab stops sending empty requests. The first interaction after that resumes polling with an immediate catch-up poll from the last seen revision, so nothing is missed (ADR-0004's revisions make the catch-up exact). A hidden tab pauses at once and polls immediately when it becomes visible again, as before. The "≤ 10 s" target applies to a page in use (§1 decision override; spec §6 and AC-12 amended). The hint's look is decided at `screens`.
 
 **Critical flow 2: the learner publishes a session with its photos** (AC-23, AC-25, AC-37 — ADR-0006, ADR-0008)
 
@@ -265,9 +266,10 @@ sequenceDiagram
     App->>Api: publish rows with photo ids and the declared photos
     alt republish with a valid token
         Api->>D1: replace rows and photo slots, keep the expiry
-    else first publish or expired link
-        Api->>D1: create the session, rows and pending photo slots
+    else first publish, expired link or token mismatch
+        Api->>D1: create a new session, rows and pending photo slots
     end
+    Note over Api,D1: a republish raises the session revision and records replaced at that revision, so open pages get a reload marker
     Api-->>App: link, expiry and edit token
     App->>Device: stores the published id and token
     App-->>Learner: link dialog opens at once
@@ -324,7 +326,7 @@ One Worker (`vocab-photo-api`), deployed by hand with `wrangler deploy`, gains a
 **Monitoring:**
 - Metrics — Workers observability (already enabled) for request counts, errors and CPU per route; the spec §6 timings (cell save p95 ≤ 1.0 s, single-cell autofill p95 ≤ 3.0 s) are read from Cloudflare analytics for the save and autofill routes.
 - Log lines — structured lines for: cell saved / conflict / rejected by a limit; row deleted / delete refused; write rate-limit refusal; autofill filled / nothing found / paused (page allowance or all-pages share); dictionary unavailable (spec §7 KPI "days the app's lightning failed"); cron clean-up counts.
-- KPIs — plain SQL against D1: share of sessions with ≥1 write, share of publishes with photos, autofill fill rate (spec §7).
+- KPIs — plain SQL against D1: share of sessions with ≥1 write (spec §7 KPI 1, as specified); share of publishes that include photos, measured among publishes with ≥1 declared photo only, because a publish with photos switched off sends nothing about photos (KPI 2 narrowed — no denominator for sessions that had photos but did not publish them); autofill fill rate for **definition** autofill only, because translation autofill runs in the browser and never reaches the Worker (KPI 4 narrowed). Both narrowings are tracked in §11.
 - Alerts — none automated (one owner); a weekly manual check of the KPI queries and the error rate. Expired sessions are hidden at read time, so a missed cron run delays clean-up but never exposes an expired list.
 
 **Scaling thresholds:**
@@ -340,7 +342,7 @@ Everything inherits the repo's conventions (CLAUDE.md, [`docs/architecture.md`](
 |---|---|---|
 | Authentication — app routes | `x-app-secret` shared secret + the per-IP `RATE_LIMITER`, as today. Republish additionally needs the session's edit token; D1 keeps only its SHA-256 hash (ADR-0008). | `src/index.ts`; ADR-0008 |
 | Authorization — page routes (**new**) | Edit, change-feed, autofill and script routes are `public: true` — the link is the credential. Every session route first loads the session and checks it has not expired; an unknown and an expired id get one identical "gone" response that does not reveal whether the list existed (AC-32). A photo is served only when its session declared it and its bytes have arrived (AC-24). | `src/session/*`; here |
-| Write rate limit (**new**, sized here per spec §6.1) | A second `ratelimits` binding, `PAGE_WRITE_LIMITER`: 60 writes per 60 s per IP, applied to save cell, add row, delete row and define. Column autofill saves in batches of up to 25 cells per request (500 cells = 20 requests), so a normal pace never meets the limit (AC-35). Polling and page reads are not rate-limited, as today. Partners sharing one network share one IP's budget. | `wrangler.jsonc`, `src/index.ts` |
+| Write rate limit (**new**, sized here per spec §6.1) | A second `ratelimits` binding, `PAGE_WRITE_LIMITER`: 300 writes per 60 s per IP, applied to save cell, add row, delete row and define. There is no batch route: column autofill saves one cell per request, paced at no more than 3 per second (at most 180 a minute), which leaves about 120 writes a minute for another partner on the same network, so a normal pace never meets the limit (AC-35). Polling and page reads are not rate-limited, as today. Partners sharing one network share one IP's budget. | `wrangler.jsonc`, `src/index.ts` |
 | Output escaping + content security (**new** for the script) | Server-rendered values pass `escapeHtml` as today; the browser script writes text only through `textContent`, never `innerHTML` (AC-33). The page sends a Content-Security-Policy: scripts only from its own origin, `connect-src` its own origin plus `https://translate.googleapis.com` (ADR-0007), images only from its own origin. The AnkiDroid file keeps `anki.ts`'s existing field sanitising. | `src/session/page.ts`, `src/http.ts` |
 | Error handling | Worker: `jsonResponse({ error, code }, status)` — `error` in plain words for the page, `code` machine-readable (`conflict`, `field_too_long`, `list_full`, `rows_full`, `autofill_paused`, `nothing_found`, `rate_limited`, `gone`); status codes are fixed at the `api` stage. App: typed exceptions in the `SessionPublishException` pattern; background upload failures are retried, then left as placeholders (AC-37), never surfaced as errors. | `src/http.ts`; `lib/core/services/` |
 | ID strategy | Session: `crypto.randomUUID()` (unchanged, never sequential). Row: a UUID generated by whoever creates the row (the app at publish, the page on "add"). Photo: a UUID generated by the app when the photo is taken (ADR-0006). Edit token: 32 random bytes, base64url. | here |
@@ -373,7 +375,7 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 
 **QG-1. Edit integrity under concurrent editing**
 - **When:** 3 clients edit the same and different cells of one session 100 times; two browsers have the same session open while one of them saves edits.
-- **Then:** Lost edits under concurrent editing = 0 — every save either lands or comes back as a conflict the partner resolves; other partners' saved edits appear on an open page ≤ 10 s, without reload (while that page is in use — polling stops after 5 minutes without interaction, §6); cell save p95 (edit leaves the cell → "saved" shown) ≤ 1.0 s.
+- **Then:** Lost edits under concurrent editing = 0 — every save either lands or comes back as a conflict the partner resolves; other partners' saved edits appear on an open page ≤ 10 s, without reload (on a page in use — §1 decision override; spec §6 and AC-12 amended 2026-09-27); cell save p95 (edit leaves the cell → "saved" shown) ≤ 1.0 s.
 - **How verify:** a `node --test` concurrency test — 3 clients edit the same and different cells of one session 100 times, then every edit is checked to have either landed or received a conflict; two browsers on one session, 20 edits timed; Worker request timing for the save action from Cloudflare analytics.
 
 **QG-2. A bounded public write surface**
@@ -408,8 +410,9 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 | Two session stores during the 30-day transition (D1 plus read-only `SESSIONS` KV) | Low | Lazy import on first open (ADR-0003); remove the KV binding 30 days after release | Maksym |
 | Kept 1600 px photos grow device storage (about 0.4 MB per photo, kept as long as the session) | Low | Revisit when the app gets session deletion | Maksym |
 | A background upload is lost if the app is closed before it finishes | Low | The page shows a placeholder and keeps the rows linked, as AC-37 accepts | Maksym |
-| Partners on one network share one IP's write budget (60 writes / 60 s) | Low | The AC-35 test at a normal pace; raise the number if it is ever hit | Maksym |
-| After 5 minutes idle, a page stops polling and shows a stale list until the next interaction | Low | "Updates paused" hint plus an immediate catch-up poll on the next interaction (§6) | Maksym |
+| Partners on one network share one IP's write budget (300 writes / 60 s, of which a running column autofill uses up to 180) | Low | The AC-35 test at a normal pace; raise the number if it is ever hit | Maksym |
+| After 5 minutes idle, a page stops polling and shows a stale list until the next interaction — the 10 s target is scoped to a page in use (§1 decision override) | Low | "Updates paused" hint plus an immediate catch-up poll on the next interaction (§6) | Maksym |
+| Two spec §7 KPIs are narrowed: publishes with photos are measured only among publishes that declared photos, and the fill rate covers definition autofill only (§7) | Low | Accept for v1; if the photo KPI matters, the app can later send the number of photos it offered (a count only) | Maksym |
 | CLAUDE.md overrides — rule 3 (the page and the share sheet change look) and rule 5 (new `SourcePhoto` type and fields) (§2) | Low | Scoped to the page, the share sheet and the photo fields; the input screen and words table stay pixel-identical | Maksym |
 | The Worker had no test harness before this feature (brownfield gotcha) | Low | `node --test` against `wrangler dev` (§10), set up with the first Worker task | Maksym (Tech Lead) |
 | Open architectural decision: the layout breakpoint and the maximum widths of Word, Translation and Definition on each layout (spec OQ-5) | Open question | Resolve at `sdd:screens`; the owner wants to see them before deciding | Maksym |
@@ -436,7 +439,7 @@ Terms from [CONTEXT.md](./CONTEXT.md) and the [project CONTEXT](../../../CONTEXT
 | word row | One line of a session: an English word with its translation, definition and, if recognised from a photo, its source photo. |
 | source photo | A photo the learner took that has at least one word row recognised from it at publishing time. NOT any image. |
 | autofill | Filling one translation or definition cell, or every empty cell of one column, with a tap on a lightning on the shared page. NOT word recognition from a photo. |
-| autofill allowance | How many definition lookups one shared page may still make today (50 per UTC day). NOT the project-wide dictionary quota. |
+| autofill allowance | How many definition lookups one shared page may still make today (50 per UTC day). NOT the project-wide dictionary quota. *Narrowed from CONTEXT's "how many autofills" because translation autofill is not metered (spec §1, §6) — queued for `/sdd:glossary good-looking-web`.* |
 | all-pages share *(design)* | The part of the daily dictionary quota all shared pages together may use — 500 of the 1,000 calls; the rest is kept for the app. |
 | session revision *(design)* | A counter per published session that goes up with every write; the polling cursor. |
 | cell revision *(design)* | The session revision at which a cell was last changed; a save applies only if the cell is still at the revision the partner started from (ADR-0004). |
