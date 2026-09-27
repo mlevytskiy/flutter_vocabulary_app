@@ -352,17 +352,18 @@ Everything inherits the repo's conventions (CLAUDE.md, [`docs/architecture.md`](
 
 ## 9. Architecture decisions
 
-<!-- 🎯 Why: the REVERSE INDEX onto the adr/ folder. `ls adr/` gives the files; §9 gives the
-     semantics — why they exist, which SAD section they attach to, what status.
-     📋 Write: a 4-column table, one row per ADR. Mixed status is fine.
-     📌 e.g. «0001 | Store content as a table of typed blocks | Accepted | §4». -->
-
 | # | Title | Status | Section |
 |---|---|---|---|
-| <NNNN> | <imperative — e.g. "Use a sliding-window counter for rate limiting"> | Accepted | §<N> |
-| <NNNN> | <imperative — e.g. "Co-locate the worker in the API process"> | Accepted | §<N> |
+| 0001 | Change the app, the Worker API and the shared page as three surfaces | Accepted | §4 |
+| 0002 | Render the table on the server and enhance it with plain JavaScript | Accepted | §4 |
+| 0003 | Store editable sessions and autofill counters in D1 | Accepted | §4 |
+| 0004 | Detect edit conflicts with a revision per cell | Accepted | §4 |
+| 0005 | Poll for changes since the last seen revision | Accepted | §4, §6 |
+| 0006 | Declare source photos in the publish payload and upload their bytes after | Accepted | §4 |
+| 0007 | Call the translation endpoint from the partner's browser | Accepted | §4 |
+| 0008 | Overwrite the same link when a session is republished | Accepted | §4 |
 
-ADR files live under `docs/features/<slug>/adr/NNNN-<title>.md`.
+ADR files live under `docs/features/good-looking-web/adr/NNNN-<title>.md`. Earlier decisions this feature revises for the shared page only: definition-mode ADR-0004 (columns now follow the data — spec §1); definition-mode ADR-0005 still holds (fixed file column places).
 
 ## 10. Quality requirements
 
