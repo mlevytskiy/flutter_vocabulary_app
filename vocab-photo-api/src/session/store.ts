@@ -1,16 +1,17 @@
 import type { Env } from "../env";
-import { SESSION_TTL_SECONDS, type PhotoSource, type SessionDocument, type SessionEntry } from "./types";
+import { SESSION_TTL_SECONDS, type PhotoSource, type SessionDetail, type SessionDocument, type SessionEntry } from "./types";
 
 const kvKey = (sessionId: string) => `session:${sessionId}`;
 const r2Key = (sessionId: string, sourceId: string) => `sessions/${sessionId}/sources/${sourceId}`;
 
-export async function createSession(env: Env, entries: SessionEntry[]): Promise<SessionDocument> {
+export async function createSession(env: Env, entries: SessionEntry[], detail: SessionDetail): Promise<SessionDocument> {
   const now = Date.now();
   const doc: SessionDocument = {
     // The id is the only credential the page has: random, never sequential.
     id: crypto.randomUUID(),
     createdAt: new Date(now).toISOString(),
     expiresAt: new Date(now + SESSION_TTL_SECONDS * 1000).toISOString(),
+    detail,
     entries,
     sources: [],
   };

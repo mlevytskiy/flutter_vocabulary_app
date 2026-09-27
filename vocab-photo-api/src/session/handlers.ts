@@ -3,7 +3,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
 import { renderNotFoundPage, renderSessionPage } from "./page";
 import { addPhotoSource, createSession, getSession, getSourceObject, hasSourceStorage } from "./store";
-import { MAX_SESSION_JSON_BYTES, MAX_SOURCES, parseEntries } from "./types";
+import { MAX_SESSION_JSON_BYTES, MAX_SOURCES, parseDetail, parseEntries } from "./types";
 
 const ID_PATTERN = "[A-Za-z0-9-]{1,64}";
 
@@ -11,7 +11,10 @@ function publicUrl(url: URL, sessionId: string): string {
   return `${url.origin}/s/${sessionId}`;
 }
 
-/** POST /sessions -- secret-gated. `{ entries: [{word, translation}] }` -> `{ id, url, expiresAt }`. */
+/**
+ * POST /sessions -- secret-gated.
+ * `{ detail?, entries: [{word, translation, definition?}] }` -> `{ id, url, expiresAt }`.
+ */
 async function handleCreateSession({ request, env, url }: RouteContext): Promise<Response> {
   const declared = Number(request.headers.get("content-length") ?? "0");
   if (declared > MAX_SESSION_JSON_BYTES) {
@@ -35,8 +38,12 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
   if (!parsed.ok) {
     return jsonResponse({ error: parsed.error }, 400);
   }
+  const detail = parseDetail((body as Record<string, unknown>).detail);
+  if (!detail.ok) {
+    return jsonResponse({ error: detail.error }, 400);
+  }
 
-  const doc = await createSession(env, parsed.entries);
+  const doc = await createSession(env, parsed.entries, detail.detail);
   return jsonResponse({ id: doc.id, url: publicUrl(url, doc.id), expiresAt: doc.expiresAt });
 }
 

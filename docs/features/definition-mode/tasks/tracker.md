@@ -9,7 +9,7 @@
 | T2 | [Add the persisted word detail mode provider](./t2-word-detail-mode-provider.md) | infra | Maksym | S | — | done |
 | T3 | [Add the three-way word detail mode to Settings](./t3-settings-word-detail-mode.md) | ui | Maksym | S | T2 | done |
 | T4 | [Add the Worker dictionary route with the 30-day cache](./t4-worker-dictionary-route.md) | ports | Maksym | M | — | done |
-| T5 | [Accept definitions and the detail mode in published sessions](./t5-worker-session-contract.md) | ports | Maksym | S | — | todo |
+| T5 | [Accept definitions and the detail mode in published sessions](./t5-worker-session-contract.md) | ports | Maksym | S | — | done |
 | T6 | [Render shared-page columns from the detail mode](./t6-shared-page-columns.md) | ui | Maksym | S | T5 | todo |
 | T7 | [Write the fixed definition column in the Worker AnkiDroid file](./t7-worker-anki-definition-column.md) | ports | Maksym | S | T5 | todo |
 | T8 | [Add DictionaryService and DefinitionResult in the app](./t8-dictionary-service.md) | app | Maksym | S | — | todo |

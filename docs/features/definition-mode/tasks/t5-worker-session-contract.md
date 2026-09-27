@@ -7,7 +7,7 @@ acs: ["AC-16", "AC-17", "AC-19"]
 files_hint: ["vocab-photo-api/src/session/types.ts", "vocab-photo-api/src/session/handlers.ts", "vocab-photo-api/src/session/store.ts"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Accept definitions and the detail mode in published sessions
@@ -29,3 +29,10 @@ Derives from [ADR-0004](../adr/0004-record-the-detail-mode-in-the-published-sess
 ## Notes
 
 Deploy this before the app publishes definitions (ADR-0004 deploy order).
+
+## Verification (2026-09-27, `wrangler dev`)
+
+- RED: a 501-character definition was accepted (`200` + link) before the change.
+- After: 501-character definition → `400 The definition of "gated" is too long (at most 500 characters)` (AC-19); `detail: "all"` → 400; an old-shape request (no `detail`, no `definition`) → 200 (AC-17).
+- A definition-mode publish stores `detail: "definition"` and the definition-only row, and drops the all-blank trailing row (read back from local KV).
+- `npm run typecheck` clean.
