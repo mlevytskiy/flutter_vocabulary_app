@@ -314,25 +314,23 @@ sequenceDiagram
 
 ## 7. Deployment view
 
-<!-- 🎯 Why: the TOPOLOGY DevOps must know without reading the deploy charts — how many replicas,
-     where the background worker lives, AT WHAT NUMBERS we scale.
-     📋 Write: 2–3 sentences on topology + monitoring + concrete threshold numbers.
-     📌 e.g. «500 authors → partition by quarter» (not «we'll think about scale later»).
-     🎯 N/A allowed for XS/S that reuses an existing deployment unit with no change.
-     Deployment-diagram scaffold → templates/deployment.md. -->
+One Worker (`vocab-photo-api`), deployed by hand with `wrangler deploy`, gains a D1 database bound as `DB` (migrations applied with `wrangler d1 migrations apply --remote`) and a daily cron trigger at 03:00 UTC that deletes expired sessions (ADR-0003). `SESSIONS` KV stays bound read-only for links published before this feature and is removed 30 days after release, when every such link has expired. Photo bytes stay in the `SOURCES` R2 bucket; its 30-day lifecycle rule must be confirmed in the dashboard before release (§11). The app ships through the usual store build; the shared page's script is served by the Worker itself, so there is no separate static hosting.
 
-<Topology in 2–3 sentences. Where it runs, replicas, scaling thresholds.>
+**Release order (each step backward compatible):**
+1. Create the D1 database and apply the migrations.
+2. Deploy the Worker — older app builds keep publishing as today (no photos, no token); old links import from KV on first open.
+3. Release the app build with photo keeping, the "include photos" switch and republish.
 
 **Monitoring:**
-- <Metrics — e.g. `<metric_name>`>
-- <Alerts — e.g. «worker lag > 10 min → page on-call»>
-- <Tracing — e.g. spans on the request boundary>
+- Metrics — Workers observability (already enabled) for request counts, errors and CPU per route; the spec §6 timings (cell save p95 ≤ 1.0 s, single-cell autofill p95 ≤ 3.0 s) are read from Cloudflare analytics for the save and autofill routes.
+- Log lines — structured lines for: cell saved / conflict / rejected by a limit; row deleted / delete refused; write rate-limit refusal; autofill filled / nothing found / paused (page allowance or all-pages share); dictionary unavailable (spec §7 KPI "days the app's lightning failed"); cron clean-up counts.
+- KPIs — plain SQL against D1: share of sessions with ≥1 write, share of publishes with photos, autofill fill rate (spec §7).
+- Alerts — none automated (one owner); a weekly manual check of the KPI queries and the error rate. Expired sessions are hidden at read time, so a missed cron run delays clean-up but never exposes an expired list.
 
 **Scaling thresholds:**
-- <e.g. comfortable in one table up to N rows/year>
-- <e.g. partition by quarter above N rows/year>
-
-<!-- For XS/S with no deployment change: <!-- N/A: reuses existing deployment unit, no infra change --> -->
+- Workers free plan: 100,000 requests/day. Polling is about 720 requests per active tab-hour (ADR-0005), about 130 active tab-hours/day at the limit; idle tabs stop after 5 minutes. Above 50,000 requests/day on any day → move to the paid plan or raise the poll interval to 8 s (still inside the 10 s target).
+- D1 free plan: 5 M rows read and 100 k rows written per day, 5 GB — far above a single owner's sessions (a full session is at most 500 rows and 256 KB).
+- Dictionary: 1,000 calls/day by contract of the free key; pages capped at 500 (§4).
 
 ## 8. Crosscutting concepts
 
