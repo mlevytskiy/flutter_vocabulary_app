@@ -30,6 +30,7 @@ Task files link to the roadmap and [`../idea-brief.md`](../idea-brief.md); they 
 | [task-17](completed/task-17-dictionary-api-comparison-page.md) — Static comparison page (descriptions + cost + 10-word tables) | 9 (recon) | M | 7 | task-15, task-16 | **done 2026-09-27** |
 | [task-18](completed/task-18-run-comparison-and-findings.md) — Run the comparison, populate the page, write findings | 9 (recon) | M | 8 | task-16, task-17 | **done 2026-09-27** — findings in [`investigations/dictionary-apis/README.md`](../../investigations/dictionary-apis/README.md#findings-probe-run-2026-09-27---warm) |
 | [task-19](completed/task-19-definition-mode-setting.md) — A Settings option: translation / definition / both; definition rows go vertical | 14 | L | 9 | — (D10 resolved: Worker `/define`) | **done 2026-09-27** — via [`docs/features/definition-mode/`](../features/definition-mode/), merged at `bef0688` |
+| [task-20](active/good-looking-web/_epic.md) — The shared page becomes a working table: two layouts, source photos, editing, autofill (SDD feature, 21 tasks T1–T21) | 15 | M | 10 | — | **planned 2026-09-27** — via [`docs/features/good-looking-web/`](../features/good-looking-web/) (sad + ADR-0001…0008); tracker in [`active/good-looking-web/tracker.md`](active/good-looking-web/tracker.md) |
 
 D1, D2, D3, D4, D5, D6, D8, D9 are resolved in [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far).
 **D3** closed 2026-09-27 on the task-14..18 investigation: the word-detail source is the
@@ -59,6 +60,7 @@ wave 6:  11  →  12  →  13   (all three reach into word_input_screen.dart, so
 wave 7:  14  →  15  →  16  ∥  17    (dictionary-API investigation — app-independent lane; 14→15→16 chain, 17 after 15+16)
 wave 8:  18                      (runs the probe and writes findings)
 wave 9:  19                      (definition mode — after 13: same screen file, adds a row to its Settings screen)
+wave 10: 20                      (good-looking-web — its own internal lanes: T1 spike ∥ Worker T2/T3→… ∥ app T17→…; see its _epic.md)
 ```
 
 After task-00 the word list lives in `lib/features/word_input/word_input_notifier.dart` and the

@@ -1,0 +1,449 @@
+{
+  "slug": "good-looking-web",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Spike: get a translation from the free endpoint in the partner's browser",
+      "layer": "tests",
+      "deps": [],
+      "acs": [
+        "AC-16",
+        "AC-17"
+      ],
+      "dod": "The spike page returns translations for ≥18 of 20 words in Chrome and Safari, or the blocking error is quoted; ADR-0007 has a dated `## Spike result` section with the verdict; Spike file removed or kept under `vocab-photo-api/spike/` excluded from deploy",
+      "files_hint": [
+        "vocab-photo-api/spike/translate.html",
+        "docs/features/good-looking-web/adr/0007-call-the-translation-endpoint-from-the-partners-browser.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add a node:test harness that runs against wrangler dev",
+      "layer": "tests",
+      "deps": [],
+      "acs": [
+        "AC-32"
+      ],
+      "dod": "`npm test` passes locally from a clean checkout (after `npm install`); The smoke test proves an unknown id gets the gone page; `npm run typecheck` clean; no new dependency in package.json",
+      "files_hint": [
+        "vocab-photo-api/package.json",
+        "vocab-photo-api/test/",
+        "vocab-photo-api/scripts/test.mjs"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Create the D1 schema for sessions, rows, cell revisions, photo slots and counters",
+      "layer": "migration",
+      "deps": [],
+      "acs": [
+        "AC-11",
+        "AC-12",
+        "AC-15b",
+        "AC-18",
+        "AC-18b"
+      ],
+      "dod": "Staged migration is promoted to `vocab-photo-api/migrations/`, then `wrangler d1 migrations apply --local` applies it and the down file reverts it cleanly; `npm run typecheck` clean with the new `DB` binding in `env.ts`",
+      "files_hint": [
+        "docs/features/good-looking-web/migrations/0001_sessions.up.sql",
+        "docs/features/good-looking-web/migrations/0001_sessions.down.sql",
+        "vocab-photo-api/wrangler.jsonc"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Move session storage to D1, with a lazy import of pre-feature KV links",
+      "layer": "infra",
+      "deps": [
+        "T2",
+        "T3"
+      ],
+      "acs": [
+        "AC-26",
+        "AC-27",
+        "AC-32"
+      ],
+      "dod": "node test: publish → page shows the rows from D1; node test: a document seeded into local KV opens once, is imported, and a second open reads D1 (AC-26 for old links); node test: expired and unknown ids get byte-identical gone pages (AC-32); `npm run typecheck` clean",
+      "files_hint": [
+        "vocab-photo-api/src/session/store.ts",
+        "vocab-photo-api/src/session/types.ts",
+        "vocab-photo-api/src/session/handlers.ts",
+        "vocab-photo-api/src/env.ts",
+        "vocab-photo-api/test/store.test.mjs"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Accept declared photos, row photo ids and republish tokens in the publish contract",
+      "layer": "ports",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-24",
+        "AC-25",
+        "AC-34",
+        "AC-37"
+      ],
+      "dod": "node test: publish with 2 declared photos and linked rows → page data links rows to slots; typed rows have none (AC-25); node test: upload to an undeclared id is refused; a repeated upload is a no-op; node test: a session published without `sources` answers gone for any guessed photo path (AC-24); node test: republish with the token keeps the link and expiry and replaces rows; a wrong token yields a new link; node test: an old-shape publish (no sources, no token) still succeeds",
+      "files_hint": [
+        "vocab-photo-api/src/session/handlers.ts",
+        "vocab-photo-api/src/session/types.ts",
+        "vocab-photo-api/src/session/store.ts",
+        "vocab-photo-api/test/publish.test.mjs"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Save cells with a per-cell revision check and limits",
+      "layer": "ports",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10",
+        "AC-11",
+        "AC-33",
+        "AC-34",
+        "AC-38"
+      ],
+      "dod": "node test: two saves from the same base revision → first lands, second gets `conflict` with the first value (AC-11); node test: saves to different cells of the same row both land (AC-12 precondition); node test: 501 chars → `field_too_long` naming the overflow; 256 KB + 1 → `list_full` (AC-10, AC-38); node test: a save to a deleted row answers `conflict`; a save to an unknown row id is refused",
+      "files_hint": [
+        "vocab-photo-api/src/session/edit.ts",
+        "vocab-photo-api/src/session/types.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/edit.test.mjs"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add and delete rows, and rate-limit page writes",
+      "layer": "ports",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-15b",
+        "AC-35"
+      ],
+      "dod": "node test: add then save — row persists; a row never given text does not exist after reload (AC-13); node test: 501st row refused with the limit named (AC-14); node test: delete after a concurrent save to that row is refused; untouched delete applies (AC-15, AC-15b); node test: a scripted 15-minute two-client session from one IP, with one 500-cell column autofill paced at 3 saves/s, sees no 429 (AC-35)",
+      "files_hint": [
+        "vocab-photo-api/src/session/edit.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/wrangler.jsonc",
+        "vocab-photo-api/test/rows.test.mjs"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Serve the change feed since a revision",
+      "layer": "ports",
+      "deps": [
+        "T7"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-37"
+      ],
+      "dod": "node test: save then poll from the old revision returns exactly that cell; poll from the new revision returns nothing; node test: delete appears as a tombstone; photo arrival appears as an arrived slot (AC-37); node test: after a republish the feed answers `reload: true`",
+      "files_hint": [
+        "vocab-photo-api/src/session/edit.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/changes.test.mjs"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Meter definition autofill with the page allowance and the all-pages share",
+      "layer": "ports",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-18b",
+        "AC-19",
+        "AC-20",
+        "AC-29"
+      ],
+      "dod": "node test: 51st lookup on one page → `autofill_paused` with the resume time (AC-18); node test: with the all-pages counter at 500, a page with allowance left gets `autofill_paused`, not `nothing_found` (AC-18b); node test: a not-found word spends one unit (AC-20); node test: the app's secret-gated `/define` still answers when the page share is spent (AC-29); Tests stub Merriam-Webster (no real quota used)",
+      "files_hint": [
+        "vocab-photo-api/src/autofill/meter.ts",
+        "vocab-photo-api/src/define.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/autofill.test.mjs"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Build the AnkiDroid file from D1 and clean up expired sessions daily",
+      "layer": "infra",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-30",
+        "AC-31",
+        "AC-32"
+      ],
+      "dod": "node test: file contains edited values; empty-word and all-cleared rows absent (AC-30, AC-31); node test: invoking the scheduled handler removes an expired session; its page stays gone; `npm run typecheck` clean",
+      "files_hint": [
+        "vocab-photo-api/src/session/anki.ts",
+        "vocab-photo-api/src/session/cleanup.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/wrangler.jsonc",
+        "vocab-photo-api/test/download.test.mjs"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Render the two-layout table, photo markup and CSP on the server",
+      "layer": "ui",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-08",
+        "AC-21",
+        "AC-22",
+        "AC-24",
+        "AC-26",
+        "AC-31",
+        "AC-33",
+        "AC-36"
+      ],
+      "dod": "node test: HTML escapes `<script>` in a cell (AC-33) and sends the CSP header; node test: a translation-only session renders Definition as the add control; a both-filled session renders all three (AC-21, AC-22); Visual check on `wrangler dev` at 360, 390, 414 px and 1280 px with a 100-row session: no page-level sideways scroll; long text wraps (AC-02, AC-03, AC-04); No photo area/button for a photo-less session (AC-08, AC-24)",
+      "files_hint": [
+        "vocab-photo-api/src/session/page.ts",
+        "vocab-photo-api/src/http.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/page.test.mjs"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Edit cells in place with save-on-leave, saved/not-saved states and conflict choice",
+      "layer": "ui",
+      "deps": [
+        "T6",
+        "T11"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10",
+        "AC-11",
+        "AC-33",
+        "AC-36",
+        "AC-38"
+      ],
+      "dod": "`npm run typecheck` checks the script; Manual in two browsers on `wrangler dev`: same-cell edits produce the choice; different cells both stay (AC-11, AC-12 with reload); Manual: 501 chars stays unsaved with the overflow shown (AC-10); markup shows as text (AC-33); Manual: rotating/resizing while typing keeps the text (AC-36)",
+      "files_hint": [
+        "vocab-photo-api/src/session/client/page.js",
+        "vocab-photo-api/tsconfig.json",
+        "vocab-photo-api/src/session/page.ts"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Add rows with the plus button and delete rows with a 5-second Undo",
+      "layer": "ui",
+      "deps": [
+        "T7",
+        "T12"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-15b",
+        "AC-31"
+      ],
+      "dod": "Manual: add + type + reload keeps the row; add without text + reload → gone (AC-13); Manual: delete, Undo within 5 s → row back in place; close tab within 5 s → row still there for others (AC-15); Manual with two browsers: delete in A while B saves the row → row stays, A is told (AC-15b)",
+      "files_hint": [
+        "vocab-photo-api/src/session/client/page.js",
+        "vocab-photo-api/src/session/page.ts"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Poll for other partners' changes, pausing when hidden and stopping after 5 idle minutes",
+      "layer": "ui",
+      "deps": [
+        "T8",
+        "T13"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-15b",
+        "AC-37"
+      ],
+      "dod": "Manual with two browsers: 20 edits in A each appear in B within 10 s (spec §6); Manual: after 5 idle minutes the network panel shows no more polls and the hint shows; one click resumes with a catch-up; Manual: a placeholder turns into its photo when the upload lands (AC-37)",
+      "files_hint": [
+        "vocab-photo-api/src/session/client/page.js"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Autofill a cell or a whole column, and open a collapsed column",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T9",
+        "T13"
+      ],
+      "acs": [
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-18b",
+        "AC-19",
+        "AC-20",
+        "AC-21",
+        "AC-35"
+      ],
+      "dod": "Manual: definition column with 8 empty and 4 filled → 8 looked up, 4 unchanged, report shown (AC-19); Manual with the allowance set to 5 in local D1: stops after 5 and says so (AC-20); Manual: paused message names local resume time (AC-18); Manual: add Definition on a translation-only page; reload with no text → collapsed again (AC-21)",
+      "files_hint": [
+        "vocab-photo-api/src/session/client/page.js",
+        "vocab-photo-api/src/session/page.ts"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Show the photo pager with row highlighting and the phone photo dialog",
+      "layer": "ui",
+      "deps": [
+        "T5",
+        "T13"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-34"
+      ],
+      "dod": "Manual with a 3-photo session: pager position, highlighting and scroll-to-first behave per AC-05; typed rows never highlight (AC-06); Manual on a phone: dialog swipe + zoom, close restores scroll (AC-07); one photo → single thumbnail (AC-08); Manual: editing a highlighted row's word keeps it highlighted (AC-34)",
+      "files_hint": [
+        "vocab-photo-api/src/session/client/page.js",
+        "vocab-photo-api/src/session/page.ts"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Keep each source photo in the app and link recognised rows to it",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-25",
+        "AC-26"
+      ],
+      "dod": "Unit test: a session saved before this change loads with no sources and null sourceIds (AC-26); Unit test: JSON round trip keeps sources, sourceId, publishedId, editToken; `dart run build_runner build --delete-conflicting-outputs` clean; `flutter analyze` adds no issue; CLAUDE.md greps clean; On device: photographing a page tags its rows; a typed row has no photo (AC-25)",
+      "files_hint": [
+        "lib/core/models/source_photo.dart",
+        "lib/core/models/session.dart",
+        "lib/core/models/session.g.dart",
+        "lib/core/models/word_pair.dart",
+        "lib/core/models/word_pair.g.dart",
+        "lib/core/services/photo_scaler.dart",
+        "lib/core/services/source_photo_store.dart",
+        "lib/core/providers.dart",
+        "lib/features/word_input/",
+        "test/"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Publish rows with photo links and upload declared photos in the background",
+      "layer": "app",
+      "deps": [
+        "T5",
+        "T17"
+      ],
+      "acs": [
+        "AC-24",
+        "AC-25",
+        "AC-27",
+        "AC-28",
+        "AC-37"
+      ],
+      "dod": "MockClient test: payload with photos off has no `sources`/`sourceId` (AC-24); MockClient test: 11 photos → 10 declared, one reported left out (spec OQ-3); MockClient test: a mode-translation session with stored definitions sends them (AC-27); Upload test: two failures then success → uploaded; publish returns before any upload completes (AC-37); `flutter analyze` adds no issue",
+      "files_hint": [
+        "lib/core/services/session_publish_service.dart",
+        "lib/core/services/photo_upload_service.dart",
+        "lib/core/providers.dart",
+        "test/session_publish_service_test.dart",
+        "test/photo_upload_service_test.dart"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Add the include-photos switch and the republish warning to the share sheet",
+      "layer": "ui",
+      "deps": [
+        "T18"
+      ],
+      "acs": [
+        "AC-23",
+        "AC-24",
+        "AC-37"
+      ],
+      "dod": "Widget test: switch shows with N and the 30-day note when photos exist, hidden otherwise (AC-23); On device: publish with 3 photos on a slow network → link dialog ≤ 3 s, photos appear on the page later (AC-37); Existing share-sheet file option unchanged; `flutter analyze` adds no issue",
+      "files_hint": [
+        "lib/features/words_table/words_table_screen.dart"
+      ]
+    },
+    {
+      "id": "T20",
+      "title": "Run the concurrency, limits and performance checks from sad §10",
+      "layer": "tests",
+      "deps": [
+        "T10",
+        "T14",
+        "T15",
+        "T16"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-11",
+        "AC-12",
+        "AC-35"
+      ],
+      "dod": "Concurrency test green with 0 lost edits; Each limit + 1 refused with its code; `verification.md` records Lighthouse, width checks and edit-propagation timings against spec §6 targets",
+      "files_hint": [
+        "vocab-photo-api/test/concurrency.test.mjs",
+        "vocab-photo-api/test/limits.test.mjs",
+        "docs/features/good-looking-web/verification.md"
+      ]
+    },
+    {
+      "id": "T21",
+      "title": "Update the docs and run the deploy checklist",
+      "layer": "docs",
+      "deps": [
+        "T10",
+        "T19",
+        "T20"
+      ],
+      "acs": [
+        "AC-24",
+        "AC-32"
+      ],
+      "dod": "README steps followed on the real account; R2 lifecycle rule confirmed (screenshot or dashboard note); A published link from the new app shows photos on the deployed page; docs/tasks/README.md row updated with status and commits",
+      "files_hint": [
+        "vocab-photo-api/README.md",
+        "docs/architecture.md",
+        "docs/tasks/README.md"
+      ]
+    }
+  ]
+}
