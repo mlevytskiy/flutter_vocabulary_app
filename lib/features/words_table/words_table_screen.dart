@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../core/models/session.dart';
+import '../../core/models/source_photo.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
@@ -101,6 +102,15 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     // keyboard up only the barrier is visible and the sheet sits behind it.
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    final session = _session();
+    // "include photos (N)": N counts only photos with a linked row that will
+    // be published; with none the switch is not shown (AC-23).
+    final linkedIds = {for (final pair in wordPairs) pair.sourceId};
+    final photoCount = (session?.sources ?? const <SourcePhoto>[])
+        .where((photo) => linkedIds.contains(photo.id))
+        .length;
+    final publishedBefore = session?.publishedId != null;
+    var includePhotos = true;
     final choice = await showModalBottomSheet<_ShareChoice>(
       context: context,
       builder: (sheetContext) => Padding(
@@ -108,22 +118,44 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
         child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.insert_drive_file_outlined),
-                title: const Text('Share file'),
-                subtitle: const Text('Text file for AnkiDroid'),
-                onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
-              ),
-              ListTile(
-                leading: const Icon(Icons.link),
-                title: const Text('Share link'),
-                subtitle: const Text('A web page anyone with the link can read'),
-                onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
-              ),
-            ],
+          child: StatefulBuilder(
+            builder: (sheetContext, setSheetState) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: const Text('Share file'),
+                  subtitle: const Text('Text file for AnkiDroid'),
+                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.link),
+                  title: const Text('Share link'),
+                  subtitle:
+                      const Text('A web page anyone with the link can read'),
+                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
+                ),
+                if (photoCount > 0)
+                  SwitchListTile(
+                    secondary: const Icon(Icons.photo_library_outlined),
+                    title: Text('Include photos ($photoCount)'),
+                    subtitle: const Text(
+                        'Included photos are visible to anyone with the link '
+                        'for 30 days.'),
+                    value: includePhotos,
+                    onChanged: (value) =>
+                        setSheetState(() => includePhotos = value),
+                  ),
+                // ADR-0008: a republish overwrites the same page.
+                if (publishedBefore)
+                  const ListTile(
+                    leading: Icon(Icons.warning_amber_outlined),
+                    subtitle:
+                        Text('This list was shared before. Sharing it again '
+                            'replaces the edits made on the shared page.'),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -134,11 +166,13 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       case _ShareChoice.file:
         await _shareWords(wordPairs);
       case _ShareChoice.link:
-        await _shareLink(wordPairs);
+        await _shareLink(wordPairs,
+            includePhotos: photoCount > 0 && includePhotos);
     }
   }
 
-  Future<void> _shareLink(List<WordPair> wordPairs) async {
+  Future<void> _shareLink(List<WordPair> wordPairs,
+      {required bool includePhotos}) async {
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
     try {
@@ -146,9 +180,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       final published =
           await ref.read(sessionPublishServiceProvider).publish(wordPairs,
               detail: ref.read(wordDetailModeProvider),
-              // Photos stay off until the share sheet's "include photos"
-              // switch exists (good-looking-web T19, AC-23, AC-24).
-              sources: const [],
+              // Switched off, no photo reaches the page (AC-24).
+              sources: includePhotos ? session?.sources ?? const [] : const [],
               publishedId: session?.publishedId,
               editToken: session?.editToken);
       // Never awaited: the link dialog does not wait for photos (AC-37).
@@ -230,6 +263,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   Future<void> _showPublishedLinkDialog(PublishedSession published) {
     final expiresAt = published.expiresAt;
+    final leftOut = published.leftOutSources.length;
     final expiry = expiresAt == null
         ? 'The page stays up for 30 days.'
         : 'The page stays up until '
@@ -245,6 +279,15 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Anyone with this link can read the words. $expiry'),
+            // Past the first 10 taken, photos stay off the page (spec OQ-3).
+            if (leftOut > 0) ...[
+              const SizedBox(height: 12),
+              Text(leftOut == 1
+                  ? '1 photo was left out: a page holds the first '
+                      '${SessionPublishService.maxSources} photos taken.'
+                  : '$leftOut photos were left out: a page holds the first '
+                      '${SessionPublishService.maxSources} photos taken.'),
+            ],
             const SizedBox(height: 12),
             SelectableText(
               published.url,

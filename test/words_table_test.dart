@@ -22,11 +22,11 @@ void main() {
     ];
 
   Future<void> pumpTable(WidgetTester tester, WordDetailMode mode,
-      {SessionPublishService? publisher}) async {
+      {SessionPublishService? publisher, Session? shown}) async {
+    final table = shown ?? session;
     SharedPreferences.setMockInitialValues({'word_detail_mode': mode.name});
     final container = ProviderContainer(overrides: [
-      sessionByIdProvider(session.sessionId)
-          .overrideWith((ref) async => session),
+      sessionByIdProvider(table.sessionId).overrideWith((ref) async => table),
       if (publisher != null)
         sessionPublishServiceProvider.overrideWithValue(publisher),
     ]);
@@ -34,11 +34,11 @@ void main() {
     await tester.runAsync(() async {
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(sessionByIdProvider(session.sessionId).future);
+      await container.read(sessionByIdProvider(table.sessionId).future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: MaterialApp(home: WordsTableScreen(sessionId: session.sessionId)),
+      child: MaterialApp(home: WordsTableScreen(sessionId: table.sessionId)),
     ));
     await tester.pump();
   }
@@ -87,14 +87,151 @@ void main() {
     expect(find.text('Link ready'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
+
+  // good-looking-web T19: the link option's "include photos (N)" switch, its
+  // 30-day note and the republish warning (AC-23, AC-24, ADR-0008).
+  SourcePhoto photo(String id, int minute) => SourcePhoto()
+    ..id = id
+    ..fileName = '$id.jpg'
+    ..takenAt = DateTime(2026, 9, 20, 10, minute);
+
+  Session withPhotos() => Session.create()
+    ..words = [
+      WordPair(word: 'claim', translation: 'заява', sourceId: 'p1'),
+      WordPair(word: 'curse', translation: 'прокляття', sourceId: 'p2'),
+      WordPair(word: 'gated', translation: 'з воротами', sourceId: 'p2'),
+      WordPair(word: 'typed', translation: 'надрукований'),
+      // A photo whose only row is blank is not counted.
+      WordPair(sourceId: 'p3'),
+    ]
+    ..sources = [
+      photo('p1', 1),
+      photo('p2', 2),
+      photo('p3', 3),
+      photo('p4', 4)
+    ];
+
+  Future<void> openSheet(WidgetTester tester) async {
+    await tester.tap(find.text('Share'));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapShareLink(WidgetTester tester) async {
+    await tester.tap(find.text('Share link'));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
+
+  testWidgets('photos with a linked row: switch on with N and the 30-day note',
+      (tester) async {
+    await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
+    await openSheet(tester);
+    expect(find.text('Share file'), findsOneWidget); // file option unchanged
+    expect(find.text('Include photos (2)'), findsOneWidget);
+    expect(
+        find.text('Included photos are visible to anyone with the link '
+            'for 30 days.'),
+        findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+  });
+
+  testWidgets('no source photos: no switch and no note', (tester) async {
+    await pumpTable(tester, WordDetailMode.translation);
+    await openSheet(tester);
+    expect(find.text('Share file'), findsOneWidget);
+    expect(find.text('Share link'), findsOneWidget);
+    expect(find.byType(Switch), findsNothing);
+    expect(find.textContaining('Include photos'), findsNothing);
+    expect(find.textContaining('30 days'), findsNothing);
+  });
+
+  testWidgets('photos only on blank rows count as none: no switch',
+      (tester) async {
+    final shown = Session.create()
+      ..words = [
+        WordPair(word: 'claim', translation: 'заява'),
+        WordPair(sourceId: 'p1'),
+      ]
+      ..sources = [photo('p1', 1)];
+    await pumpTable(tester, WordDetailMode.translation, shown: shown);
+    await openSheet(tester);
+    expect(find.byType(Switch), findsNothing);
+  });
+
+  testWidgets('switch on publishes the session photos', (tester) async {
+    final publisher = _FakePublisher();
+    final shown = withPhotos();
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: shown);
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(find.text('Link ready'), findsOneWidget);
+    expect(publisher.sentSources!.map((p) => p.id), ['p1', 'p2', 'p3', 'p4']);
+  });
+
+  testWidgets('switch off publishes no photos (AC-24)', (tester) async {
+    final publisher = _FakePublisher();
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: withPhotos());
+    await openSheet(tester);
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+    await tapShareLink(tester);
+    expect(find.text('Link ready'), findsOneWidget);
+    expect(publisher.sentSources, isEmpty);
+  });
+
+  testWidgets('published before: the sheet warns that edits are replaced',
+      (tester) async {
+    final shown = withPhotos()
+      ..publishedId = 'old'
+      ..editToken = 'token';
+    await pumpTable(tester, WordDetailMode.translation, shown: shown);
+    await openSheet(tester);
+    expect(
+        find.text('This list was shared before. Sharing it again replaces '
+            'the edits made on the shared page.'),
+        findsOneWidget);
+  });
+
+  testWidgets('never published: no republish warning', (tester) async {
+    await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
+    await openSheet(tester);
+    expect(find.textContaining('shared before'), findsNothing);
+  });
+
+  testWidgets('the link dialog names the photos left out (spec OQ-3)',
+      (tester) async {
+    final publisher = _FakePublisher()..leftOut = [photo('p11', 11)];
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: withPhotos());
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(
+        find.text('1 photo was left out: a page holds the first '
+            '10 photos taken.'),
+        findsOneWidget);
+  });
 }
 
 class _FakePublisher extends SessionPublishService {
+  /// The photos the last publish was asked to include.
+  List<SourcePhoto>? sentSources;
+
+  /// What the fake answers as left out (spec OQ-3).
+  List<SourcePhoto> leftOut = const [];
+
   @override
   Future<PublishedSession> publish(List<WordPair> pairs,
-          {WordDetailMode detail = WordDetailMode.translation,
-          List<SourcePhoto> sources = const [],
-          String? publishedId,
-          String? editToken}) async =>
-      PublishedSession(id: 'id', url: 'https://example.test/s/id');
+      {WordDetailMode detail = WordDetailMode.translation,
+      List<SourcePhoto> sources = const [],
+      String? publishedId,
+      String? editToken}) async {
+    sentSources = sources;
+    return PublishedSession(
+        id: 'id', url: 'https://example.test/s/id', leftOutSources: leftOut);
+  }
 }
