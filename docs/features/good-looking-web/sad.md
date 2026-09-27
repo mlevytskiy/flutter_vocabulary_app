@@ -210,31 +210,107 @@ C4Container
 
 ## 6. Runtime view
 
-<!-- 🎯 Why: the RUNTIME FLOW of 1–2 critical scenarios — who talks to whom, when, in what order.
-     Without §6, §5 is just boxes with no life.
-     📋 Write: a Mermaid sequenceDiagram. Participants are names from §5 (don't invent new ones).
-     Messages are semantic («saves a draft»), NO HTTP verbs / paths / status codes — endpoint-level
-     sequences arrive at the `api` stage.
-     📌 e.g. «author → web: composes draft → web → content API: save». Seed the primary flow(s) here;
-     the `sequences` stage then covers every §5 AC (no cap). Never N/A for M+; XS/S keeps ≥1 happy-path flow. -->
+Three flows are seeded here, one per strategic risk; the `sequences` stage adds the rest (every spec §5 AC as a flow or a branch). Participants are the §5 containers.
 
-**Critical flow 1: <flow name>**
+**Critical flow 1: a partner saves a cell, and another partner's page picks it up** (AC-09, AC-10, AC-11, AC-12 — ADR-0004, ADR-0005)
 
 ```mermaid
 sequenceDiagram
-    actor Actor
-    participant Web
-    participant Service
-    participant Store
-    Actor->>Web: <action>
-    Web->>Service: <call>
-    Service->>Store: <write>
-    Store-->>Service: ok
-    Service-->>Web: result
-    Web-->>Actor: confirmation
+    actor PartnerA as partner A
+    participant PageA as Shared page (A)
+    participant Api as vocab-photo-api Worker
+    participant D1 as Sessions database
+    participant PageB as Shared page (B)
+    PartnerA->>PageA: changes a translation and leaves the cell
+    PageA->>Api: save cell with the revision it started from
+    Api->>Api: check field length and session size limits
+    alt over a limit
+        Api-->>PageA: rejected, with the limit and the overflow
+        PageA-->>PartnerA: text kept in the cell, marked not saved
+    else within limits
+        Api->>D1: update the cell only if it is still at that revision
+        alt cell unchanged since
+            D1-->>Api: updated, new session revision
+            Api-->>PageA: saved at the new revision
+            PageA-->>PartnerA: brief saved confirmation
+        else someone saved it meanwhile
+            D1-->>Api: no update, current value and revision
+            Api-->>PageA: conflict with the saved value
+            PageA-->>PartnerA: both values shown, partner chooses one
+        end
+    end
+    loop about every 5 s while visible
+        PageB->>Api: changes since the last seen revision
+        Api->>D1: read cells, rows and photo slots changed after it
+        D1-->>Api: changed items
+        Api-->>PageB: changes and the new revision
+    end
+    PageB->>PageB: applies changes, holds any for a cell being typed in
 ```
 
-**Critical flow 2: <e.g. async event propagation>** — <if applicable, otherwise N/A>.
+**Polling stops when nobody is using the page** (owner's remark during design, 2026-09-27). The page polls only while it is visible **and** the partner has interacted with it in the last 5 minutes: a tap, click, key press, scroll or focus on a cell counts as activity, and so does the partner's own save or autofill. After 5 minutes without activity the page stops polling and shows a quiet "updates paused" hint, so a forgotten or abandoned tab stops sending empty requests. The first interaction after that resumes polling with an immediate catch-up poll from the last seen revision, so nothing is missed (ADR-0004's revisions make the catch-up exact). A hidden tab pauses at once, as before. The hint's look is decided at `screens`.
+
+**Critical flow 2: the learner publishes a session with its photos** (AC-23, AC-25, AC-37 — ADR-0006, ADR-0008)
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Device as Device store
+    participant Api as vocab-photo-api Worker
+    participant D1 as Sessions database
+    participant R2 as Photo bucket
+    Learner->>App: publishes with include photos on
+    App->>Device: reads rows, photo ids and the published id and token if any
+    App->>Api: publish rows with photo ids and the declared photos
+    alt republish with a valid token
+        Api->>D1: replace rows and photo slots, keep the expiry
+    else first publish or expired link
+        Api->>D1: create the session, rows and pending photo slots
+    end
+    Api-->>App: link, expiry and edit token
+    App->>Device: stores the published id and token
+    App-->>Learner: link dialog opens at once
+    loop each declared photo, retried with back-off
+        App->>Api: upload the bytes to the declared photo id
+        Api->>R2: store the bytes
+        Api->>D1: mark the photo slot arrived
+        Api-->>App: stored
+    end
+    Note over App,Api: a photo that never arrives stays a placeholder on the page, its rows still linked
+```
+
+**Critical flow 3: definition autofill on the shared page** (AC-16, AC-17, AC-18, AC-18b, AC-20, AC-29 — ADR-0003)
+
+```mermaid
+sequenceDiagram
+    actor Partner as partner
+    participant Page as Shared page
+    participant Api as vocab-photo-api Worker
+    participant D1 as Sessions database
+    participant MW as Merriam-Webster Collegiate API
+    Partner->>Page: taps the lightning in a Definition cell
+    Page->>Api: define this row's word
+    Api->>D1: take one unit of the page allowance and one of the all-pages share
+    alt either is used up today
+        D1-->>Api: refused
+        Api-->>Page: paused until the start of the next UTC day
+        Page-->>Partner: autofill paused, resumes at local time, type by hand
+    else both have room
+        D1-->>Api: taken
+        Api->>MW: look up the word, cache first
+        alt senses found
+            MW-->>Api: senses
+            Api->>D1: save the definition as a cell change
+            Api-->>Page: filled value and revision
+            Page-->>Partner: only that cell filled
+        else nothing found
+            MW-->>Api: no entry or suggestions only
+            Api-->>Page: nothing found
+            Page-->>Partner: nothing found for this word
+        end
+    end
+```
 
 ## 7. Deployment view
 

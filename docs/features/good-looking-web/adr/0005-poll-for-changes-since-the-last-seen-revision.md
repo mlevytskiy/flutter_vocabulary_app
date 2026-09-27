@@ -31,17 +31,19 @@ Other partners' saved edits must appear on an open page within 10 s without relo
 
 ## Decision outcome
 
-**Chosen:** option 1. The answer lists changed cells, new rows, tombstones of deleted rows and photo slots that have received their bytes since N (so a placeholder turns into its photo), plus the new revision. The page polls about every 5 s, pauses while the tab is hidden and polls at once when it becomes visible again. A change that arrives for a cell the partner is typing in is held, not applied, and surfaces as the AC-11 choice when they save.
+**Chosen:** option 1. The answer lists changed cells, new rows, tombstones of deleted rows and photo slots that have received their bytes since N (so a placeholder turns into its photo), plus the new revision. The page polls about every 5 s, but only while the tab is visible and the partner has interacted with the page in the last 5 minutes (tap, click, key press, scroll, focus, or their own save or autofill). A hidden tab pauses at once; an idle one stops after 5 minutes and shows an "updates paused" hint. The next interaction or the tab becoming visible again resumes polling with an immediate catch-up poll from the last seen revision, so nothing is missed. A change that arrives for a cell the partner is typing in is held, not applied, and surfaces as the AC-11 choice when they save.
 
 ## Consequences
 
 **Positive**
+- An abandoned or forgotten tab stops sending requests after 5 minutes idle.
 - No new infrastructure beside D1; survives flaky connections because every poll resumes from the last revision seen.
 - Easy to test: the change feed is a plain read.
 
 **Negative**
 - About 12 requests per minute per open tab (three partners for an hour ≈ 2,000 requests) — well inside the free plan, but polling is excluded from the write rate limit so it cannot trip AC-35.
 - Updates arrive within ~5 s, not instantly.
+- A partner returning to an idle page sees other partners' changes only after their first interaction triggers the catch-up poll (a moment, not 10 s) — the "updates paused" hint tells them the list may be stale.
 
 **Neutral**
 - Switching to push later changes only the transport; the change-feed shape stays.
