@@ -43,7 +43,7 @@ This task builds the shell either way; only the *shortlist* in task-15 changes i
 
 ## Prompt
 
-Read `CLAUDE.md`, `docs/architecture.md`, `docs/tasks/active/task-15-*.md`. One commit.
+Read `CLAUDE.md`, `docs/architecture.md`, `docs/tasks/completed/task-15-*.md`. One commit.
 
 1. **Create the folder.** `investigations/dictionary-apis/` at repo root. Add a `README.md` whose first line states what this project is (compare free/cheap English dictionary APIs for the vocab app's "extra word detail" need), how to run it (`npm install`, `cp .env.example .env`, `npm run probe`), and the current status.
 2. **Add `.gitignore`** in the folder ignoring `node_modules/`, `.env`, `out/`, `*.log` — mirroring `vocab-photo-api/.gitignore`.

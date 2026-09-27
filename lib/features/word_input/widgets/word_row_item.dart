@@ -238,8 +238,6 @@ class WordRowItem extends StatelessWidget {
                                 rightController: translationController,
                                 leftLabel: 'Word',
                                 rightLabel: 'Translation',
-                                leftHint: 'Word',
-                                rightHint: 'Translation',
                                 leftFocusNode: wordFocusNode,
                                 rightFocusNode: translationFocusNode,
                                 spacing: fieldSpacing,
@@ -409,8 +407,7 @@ class WordRowItem extends StatelessWidget {
             focusNode: definitionFocusNode,
             label: 'Definition',
             minLines: 1,
-            maxLines: 4,
-            lightHint: true),
+            maxLines: 4),
         if (isLoadingDefinition || shouldShowDefinitionIcon)
           Positioned(
             top: 2,
@@ -448,7 +445,6 @@ class WordRowItem extends StatelessWidget {
     required String label,
     required int minLines,
     int? maxLines,
-    bool lightHint = false,
   }) {
     final style =
         Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
@@ -466,16 +462,10 @@ class WordRowItem extends StatelessWidget {
       textAlignVertical: TextAlignVertical.top,
       decoration: InputDecoration(
         labelText: label,
-        hintText: label,
-        // The Definition hint is kept well lighter than typed text, so an
-        // empty field never reads as a filled one.
-        hintStyle: lightHint
-            ? style.copyWith(
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.45))
-            : null,
+        // No hint: once focused, the label floats onto the border and would
+        // only repeat itself inside the field.
+        labelStyle: emptyFieldLabelStyle(context),
+        floatingLabelStyle: const TextStyle(),
         border: const OutlineInputBorder(borderSide: BorderSide(width: 1)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 16),

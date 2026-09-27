@@ -1,6 +1,6 @@
 {
   "asOf": "2026-09-24",
-  "source": "Research table in docs/tasks/active/task-15-dictionary-api-shortlist-and-cost.md. docsUrl values are from memory and were not fetched (task-15 forbids network).",
+  "source": "Research table in docs/tasks/completed/task-15-dictionary-api-shortlist-and-cost.md. docsUrl values are from memory and were not fetched (task-15 forbids network).",
   "registrationHelp": [
     { "id": "cambridge", "reason": "Manual approval — apply in advance; no free access stated." },
     { "id": "collins", "reason": "Manual approval — apply in advance." }

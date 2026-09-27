@@ -188,22 +188,33 @@ void main() {
     }
   });
 
-  testWidgets('the Definition hint is lighter than typed text', (tester) async {
-    await pumpRow(
-        tester,
-        translationRow(
-          word: TextEditingController(text: 'claim'),
-          translation: TextEditingController(),
-          mode: WordDetailMode.definition,
-        ));
-    final field = tester.widget<TextField>(fieldLabelled('Definition'));
-    final hint = field.decoration!.hintStyle!.color!;
-    final text = field.style!.color ??
-        Theme.of(tester.element(fieldLabelled('Definition')))
-            .colorScheme
-            .onSurface;
-    expect(hint.a, lessThan(0.6));
-    expect(hint.a, lessThan(text.a));
+  testWidgets('empty field labels are light and focus shows no hint',
+      (tester) async {
+    for (final mode in [WordDetailMode.translation, WordDetailMode.definition]) {
+      await pumpRow(
+          tester,
+          translationRow(
+            word: TextEditingController(text: 'claim'),
+            translation: TextEditingController(),
+            mode: mode,
+          ));
+      final labels = mode == WordDetailMode.translation
+          ? ['Word', 'Translation']
+          : ['Word', 'Definition'];
+      for (final label in labels) {
+        final finder = fieldLabelled(label);
+        final decoration = tester.widget<TextField>(finder).decoration!;
+        final text = Theme.of(tester.element(finder)).colorScheme.onSurface;
+        final resting = decoration.labelStyle!.color!;
+        expect(resting.a, lessThan(0.6), reason: '$mode $label');
+        expect(resting.a, lessThan(text.a), reason: '$mode $label');
+        // The floated label keeps its default colours.
+        expect(decoration.floatingLabelStyle!.color, isNull,
+            reason: '$mode $label');
+        // Focused and empty: the floated label is enough, no hint inside.
+        expect(decoration.hintText, isNull, reason: '$mode $label');
+      }
+    }
   });
 
   testWidgets('the Definition field starts at 1 line and grows to 4',
@@ -223,9 +234,12 @@ void main() {
   });
 }
 
-// Recorded from the pre-feature widget; see the header comment.
+// Recorded from the pre-feature widget; see the header comment. Re-recorded
+// when the fields lost their hint text: in the test font (every glyph a 16 px
+// square) the hidden 'Translation' hint wrapped to two lines and made that
+// field 80 px tall, which real fonts never did. It is now 56 px, like Word.
 const kShortLayout = 'card=0.0,0.0,400.0x800.0 word=8.0,35.0,171.0x56.0 '
-    'translation=195.0,35.0,171.0x80.0 dots=370.0,63.0,22.0x24.0 '
+    'translation=195.0,35.0,171.0x56.0 dots=370.0,51.0,22.0x24.0 '
     'close=370.0,8.0,18.0x18.0 bolt=326.0,47.0,28.0x28.0';
 const kLongLayout = 'card=0.0,0.0,400.0x800.0 word=48.0,35.0,151.0x200.0 '
     'translation=215.0,35.0,151.0x200.0 dots=370.0,123.0,22.0x24.0 '

@@ -29,7 +29,7 @@ Run `npm run probe --warm`, then `npm run build`. Then write a short **Findings*
 
 ## Prompt
 
-Read `CLAUDE.md`, `docs/tasks/active/task-16-*.md`, `docs/tasks/active/task-17-*.md`. One commit.
+Read `CLAUDE.md`, `docs/tasks/completed/task-16-*.md`, `docs/tasks/completed/task-17-*.md`. One commit.
 
 1. **Run the probe:** `npm run probe --warm` from `investigations/dictionary-apis/`. Confirm `out/results.json` covers all ten words for the keyless providers.
 2. **If the owner supplied keys** (Merriam-Webster, Oxford sandbox, WordsAPI, API Ninjas) in `.env`, rerun so their rows are populated; otherwise leave them `skipped` and say so in the findings.

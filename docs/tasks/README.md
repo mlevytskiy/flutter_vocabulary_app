@@ -19,15 +19,21 @@ Task files link to the roadmap and [`../idea-brief.md`](../idea-brief.md); they 
 | [task-06](outdated/task-06-partner-corrects-table.md) — The partner corrects the word table | 6 | M | 4 | — (D6 resolved: no names) | not started |
 | [task-07](outdated/task-07-download-from-shared-page.md) — Download the AnkiDroid file from the shared page | 7 | S | 5 | — | not started |
 | [task-08](outdated/task-08-review-and-mark-memorized.md) — Review words and mark one memorized | 8 | S | 3 | — | not started |
-| [task-09](outdated/task-09-word-detail-recon.md) — Extra word detail (recon, not build) | 9 | fog | — | **D3** | not started |
+| [task-09](outdated/task-09-word-detail-recon.md) — Extra word detail (recon, not build) | 9 | fog | — | — (D3 closed: Merriam-Webster) | not started |
 | [task-10](completed/task-10-side-menu-and-history.md) — Side menu and History: reach older sessions | 3 (second half) | S | 3 | task-03 v2 | **code complete 2026-09-22** — AC-1 green; AC-2..AC-8 need a device pass |
-| [task-11](active/task-11-dots-popup-loads-translations.md) — The dots popup shows the translations it has, and can fetch them | 11 | S | 6 | — | **code complete 2026-09-23** — AC-1 green; AC-2..AC-10 need a device pass |
-| [task-12](active/task-12-hide-keyboard-on-dots-tap.md) — Tapping the dots closes the keyboard | 12 | S | 6 | task-11 (same screen file) | not started |
-| [task-13](active/task-13-settings-screen-and-fab.md) — A Settings screen; drag-and-drop moves out of the top bar | 13 | M | 6 | **D9** (entry point); task-11/12 (same screen file) | not started |
+| [task-11](completed/task-11-dots-popup-loads-translations.md) — The dots popup shows the translations it has, and can fetch them | 11 | S | 6 | — | **code complete 2026-09-23** — AC-1 green; AC-2..AC-10 need a device pass |
+| [task-12](completed/task-12-hide-keyboard-on-dots-tap.md) — Tapping the dots closes the keyboard | 12 | S | 6 | task-11 (same screen file) | not started |
+| [task-13](completed/task-13-settings-screen-and-fab.md) — A Settings screen; drag-and-drop moves out of the top bar | 13 | M | 6 | **D9** (entry point); task-11/12 (same screen file) | not started |
+| [task-14](completed/task-14-dictionary-api-investigation-scaffold.md) — Standalone investigation project: scaffold for the dictionary-API comparison | 9 (recon) | S | 7 | — (D3 closed) | **done 2026-09-24** |
+| [task-15](completed/task-15-dictionary-api-shortlist-and-cost.md) — Candidate shortlist: descriptions, cost table, registration needs | 9 (recon) | S | 7 | task-14 | **done 2026-09-24** |
+| [task-16](completed/task-16-dictionary-api-probe-harness.md) — Probe harness: fetch, measure, record | 9 (recon) | M | 7 | task-14, task-15 | **done 2026-09-24** |
+| [task-17](completed/task-17-dictionary-api-comparison-page.md) — Static comparison page (descriptions + cost + 10-word tables) | 9 (recon) | M | 7 | task-15, task-16 | **done 2026-09-27** |
+| [task-18](completed/task-18-run-comparison-and-findings.md) — Run the comparison, populate the page, write findings | 9 (recon) | M | 8 | task-16, task-17 | **done 2026-09-27** — findings in [`investigations/dictionary-apis/README.md`](../../investigations/dictionary-apis/README.md#findings-probe-run-2026-09-27---warm) |
+| [task-19](active/task-19-definition-mode-setting.md) — A Settings option: translation / definition / both; definition rows go vertical | 14 | L | 9 | **D10** (key location); task-13 (same screen file) | not started — planned only |
 
-D1, D2, D4, D5, D6, D8 are resolved in [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far);
-**D3** (task-09, a recon task that answers its own blocker) and **D9** (task-13, where the settings
-entry point lives — the task proceeds on recommendation (c), a bottom-left FAB) are still open.
+D1, D2, D3, D4, D5, D6, D8, D9 are resolved in [`../roadmap.md#decisions-so-far`](../roadmap.md#decisions-so-far).
+**D3** closed 2026-09-27 on the task-14..18 investigation: the word-detail source is the
+**Merriam-Webster Dictionary API**.
 
 ## Starting-state decision (task-01)
 
@@ -50,6 +56,9 @@ wave 3:  04  ∥  05  ∥  08  ∥  10   (10 needs 03 v2)
 wave 4:  06
 wave 5:  07
 wave 6:  11  →  12  →  13   (all three reach into word_input_screen.dart, so they serialize)
+wave 7:  14  →  15  →  16  ∥  17    (dictionary-API investigation — app-independent lane; 14→15→16 chain, 17 after 15+16)
+wave 8:  18                      (runs the probe and writes findings)
+wave 9:  19                      (definition mode — after 13: same screen file, adds a row to its Settings screen)
 ```
 
 After task-00 the word list lives in `lib/features/word_input/word_input_notifier.dart` and the
@@ -107,6 +116,6 @@ and `lib/features/word_input/widgets/translation_options_content.dart` renders t
 therefore never brought over, and does not need to be.
 
 What is **still** open in that area is narrower and is
-[task-11](active/task-11-dots-popup-loads-translations.md)'s: the popup can still be opened on a
+[task-11](completed/task-11-dots-popup-loads-translations.md)'s: the popup can still be opened on a
 state where the dots are solid but the cached block is gone (a Word-field edit, or the smart-swap
 path), and it answers that with a `Tap the lightning icon…` message instead of chips or a fetch.

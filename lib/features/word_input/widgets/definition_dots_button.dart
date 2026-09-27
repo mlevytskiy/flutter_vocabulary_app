@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import 'definition_options_content.dart';
+import 'open_dots_menu.dart';
 
 /// Definition dots button (definition-mode, spec AC-08): the definition
 /// counterpart of `TranslationDotsButton`, built the same way — outside the
@@ -52,6 +53,10 @@ class DefinitionDotsButton extends StatelessWidget {
     return SizedBox(
       width: 22,
       child: CustomPopupMenu(
+        // The package binds its controller once, in initState. Keying on the
+        // controller rebuilds it when the screen hands this row a new one, so
+        // the menu openDotsMenu shows is the one this widget listens to.
+        key: ObjectKey(controller),
         controller: controller,
         pressType: PressType.singleClick,
         menuOnChange: (isShowing) {
@@ -84,7 +89,14 @@ class DefinitionDotsButton extends StatelessWidget {
             ),
           );
         },
-        child: Center(child: dotsIcon),
+        // The tap is handled here rather than by the package's own InkWell, so
+        // the menu can wait for the keyboard to finish closing -- see
+        // openDotsMenu.
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => openDotsMenu(context, controller, onOpen),
+          child: Center(child: dotsIcon),
+        ),
       ),
     );
   }

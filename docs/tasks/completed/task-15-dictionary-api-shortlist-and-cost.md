@@ -47,7 +47,7 @@ A top-level `registrationHelp` array names the providers needing the owner up fr
 
 ## Prompt
 
-Read `CLAUDE.md`, `docs/tasks/active/task-14-*.md`, and the research already gathered in this task's report. One commit.
+Read `CLAUDE.md`, `docs/tasks/completed/task-14-*.md`, and the research already gathered in this task's report. One commit.
 
 1. **Write `providers.json`** under `investigations/dictionary-apis/data/`, one object per provider, all fields above. Use the research table verbatim for values; do not invent prices — where a price is not public (Oxford, Cambridge) set the string to `"not public"` and add a `note`.
 2. **Mark exclusions explicitly** (Google Dictionary, Linguee, dict.cc, ECDICT-as-API) with `excluded: true` and a `reason`, so the page can list them in a short "considered and rejected" block rather than dropping them silently.

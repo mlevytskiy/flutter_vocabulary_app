@@ -38,7 +38,7 @@ Three sections in order: **Descriptions** (one short paragraph + docs link + reg
 
 ## Prompt
 
-Read `CLAUDE.md`, `docs/tasks/active/task-15-*.md`, `docs/tasks/active/task-16-*.md`. One commit.
+Read `CLAUDE.md`, `docs/tasks/completed/task-15-*.md`, `docs/tasks/completed/task-16-*.md`. One commit.
 
 1. **`src/page/template.html`** — the page skeleton + a tiny inline `<style>` (system font, sticky header, monospace numbers, flag emojis in headers). Placeholder markers where the three tables go.
 2. **`src/build.mjs`** — read `data/providers.json` and `out/results.json`, escape all text (the definitions come from third-party HTML — strip and escape, never inject raw), and write `index.html`. If `out/results.json` is missing, still render descriptions + cost with the results tables showing a "run `npm run probe`" note.

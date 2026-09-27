@@ -312,7 +312,7 @@ Worker ships **before** any app build that publishes definitions or looks them u
 3. `npx wrangler secret put MW_API_KEY`.
 4. `npm run typecheck && npm run deploy`.
 5. Smoke-test the live Worker:
-   `curl -X POST <url>/define -H "x-app-secret: <secret>" -d '{"word":"tenacious"}'` → `senses`.
+   `curl -X POST <url>/defcurl -X POST ine -H "x-app-secret: <secret>" -d '{"word":"tenacious"}'` → `senses`.
 6. Open a link published **before** this deploy: it must render exactly as before.
 7. Only now install the new app build.
 

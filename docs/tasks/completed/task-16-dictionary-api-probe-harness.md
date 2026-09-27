@@ -29,7 +29,7 @@ One adapter per provider behind a common `probe(word) -> { definitions: string[]
 
 ## Prompt
 
-Read `CLAUDE.md`, `docs/tasks/active/task-14-*.md`, `docs/tasks/active/task-15-*.md`. One commit.
+Read `CLAUDE.md`, `docs/tasks/completed/task-14-*.md`, `docs/tasks/completed/task-15-*.md`. One commit.
 
 1. **`src/providers/<id>.mjs`** — one module per probeable provider exporting `id` and `probe(word)`. Start with the three keyless ones (they are fully testable today); add adapter stubs for the keyed ones that return `skipped` when their env key is absent. Strip HTML from Wiktionary definitions; normalise datamuse's `defs` into plain strings.
 2. **`src/probe.mjs`** — the runner. Read `data/words.json` and `data/providers.json`, skip `excluded` and `!probeable`, loop, time each call with `performance.now()`, catch every error per (provider, word) so one failure never aborts the run, and write `out/results.json`.

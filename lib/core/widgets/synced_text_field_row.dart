@@ -2,6 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+/// Colour of a field's label while it rests inside the empty, unfocused field:
+/// well lighter than typed text, so an empty field never reads as a filled
+/// one. Only the resting label -- pair it with `floatingLabelStyle:
+/// const TextStyle()` so the label floated onto the border keeps its default
+/// colours (it would otherwise inherit this style).
+TextStyle emptyFieldLabelStyle(BuildContext context) => TextStyle(
+    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.45));
+
 /// Two [TextField]s side by side that always share the same height.
 ///
 /// Usage inside a ListView.builder:
@@ -164,6 +172,8 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
+        labelStyle: emptyFieldLabelStyle(context),
+        floatingLabelStyle: const TextStyle(),
         border: OutlineInputBorder(
           borderSide: BorderSide(width: widget.borderWidth),
         ),
