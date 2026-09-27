@@ -132,49 +132,80 @@ Each tactical decision in later sections should trace to one of these seeds. Tac
 
 ## 5. Building block view
 
-<!-- 🎯 Why: INTERNAL DECOMPOSITION — modules, containers, datastores. The static topology: who
-     may talk to whom. Without §5, §6 (the flows) has no vocabulary of participants.
-     📋 Write: 1 ¶ on the style (layered / hexagonal / clean / event-driven) + a folder tree + a
-     C4Container block.
-     📌 Draw ONE Container per declared `target_surface` (frontmatter): a fullstack
-     [backend-service, web-frontend] = a backend-API container + a web/SPA container; a
-     [backend-service, mobile-app] = the API + the mobile app. The Container(web, …) line below is
-     just one surface's container — swap/add per what was declared in §4. → _shared/surfaces.md
-     📌 e.g. «web app, content API, media worker, datastore, object store, CDN». -->
-
-<One paragraph: layered / hexagonal / clean / event-driven, and why.>
+The feature extends the two existing codebases in their own styles rather than adding a new one. The Worker keeps its flat module layout (`index.ts` routing table → handler modules → store functions): the `session/` module grows an editing API, a D1-backed store and a browser script, and a small `autofill/` module holds metering. The app keeps its feature-folder layout (CLAUDE.md, [`docs/architecture.md`](../../architecture.md)): photo keeping and upload are services behind providers in `core/`, the models gain fields plus one embedded type, and only the input screen and the words table's share sheet change. The shared page is the third container: server-rendered HTML from the Worker plus one plain-JavaScript file the Worker serves (ADR-0002).
 
 **Internal decomposition:**
 
 ```
-<e.g. modules/<feature>/>
-├── domain/       <entities + sentinel errors>
-├── app/          <use cases / services>
-├── infra/        <repository + integration impl>
-├── ports/        <handlers, DTOs, error mapping>
-└── wiring        <self-wiring entry point>
+vocab-photo-api/
+├── wrangler.jsonc          + d1_databases: DB; + triggers.crons (daily clean-up); SESSIONS KV kept read-only
+├── migrations/             D1 SQL migrations (written at data-model)
+└── src/
+    ├── index.ts            routing table: + edit, change-feed, autofill, script routes; + scheduled() handler
+    ├── define.ts           dictionary lookup, reused by page autofill (unchanged contract for the app)
+    ├── autofill/
+    │   └── meter.ts        per-page allowance + all-pages share: conditional increments in D1
+    └── session/
+        ├── types.ts        + declared sources, sourceId per row, cell revisions, limits unchanged
+        ├── handlers.ts     publish (declared photos, republish with edit token), photo upload to a declared id
+        ├── edit.ts         save cell / add row / delete row / change feed — revision checks (ADR-0004, ADR-0005)
+        ├── store.ts        D1 repository: sessions, rows, cells, photo slots; lazy import of legacy KV documents
+        ├── page.ts         SSR table: data-driven columns, wide + phone layouts in CSS, pager / thumbnail markup
+        ├── client/page.js  the browser script (JSDoc + checkJs), served as a text module
+        ├── anki.ts         AnkiDroid file from D1 rows (fixed column places, ADR-0005 of definition-mode)
+        └── cleanup.ts      cron: delete expired sessions and their rows, slots and counters
+
+lib/ (Flutter app)
+├── core/models/
+│   ├── session.dart        + sources: List<SourcePhoto>; + publishedId, editToken (ADR-0008)
+│   ├── word_pair.dart      + sourceId (null for typed rows)
+│   └── source_photo.dart   NEW @embedded: id, file name, taken-at (the rule-5 override, sad §2)
+├── core/services/
+│   ├── source_photo_store.dart     NEW: writes / reads / deletes kept photo files in the app documents dir
+│   ├── photo_upload_service.dart   NEW: background upload of declared photos with retries (AC-37)
+│   └── session_publish_service.dart  + sources, sourceId, republish token; returns the token
+├── core/providers.dart     + sourcePhotoStoreProvider, photoUploadServiceProvider
+└── features/
+    ├── word_input/         on a photo: keep its file, tag recognised rows with its id
+    └── words_table/        share sheet: "include photos (N)" switch + 30-day notice; republish warning
 ```
 
-**C4 Container (L2):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. ONE Container per declared target_surface (frontmatter); the web container below is one example surface. -->
+**Kept photo copy (inline decision).** When a photo is taken, `PhotoScaler` produces two copies in its background isolate: the existing 640 px (shorter side, JPEG 85) copy that goes to `/analyze`, and a 1600 px (shorter side, JPEG 80, roughly 300–500 KB) copy that `source_photo_store` keeps as a file in the app documents directory and that is published. The larger copy keeps small book print readable when the partner zooms in the photo dialog (AC-07) while three photos still upload within the spec's 30 s on 4G. Kept photos live as long as their session; device storage growth is tracked in §11. A photo with no linked row at publishing time is not a source photo and is not declared (CONTEXT: source photo).
+
+**C4 Container (L2):**
 
 ```mermaid
 C4Container
-    title <feature> — Containers
+    title good-looking-web — Containers
 
-    Person(actor, "<Actor>")
+    Person(learner, "learner")
+    Person(partner, "partner")
 
-    Container_Boundary(app, "<Our system>") {
-        Container(web, "<Web/UI>", "<technology>", "<purpose>")
-        Container(api, "<API/handler>", "<technology>", "<purpose>")
-        ContainerDb(db, "<Datastore>", "<technology>", "<purpose>")
+    Container_Boundary(system, "Vocabulary app + vocab-photo-api") {
+        Container(app, "Vocabulary app", "Flutter, Riverpod, Isar", "Collects words; keeps source photos linked to rows; publishes sessions and uploads photos in the background")
+        Container(page, "Shared page", "Server-rendered HTML + plain JavaScript in the browser", "Two-layout editable table, photo pager and dialog, autofill, polling")
+        Container(api, "vocab-photo-api Worker", "TypeScript on Cloudflare Workers", "Publish, page render, edit API, change feed, metered definition autofill, file download, daily clean-up")
+        ContainerDb(device, "Device store", "Isar vocab + photo files", "Sessions, rows with photo ids, kept source photos, published id and edit token")
+        ContainerDb(d1, "Sessions database", "Cloudflare D1", "Sessions, rows, cell revisions, photo slots, autofill counters")
+        ContainerDb(r2, "Photo bucket", "Cloudflare R2 SOURCES", "Source photo bytes, 30-day lifecycle rule")
+        ContainerDb(kv, "Legacy sessions", "Workers KV SESSIONS", "Pre-feature session documents, read-only, imported on first open")
     }
 
-    System_Ext(ext, "<External>", "<purpose>")
+    System_Ext(mw, "Merriam-Webster Collegiate API", "Dictionary senses")
+    System_Ext(gt, "Google Translate endpoint", "Translations")
+    System_Ext(ai, "Anthropic Messages API", "Photo analysis")
 
-    Rel(actor, web, "<interaction>", "<protocol>")
-    Rel(web, api, "<calls>")
-    Rel(api, db, "<reads/writes>", "<driver>")
-    Rel(api, ext, "<emits>", "<protocol>")
+    Rel(learner, app, "Photographs pages, publishes", "touch")
+    Rel(partner, page, "Reads, edits, autofills, downloads", "HTTPS")
+    Rel(app, device, "Reads and writes sessions and photo files")
+    Rel(app, api, "Analyses photos, publishes sessions, uploads declared photos", "JSON/HTTPS, shared secret")
+    Rel(api, ai, "Analyses a photo for the app", "HTTPS")
+    Rel(page, api, "Saves cells, polls changes, asks for definitions", "JSON/HTTPS")
+    Rel(page, gt, "Translation autofill", "HTTPS")
+    Rel(api, d1, "Reads and writes sessions, revisions, counters", "D1 binding")
+    Rel(api, r2, "Stores and serves photo bytes", "R2 binding")
+    Rel(api, kv, "Imports pre-feature sessions", "KV binding")
+    Rel(api, mw, "Looks up definitions", "HTTPS")
 ```
 
 ## 6. Runtime view
