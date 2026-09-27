@@ -53,7 +53,22 @@ export const STYLE = `
   tr.needs-word .needs-word-mark { display: block; }
   .add-col { font: inherit; font-size: 0.85rem; font-weight: 600; padding: 2px 6px; white-space: nowrap;
              border: 1px dashed #999; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
-  .no-translation td.c-translation .v, .no-definition td.c-definition .v { display: none; }
+  .no-translation td.c-translation > *, .no-definition td.c-definition > * { display: none; }
+  .paused-hint { color: #666; font-size: 0.85rem; font-style: italic; margin: -8px 0 16px; }
+
+  /* The lightning (US-08, US-09): the app's purple bolt, in an empty cell and beside the header. */
+  .bolt { display: none; }
+  .js .bolt { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px;
+              padding: 0; border: 0; border-radius: 4px; background: none; color: #7e57c2; cursor: pointer;
+              vertical-align: middle; }
+  .js td .bolt { float: right; margin: -2px -4px 0 4px; }
+  .bolt svg { width: 18px; height: 18px; fill: currentColor; }
+  .bolt:hover, .bolt:focus-visible { background: #efe7fb; }
+  td.filled .bolt, .read-only .bolt { display: none; }
+  .working > .bolt, th.working .bolt { animation: working 0.9s ease-in-out infinite alternate; cursor: progress; }
+  @keyframes working { from { opacity: 1; } to { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) { .working > .bolt, th.working .bolt { animation: none; opacity: 0.5; } }
+  td[data-state="notice"] .cell-note { color: #666; }
 
   .v:focus { outline: 2px solid #2962ff; outline-offset: 3px; border-radius: 2px; }
   td[data-state="saving"] .v { opacity: 0.6; }
@@ -135,6 +150,9 @@ export const STYLE = `
     td[data-state="saved"] .cell-note { color: #81c995; }
     td[data-state="unsaved"] .cell-note, td[data-state="conflict"] .cell-note { color: #f28b82; }
     .cell-note q { color: #ececec; }
+    .paused-hint, td[data-state="notice"] .cell-note { color: #9a9a9a; }
+    .js .bolt { color: #b39ddb; }
+    .bolt:hover, .bolt:focus-visible { background: #2e2540; }
     .cell-note button { background: #262626; color: #ececec; border-color: #555; }
     .banner { background: #3a1d1b; color: #f28b82; }
     .del:hover, .del:focus-visible { background: #3a1d1b; }

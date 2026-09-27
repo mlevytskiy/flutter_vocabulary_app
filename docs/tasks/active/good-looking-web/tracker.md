@@ -18,8 +18,8 @@
 | [T11](t11-server-rendered-two-layout-page.md) | Render the two-layout table, photo markup and CSP on the server | ui | Maksym | L | T4 | done |
 | [T12](t12-client-cell-editing-and-conflicts.md) | Edit cells in place with save-on-leave, saved/not-saved states and conflict choice | ui | Maksym | L | T6, T11 | done |
 | [T13](t13-client-add-and-delete-with-undo.md) | Add rows with the plus button and delete rows with a 5-second Undo | ui | Maksym | M | T7, T12 | done |
-| [T14](t14-client-polling-with-idle-stop.md) | Poll for other partners' changes, pausing when hidden and stopping after 5 idle minutes | ui | Maksym | M | T8, T13 | todo |
-| [T15](t15-client-autofill.md) | Autofill a cell or a whole column, and open a collapsed column | ui | Maksym | L | T1, T9, T13 | todo |
+| [T14](t14-client-polling-with-idle-stop.md) | Poll for other partners' changes, pausing when hidden and stopping after 5 idle minutes | ui | Maksym | M | T8, T13 | done |
+| [T15](t15-client-autofill.md) | Autofill a cell or a whole column, and open a collapsed column | ui | Maksym | L | T1, T9, T13 | done |
 | [T16](t16-client-photo-pager-and-dialog.md) | Show the photo pager with row highlighting and the phone photo dialog | ui | Maksym | M | T5, T13 | todo |
 | [T17](t17-app-keep-source-photos.md) | Keep each source photo in the app and link recognised rows to it | domain | Maksym | M | — | todo |
 | [T18](t18-app-publish-photos-and-background-upload.md) | Publish rows with photo links and upload declared photos in the background | app | Maksym | M | T5, T17 | todo |
