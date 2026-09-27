@@ -7,7 +7,7 @@ acs: ["AC-09", "AC-10", "AC-11", "AC-33", "AC-34", "AC-38"]
 files_hint: ["vocab-photo-api/src/session/edit.ts", "vocab-photo-api/src/session/types.ts", "vocab-photo-api/src/index.ts", "vocab-photo-api/test/edit.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Save cells with a per-cell revision check and limits
@@ -22,12 +22,21 @@ Public route: save one cell `{rowId, field, value, baseRev}` (no batch route —
 
 ## Definition of Done
 
-- [ ] node test: two saves from the same base revision → first lands, second gets `conflict` with the first value (AC-11)
-- [ ] node test: saves to different cells of the same row both land (AC-12 precondition)
-- [ ] node test: 501 chars → `field_too_long` naming the overflow; 256 KB + 1 → `list_full` (AC-10, AC-38)
-- [ ] node test: a save to a deleted row answers `conflict`; a save to an unknown row id is refused
-- [ ] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
+- [x] node test: two saves from the same base revision → first lands, second gets `conflict` with the first value (AC-11)
+- [x] node test: saves to different cells of the same row both land (AC-12 precondition)
+- [x] node test: 501 chars → `field_too_long` naming the overflow; 256 KB + 1 → `list_full` (AC-10, AC-38)
+- [x] node test: a save to a deleted row answers `conflict`; a save to an unknown row id is refused
+- [x] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
 
 ## Notes
 
 Same lane as T7–T9 (`edit.ts`, `index.ts`).
+
+Route: `POST /s/<id>/cells` → `200 {rowId, field, rev}`. Status codes (fixed here, as the
+`api` stage was not run): `409 conflict` (with `value`/`rev`, or `deleted: true`),
+`422 field_too_long` / `list_full`, `404 unknown_row` / `gone`, `400 bad_request`. The
+256 KB is counted as UTF-8 bytes of every live cell (`length(CAST(… AS BLOB))`), checked
+inside the same conditional UPDATE as the revision, so no race can pass it; an edit that
+shortens a cell always lands. `writeCell` also takes an "only if still empty" guard for
+T9's autofill. `flutter analyze` reports the same 9 pre-existing infos; the grep's one hit
+(`PhotoScaler.instance`) is pre-existing — no Dart was touched.

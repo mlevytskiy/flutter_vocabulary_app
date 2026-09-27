@@ -157,6 +157,19 @@ export async function loadSession(env: Env, sessionId: string): Promise<StoredSe
   return session;
 }
 
+/**
+ * Whether a session is live, reading only its `sessions` row -- what every page
+ * write checks before touching the rows. An id D1 does not know yet may still
+ * be a pre-feature KV link, which `loadSession` imports.
+ */
+export async function isLiveSession(env: Env, sessionId: string): Promise<boolean> {
+  const record = await env.DB.prepare(`SELECT expires_at FROM sessions WHERE id = ?1`)
+    .bind(sessionId)
+    .first<{ expires_at: string }>();
+  if (record) return !isExpired(record.expires_at);
+  return (await loadSession(env, sessionId)) !== null;
+}
+
 interface SessionRecord {
   id: string;
   created_at: string;

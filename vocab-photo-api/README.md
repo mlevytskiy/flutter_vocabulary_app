@@ -16,6 +16,7 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
 | `GET /s/<id>` | **public** | the page a person reads |
 | `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
+| `POST /s/<id>/cells` | **public** | save one cell with a revision check |
 
 Every route in `src/index.ts` declares `public: true` or `false` for itself
 (`src/routing.ts`). Anything not marked public is behind the `x-app-secret` check and
@@ -210,6 +211,33 @@ The bytes of one photo whose slot has arrived in this live session, with its sto
 type and a long `cache-control` (the id is random and the object never changes). A pending
 slot, an undeclared or guessed id, a photo dropped by a republish and an expired session all
 answer the gone page, whatever R2 still holds (AC-24).
+
+## Editing a shared page (good-looking-web)
+
+The page's routes are public: the link is the credential (sad §8). Each session has one
+revision counter that goes up with every write, and every cell (`word`, `translation`,
+`definition` of a row) remembers the revision of its last change (ADR-0004). A write applies
+only while the cell is still at the revision the page saw, in one D1 transaction, so a save
+either lands or comes back as a conflict. Every refusal is `{ "error", "code" }`: `error` in
+plain words for the partner, `code` for the script. An unknown or expired id is always
+`404 { "code": "gone" }`. Log lines are JSON (`{"event":"cell saved",…}`) with ids, codes and
+counts, never cell text.
+
+### `POST /s/<id>/cells` — public
+
+Body: `{ "rowId", "field": "word|translation|definition", "value", "baseRev" }` — `baseRev` is
+the cell's revision as the page last saw it. One cell per request; there is no batch route.
+The value is stored exactly as sent (no trimming, no HTML stripping — the page escapes on
+output), and a save never changes the row's photo link.
+
+- `200 { "rowId", "field", "rev" }` — saved; `rev` is the cell's new revision.
+- `409 { "code": "conflict", "field", "value", "rev" }` — the cell changed since `baseRev`;
+  `value`/`rev` are what is saved now. Saving again with that `rev` as `baseRev` keeps the
+  partner's own value. A row deleted meanwhile answers `409 { "code": "conflict", "deleted": true }`.
+- `422 { "code": "field_too_long", "field", "limit": 500, "overflow" }` — more than 500 characters.
+- `422 { "code": "list_full", "limit": 262144 }` — the session's cell text would pass 256 KB
+  (UTF-8 bytes of every live cell). An edit that shortens a cell always lands.
+- `404 { "code": "unknown_row" }` — no such row id in this session; `400 bad_request` — malformed.
 
 ## AnkiDroid file format
 

@@ -134,9 +134,26 @@ export const MAX_ENTRIES = 500;
 export const MAX_FIELD_CHARS = 500;
 export const MAX_SOURCES = 10;
 
-/** Session and photo ids: what the routes can address (`/s/<id>/sources/<sourceId>`). */
+/** Session, row and photo ids: what the routes can address (`/s/<id>/sources/<sourceId>`). */
 export const ID_PATTERN = "[A-Za-z0-9-]{1,64}";
 const ID_RE = new RegExp(`^${ID_PATTERN}$`);
+
+export function isId(value: unknown): value is string {
+  return typeof value === "string" && ID_RE.test(value);
+}
+
+/** The three editable cells of a row; each has a `<field>_rev` column beside it (ADR-0004). */
+export type CellField = "word" | "translation" | "definition";
+export const CELL_FIELDS: readonly CellField[] = ["word", "translation", "definition"];
+
+export function isCellField(value: unknown): value is CellField {
+  return typeof value === "string" && (CELL_FIELDS as readonly string[]).includes(value);
+}
+
+/** A revision as a client sends it back: a non-negative integer. */
+export function isRev(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
 
 export type ParsedEntries = { ok: true; entries: SessionEntry[] } | { ok: false; error: string };
 export type ParsedDetail = { ok: true; detail: SessionDetail } | { ok: false; error: string };

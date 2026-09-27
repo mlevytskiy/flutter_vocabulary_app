@@ -65,6 +65,36 @@ export function uploadSource(sessionId, sourceId, bytes, mediaType = "image/png"
   });
 }
 
+let partnerCount = 0;
+
+/**
+ * A partner's JSON request from the shared page (public, no secret). Like
+ * `appHeaders`, each call comes from its own address unless `ip` is given, so
+ * only a test of the page write limit shares one budget. Returns
+ * `{ status, body }` with the body parsed.
+ */
+export async function pagePost(path, body, ip) {
+  partnerCount += 1;
+  const address = ip ?? `172.16.${(partnerCount >> 8) & 255}.${partnerCount & 255}`;
+  const res = await send(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", "cf-connecting-ip": address },
+    body: typeof body === "string" ? body : JSON.stringify(body),
+  });
+  return { status: res.status, body: await res.json() };
+}
+
+/** SQL string literal for `d1()`. */
+export const sql = (value) => `'${String(value).replace(/'/g, "''")}'`;
+
+/** The rows of a session as D1 holds them, tombstones included, in table order. */
+export function storedRows(sessionId) {
+  return d1(
+    `SELECT id, position, source_id, word, word_rev, translation, translation_rev, definition, definition_rev,
+       deleted_at_rev FROM rows WHERE session_id = ${sql(sessionId)} ORDER BY position`
+  );
+}
+
 /**
  * Runs a wrangler command against the local state `wrangler dev` is serving
  * from, e.g. to seed a KV document or move a session's expiry. Throws with

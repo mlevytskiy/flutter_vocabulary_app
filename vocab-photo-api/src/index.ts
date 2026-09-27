@@ -2,6 +2,7 @@ import type { Env } from "./env";
 import { CORS_HEADERS, MAX_RAW_BYTES, isAllowedMediaType, jsonResponse, type AllowedMediaType } from "./http";
 import { matchRoute, type RouteContext, type RouteDefinition } from "./routing";
 import { sessionRoutes } from "./session/handlers";
+import { editRoutes } from "./session/edit";
 import { defineRoutes } from "./define";
 
 export type { Env } from "./env";
@@ -251,6 +252,7 @@ const ROUTES: RouteDefinition[] = [
   { method: "POST", pattern: /^\/analyze$/, public: false, handler: handleAnalyze },
   ...defineRoutes,
   ...sessionRoutes,
+  ...editRoutes,
 ];
 
 export default {

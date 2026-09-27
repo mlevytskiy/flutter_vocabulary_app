@@ -10,7 +10,7 @@
 | [T3](t3-d1-schema.md) | Create the D1 schema for sessions, rows, cell revisions, photo slots and counters | migration | Maksym | M | — | done |
 | [T4](t4-d1-store-and-legacy-import.md) | Move session storage to D1, with a lazy import of pre-feature KV links | infra | Maksym | M | T2, T3 | done |
 | [T5](t5-publish-contract-photos-and-republish.md) | Accept declared photos, row photo ids and republish tokens in the publish contract | ports | Maksym | M | T4 | done |
-| [T6](t6-save-cell-with-revision-check.md) | Save cells with a per-cell revision check and limits | ports | Maksym | M | T4 | todo |
+| [T6](t6-save-cell-with-revision-check.md) | Save cells with a per-cell revision check and limits | ports | Maksym | M | T4 | done |
 | [T7](t7-add-delete-rows-and-write-limit.md) | Add and delete rows, and rate-limit page writes | ports | Maksym | M | T6 | todo |
 | [T8](t8-change-feed.md) | Serve the change feed since a revision | ports | Maksym | S | T7 | todo |
 | [T9](t9-metered-definition-autofill.md) | Meter definition autofill with the page allowance and the all-pages share | ports | Maksym | M | T6 | todo |
