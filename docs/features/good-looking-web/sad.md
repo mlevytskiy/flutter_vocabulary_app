@@ -36,30 +36,33 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 2. Constraints
 
-<!-- 🎯 Why: §4 strategy only works when §2 has fixed WHAT IS ALREADY FIXED — stack, versions,
-     deadline, regulatory. This is an input, not an output.
-     📋 Write: four blocks — Technical / Organisational / Conventions / Regulatory.
-     📌 Pin versions («<datastore> 18», not «<datastore>»); «Q3 deadline — hard», not «ideally».
-     Never N/A — every feature inherits at least Conventions + Technical. -->
-
 **Technical.**
-- <Language + version>
-- <Framework(s) + version>
-- <Datastore(s) + version>
-- <Architecture convention — e.g. the layering style from the project convention file>
+- Worker (`vocab-photo-api/`): TypeScript 5.6, `wrangler` 4, `compatibility_date` 2025-01-01, **no runtime npm dependencies** (only `typescript`, `wrangler`, `@cloudflare/workers-types` as dev dependencies).
+- Worker bindings today (`wrangler.jsonc`): `SESSIONS` KV — one JSON `SessionDocument` per published session under `session:<id>`, written with a 30-day `expirationTtl` (D4); `DEFINITIONS` KV — the dictionary cache (30-day TTL); `SOURCES` R2 — photo bytes under `sessions/<sessionId>/sources/<sourceId>`, an optional binding (photo routes answer 503 without it); `RATE_LIMITER` — 20 requests / 60 s per IP, applied to the secret-gated routes only (the public page and its sources are not rate-limited).
+- Photo publishing half-exists: `POST /sessions/<id>/sources` (secret-gated) stores a photo in R2 and appends a `PhotoSource` to the document; `GET /s/<id>/sources/<sourceId>` serves it publicly. The app has never called the upload route.
+- Session limits live in `src/session/types.ts`: `MAX_ENTRIES` 500, `MAX_FIELD_CHARS` 500, `MAX_SESSION_JSON_BYTES` 256 KB, `MAX_SOURCES` 10 — spec §6 keeps them unchanged.
+- **Workers KV semantics:** eventually consistent (a write can take up to ~60 s to be visible at other edge locations), last-write-wins with no compare-and-swap, about 1 write per second per key. On KV alone, spec AC-11 / AC-12 and the "0 lost edits" NFR cannot be guaranteed; the store for editable sessions is a §4 decision.
+- Shared page (`src/session/page.ts`): HTML built from template strings with inline CSS; every value passes `escapeHtml`; **no client-side JavaScript and no bundler** today. The AnkiDroid file (`src/session/anki.ts`) is built on the fly from the stored document, with definition-mode ADR-0005's fixed column places.
+- Dictionary: Merriam-Webster Collegiate free key — 1,000 calls/day, non-commercial; `/define` (secret-gated) caches hits in `DEFINITIONS`; the daily limit is not counted in code today.
+- App: Flutter, Dart SDK `>=3.0.0 <4.0.0`; `flutter_riverpod` / `riverpod_annotation` 2.6.x with `riverpod_generator`; `go_router` typed routes; `isar_community` **pinned exactly to `3.3.0-dev.1`** ([`docs/architecture.md`](../../architecture.md) rule 6) — any new field on `Session` / `WordPair` needs a `build_runner` regeneration and committed `.g.dart`; `http` is the only HTTP client; `image_picker` + `screenshot` capture photos.
+- App photo handling today: a photo is scaled (`PhotoScaler`), sent to `/analyze`, then discarded; `WordPair` has no link to a photo and `Session` has no photo list.
+- Worker verification: no test runner — `npm run typecheck` plus `wrangler dev` + curl.
 
 **Organisational.**
-- <Effort budget — e.g. 3 person-weeks>
-- <Deadline — e.g. 2026-Q3 hard>
-- <Team composition>
+- One owner (Maksym) builds, reviews and deploys; no deadline; the Worker deploy is a manual `wrangler deploy`.
+- Size kept at M by the spec's decision override (spec §1), with the photo-publishing half expected to get its own ADRs here.
 
 **Conventions.**
-- <Link to the project's convention file>
-- <Naming, ID strategy, error-handling pattern>
+- [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2: typed routes only; services via providers in `lib/core/providers.dart`; screen data in a `@riverpod` notifier, controllers/focus/loading flags in widget `State`; no new or removed packages without asking.
+- Override — CLAUDE.md rule 3 ("do not change how anything looks") is scoped to structural refactors. This feature redesigns the shared page by intent and adds an "include photos" switch to the app's share sheet (spec US-11); the app's input screen and words table stay pixel-identical. Tracked in §11.
+- Override — CLAUDE.md rule 5 ("no new domain models — ask first"): the app must remember a session's source photos — a photo reference on `WordPair` and a photo list on `Session`; the exact shape is decided in §5. Approved by the owner during design (2026-09-27). Tracked in §11.
+- Verification per [`docs/tasks/README.md`](../../tasks/README.md): `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test`, the `CLAUDE.md` greps, and `npm run typecheck` in `vocab-photo-api/`.
 
 **Regulatory / external.**
-- <e.g. data-retention / deletion behaviour per ADR-NNNN>
-- <e.g. applicable compliance controls, or N/A with a reason>
+- Source photos may show incidental personal data and are public to anyone with the link for 30 days (spec §6.1, D4); they are published only with the learner's "include photos" switch on.
+- R2 has no per-object TTL: the 30-day age-out of photos depends on a bucket lifecycle rule that the README asks for but the repo cannot prove is configured — tracked in §11.
+- The dictionary's non-commercial key and whether its text may appear on a public page remain open from definition-mode — tracked in §11.
+- No new identity fields: edits are anonymous (D6).
 
 ## 3. Context and scope
 
