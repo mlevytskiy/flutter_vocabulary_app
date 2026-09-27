@@ -126,10 +126,12 @@ top-level `photoUrl`; subtitle text would be another `kind`, not a schema change
 
 ### `POST /sessions` — secret-gated
 
-Body: `{ "entries": [ { "word": "…", "translation": "…" }, … ] }` as JSON. Rows where
-both fields are blank are dropped (the app keeps a trailing empty row by design); a list
-that is empty after that is a `400`. Caps: 256 KB body (`413` over it), 500 entries,
-500 characters per field.
+Body: `{ "detail": "translation|definition|both", "entries": [ { "word": "…", "translation": "…", "definition": "…" }, … ] }`
+as JSON. `detail` (the app's word detail mode when publishing) and `definition` are optional —
+older apps send neither, and a document without `detail` reads as `translation`. Rows where
+every field is blank are dropped (the app keeps a trailing empty row by design); a list that
+is empty after that is a `400`. Caps: 256 KB body (`413` over it), 500 entries, 500 characters
+per field — a too-long definition is a `400` whose message names the word.
 
 ```bash
 curl -X POST "https://<your-worker>.workers.dev/sessions" \
@@ -162,6 +164,41 @@ shows stale words once it becomes editable (task-06). A missing or expired id re
 
 The bytes of one attached photo, with its stored content type and a long
 `cache-control` (the id is random and the object never changes).
+
+## AnkiDroid file format
+
+The single spec for both writers: the app's export (`lib/features/words_table/anki_export.dart`)
+and the page's download (`GET /s/<id>/words.txt`, `src/session/anki.ts`). Change one, change
+the other, and this section.
+
+```
+#separator:tab
+#html:true
+#tags column:4
+<word>\t<translation>\t<definition>\t<tags>
+```
+
+- **Fixed columns in every mode** (definition-mode ADR-0005): 1 word, 2 translation,
+  3 definition, 4 tags (always empty). The column the word detail mode hides is written
+  **empty** — translation mode leaves 3 empty, definition mode leaves 2 empty, both fills
+  2 and 3. A column never changes meaning between exports. The page's file follows the
+  session's `detail`; the app's export follows the current mode.
+- Each field: runs of tabs/newlines collapse to one space, the result is trimmed, then
+  `&`, `<`, `>` become `&amp;`, `&lt;`, `&gt;` (`#html:true`).
+- A record whose word, translation and definition are all blank is never written.
+
+Example, `both` mode:
+
+```
+#separator:tab
+#html:true
+#tags column:4
+claim	заява	to ask for as a right	
+```
+
+**One-time AnkiDroid setup:** create a note type with three fields — *Word*, *Translation*,
+*Definition* — and map the columns to them on import (column 4 → Tags). Files exported
+before definition-mode (`#tags column:3`) still import into the old two-field note type.
 
 ## Setup
 

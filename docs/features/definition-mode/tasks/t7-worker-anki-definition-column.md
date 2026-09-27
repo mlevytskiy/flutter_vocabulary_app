@@ -7,7 +7,7 @@ acs: ["AC-17", "AC-20"]
 files_hint: ["vocab-photo-api/src/session/anki.ts", "vocab-photo-api/README.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Write the fixed definition column in the Worker AnkiDroid file
@@ -30,3 +30,9 @@ Header `#tags column:4`; records `word \t translation \t definition \t tags`, th
 ## Notes
 
 Must match T15 (app writer) exactly.
+
+## Verification (2026-09-27, `wrangler dev`)
+
+- RED: a `detail: definition` session downloaded `#tags column:3` / `gated\tзакритий\t` (old header, translation shown, no definition).
+- After: definition → `gated\t\thaving a &lt;script&gt;…gate\t`; both → `claim\tзаява\tto ask for as a right\t`; no `detail` → `curse\tпрокляття\t\t`; header `#tags column:4` in all three.
+- README "AnkiDroid file format" section written (it was referenced by both writers but did not exist); its `both` example matches the downloaded line byte for byte. `tsc --noEmit` exit 0.

@@ -1,4 +1,4 @@
-import type { SessionDocument, SessionEntry } from "./types";
+import { detailOf, type SessionDetail, type SessionDocument, type SessionEntry } from "./types";
 
 /**
  * The AnkiDroid import file. The SAME format lives in the app
@@ -22,13 +22,23 @@ export function ankiField(value: string): string {
     .replace(/>/g, "&gt;");
 }
 
-export function renderAnkiFile(entries: SessionEntry[]): string {
-  const lines = ["#separator:tab", "#html:true", "#tags column:3"];
+/**
+ * Fixed columns in every mode (ADR-0005): word, translation, definition, tags.
+ * The column the word detail mode hides is written empty, so a column never
+ * changes meaning between exports.
+ */
+export function renderAnkiFile(entries: SessionEntry[], detail: SessionDetail = "translation"): string {
+  const lines = ["#separator:tab", "#html:true", "#tags column:4"];
+  const showTranslation = detail !== "definition";
+  const showDefinition = detail !== "translation";
   for (const entry of entries) {
-    // A record with both fields blank is never written (the app keeps a
+    const definition = entry.definition ?? "";
+    // A record with every field blank is never written (the app keeps a
     // trailing empty row by design; it must not become an empty card).
-    if (entry.word.trim() === "" && entry.translation.trim() === "") continue;
-    lines.push(`${ankiField(entry.word)}\t${ankiField(entry.translation)}\t`);
+    if (entry.word.trim() === "" && entry.translation.trim() === "" && definition.trim() === "") continue;
+    const translationCell = showTranslation ? ankiField(entry.translation) : "";
+    const definitionCell = showDefinition ? ankiField(definition) : "";
+    lines.push(`${ankiField(entry.word)}\t${translationCell}\t${definitionCell}\t`);
   }
   return lines.join("\n") + "\n";
 }
@@ -42,5 +52,5 @@ export function ankiFileName(now: Date): string {
 }
 
 export function renderAnkiFileFor(doc: SessionDocument): string {
-  return renderAnkiFile(doc.entries);
+  return renderAnkiFile(doc.entries, detailOf(doc));
 }
