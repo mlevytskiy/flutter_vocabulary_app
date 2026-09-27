@@ -2,6 +2,8 @@ export interface Env {
   ANTHROPIC_API_KEY: string;
   APP_SHARED_SECRET: string;
   RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
+  /** Page writes per IP: save cell, add row, delete row, define (good-looking-web, sad §8). */
+  PAGE_WRITE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
   /** Published sessions as JSON documents, one key per session, 30-day TTL (task-05, D4). */
   SESSIONS: KVNamespace;
   /**

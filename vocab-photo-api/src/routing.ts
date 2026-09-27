@@ -20,6 +20,12 @@ export interface RouteDefinition {
   method: "GET" | "POST";
   pattern: RegExp;
   public: boolean;
+  /**
+   * A public route that writes (the shared page's edits and autofill): the
+   * `fetch` handler applies the per-IP page write limit to it. Reads and
+   * polling never set it.
+   */
+  pageWrite?: boolean;
   handler: (ctx: RouteContext) => Promise<Response>;
 }
 

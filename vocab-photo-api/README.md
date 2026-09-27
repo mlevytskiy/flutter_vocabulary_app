@@ -16,12 +16,16 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
 | `GET /s/<id>` | **public** | the page a person reads |
 | `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
-| `POST /s/<id>/cells` | **public** | save one cell with a revision check |
+| `POST /s/<id>/cells` | **public** + page write limit | save one cell with a revision check |
+| `POST /s/<id>/rows` | **public** + page write limit | add a row when its first cell gets text |
+| `POST /s/<id>/rows/delete` | **public** + page write limit | delete a row nobody changed meanwhile |
 
 Every route in `src/index.ts` declares `public: true` or `false` for itself
 (`src/routing.ts`). Anything not marked public is behind the `x-app-secret` check and
 the per-IP rate limiter; a route added without thinking about it is therefore
-secret-gated, and making one public is a visible, per-route decision.
+secret-gated, and making one public is a visible, per-route decision. A public route that
+writes also declares `pageWrite: true`, which puts it behind the page write limit
+(see Rate limiting).
 
 ## Endpoint: `/analyze`
 
@@ -239,6 +243,29 @@ output), and a save never changes the row's photo link.
   (UTF-8 bytes of every live cell). An edit that shortens a cell always lands.
 - `404 { "code": "unknown_row" }` — no such row id in this session; `400 bad_request` — malformed.
 
+### `POST /s/<id>/rows` — public
+
+Body: `{ "rowId", "field", "value" }`. The page makes the row id (a UUID) when the plus button
+is pressed, and sends this only once the row's first cell gets text (`value` must not be
+empty), so a row nobody typed in never exists. The row goes at the end with every cell at the
+new revision; further cells are saved with `/cells`, using that revision as `baseRev`.
+
+- `200 { "rowId", "rev" }` — added. Retrying an add that already landed answers the same.
+- `409 { "code": "conflict", "rowId", "word", "translation", "definition", "revs" }` — the id
+  is already used by a row with other content (`deleted: true` if that row is deleted).
+- `422 { "code": "rows_full", "limit": 500 }` — the list already has 500 rows (deleted rows
+  don't count); `422 list_full` / `field_too_long` as for `/cells`.
+
+### `POST /s/<id>/rows/delete` — public
+
+Body: `{ "rowId", "revs": { "word", "translation", "definition" } }` — the three cell revisions
+as the page saw them when the partner pressed delete. Sent once the 5-second Undo has run out.
+
+- `200 { "rowId", "rev" }` — deleted at `rev` (also for a row that is already deleted).
+- `409 { "code": "conflict", "rowId", "word", "translation", "definition", "revs" }` — someone
+  changed the row meanwhile, so it stays; the body is the row as saved now.
+- `404 { "code": "unknown_row" }`; `400 bad_request`.
+
 ## AnkiDroid file format
 
 The single spec for both writers: the app's export (`lib/features/words_table/anki_export.dart`)
@@ -408,6 +435,15 @@ Rate Limiting binding, as a backstop against runaway Anthropic API costs. Adjust
 It applies to the **secret-gated** routes only (`/analyze`, `POST /sessions`,
 `POST /sessions/<id>/sources/<sourceId>`). The public page and its photo are plain D1/R2 reads and
 are not rate-limited, so a partner refreshing the page never hits `429`.
+
+The page's writes (`/s/<id>/cells`, `/s/<id>/rows`, `/s/<id>/rows/delete`, and the definition
+autofill) share a second binding, `PAGE_WRITE_LIMITER`: 300 writes / 60 seconds per IP. That is
+enough for two partners behind one router while one of them fills a column at 3 saves a
+second (AC-35), and stops a script hammering the database. Over it the answer is
+`429 { "code": "rate_limited" }`. Page reads and polling are not limited.
+
+`npm test -- test/rows.test.mjs` runs one test file; `npm run test:long` also runs the
+15-minute two-partner session.
 
 ## Notes
 

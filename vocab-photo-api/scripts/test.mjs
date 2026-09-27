@@ -104,7 +104,9 @@ try {
   await waitUntilUp(baseUrl, worker, 60_000);
   // One file at a time: the files share one `wrangler dev` and one local D1, and
   // concurrent `wrangler d1 execute` subprocesses against it fail at random.
-  code = await run(process.execPath, ["--test", "--test-concurrency=1", "test/**/*.test.mjs"], {
+  // `npm test -- test/rows.test.mjs` runs only the files named.
+  const files = process.argv.slice(2);
+  code = await run(process.execPath, ["--test", "--test-concurrency=1", ...(files.length ? files : ["test/**/*.test.mjs"])], {
     cwd: root,
     env: {
       ...process.env,

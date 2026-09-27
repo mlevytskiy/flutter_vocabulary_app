@@ -5,6 +5,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { isLiveSession } from "./store";
 import {
   ID_PATTERN,
+  MAX_ENTRIES,
   MAX_FIELD_CHARS,
   MAX_SESSION_JSON_BYTES,
   isCellField,
@@ -206,11 +207,159 @@ async function handleSaveCell({ request, env, params }: RouteContext): Promise<R
   return refusedCellWrite(result, field);
 }
 
+interface RowRecord {
+  word: string;
+  word_rev: number;
+  translation: string;
+  translation_rev: number;
+  definition: string;
+  definition_rev: number;
+  deleted_at_rev: number | null;
+}
+
+function readRow(env: Env, sessionId: string, rowId: string): Promise<RowRecord | null> {
+  return env.DB.prepare(
+    `SELECT word, word_rev, translation, translation_rev, definition, definition_rev, deleted_at_rev
+     FROM rows WHERE session_id = ?1 AND id = ?2`
+  )
+    .bind(sessionId, rowId)
+    .first<RowRecord>();
+}
+
+/** A row as the page needs it to restore it or re-base on it after a refusal. */
+function rowState(rowId: string, row: RowRecord) {
+  return {
+    rowId,
+    word: row.word,
+    translation: row.translation,
+    definition: row.definition,
+    revs: { word: row.word_rev, translation: row.translation_rev, definition: row.definition_rev },
+  };
+}
+
+/**
+ * POST /s/:id/rows -- public. `{ rowId, field, value }`: the page's plus button
+ * made the row with its own id, and it is stored when its first cell gets text
+ * (AC-13), at the end of the table, every cell at the new revision.
+ * -> `200 { rowId, rev }`, or `422 rows_full` at 500 rows (AC-14), `422
+ * field_too_long` / `list_full`, `409 conflict` when the id is taken.
+ * Repeating an add that already landed answers the same `200`.
+ */
+async function handleAddRow({ request, env, params }: RouteContext): Promise<Response> {
+  const read = await readPageBody(request);
+  if (!read.ok) return read.response;
+  const { rowId, field, value } = read.body;
+  if (!isId(rowId)) return badRequest("`rowId` must be a row id.");
+  if (!isCellField(field)) return badRequest("`field` must be one of: word, translation, definition.");
+  if (typeof value !== "string" || value === "") {
+    return badRequest("`value` must be the text of the row's first cell.");
+  }
+  const tooLong = fieldTooLong(field, value);
+  if (tooLong) return tooLong;
+  if (!(await isLiveSession(env, params.id))) return gone();
+
+  // Same conditions in both statements, one transaction: the revision goes up
+  // only when the row goes in.
+  const target = `NOT EXISTS (SELECT 1 FROM rows AS r WHERE r.session_id = ?1 AND r.id = ?2)
+    AND (SELECT count(*) FROM rows AS r WHERE r.session_id = ?1 AND r.deleted_at_rev IS NULL) < ${MAX_ENTRIES}
+    AND ${LIVE_TEXT_BYTES} + length(CAST(?3 AS BLOB)) <= ${MAX_SESSION_JSON_BYTES}`;
+  const [, inserted, session] = await env.DB.batch([
+    env.DB.prepare(`UPDATE sessions SET rev = rev + 1 WHERE id = ?1 AND ${target}`).bind(params.id, rowId, value),
+    env.DB.prepare(
+      `INSERT INTO rows (session_id, id, position, ${field}, word_rev, translation_rev, definition_rev)
+       SELECT ?1, ?2, (SELECT coalesce(max(position), -1) + 1 FROM rows WHERE session_id = ?1), ?3, s.rev, s.rev, s.rev
+       FROM sessions AS s WHERE s.id = ?1 AND ${target}`
+    ).bind(params.id, rowId, value),
+    env.DB.prepare(`SELECT rev FROM sessions WHERE id = ?1`).bind(params.id),
+  ]);
+  if (inserted.meta.changes === 1) {
+    const rev = (session.results as { rev: number }[])[0].rev;
+    logEvent("row added", { session: params.id, row: rowId, rev });
+    return jsonResponse({ rowId, rev });
+  }
+
+  const existing = await readRow(env, params.id, rowId);
+  if (existing) {
+    // A retry of an add that landed: the same first cell, untouched since.
+    const revs = [existing.word_rev, existing.translation_rev, existing.definition_rev];
+    const untouched = revs.every((rev) => rev === revs[0]) && existing[field] === value;
+    if (existing.deleted_at_rev === null && untouched) return jsonResponse({ rowId, rev: existing.word_rev });
+    return pageError(409, "conflict", "This row id is already taken.", {
+      ...(existing.deleted_at_rev === null ? rowState(rowId, existing) : { rowId, deleted: true }),
+    });
+  }
+  const live = await env.DB.prepare(`SELECT count(*) AS n FROM rows WHERE session_id = ?1 AND deleted_at_rev IS NULL`)
+    .bind(params.id)
+    .first<{ n: number }>();
+  if ((live?.n ?? 0) >= MAX_ENTRIES) {
+    logEvent("row rejected", { session: params.id, code: "rows_full" });
+    return pageError(422, "rows_full", `The list is full: it holds at most ${MAX_ENTRIES} rows.`, {
+      limit: MAX_ENTRIES,
+    });
+  }
+  logEvent("row rejected", { session: params.id, code: "list_full" });
+  return listFull();
+}
+
+/**
+ * POST /s/:id/rows/delete -- public. `{ rowId, revs: { word, translation,
+ * definition } }`, sent when the page's 5-second Undo ends (AC-15). Applies
+ * only while all three cells are at those revisions; otherwise `409 conflict`
+ * with the row as it is now, and the row stays (AC-15b). -> `200 { rowId, rev }`
+ * (`rev` is the delete's revision); a row already deleted answers `200` too.
+ */
+async function handleDeleteRow({ request, env, params }: RouteContext): Promise<Response> {
+  const read = await readPageBody(request);
+  if (!read.ok) return read.response;
+  const { rowId, revs } = read.body;
+  if (!isId(rowId)) return badRequest("`rowId` must be a row id.");
+  const r = (typeof revs === "object" && revs !== null ? revs : {}) as Record<string, unknown>;
+  if (!isRev(r.word) || !isRev(r.translation) || !isRev(r.definition)) {
+    return badRequest("`revs` must hold the word, translation and definition revisions.");
+  }
+  if (!(await isLiveSession(env, params.id))) return gone();
+
+  const target = `EXISTS (SELECT 1 FROM rows AS r WHERE r.session_id = ?1 AND r.id = ?2 AND r.deleted_at_rev IS NULL
+    AND r.word_rev = ?3 AND r.translation_rev = ?4 AND r.definition_rev = ?5)`;
+  const bind = [params.id, rowId, r.word, r.translation, r.definition];
+  const [, deleted] = await env.DB.batch([
+    env.DB.prepare(`UPDATE sessions SET rev = rev + 1 WHERE id = ?1 AND ${target}`).bind(...bind),
+    env.DB.prepare(
+      `UPDATE rows SET deleted_at_rev = (SELECT rev FROM sessions WHERE id = ?1)
+       WHERE session_id = ?1 AND id = ?2 AND ${target}`
+    ).bind(...bind),
+  ]);
+
+  const row = await readRow(env, params.id, rowId);
+  if (!row) return pageError(404, "unknown_row", "There is no such row in this list.");
+  if (row.deleted_at_rev !== null) {
+    if (deleted.meta.changes === 1) logEvent("row deleted", { session: params.id, row: rowId, rev: row.deleted_at_rev });
+    return jsonResponse({ rowId, rev: row.deleted_at_rev });
+  }
+  logEvent("row delete refused", { session: params.id, row: rowId });
+  return pageError(409, "conflict", "Someone changed this row meanwhile, so it was not deleted.", rowState(rowId, row));
+}
+
 export const editRoutes: RouteDefinition[] = [
   {
     method: "POST",
     pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})/cells$`),
     public: true,
+    pageWrite: true,
     handler: handleSaveCell,
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})/rows$`),
+    public: true,
+    pageWrite: true,
+    handler: handleAddRow,
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})/rows/delete$`),
+    public: true,
+    pageWrite: true,
+    handler: handleDeleteRow,
   },
 ];

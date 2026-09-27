@@ -10,12 +10,25 @@
 	// positive integer string if it collides with another Worker on your account.
 	// Applies to the secret-gated routes only (/analyze, POST /sessions...); the
 	// public page and its sources are not rate-limited — see src/index.ts.
+	// PAGE_WRITE_LIMITER (good-looking-web, sad §8): 300 page writes / 60s per IP
+	// on the routes marked `pageWrite` (save cell, add row, delete row, define).
+	// A column autofill paces itself at 3 saves/s (180 a minute), leaving ~120 a
+	// minute for another partner on the same network (AC-35). Polling and page
+	// reads are not limited.
 	"ratelimits": [
 		{
 			"name": "RATE_LIMITER",
 			"namespace_id": "1001",
 			"simple": {
 				"limit": 20,
+				"period": 60
+			}
+		},
+		{
+			"name": "PAGE_WRITE_LIMITER",
+			"namespace_id": "1002",
+			"simple": {
+				"limit": 300,
 				"period": 60
 			}
 		}

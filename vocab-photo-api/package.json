@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "tail": "wrangler tail",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/test.mjs"
+    "test": "node scripts/test.mjs",
+    "test:long": "VOCAB_API_LONG_TESTS=1 node scripts/test.mjs test/rows.test.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
