@@ -1,7 +1,7 @@
 ---
 status: Draft
 owner: "Maksym (learner, app owner)"
-reviewers: ["<Tech Lead>", "<Security Lead>"]
+reviewers: ["Maksym (Tech Lead)"]
 updated_at: "2026-09-27"
 feature_size: "M"
 target_surfaces: []  # filled in §4 — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
@@ -15,29 +15,21 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 1. Introduction and goals
 
-<!-- 🎯 Why: durable memory of «what + the three dominant qualities + who cares». A year from
-     now nobody recalls which three qualities were critical for this system.
-     📋 Write: 1 ¶ intent + 3 lines of top-3 quality goals + a stakeholders table.
-     ¶4 is the override slot — critic `Override` resolutions emit «Decision override: <headline>
-     — rationale: <reason>» bullets here so downstream skills see the deliberate choice. -->
-
-**Intent.** <One paragraph from spec §2 Goals — what we're building and for whom.>
+**Intent.** Let the learner see a word's English definition beside or instead of its translation — filled from the photo analysis for photo words, or from the dictionary on demand for typed words — and carry it into the words table, the AnkiDroid file and the partner's shared page, all following one learner-chosen word detail mode ([spec §1–§2](./spec.md)).
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
-1. <e.g. "Availability under partial failure of a downstream module">
-2. <e.g. "Read performance for the dashboard under data-scale growth">
-3. <e.g. "Recoverability with <30 min RTO">
+1. **Data integrity and compatibility** — switching the word detail mode never loses a translation or definition, and sessions and shared links created before this feature keep working (spec AC-11, AC-13, AC-17).
+2. **Graceful degradation and quota safety** — dictionary lookups happen only on a learner tap, and a dictionary outage or exhausted allowance never breaks the screen or the translation features (spec AC-07, §6 "Dictionary lookups").
+3. **Responsiveness** — lightning fill ≤ 1,000 ms p95 and senses list ≤ 1,500 ms p95 (spec §6).
 
 **Stakeholders.**
 
 | Role | Interest | Sign-off owner? |
 |---|---|---|
-| <author role from glossary> | <feature usage> | No |
-| <consumer role from glossary> | <read usage> | No |
-| Tech Lead | SAD approval | Yes |
-
-<!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
+| learner | chooses the mode, fills and studies definitions, exports and publishes | No |
+| partner | reads definitions on the shared page and downloads the AnkiDroid file from it | No |
+| Tech Lead (Maksym, app owner) | SAD approval, D10 key decision, licence check | Yes |
 
 ## 2. Constraints
 
