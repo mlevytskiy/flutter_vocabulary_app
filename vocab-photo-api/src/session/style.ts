@@ -66,6 +66,23 @@ export const STYLE = `
   .cell-note q { display: block; margin: 2px 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; color: #1b1b1b; }
   .cell-note button { font: inherit; margin: 0 6px 0 0; padding: 4px 8px; border-radius: 4px;
                       border: 1px solid #999; background: #fff; color: #1b1b1b; cursor: pointer; }
+  .del, .add-row { display: none; }
+  .js .del { display: inline-block; font: inherit; font-size: 1rem; line-height: 1; margin: 0 0 0 4px;
+             min-width: 24px; min-height: 24px; padding: 2px 5px; border: 0; border-radius: 4px; background: none;
+             color: #999; cursor: pointer; vertical-align: middle; }
+  .del:hover, .del:focus-visible { color: #b3261e; background: #fdecea; }
+  .js .add-row { display: block; margin: 8px 0 0; }
+  .add { font: inherit; font-weight: 600; padding: 8px 14px; border-radius: 6px; cursor: pointer;
+         border: 1px dashed #2962ff; background: none; color: #2962ff; }
+  tr.pending-delete { display: none; }
+  tr.changed td { animation: changed 3s ease-out; }
+  @keyframes changed { from { background: #fff3c4; } to { background: transparent; } }
+  .toasts { position: fixed; left: 12px; bottom: 16px; z-index: 3; display: flex; flex-direction: column;
+            gap: 8px; max-width: min(28rem, calc(100vw - 104px)); }
+  .toast { display: flex; align-items: center; gap: 12px; margin: 0; padding: 10px 12px; border-radius: 6px;
+           background: #1b1b1b; color: #fff; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+  .toast button { font: inherit; font-weight: 600; padding: 4px 8px; border: 0; border-radius: 4px;
+                  background: none; color: #8ab4f8; cursor: pointer; }
   .banner { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; background: #fdecea; color: #b3261e; }
 
   .photos figure { margin: 0; }
@@ -113,6 +130,11 @@ export const STYLE = `
     .cell-note q { color: #ececec; }
     .cell-note button { background: #262626; color: #ececec; border-color: #555; }
     .banner { background: #3a1d1b; color: #f28b82; }
+    .del:hover, .del:focus-visible { background: #3a1d1b; }
+    .add { color: #8ab4f8; border-color: #8ab4f8; }
+    .toast { background: #ececec; color: #1b1b1b; }
+    .toast button { color: #1a56d6; }
+    @keyframes changed { from { background: #4a3f10; } to { background: transparent; } }
     .gone { color: #ccc; }
   }
 `;

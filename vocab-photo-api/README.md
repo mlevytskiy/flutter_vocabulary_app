@@ -219,7 +219,12 @@ bundles as text (`rules` in `wrangler.jsonc`) and the Worker serves at
 `/assets/page-<hash>.js` with a one-year immutable cache; only the current hash answers.
 The script makes the cells editable in place: leaving a cell saves it through
 `POST /s/<id>/cells`; the cell then shows a brief "saved", stays marked "not saved" with the
-reason, or shows both values when someone else saved it meanwhile (see below).
+reason, or shows both values when someone else saved it meanwhile (see below). The plus
+button adds an empty row at the end, stored through `POST /s/<id>/rows` once one of its cells
+gets text; at 500 rows it says the list is full. The × in a row's number cell hides the row
+with a 5-second Undo; only then is `POST /s/<id>/rows/delete` sent, and if someone changed the
+row meanwhile it comes back with their text and a notice. Leaving the page within those
+5 seconds deletes nothing.
 A missing or expired id returns a **`404` HTML page** saying the list is gone — a human is
 reading this URL, not a client.
 

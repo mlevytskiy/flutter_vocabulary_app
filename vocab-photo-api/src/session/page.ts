@@ -1,5 +1,5 @@
 import { STYLE } from "./style";
-import type { StoredRow, StoredSession, StoredSource } from "./types";
+import { MAX_ENTRIES, type StoredRow, type StoredSession, type StoredSource } from "./types";
 
 /**
  * Server-rendered HTML for the public page (ADR-0002). The table is complete
@@ -81,7 +81,26 @@ function renderCell(row: StoredRow, field: Field): string {
 function renderRow(row: StoredRow): string {
   const source = row.sourceId !== null ? ` data-source="${escapeHtml(row.sourceId)}"` : "";
   const cls = needsWord(row) ? ` class="needs-word"` : "";
-  return `<tr data-row="${escapeHtml(row.id)}"${source}${cls}><td class="n"></td>${renderCell(row, "word")}${renderCell(row, "translation")}${renderCell(row, "definition")}</tr>`;
+  // The number itself is a CSS counter, so added and hidden rows renumber by themselves.
+  const number = `<td class="n"><button type="button" class="del" aria-label="Delete this row">×</button></td>`;
+  return `<tr data-row="${escapeHtml(row.id)}"${source}${cls}>${number}${renderCell(row, "word")}${renderCell(row, "translation")}${renderCell(row, "definition")}</tr>`;
+}
+
+/** The row the plus button adds (AC-13): the script clones it and gives it an id. */
+const BLANK_ROW: StoredRow = {
+  id: "",
+  position: 0,
+  sourceId: null,
+  word: "",
+  wordRev: 0,
+  translation: "",
+  translationRev: 0,
+  definition: "",
+  definitionRev: 0,
+};
+
+function renderBlankRow(): string {
+  return `<template id="blank-row">${renderRow(BLANK_ROW).replace(` class="needs-word"`, "")}</template>`;
 }
 
 function renderHeader(field: Field, collapsed: boolean): string {
@@ -136,7 +155,7 @@ export function renderSessionPage(session: StoredSession, scriptPath: string): s
   const head = (["word", "translation", "definition"] as Field[])
     .map((field) => renderHeader(field, collapsed.includes(field)))
     .join("");
-  const body = `<main data-session="${escapeHtml(session.id)}" data-rev="${session.rev}"${classes.length > 0 ? ` class="${classes.join(" ")}"` : ""}>
+  const body = `<main data-session="${escapeHtml(session.id)}" data-rev="${session.rev}" data-max-rows="${MAX_ENTRIES}"${classes.length > 0 ? ` class="${classes.join(" ")}"` : ""}>
 <h1>Vocabulary</h1>
 <p class="meta">${count} ${count === 1 ? "word" : "words"} · published ${escapeHtml(formatDate(session.createdAt))} · available until ${escapeHtml(formatDate(session.expiresAt))}</p>
 <p class="actions"><a class="btn" href="/s/${encodeURIComponent(session.id)}/words.txt" download>Download for AnkiDroid</a></p>
@@ -149,11 +168,14 @@ export function renderSessionPage(session: StoredSession, scriptPath: string): s
 ${session.rows.map(renderRow).join("\n")}
 </tbody>
 </table>
+${renderBlankRow()}
 </div>
+<p class="add-row"><button type="button" class="add">+ Add a word</button></p>
 <p class="credit">Definitions: Merriam-Webster</p>
 </div>
 ${photos}
 </div>
+<div class="toasts" aria-live="polite"></div>
 </main>`;
   return shell(`Vocabulary — ${count} ${count === 1 ? "word" : "words"}`, body, scriptPath);
 }

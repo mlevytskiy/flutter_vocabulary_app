@@ -36,11 +36,16 @@
  * @property {string} id
  * @property {HTMLTableRowElement} tr
  * @property {Record<Field, Cell>} cells
+ * @property {"new" | "adding" | "live"} phase "new": added by the plus button, not stored
+ *   until a cell gets text; "adding": that first save is in flight; "live": the Worker has it
+ * @property {boolean} pendingDelete hidden, with its Undo running (AC-15)
  */
 
 /**
- * The Worker's answer to a page write: `{ error, code, … }` on refusal (sad §8).
- * @typedef {{ error?: string, code?: string, rev?: number, value?: string, deleted?: boolean }} Answer
+ * The Worker's answer to a page write: `{ error, code, … }` on refusal (sad §8);
+ * a refused delete carries the row as it is now (`word`… and `revs`).
+ * @typedef {{ error?: string, code?: string, rev?: number, value?: string, deleted?: boolean,
+ *   word?: string, translation?: string, definition?: string, revs?: Record<Field, number> }} Answer
  */
 
 /** @type {readonly Field[]} */
@@ -48,6 +53,8 @@ const FIELDS = ["word", "translation", "definition"];
 /** @type {Record<Field, string>} */
 const LABELS = { word: "Word", translation: "Translation", definition: "Definition" };
 const SAVED_FOR_MS = 2000;
+const UNDO_MS = 5000;
+const NOTICE_MS = 6000;
 
 document.documentElement.classList.add("js");
 
@@ -61,6 +68,8 @@ const state = {
   rows: new Map(),
   /** Set once the Worker says the list is gone: nothing more can be saved. */
   gone: false,
+  /** The most rows a session may hold (AC-14), rendered by the Worker. */
+  maxRows: Number(main?.dataset.maxRows ?? 500),
 };
 
 /** `plaintext-only` keeps pasted formatting out; older browsers throw on it. */
@@ -228,13 +237,17 @@ function wordChanged(cell) {
  */
 async function save(cell) {
   if (state.gone || cell.status === "conflict") return;
-  if (cell.status === "saving") {
+  if (cell.status === "saving" || cell.row.phase === "adding") {
     cell.again = true;
     return;
   }
   const value = read(cell);
   if (value === cell.saved) {
     if (cell.status === "unsaved") show(cell, "idle");
+    return;
+  }
+  if (cell.row.phase === "new") {
+    await saveNewRow(cell, value);
     return;
   }
   show(cell, "saving");
@@ -252,18 +265,62 @@ async function save(cell) {
       cell.theirs = { value: body.value, rev: body.rev };
       show(cell, "conflict");
     }
-  } else if (status === 404 && body.code === "gone") {
+  } else {
+    refused(cell, status, body);
+  }
+  if (cell.again) {
+    cell.again = false;
+    void save(cell);
+  }
+}
+
+/**
+ * A save that did not land: the text stays, marked not saved, with the reason
+ * -- field_too_long / list_full / rows_full (AC-10, AC-14, AC-38), a deleted
+ * row, the write limit, no connection.
+ * @param {Cell} cell
+ * @param {number} status
+ * @param {Answer} body
+ */
+function refused(cell, status, body) {
+  if (status === 404 && body.code === "gone") {
     listGone();
     show(cell, "unsaved", body.error ?? "");
   } else if (status === 0) {
     show(cell, "unsaved", "There is no connection. It is tried again when you leave the cell.");
   } else {
-    // field_too_long / list_full (AC-10, AC-38), a deleted row, the write limit.
     show(cell, "unsaved", body.error ?? "Something went wrong. Try again in a moment.");
   }
-  if (cell.again) {
-    cell.again = false;
-    void save(cell);
+}
+
+/**
+ * AC-13: a row the plus button added is stored with its first text, at the end
+ * of the table, every cell at the new revision. Its other cells wait for that
+ * and then save on top of it.
+ * @param {Cell} cell
+ * @param {string} value
+ */
+async function saveNewRow(cell, value) {
+  const row = cell.row;
+  row.phase = "adding";
+  show(cell, "saving");
+  const { status, body } = await api("/rows", { rowId: row.id, field: cell.field, value });
+  if (status === 200 && typeof body.rev === "number") {
+    row.phase = "live";
+    for (const field of FIELDS) row.cells[field].rev = body.rev;
+    accept(cell, { value, rev: body.rev });
+    wordChanged(row.cells.word);
+    show(cell, "saved");
+  } else {
+    row.phase = "new";
+    refused(cell, status, body);
+  }
+  for (const field of FIELDS) {
+    const other = row.cells[field];
+    if (other.again) {
+      other.again = false;
+      void save(other);
+    }
   }
 }
 
@@ -281,6 +338,148 @@ function listGone() {
   }
 }
 
+/**
+ * A short message at the bottom of the page, read out by screen readers
+ * (`.toasts` is aria-live). Returns the toast so an action can be added.
+ * @param {string} text
+ * @param {number} ms how long it stays
+ */
+function toast(text, ms) {
+  const box = main?.querySelector(".toasts");
+  const el = document.createElement("div");
+  el.className = "toast";
+  const p = document.createElement("span");
+  p.textContent = text;
+  el.append(p);
+  box?.append(el);
+  const timer = window.setTimeout(() => el.remove(), ms);
+  return { el, close: () => { window.clearTimeout(timer); el.remove(); } };
+}
+
+/** A random row id the Worker accepts (`[A-Za-z0-9-]{1,64}`). */
+function newId() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * AC-13: the plus button adds an empty row at the end and puts the cursor in
+ * its word. Nothing is stored until a cell of it gets text; a second tap while
+ * an empty added row is there goes back to that one.
+ * @param {HTMLTableSectionElement} tbody
+ * @param {HTMLTemplateElement} template
+ */
+function addBlankRow(tbody, template) {
+  if (state.gone) return;
+  for (const row of state.rows.values()) {
+    if (row.phase === "new" && FIELDS.every((field) => read(row.cells[field]) === "")) {
+      focusAtEnd(row.cells.word.el);
+      return;
+    }
+  }
+  let stored = 0;
+  for (const row of state.rows.values()) if (row.phase !== "new") stored++;
+  if (stored >= state.maxRows) {
+    toast(`The list is full: it holds at most ${state.maxRows} rows.`, NOTICE_MS);
+    return;
+  }
+  const tr = /** @type {HTMLTableRowElement} */ (
+    /** @type {DocumentFragment} */ (template.content.cloneNode(true)).firstElementChild
+  );
+  tr.dataset.row = newId();
+  tbody.append(tr);
+  const row = adoptRow(tr, "new");
+  focusAtEnd(row.cells.word.el);
+}
+
+/** @param {Row} row */
+function dropRow(row) {
+  row.tr.remove();
+  state.rows.delete(row.id);
+}
+
+/**
+ * AC-15: the row disappears at once and an Undo stays for five seconds. Only
+ * then is the delete sent, with the revision of every cell as this page knows
+ * them; leaving the page before that deletes nothing.
+ * @param {Row} row
+ */
+function deleteRow(row) {
+  if (state.gone || row.pendingDelete) return;
+  row.pendingDelete = true;
+  row.tr.classList.add("pending-delete");
+  const shown = toast("Row deleted.", UNDO_MS);
+  const undo = document.createElement("button");
+  undo.type = "button";
+  undo.textContent = "Undo";
+  shown.el.append(undo);
+  const timer = window.setTimeout(() => void commitDelete(row), UNDO_MS);
+  undo.addEventListener("click", () => {
+    window.clearTimeout(timer);
+    shown.close();
+    row.pendingDelete = false;
+    row.tr.classList.remove("pending-delete");
+    /** @type {HTMLElement | null} */ (row.tr.querySelector(".del"))?.focus();
+  });
+}
+
+/** @param {Row} row */
+function rowBusy(row) {
+  return row.phase === "adding" || FIELDS.some((field) => row.cells[field].status === "saving");
+}
+
+/**
+ * Sends a delete whose Undo ran out. A save of this row still in flight is
+ * waited for, so its revision goes along. The Worker refuses when someone else
+ * changed the row meanwhile: it comes back with their text (ADR-0004).
+ * @param {Row} row
+ */
+async function commitDelete(row) {
+  while (rowBusy(row)) await new Promise((resolve) => window.setTimeout(resolve, 50));
+  if (!row.pendingDelete) return;
+  if (row.phase === "new") {
+    dropRow(row);
+    return;
+  }
+  /** @type {Record<Field, number>} */
+  const revs = { word: row.cells.word.rev, translation: row.cells.translation.rev, definition: row.cells.definition.rev };
+  const { status, body } = await api("/rows/delete", { rowId: row.id, revs });
+  if (status === 200 || (status === 404 && body.code === "unknown_row")) {
+    if (typeof body.rev === "number") seen(body.rev);
+    dropRow(row);
+    return;
+  }
+  row.pendingDelete = false;
+  row.tr.classList.remove("pending-delete");
+  if (status === 409 && body.revs) {
+    for (const field of FIELDS) {
+      const cell = row.cells[field];
+      const value = body[field];
+      const rev = body.revs[field];
+      if (typeof value !== "string" || typeof rev !== "number") continue;
+      if (cell.status === "idle" && read(cell) === cell.saved) {
+        accept(cell, { value, rev });
+        cell.el.textContent = value;
+      } else if (value !== cell.saved) {
+        cell.theirs = { value, rev };
+        show(cell, "conflict");
+      }
+    }
+    wordChanged(row.cells.word);
+    row.tr.classList.remove("changed");
+    void row.tr.offsetWidth; // restart the highlight
+    row.tr.classList.add("changed");
+    toast("Someone changed this row meanwhile, so it was not deleted.", NOTICE_MS);
+  } else if (status === 404 && body.code === "gone") {
+    listGone();
+  } else if (status === 0) {
+    toast("There is no connection, so the row was not deleted.", NOTICE_MS);
+  } else {
+    toast(body.error ?? "Something went wrong, so the row was not deleted.", NOTICE_MS);
+  }
+}
+
 /** @param {HTMLElement} el @param {Field} field */
 function makeEditable(el, field) {
   el.contentEditable = PLAINTEXT_ONLY ? "plaintext-only" : "true";
@@ -290,12 +489,13 @@ function makeEditable(el, field) {
 }
 
 /**
- * Reads a server-rendered row into the state and makes its cells editable.
+ * Reads a rendered row into the state and makes its cells editable.
  * @param {HTMLTableRowElement} tr
+ * @param {Row["phase"]} [phase]
  * @returns {Row}
  */
-function adoptRow(tr) {
-  const row = /** @type {Row} */ ({ id: tr.dataset.row ?? "", tr, cells: {} });
+function adoptRow(tr, phase = "live") {
+  const row = /** @type {Row} */ ({ id: tr.dataset.row ?? "", tr, cells: {}, phase, pendingDelete: false });
   for (const field of FIELDS) {
     const td = /** @type {HTMLTableCellElement} */ (tr.querySelector(`td[data-field="${field}"]`));
     const el = /** @type {HTMLElement} */ (td.querySelector(".v"));
@@ -366,6 +566,13 @@ function wireTable(tbody) {
   });
   // A tap on a cell's padding still lands in its text.
   tbody.addEventListener("click", (event) => {
+    const target = /** @type {Element} */ (event.target);
+    const del = target instanceof Element ? target.closest(".del") : null;
+    if (del) {
+      const row = state.rows.get(/** @type {HTMLElement} */ (del.closest("tr[data-row]"))?.dataset.row ?? "");
+      if (row) deleteRow(row);
+      return;
+    }
     const cell = cellAt(event.target);
     if (cell && event.target === cell.td && !state.gone) focusAtEnd(cell.el);
   });
@@ -385,6 +592,7 @@ function unsavedCells() {
   /** @type {Cell[]} */
   const cells = [];
   for (const row of state.rows.values()) {
+    if (row.pendingDelete) continue;
     for (const field of FIELDS) if (isDirty(row.cells[field])) cells.push(row.cells[field]);
   }
   return cells;
@@ -395,6 +603,9 @@ if (main) {
   if (tbody) {
     for (const tr of tbody.querySelectorAll("tr[data-row]")) adoptRow(/** @type {HTMLTableRowElement} */ (tr));
     wireTable(tbody);
+    const template = /** @type {HTMLTemplateElement | null} */ (main.querySelector("template#blank-row"));
+    const add = main.querySelector(".add-row .add");
+    if (template && add) add.addEventListener("click", () => addBlankRow(tbody, template));
   }
 
   // Switching apps on a phone may be the last thing the partner does: save the
