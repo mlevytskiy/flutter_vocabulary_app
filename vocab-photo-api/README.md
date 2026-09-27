@@ -19,6 +19,7 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /s/<id>/cells` | **public** + page write limit | save one cell with a revision check |
 | `POST /s/<id>/rows` | **public** + page write limit | add a row when its first cell gets text |
 | `POST /s/<id>/rows/delete` | **public** + page write limit | delete a row nobody changed meanwhile |
+| `GET /s/<id>/changes?since=<rev>` | **public** | what changed after a revision (polling) |
 
 Every route in `src/index.ts` declares `public: true` or `false` for itself
 (`src/routing.ts`). Anything not marked public is behind the `x-app-secret` check and
@@ -265,6 +266,31 @@ as the page saw them when the partner pressed delete. Sent once the 5-second Und
 - `409 { "code": "conflict", "rowId", "word", "translation", "definition", "revs" }` — someone
   changed the row meanwhile, so it stays; the body is the row as saved now.
 - `404 { "code": "unknown_row" }`; `400 bad_request`.
+
+### `GET /s/<id>/changes?since=<rev>` — public
+
+The page polls this with the last revision it has seen (ADR-0005); the answer is one
+consistent read and says what changed after it:
+
+```json
+{
+  "rev": 7,
+  "cells":   [{ "rowId", "field", "value", "rev" }],
+  "rows":    [{ "rowId", "position", "sourceId", "word", "translation", "definition",
+               "revs": { "word", "translation", "definition" } }],
+  "deleted": [{ "rowId", "rev" }],
+  "sources": [{ "id", "ord", "mediaType", "rev" }]
+}
+```
+
+`rev` is the next cursor. `rows` are rows added after `since`, sent whole (also once edited
+since; an old row whose three cells all changed may come this way too — apply both kinds by
+row id). `cells` are single changed cells of other rows, `deleted` the tombstones, and
+`sources` the photo slots whose bytes arrived (swap the placeholder for
+`/s/<id>/sources/<id>`). If the list was republished after `since`, or `since` is ahead
+of the list, the answer is `{ "rev", "reload": true }`: load the page again. A missing or
+malformed `since` is `400 bad_request`; an unknown or expired id `404 gone`. Polling is not
+rate-limited.
 
 ## AnkiDroid file format
 

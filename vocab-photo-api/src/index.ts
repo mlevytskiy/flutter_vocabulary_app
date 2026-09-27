@@ -3,6 +3,7 @@ import { CORS_HEADERS, MAX_RAW_BYTES, isAllowedMediaType, jsonResponse, type All
 import { matchRoute, type RouteContext, type RouteDefinition } from "./routing";
 import { sessionRoutes } from "./session/handlers";
 import { editRoutes } from "./session/edit";
+import { changesRoutes } from "./session/changes";
 import { logEvent } from "./log";
 import { defineRoutes } from "./define";
 
@@ -256,6 +257,7 @@ const ROUTES: RouteDefinition[] = [
   ...defineRoutes,
   ...sessionRoutes,
   ...editRoutes,
+  ...changesRoutes,
 ];
 
 export default {
