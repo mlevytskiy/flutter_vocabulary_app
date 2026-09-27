@@ -1,4 +1,4 @@
-import { detailOf, type SessionDetail, type SessionDocument, type SessionEntry } from "./types";
+import type { SessionDocument, SessionEntry } from "./types";
 
 /**
  * The AnkiDroid import file. The SAME format lives in the app
@@ -23,22 +23,19 @@ export function ankiField(value: string): string {
 }
 
 /**
- * Fixed columns in every mode (ADR-0005): word, translation, definition, tags.
- * The column the word detail mode hides is written empty, so a column never
- * changes meaning between exports.
+ * Fixed columns (definition-mode ADR-0005): word, translation, definition,
+ * tags. The page's file carries what the page saved (good-looking-web AC-30):
+ * every stored translation and definition, whatever mode the learner
+ * published with, so a column with no text anywhere -- collapsed on the page --
+ * comes out empty in its place. A card needs a word: a row whose word is
+ * blank, including a row whose cells were all cleared, is left out (AC-31).
  */
-export function renderAnkiFile(entries: SessionEntry[], detail: SessionDetail = "translation"): string {
+export function renderAnkiFile(entries: SessionEntry[]): string {
   const lines = ["#separator:tab", "#html:true", "#tags column:4"];
-  const showTranslation = detail !== "definition";
-  const showDefinition = detail !== "translation";
   for (const entry of entries) {
-    const definition = entry.definition ?? "";
-    // A record with every field blank is never written (the app keeps a
-    // trailing empty row by design; it must not become an empty card).
-    if (entry.word.trim() === "" && entry.translation.trim() === "" && definition.trim() === "") continue;
-    const translationCell = showTranslation ? ankiField(entry.translation) : "";
-    const definitionCell = showDefinition ? ankiField(definition) : "";
-    lines.push(`${ankiField(entry.word)}\t${translationCell}\t${definitionCell}\t`);
+    const word = ankiField(entry.word);
+    if (word === "") continue;
+    lines.push(`${word}\t${ankiField(entry.translation)}\t${ankiField(entry.definition ?? "")}\t`);
   }
   return lines.join("\n") + "\n";
 }
@@ -51,6 +48,7 @@ export function ankiFileName(now: Date): string {
   return `vocabulary_${y}-${m}-${d}.txt`;
 }
 
+/** The file for a session's live rows, in table order (read from D1 at request time). */
 export function renderAnkiFileFor(doc: SessionDocument): string {
-  return renderAnkiFile(doc.entries, detailOf(doc));
+  return renderAnkiFile(doc.entries);
 }

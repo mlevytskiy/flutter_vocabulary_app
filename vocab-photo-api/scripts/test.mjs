@@ -81,6 +81,8 @@ const worker = spawn(
     // After --env-file, so these win over a real key in .dev.vars.
     "--var", `MW_API_URL:${mwStub.url}`,
     "--var", "MW_API_KEY:test-key",
+    // GET /__scheduled runs the cron handler (the daily clean-up).
+    "--test-scheduled",
     "--show-interactive-dev-session=false",
     "--log-level", "warn",
   ],

@@ -6,6 +6,13 @@
 	"observability": {
 		"enabled": true
 	},
+	// Daily clean-up at 03:00 UTC (good-looking-web, sad §7): deletes sessions past
+	// their 30 days with their rows, photo slots and page autofill counters
+	// (src/session/cleanup.ts). Locally, `wrangler dev --test-scheduled` exposes
+	// GET /__scheduled to run it by hand.
+	"triggers": {
+		"crons": ["0 3 * * *"]
+	},
 	// Per-IP rate limit: 20 requests / 60s. Change namespace_id to any unused
 	// positive integer string if it collides with another Worker on your account.
 	// Applies to the secret-gated routes only (/analyze, POST /sessions...); the

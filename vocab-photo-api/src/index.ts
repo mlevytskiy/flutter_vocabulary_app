@@ -7,6 +7,7 @@ import { changesRoutes } from "./session/changes";
 import { autofillRoutes } from "./autofill/routes";
 import { logEvent } from "./log";
 import { defineRoutes } from "./define";
+import { deleteExpiredSessions } from "./session/cleanup";
 
 export type { Env } from "./env";
 
@@ -302,5 +303,10 @@ export default {
     }
 
     return route.handler({ request, env, url, params });
+  },
+
+  // The daily clean-up, `triggers.crons` in wrangler.jsonc (sad §7).
+  async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
+    await deleteExpiredSessions(env);
   },
 };

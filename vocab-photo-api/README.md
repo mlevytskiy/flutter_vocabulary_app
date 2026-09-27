@@ -114,7 +114,13 @@ A session lives for **30 days** (decision D4 in
 [`../docs/roadmap.md`](../docs/roadmap.md#decisions-so-far)): the session is stored in the
 `DB` D1 database with its `expires_at`, and from then on an expired session reads exactly
 like an unknown id, so there is no delete endpoint and no "anyone holding the URL can
-destroy the list" surface. Uploading a photo and republishing both keep the original expiry. Links published
+destroy the list" surface. Uploading a photo and republishing both keep the original expiry.
+A cron trigger (`triggers.crons`, daily at 03:00 UTC, `src/session/cleanup.ts`) deletes the
+sessions past `expires_at` together with their rows, photo slots and page autofill counters,
+and logs `{"event":"expired sessions deleted","sessions":…,"rows":…,"sources":…,"counters":…}`.
+A missed run only delays the clean-up: an expired session already reads as gone. Photo bytes
+in R2 still age out through the bucket's lifecycle rule. Locally, `npx wrangler dev
+--test-scheduled` and `curl "http://localhost:8787/__scheduled?cron=0+3+*+*+*"` run it. Links published
 before D1 (good-looking-web) were KV documents written with `expirationTtl`: the first
 open of such a link imports it into D1 with its original dates, and `SESSIONS` KV is
 only read, never written.
@@ -336,13 +342,18 @@ the other, and this section.
 ```
 
 - **Fixed columns in every mode** (definition-mode ADR-0005): 1 word, 2 translation,
-  3 definition, 4 tags (always empty). The column the word detail mode hides is written
-  **empty** — translation mode leaves 3 empty, definition mode leaves 2 empty, both fills
-  2 and 3. A column never changes meaning between exports. The page's file follows the
-  session's `detail`; the app's export follows the current mode.
+  3 definition, 4 tags (always empty). A column never changes meaning between exports.
+  - The **app's export** follows the current word detail mode: the column the mode hides is
+    written **empty** — translation mode leaves 3 empty, definition mode leaves 2 empty, both
+    fills 2 and 3.
+  - The **page's file** (good-looking-web AC-30) is built from the live rows in D1 at request
+    time and carries whatever the page saved, whatever mode the session was published with: a
+    column with no text anywhere (collapsed on the page) comes out empty in its place.
 - Each field: runs of tabs/newlines collapse to one space, the result is trimmed, then
   `&`, `<`, `>` become `&amp;`, `&lt;`, `&gt;` (`#html:true`).
-- A record whose word, translation and definition are all blank is never written.
+- The app never writes a record whose word, translation and definition are all blank. The
+  page's file leaves out every row whose **word** is blank (a card needs a word, AC-31) — that
+  includes a row whose cells were all cleared; the page marks such rows "not in the download".
 
 Example, `both` mode:
 
