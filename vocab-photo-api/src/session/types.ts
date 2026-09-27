@@ -11,6 +11,14 @@ export interface SessionEntry {
   translation: string;
   /** English explanation (definition-mode, ADR-0004). Absent in documents published before it. */
   definition?: string;
+  /** The declared photo this row was recognised from (ADR-0006). Absent for a typed row. */
+  sourceId?: string;
+}
+
+/** A photo the app declares in its publish request (ADR-0006); its bytes follow under `id`. */
+export interface DeclaredSource {
+  id: string;
+  order: number;
 }
 
 /**
@@ -99,11 +107,12 @@ export function toDocument(session: StoredSession): SessionDocument {
     createdAt: session.createdAt,
     expiresAt: session.expiresAt,
     detail: session.detail,
-    entries: session.rows.map((row) =>
-      row.definition === ""
-        ? { word: row.word, translation: row.translation }
-        : { word: row.word, translation: row.translation, definition: row.definition }
-    ),
+    entries: session.rows.map((row) => {
+      const entry: SessionEntry = { word: row.word, translation: row.translation };
+      if (row.definition !== "") entry.definition = row.definition;
+      if (row.sourceId !== null) entry.sourceId = row.sourceId;
+      return entry;
+    }),
     sources: session.sources
       .filter((source) => source.status === "arrived")
       .map((source) => ({
@@ -125,8 +134,69 @@ export const MAX_ENTRIES = 500;
 export const MAX_FIELD_CHARS = 500;
 export const MAX_SOURCES = 10;
 
+/** Session and photo ids: what the routes can address (`/s/<id>/sources/<sourceId>`). */
+export const ID_PATTERN = "[A-Za-z0-9-]{1,64}";
+const ID_RE = new RegExp(`^${ID_PATTERN}$`);
+
 export type ParsedEntries = { ok: true; entries: SessionEntry[] } | { ok: false; error: string };
 export type ParsedDetail = { ok: true; detail: SessionDetail } | { ok: false; error: string };
+export type ParsedSources = { ok: true; sources: DeclaredSource[] } | { ok: false; error: string };
+export type ParsedRepublish =
+  | { ok: true; republish: { publishedId: string; editToken: string } | null }
+  | { ok: false; error: string };
+
+/**
+ * `sources` is optional (older apps and "include photos" off send none, AC-24,
+ * AC-26). Each photo needs an addressable id and a distinct `order`; the list
+ * comes back sorted by `order`, the pager's order.
+ */
+export function parseSources(value: unknown): ParsedSources {
+  if (value === undefined || value === null) return { ok: true, sources: [] };
+  if (!Array.isArray(value)) {
+    return { ok: false, error: "`sources` must be an array of `{id, order}` objects" };
+  }
+  if (value.length > MAX_SOURCES) {
+    return { ok: false, error: `A session holds at most ${MAX_SOURCES} sources` };
+  }
+  const sources: DeclaredSource[] = [];
+  for (const item of value) {
+    if (typeof item !== "object" || item === null) {
+      return { ok: false, error: "`sources` must be an array of `{id, order}` objects" };
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record.id !== "string" || !ID_RE.test(record.id)) {
+      return { ok: false, error: "A source `id` must be 1-64 letters, digits or dashes" };
+    }
+    if (typeof record.order !== "number" || !Number.isInteger(record.order) || record.order < 0) {
+      return { ok: false, error: "A source `order` must be a non-negative integer" };
+    }
+    if (sources.some((s) => s.id === record.id)) {
+      return { ok: false, error: "Each source needs a distinct `id`" };
+    }
+    if (sources.some((s) => s.order === record.order)) {
+      return { ok: false, error: "Each source needs a distinct `order`" };
+    }
+    sources.push({ id: record.id, order: record.order });
+  }
+  return { ok: true, sources: sources.sort((a, b) => a.order - b.order) };
+}
+
+/**
+ * `publishedId` + `editToken` ask to overwrite an earlier link (ADR-0008). Both
+ * are optional; when either is missing the publish is a first publish. Whether
+ * they match a live session is the store's call, not the parser's.
+ */
+export function parseRepublish(body: Record<string, unknown>): ParsedRepublish {
+  const { publishedId, editToken } = body;
+  if (publishedId !== undefined && publishedId !== null && typeof publishedId !== "string") {
+    return { ok: false, error: "`publishedId` must be a string" };
+  }
+  if (editToken !== undefined && editToken !== null && typeof editToken !== "string") {
+    return { ok: false, error: "`editToken` must be a string" };
+  }
+  if (typeof publishedId !== "string" || typeof editToken !== "string") return { ok: true, republish: null };
+  return { ok: true, republish: { publishedId, editToken } };
+}
 
 /** `detail` is optional on the request (older apps never send it); anything else must be a known mode. */
 export function parseDetail(value: unknown): ParsedDetail {
@@ -141,8 +211,9 @@ export function parseDetail(value: unknown): ParsedDetail {
  * Validates the `entries` list of a create request. Blank rows (both fields
  * empty after trimming) are dropped rather than rejected -- the app keeps a
  * trailing empty row by design and must not be able to leak it onto the page.
+ * A row's `sourceId`, when present, must name one of `declaredSourceIds`.
  */
-export function parseEntries(value: unknown): ParsedEntries {
+export function parseEntries(value: unknown, declaredSourceIds: ReadonlySet<string> = new Set()): ParsedEntries {
   if (!Array.isArray(value)) {
     return { ok: false, error: "Body must be a JSON object with an `entries` array" };
   }
@@ -161,6 +232,10 @@ export function parseEntries(value: unknown): ParsedEntries {
     if (record.definition !== undefined && typeof record.definition !== "string") {
       return { ok: false, error: "An entry's `definition` must be a string" };
     }
+    const sourceId = record.sourceId ?? undefined;
+    if (sourceId !== undefined && (typeof sourceId !== "string" || !declaredSourceIds.has(sourceId))) {
+      return { ok: false, error: "An entry's `sourceId` must name a declared source" };
+    }
     const word = record.word.trim();
     const translation = record.translation.trim();
     const definition = typeof record.definition === "string" ? record.definition.trim() : "";
@@ -173,7 +248,10 @@ export function parseEntries(value: unknown): ParsedEntries {
     }
     // Blank only when all three are empty: a definition-only row is real content.
     if (word === "" && translation === "" && definition === "") continue;
-    entries.push(definition === "" ? { word, translation } : { word, translation, definition });
+    const entry: SessionEntry = { word, translation };
+    if (definition !== "") entry.definition = definition;
+    if (sourceId !== undefined) entry.sourceId = sourceId;
+    entries.push(entry);
   }
   if (entries.length === 0) {
     return { ok: false, error: "The word list is empty" };

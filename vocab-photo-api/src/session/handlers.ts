@@ -2,10 +2,23 @@ import { MAX_RAW_BYTES, htmlResponse, isAllowedMediaType, jsonResponse } from ".
 import type { RouteContext, RouteDefinition } from "../routing";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
 import { renderNotFoundPage, renderSessionPage } from "./page";
-import { addPhotoSource, createSession, getSourceObject, hasSourceStorage, loadSession } from "./store";
-import { MAX_SESSION_JSON_BYTES, MAX_SOURCES, parseDetail, parseEntries, toDocument } from "./types";
-
-const ID_PATTERN = "[A-Za-z0-9-]{1,64}";
+import {
+  createSession,
+  getSourceObject,
+  hasSourceStorage,
+  loadSession,
+  republishSession,
+  storeDeclaredPhoto,
+} from "./store";
+import {
+  ID_PATTERN,
+  MAX_SESSION_JSON_BYTES,
+  parseDetail,
+  parseEntries,
+  parseRepublish,
+  parseSources,
+  toDocument,
+} from "./types";
 
 function publicUrl(url: URL, sessionId: string): string {
   return `${url.origin}/s/${sessionId}`;
@@ -13,7 +26,11 @@ function publicUrl(url: URL, sessionId: string): string {
 
 /**
  * POST /sessions -- secret-gated.
- * `{ detail?, entries: [{word, translation, definition?}] }` -> `{ id, url, expiresAt }`.
+ * `{ detail?, entries: [{word, translation, definition?, sourceId?}], sources?: [{id, order}],
+ *    publishedId?, editToken? }` -> `{ id, url, expiresAt, editToken }`.
+ * With a `publishedId` and the `editToken` it was published with, the same
+ * link is overwritten (ADR-0008); an expired id or a wrong token publishes a
+ * new link instead, so the app always gets a working one back.
  */
 async function handleCreateSession({ request, env, url }: RouteContext): Promise<Response> {
   const declared = Number(request.headers.get("content-length") ?? "0");
@@ -34,21 +51,39 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
   if (typeof body !== "object" || body === null) {
     return jsonResponse({ error: "Body must be a JSON object with an `entries` array" }, 400);
   }
-  const parsed = parseEntries((body as Record<string, unknown>).entries);
+  const record = body as Record<string, unknown>;
+  const sources = parseSources(record.sources);
+  if (!sources.ok) {
+    return jsonResponse({ error: sources.error }, 400);
+  }
+  const parsed = parseEntries(record.entries, new Set(sources.sources.map((source) => source.id)));
   if (!parsed.ok) {
     return jsonResponse({ error: parsed.error }, 400);
   }
-  const detail = parseDetail((body as Record<string, unknown>).detail);
+  const detail = parseDetail(record.detail);
   if (!detail.ok) {
     return jsonResponse({ error: detail.error }, 400);
   }
+  const republish = parseRepublish(record);
+  if (!republish.ok) {
+    return jsonResponse({ error: republish.error }, 400);
+  }
 
-  const session = await createSession(env, parsed.entries, detail.detail);
-  return jsonResponse({ id: session.id, url: publicUrl(url, session.id), expiresAt: session.expiresAt });
+  const input = { entries: parsed.entries, sources: sources.sources, detail: detail.detail };
+  const published =
+    (republish.republish &&
+      (await republishSession(env, republish.republish.publishedId, republish.republish.editToken, input))) ||
+    (await createSession(env, input));
+  const { session, editToken } = published;
+  return jsonResponse({ id: session.id, url: publicUrl(url, session.id), expiresAt: session.expiresAt, editToken });
 }
 
-/** POST /sessions/:id/sources -- secret-gated. Raw image bytes, like /analyze. */
-async function handleAddSource({ request, env, url, params }: RouteContext): Promise<Response> {
+/**
+ * POST /sessions/:id/sources/:sourceId -- secret-gated. Raw image bytes, like
+ * /analyze, for a photo the publish declared (ADR-0006). A repeat after the
+ * bytes arrived answers the same and changes nothing, so the app may retry.
+ */
+async function handleUploadSource({ request, env, url, params }: RouteContext): Promise<Response> {
   if (!hasSourceStorage(env)) {
     return jsonResponse({ error: "Source storage is not configured on this Worker (enable R2, see README)" }, 503);
   }
@@ -60,8 +95,8 @@ async function handleAddSource({ request, env, url, params }: RouteContext): Pro
   if (!session) {
     return jsonResponse({ error: "Session not found" }, 404);
   }
-  if (session.sources.length >= MAX_SOURCES) {
-    return jsonResponse({ error: `A session holds at most ${MAX_SOURCES} sources` }, 400);
+  if (!session.sources.some((source) => source.id === params.sourceId)) {
+    return jsonResponse({ error: "This session declared no source with that id" }, 404);
   }
 
   const bytes = await request.arrayBuffer();
@@ -72,10 +107,13 @@ async function handleAddSource({ request, env, url, params }: RouteContext): Pro
     return jsonResponse({ error: "Image is too large" }, 413);
   }
 
-  const source = await addPhotoSource(env, session, bytes, mediaType);
+  const outcome = await storeDeclaredPhoto(env, session, params.sourceId, bytes, mediaType);
+  if (outcome === "not_declared") {
+    return jsonResponse({ error: "This session declared no source with that id" }, 404);
+  }
   return jsonResponse({
-    sourceId: source.id,
-    url: `${publicUrl(url, session.id)}/sources/${source.id}`,
+    sourceId: params.sourceId,
+    url: `${publicUrl(url, session.id)}/sources/${params.sourceId}`,
     pageUrl: publicUrl(url, session.id),
   });
 }
@@ -111,7 +149,10 @@ async function handleAnkiDownload({ env, params }: RouteContext): Promise<Respon
   });
 }
 
-/** GET /s/:id/sources/:sourceId -- public. The bytes of one source, served as the page's <img>. */
+/**
+ * GET /s/:id/sources/:sourceId -- public. The bytes of one arrived photo of this
+ * session, served as the page's <img>. Anything else is the gone page (AC-24).
+ */
 async function handleGetSource({ env, params }: RouteContext): Promise<Response> {
   const object = await getSourceObject(env, params.id, params.sourceId);
   if (!object) {
@@ -133,9 +174,9 @@ export const sessionRoutes: RouteDefinition[] = [
   { method: "POST", pattern: /^\/sessions$/, public: false, handler: handleCreateSession },
   {
     method: "POST",
-    pattern: new RegExp(`^/sessions/(?<id>${ID_PATTERN})/sources$`),
+    pattern: new RegExp(`^/sessions/(?<id>${ID_PATTERN})/sources/(?<sourceId>${ID_PATTERN})$`),
     public: false,
-    handler: handleAddSource,
+    handler: handleUploadSource,
   },
   { method: "GET", pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})$`), public: true, handler: handleSessionPage },
   {

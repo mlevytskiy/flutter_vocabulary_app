@@ -23,23 +23,46 @@ function readDevVars(path) {
 
 const devVars = readDevVars(process.env.VOCAB_API_DEV_VARS);
 
-/** Headers the app sends on secret-gated routes. */
+let clientCount = 0;
+
+/**
+ * Headers the app sends on secret-gated routes. Each call comes from its own
+ * client address (miniflare keeps a `cf-connecting-ip` the request brings), so
+ * the per-IP limit of 20 a minute never trips over a whole suite's requests; a
+ * test of the limit itself passes its own `cf-connecting-ip` in `extra`.
+ */
 export function appHeaders(extra = {}) {
-  return { "x-app-secret": devVars.APP_SHARED_SECRET, ...extra };
+  clientCount += 1;
+  const ip = `10.${(clientCount >> 16) & 255}.${(clientCount >> 8) & 255}.${clientCount & 255}`;
+  return { "x-app-secret": devVars.APP_SHARED_SECRET, "cf-connecting-ip": ip, ...extra };
 }
 
 /**
  * Publishes a session the way the app does (POST /sessions) and returns the
- * parsed answer, `{ id, url, expiresAt }`. Throws on a non-2xx answer.
+ * parsed answer, `{ id, url, expiresAt, editToken }`. Throws on a non-2xx answer.
  */
 export async function publish(body = { entries: [{ word: "apple", translation: "яблуко" }] }) {
-  const res = await fetch(`${baseUrl}/sessions`, {
+  const res = await publishRaw(body);
+  if (!res.ok) throw new Error(`publish answered ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+/** POST /sessions with `body` and the app's secret; returns the raw response. */
+export function publishRaw(body) {
+  return send("/sessions", {
     method: "POST",
     headers: appHeaders({ "content-type": "application/json" }),
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`publish answered ${res.status}: ${await res.text()}`);
-  return res.json();
+}
+
+/** Uploads `bytes` as a declared photo, the way the app will (T18); returns the raw response. */
+export function uploadSource(sessionId, sourceId, bytes, mediaType = "image/png") {
+  return send(`/sessions/${sessionId}/sources/${sourceId}`, {
+    method: "POST",
+    headers: appHeaders({ "content-type": mediaType }),
+    body: bytes,
+  });
 }
 
 /**
@@ -74,17 +97,24 @@ export function kvDelete(key) {
 }
 
 /**
- * GET `path` from the local Worker, retried once when the connection is reset
- * before any answer. `fetch` reuses keep-alive sockets, and after a test pauses
- * for a wrangler subprocess (`d1`, `kvPut`) its next request now and then goes
- * out on a socket the local server has just dropped -- the request never
- * reaches the Worker, so repeating a GET is safe.
+ * Sends a request to the local Worker, retried once when the connection is
+ * reset before any answer. `fetch` reuses keep-alive sockets, and after a test
+ * pauses for a wrangler subprocess (`d1`, `kvPut`) its next request now and
+ * then goes out on a socket the local server has just dropped -- the request
+ * never reaches the Worker, so sending it again is safe (and every write the
+ * tests send is one a retry cannot harm: a publish makes a fresh link, a
+ * repeated photo upload is a no-op).
  */
-export async function get(path) {
+async function send(path, init) {
   try {
-    return await fetch(`${baseUrl}${path}`);
+    return await fetch(`${baseUrl}${path}`, init);
   } catch (err) {
     if (err?.cause?.code !== "ECONNRESET") throw err;
-    return fetch(`${baseUrl}${path}`);
+    return fetch(`${baseUrl}${path}`, init);
   }
+}
+
+/** GET `path` from the local Worker. */
+export function get(path) {
+  return send(path);
 }

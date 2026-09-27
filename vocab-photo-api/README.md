@@ -12,10 +12,10 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 |---|---|---|
 | `POST /analyze` | secret + rate limit | photo in, marked words out |
 | `POST /define` | secret + rate limit | a word's dictionary senses (definition-mode) |
-| `POST /sessions` | secret + rate limit | publish a word list, get a link |
-| `POST /sessions/<id>/sources` | secret + rate limit | attach a photo to a published session |
+| `POST /sessions` | secret + rate limit | publish (or republish) a word list, get a link |
+| `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
 | `GET /s/<id>` | **public** | the page a person reads |
-| `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one attached photo |
+| `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
 
 Every route in `src/index.ts` declares `public: true` or `false` for itself
 (`src/routing.ts`). Anything not marked public is behind the `x-app-secret` check and
@@ -107,7 +107,7 @@ A session lives for **30 days** (decision D4 in
 [`../docs/roadmap.md`](../docs/roadmap.md#decisions-so-far)): the session is stored in the
 `DB` D1 database with its `expires_at`, and from then on an expired session reads exactly
 like an unknown id, so there is no delete endpoint and no "anyone holding the URL can
-destroy the list" surface. Attaching a photo keeps the original expiry. Links published
+destroy the list" surface. Uploading a photo and republishing both keep the original expiry. Links published
 before D1 (good-looking-web) were KV documents written with `expirationTtl`: the first
 open of such a link imports it into D1 with its original dates, and `SESSIONS` KV is
 only read, never written.
@@ -130,12 +130,37 @@ top-level `photoUrl`; subtitle text would be another `kind`, not a schema change
 
 ### `POST /sessions` — secret-gated
 
-Body: `{ "detail": "translation|definition|both", "entries": [ { "word": "…", "translation": "…", "definition": "…" }, … ] }`
-as JSON. `detail` (the app's word detail mode when publishing) and `definition` are optional —
-older apps send neither, and a document without `detail` reads as `translation`. Rows where
-every field is blank are dropped (the app keeps a trailing empty row by design); a list that
-is empty after that is a `400`. Caps: 256 KB body (`413` over it), 500 entries, 500 characters
-per field — a too-long definition is a `400` whose message names the word.
+Body as JSON:
+
+```json
+{
+  "detail": "translation|definition|both",
+  "entries": [ { "word": "…", "translation": "…", "definition": "…", "sourceId": "<photo id>" } ],
+  "sources": [ { "id": "<photo id>", "order": 0 } ],
+  "publishedId": "<id of an earlier publish>",
+  "editToken": "<the token that publish returned>"
+}
+```
+
+Only `entries` is required — older apps send nothing else and publish exactly as before.
+`detail` (the app's word detail mode when publishing) and `definition` are optional, and a
+document without `detail` reads as `translation`. Rows where every field is blank are dropped
+(the app keeps a trailing empty row by design); a list that is empty after that is a `400`.
+Caps: 256 KB body (`413` over it), 500 entries, 500 characters per field — a too-long
+definition is a `400` whose message names the word.
+
+**Photos (good-looking-web, ADR-0006).** `sources` declares up to 10 photos: an id the app
+chose (1–64 letters, digits or dashes) and a distinct `order`, the pager's order. A
+recognised row names its photo in `sourceId`, which must be one of the declared ids (`400`
+otherwise); a typed row has none. Each declared photo is stored as a *pending* slot until
+its bytes are uploaded. With "include photos" off the app sends neither field, and no photo
+path of the session answers anything but the gone page.
+
+**Republish (ADR-0008).** Every publish answers with an `editToken`; the Worker keeps only
+its SHA-256. Sending `publishedId` with that token overwrites the same link: the rows and
+photo slots are replaced, `expiresAt` stays, and the session revision goes up and is
+recorded as "replaced at" so open pages reload. An unknown or expired `publishedId`, a
+link imported from KV (it has no token) or a wrong token publishes a **new** link instead.
 
 ```bash
 curl -X POST "https://<your-worker>.workers.dev/sessions" \
@@ -144,17 +169,16 @@ curl -X POST "https://<your-worker>.workers.dev/sessions" \
   --data '{"entries":[{"word":"receipt","translation":"квитанція"}]}'
 ```
 
-Answer (`200`): `{ "id": "<uuid>", "url": "https://<your-worker>.workers.dev/s/<uuid>", "expiresAt": "…" }`
+Answer (`200`): `{ "id": "<uuid>", "url": "https://<your-worker>.workers.dev/s/<uuid>", "expiresAt": "…", "editToken": "…" }`
+— after a republish, the same `id`, `url`, `expiresAt` and `editToken`.
 
-### `POST /sessions/<id>/sources` — secret-gated
+### `POST /sessions/<id>/sources/<sourceId>` — secret-gated
 
-Attaches a photo. Same contract as `/analyze`: the **raw image bytes** as the body,
-`content-type: image/jpeg|png|webp`, ≤ 7 MB (`413` over it). At most 10 sources per
-session. Unknown session → `404` JSON. Answer: `{ "sourceId", "url", "pageUrl" }`.
-
-The app does not call this yet — it keeps no copy of the photo after `/analyze` — so
-today a published page shows the table only. The route is here so wiring it up later is
-an app change, not a Worker change.
+Uploads the bytes of a photo the publish declared. Same contract as `/analyze`: the **raw
+image bytes** as the body, `content-type: image/jpeg|png|webp`, ≤ 7 MB (`413` over it). An
+unknown or expired session, or a `sourceId` the session did not declare, is a `404` JSON and
+nothing is stored. Once a photo has arrived, uploading it again answers the same and changes
+nothing, so the app can retry freely. Answer: `{ "sourceId", "url", "pageUrl" }`.
 
 ### `GET /s/<id>` — public
 
@@ -182,8 +206,10 @@ lowercased word; misses and failures are never cached. One log line per lookup
 
 ### `GET /s/<id>/sources/<sourceId>` — public
 
-The bytes of one attached photo, with its stored content type and a long
-`cache-control` (the id is random and the object never changes).
+The bytes of one photo whose slot has arrived in this live session, with its stored content
+type and a long `cache-control` (the id is random and the object never changes). A pending
+slot, an undeclared or guessed id, a photo dropped by a republish and an expired session all
+answer the gone page, whatever R2 still holds (AC-24).
 
 ## AnkiDroid file format
 
@@ -352,7 +378,7 @@ Rate Limiting binding, as a backstop against runaway Anthropic API costs. Adjust
 `simple.limit` / `simple.period` there if needed (`period` must be `10` or `60`).
 
 It applies to the **secret-gated** routes only (`/analyze`, `POST /sessions`,
-`POST /sessions/<id>/sources`). The public page and its photo are plain D1/R2 reads and
+`POST /sessions/<id>/sources/<sourceId>`). The public page and its photo are plain D1/R2 reads and
 are not rate-limited, so a partner refreshing the page never hits `429`.
 
 ## Notes

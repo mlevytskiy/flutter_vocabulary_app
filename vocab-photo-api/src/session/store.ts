@@ -2,6 +2,7 @@ import type { Env } from "../env";
 import {
   SESSION_TTL_SECONDS,
   detailOf,
+  type DeclaredSource,
   type SessionDetail,
   type SessionDocument,
   type SessionEntry,
@@ -20,44 +21,125 @@ import {
 const kvKey = (sessionId: string) => `session:${sessionId}`;
 const r2Key = (sessionId: string, sourceId: string) => `sessions/${sessionId}/sources/${sourceId}`;
 
-const INSERT_SESSION = `INSERT INTO sessions (id, created_at, expires_at, detail) VALUES (?1, ?2, ?3, ?4)`;
-const ROW_VALUES = `rows (session_id, id, position, word, translation, definition) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`;
-const INSERT_ROW = `INSERT INTO ${ROW_VALUES}`;
-const INSERT_ROW_IF_ABSENT = `INSERT OR IGNORE INTO ${ROW_VALUES}`;
+const INSERT_SESSION = `INSERT INTO sessions (id, created_at, expires_at, detail, edit_token_hash) VALUES (?1, ?2, ?3, ?4, ?5)`;
+const INSERT_ROW = `INSERT INTO rows (session_id, id, position, source_id, word, translation, definition)
+  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`;
+const INSERT_ROW_IF_ABSENT = `INSERT OR IGNORE INTO rows (session_id, id, position, word, translation, definition)
+  VALUES (?1, ?2, ?3, ?4, ?5, ?6)`;
+const INSERT_PENDING_SOURCE = `INSERT INTO sources (session_id, id, ord) VALUES (?1, ?2, ?3)`;
 
 function isExpired(expiresAt: string, now = Date.now()): boolean {
   return Date.parse(expiresAt) < now;
 }
 
+/** A random republish token (ADR-0008): 32 bytes, base64url. Only its hash is stored. */
+function newEditToken(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function hashEditToken(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** What a publish needs besides the session id: the rows and the photos they were recognised from. */
+export interface PublishInput {
+  entries: SessionEntry[];
+  sources: DeclaredSource[];
+  detail: SessionDetail;
+}
+
+/** A published session and the token that lets its publisher republish it. */
+export interface Published {
+  session: StoredSession;
+  editToken: string;
+}
+
 /**
- * Creates a session with a random id (the link is the page's only credential)
- * and one row per entry, in order. The app does not id its rows yet, so every
- * row gets a server id. Every translation and definition received is stored,
- * whatever `detail` says (AC-27).
+ * Inserts the rows (a server id each: the app does not id its rows yet) and the
+ * declared photos as pending slots. Every translation and definition received
+ * is stored, whatever `detail` says (AC-27). Cells start at revision 0; a
+ * republish then lifts them to the revision that replaced the list.
  */
-export async function createSession(env: Env, entries: SessionEntry[], detail: SessionDetail): Promise<StoredSession> {
+function insertContent(env: Env, sessionId: string, input: PublishInput): D1PreparedStatement[] {
+  return [
+    ...input.entries.map((entry, position) =>
+      env.DB.prepare(INSERT_ROW).bind(
+        sessionId,
+        crypto.randomUUID(),
+        position,
+        entry.sourceId ?? null,
+        entry.word,
+        entry.translation,
+        entry.definition ?? ""
+      )
+    ),
+    ...input.sources.map((source) => env.DB.prepare(INSERT_PENDING_SOURCE).bind(sessionId, source.id, source.order)),
+  ];
+}
+
+/**
+ * Creates a session with a random id (the link is the page's only credential),
+ * its rows in order and its declared photos as pending slots.
+ */
+export async function createSession(env: Env, input: PublishInput): Promise<Published> {
   const now = Date.now();
   const id = crypto.randomUUID();
-  const createdAt = new Date(now).toISOString();
-  const expiresAt = new Date(now + SESSION_TTL_SECONDS * 1000).toISOString();
-  const rows: StoredRow[] = entries.map((entry, position) => ({
-    id: crypto.randomUUID(),
-    position,
-    sourceId: null,
-    word: entry.word,
-    wordRev: 0,
-    translation: entry.translation,
-    translationRev: 0,
-    definition: entry.definition ?? "",
-    definitionRev: 0,
-  }));
+  const editToken = newEditToken();
   await env.DB.batch([
-    env.DB.prepare(INSERT_SESSION).bind(id, createdAt, expiresAt, detail),
-    ...rows.map((row) =>
-      env.DB.prepare(INSERT_ROW).bind(id, row.id, row.position, row.word, row.translation, row.definition)
+    env.DB.prepare(INSERT_SESSION).bind(
+      id,
+      new Date(now).toISOString(),
+      new Date(now + SESSION_TTL_SECONDS * 1000).toISOString(),
+      input.detail,
+      await hashEditToken(editToken)
     ),
+    ...insertContent(env, id, input),
   ]);
-  return { id, createdAt, expiresAt, rev: 0, replacedRev: 0, detail, rows, sources: [] };
+  const session = await readSession(env, id);
+  if (!session) throw new Error(`session ${id} vanished right after it was created`);
+  return { session, editToken };
+}
+
+/**
+ * Overwrites a live session's rows and photo slots under the same link
+ * (ADR-0008) when `editToken` is the one it was published with. Keeps
+ * `expires_at` (D4), raises the revision and records it as `replaced_rev`, so a
+ * page whose cursor is below it reloads the list. Revisions only go up. Returns
+ * null for an unknown or expired id, a KV-imported link (no token) or a wrong
+ * token -- the caller then publishes a new link.
+ */
+export async function republishSession(
+  env: Env,
+  publishedId: string,
+  editToken: string,
+  input: PublishInput
+): Promise<Published | null> {
+  const tokenHash = await hashEditToken(editToken);
+  const current = await env.DB.prepare(`SELECT expires_at FROM sessions WHERE id = ?1 AND edit_token_hash = ?2`)
+    .bind(publishedId, tokenHash)
+    .first<{ expires_at: string }>();
+  if (!current || isExpired(current.expires_at)) return null;
+
+  // One batch is one transaction: pages never see the old rows mixed with the new.
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE sessions SET rev = rev + 1, replaced_rev = rev + 1, detail = ?2 WHERE id = ?1`).bind(
+      publishedId,
+      input.detail
+    ),
+    env.DB.prepare(`DELETE FROM rows WHERE session_id = ?1`).bind(publishedId),
+    env.DB.prepare(`DELETE FROM sources WHERE session_id = ?1`).bind(publishedId),
+    ...insertContent(env, publishedId, input),
+    env.DB.prepare(
+      `UPDATE rows SET word_rev = s.rev, translation_rev = s.rev, definition_rev = s.rev
+       FROM (SELECT rev FROM sessions WHERE id = ?1) AS s
+       WHERE session_id = ?1`
+    ).bind(publishedId),
+  ]);
+  const session = await readSession(env, publishedId);
+  if (!session) return null;
+  return { session, editToken };
 }
 
 /**
@@ -188,37 +270,53 @@ async function importLegacySession(env: Env, sessionId: string): Promise<boolean
   return true;
 }
 
+export type PhotoUpload = "stored" | "already_arrived" | "not_declared";
+
 /**
- * Stores the bytes in R2, then records the photo as an arrived slot at a new
- * session revision. Kept for the app's current upload route until declared
- * photos replace it (ADR-0006).
+ * Stores the bytes of a declared photo (ADR-0006) and marks its slot arrived
+ * at a new session revision, so polling pages swap the placeholder for it.
+ * Only a slot this session declared can receive bytes; a slot that has already
+ * arrived is left as it is, so the app's retries are safe to repeat. Two
+ * uploads racing for one pending slot both write the same bytes to R2; the
+ * conditional updates let only one of them raise the revision.
  */
-export async function addPhotoSource(
+export async function storeDeclaredPhoto(
   env: Env,
   session: StoredSession,
+  sourceId: string,
   bytes: ArrayBuffer,
   mediaType: string
-): Promise<StoredSource> {
+): Promise<PhotoUpload> {
   if (!env.SOURCES) throw new Error("SOURCES binding is not configured");
-  const id = crypto.randomUUID();
-  await env.SOURCES.put(r2Key(session.id, id), bytes, {
+  const slot = session.sources.find((source) => source.id === sourceId);
+  if (!slot) return "not_declared";
+  if (slot.status === "arrived") return "already_arrived";
+
+  await env.SOURCES.put(r2Key(session.id, sourceId), bytes, {
     httpMetadata: { contentType: mediaType },
   });
-  const [, inserted] = await env.DB.batch([
-    env.DB.prepare(`UPDATE sessions SET rev = rev + 1 WHERE id = ?1`).bind(session.id),
+  const pending = `EXISTS (SELECT 1 FROM sources WHERE session_id = ?1 AND id = ?2 AND status = 'pending')`;
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE sessions SET rev = rev + 1 WHERE id = ?1 AND ${pending}`).bind(session.id, sourceId),
     env.DB.prepare(
-      `INSERT INTO sources (session_id, id, ord, media_type, bytes, status, arrived_rev)
-       SELECT ?1, ?2, (SELECT coalesce(max(ord) + 1, 0) FROM sources WHERE session_id = ?1), ?3, ?4, 'arrived', rev
-       FROM sessions WHERE id = ?1
-       RETURNING ord, arrived_rev`
-    ).bind(session.id, id, mediaType, bytes.byteLength),
+      `UPDATE sources SET status = 'arrived', media_type = ?3, bytes = ?4,
+         arrived_rev = (SELECT rev FROM sessions WHERE id = ?1)
+       WHERE session_id = ?1 AND id = ?2 AND status = 'pending'`
+    ).bind(session.id, sourceId, mediaType, bytes.byteLength),
   ]);
-  const { ord, arrived_rev } = (inserted.results as { ord: number; arrived_rev: number }[])[0];
-  return { id, ord, mediaType, bytes: bytes.byteLength, status: "arrived", arrivedRev: arrived_rev };
+  return "stored";
 }
 
+/**
+ * The bytes of one photo, only while it is an arrived slot of this live
+ * session. A guessed id, a pending slot, a slot dropped by a republish and a
+ * session published without photos all read as null (AC-24), whatever R2 holds.
+ */
 export async function getSourceObject(env: Env, sessionId: string, sourceId: string): Promise<R2ObjectBody | null> {
   if (!env.SOURCES) return null;
+  const session = await loadSession(env, sessionId);
+  const slot = session?.sources.find((source) => source.id === sourceId);
+  if (!slot || slot.status !== "arrived") return null;
   return env.SOURCES.get(r2Key(sessionId, sourceId));
 }
 

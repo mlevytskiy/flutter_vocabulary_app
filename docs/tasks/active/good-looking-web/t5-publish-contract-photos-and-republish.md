@@ -7,7 +7,7 @@ acs: ["AC-24", "AC-25", "AC-34", "AC-37"]
 files_hint: ["vocab-photo-api/src/session/handlers.ts", "vocab-photo-api/src/session/types.ts", "vocab-photo-api/src/session/store.ts", "vocab-photo-api/test/publish.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Accept declared photos, row photo ids and republish tokens in the publish contract
@@ -22,13 +22,21 @@ Publish accepts optional `sources: [{id, order}]` (≤ 10) and `sourceId` per en
 
 ## Definition of Done
 
-- [ ] node test: publish with 2 declared photos and linked rows → page data links rows to slots; typed rows have none (AC-25)
-- [ ] node test: upload to an undeclared id is refused; a repeated upload is a no-op
-- [ ] node test: a session published without `sources` answers gone for any guessed photo path (AC-24)
-- [ ] node test: republish with the token keeps the link and expiry and replaces rows; a wrong token yields a new link
-- [ ] node test: an old-shape publish (no sources, no token) still succeeds
-- [ ] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
+- [x] node test: publish with 2 declared photos and linked rows → page data links rows to slots; typed rows have none (AC-25)
+- [x] node test: upload to an undeclared id is refused; a repeated upload is a no-op
+- [x] node test: a session published without `sources` answers gone for any guessed photo path (AC-24)
+- [x] node test: republish with the token keeps the link and expiry and replaces rows; a wrong token yields a new link
+- [x] node test: an old-shape publish (no sources, no token) still succeeds
+- [x] `flutter analyze` / `npm run typecheck` add no new issue; the `CLAUDE.md` greps stay clean
 
 ## Notes
 
 Deploy before the app build from T18 (sad §7 release order).
+
+The upload route is now `POST /sessions/<id>/sources/<sourceId>` (declared id in the path);
+the old `POST /sessions/<id>/sources` with a server-made id is gone — the app never called
+it (ADR-0006). A republish hard-deletes the old rows and slots (pages reload from
+`replaced_rev`, so no tombstones are needed) and lifts every new cell to that revision.
+`npm test` now runs the test files one at a time and gives each app request its own
+`cf-connecting-ip`: parallel files broke the shared local D1, and the suite outgrew the
+20-per-minute limit.
