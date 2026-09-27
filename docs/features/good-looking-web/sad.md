@@ -367,29 +367,28 @@ ADR files live under `docs/features/good-looking-web/adr/NNNN-<title>.md`. Earli
 
 ## 10. Quality requirements
 
-<!-- 🎯 Why: the QUALITY TREE — take a goal from §1 and break it into concrete leaves: tests,
-     metrics, configs, drills. ⭐ Without §10, §1 is a manifesto. With §10 each declaration maps
-     to something PROVABLE.
-     📋 Write: per §1 goal — When / Then / How-verify. Numbers from spec §6 NFR VERBATIM (don't
-     round ≤250ms to ≤300ms — that's a critic F6 hit).
-     📌 e.g. «p95 ≤ 500 ms on a block update, verified by a 100 req/s load test». -->
+Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR verbatim.
 
-Each top-3 goal from §1 expanded into a full scenario:
+**Worker verification harness (inline decision).** Worker behaviour is tested with Node's built-in test runner (`node --test`, no new package) sending real requests to a local `wrangler dev`, which simulates D1, KV, R2 and the rate limiters; `npm test` in `vocab-photo-api/` starts `wrangler dev`, runs the tests and stops it. Pure functions (parsers, limit checks) are tested directly. `npm run typecheck` stays, now also covering the browser script through `checkJs`.
 
-**QG-1. <quality attribute>**
-- **When:** <trigger condition>
-- **Then:** <expected behaviour with numbers from spec §6 NFR>
-- **How verify:** <test / chaos drill / load test / metric>
+**QG-1. Edit integrity under concurrent editing**
+- **When:** 3 clients edit the same and different cells of one session 100 times; two browsers have the same session open while one of them saves edits.
+- **Then:** Lost edits under concurrent editing = 0 — every save either lands or comes back as a conflict the partner resolves; other partners' saved edits appear on an open page ≤ 10 s, without reload (while that page is in use — polling stops after 5 minutes without interaction, §6); cell save p95 (edit leaves the cell → "saved" shown) ≤ 1.0 s.
+- **How verify:** a `node --test` concurrency test — 3 clients edit the same and different cells of one session 100 times, then every edit is checked to have either landed or received a conflict; two browsers on one session, 20 edits timed; Worker request timing for the save action from Cloudflare analytics.
 
-**QG-2. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-2. A bounded public write surface**
+- **When:** partners autofill definitions on one or many shared pages, write content up to and over the session limits, or try to reach photos of a session published with "include photos" off.
+- **Then:** definition autofill allowance per shared page per day = 50 definition lookups (every lookup counts, found or not; a column autofill counts one per cell looked up; translation autofill is not metered); share of daily dictionary quota kept for the app ≥ 50% — all shared pages together stop at 500 of the 1,000 daily calls; session content limits ≤ 500 rows, ≤ 500 characters per field, ≤ 256 KB per session; photos per published session ≤ 10; no photo of a session published without photos can be seen (AC-24); two partners editing for 15 minutes at a normal pace are never turned away (AC-35).
+- **How verify:** Worker counter per session per UTC day and across all sessions per UTC day (`node --test`, including the 51st lookup on one page and the 501st across pages); Worker validation tests at each limit + 1; publish test with 11 source photos — the page shows 10 and the app names the one left out; requests for guessed photo ids of a photo-less session answer "gone"; a scripted 15-minute two-client session with one column autofill sees no rate-limit refusal.
 
-**QG-3. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-3. Readable on any device**
+- **When:** a partner opens a 100-row shared page on a phone on 4G, and at phone widths.
+- **Then:** shared page first render p95, 100 rows, phone on 4G ≤ 2.0 s to a readable table; no page-level sideways scroll at 360 px viewport width — only the table scrolls sideways.
+- **How verify:** Lighthouse mobile profile run against a 100-row session before release; visual check at 360, 390 and 414 px.
+
+**Supporting scenarios (spec §6 rows not covered above):**
+- Single-cell autofill p95 ≤ 3.0 s — Worker request timing for the autofill action.
+- Publish with photos, 3 photos on 4G: link dialog p95 ≤ 3 s after tap, whatever the photos do; all 3 photos on the page p95 ≤ 30 s in the background — manual timing on device, 10 runs.
 
 ## 11. Risks and technical debt
 
