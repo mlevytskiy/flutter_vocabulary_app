@@ -112,49 +112,70 @@ Each tactical decision in later sections should trace to one of these seeds. Tac
 
 ## 5. Building block view
 
-<!-- 🎯 Why: INTERNAL DECOMPOSITION — modules, containers, datastores. The static topology: who
-     may talk to whom. Without §5, §6 (the flows) has no vocabulary of participants.
-     📋 Write: 1 ¶ on the style (layered / hexagonal / clean / event-driven) + a folder tree + a
-     C4Container block.
-     📌 Draw ONE Container per declared `target_surface` (frontmatter): a fullstack
-     [backend-service, web-frontend] = a backend-API container + a web/SPA container; a
-     [backend-service, mobile-app] = the API + the mobile app. The Container(web, …) line below is
-     just one surface's container — swap/add per what was declared in §4. → _shared/surfaces.md
-     📌 e.g. «web app, content API, media worker, datastore, object store, CDN». -->
-
-<One paragraph: layered / hexagonal / clean / event-driven, and why.>
+The app keeps its existing style — feature folders over a shared `core/` (models, services, providers), Riverpod for services and screen data, controllers and per-row flags in widget `State` ([`docs/architecture.md`](../../architecture.md)). The feature **extends existing modules** rather than adding a feature folder: definitions are a detail of the word row, so the row, the settings screen, the words table and the publish service grow in place, and the one new service sits in `core/services/` next to the translation service it mirrors. The Worker keeps its route-per-module layout: one new route module for dictionary lookups, and the existing `session/` module extended.
 
 **Internal decomposition:**
 
 ```
-<e.g. modules/<feature>/>
-├── domain/       <entities + sentinel errors>
-├── app/          <use cases / services>
-├── infra/        <repository + integration impl>
-├── ports/        <handlers, DTOs, error mapping>
-└── wiring        <self-wiring entry point>
+lib/
+├── core/
+│   ├── models/word_pair.dart          + definition, definitionOptionsJson, definitionMarkedFilled
+│   ├── models/definition_result.dart  NEW  senses + spelling suggestions for one word
+│   ├── services/dictionary_service.dart NEW  asks the Worker's dictionary route (ADR-0002)
+│   ├── services/session_publish_service.dart  + definition per entry, + detail mode (ADR-0004)
+│   └── providers.dart                 + dictionaryServiceProvider, + wordDetailModeProvider (persisted)
+├── features/
+│   ├── settings/settings_screen.dart  + three-way word detail mode
+│   ├── word_input/
+│   │   ├── word_input_screen.dart     + per-row definition state; photo description → definition
+│   │   └── widgets/
+│   │       ├── word_row_item.dart     layout branches per mode (translation branch untouched)
+│   │       ├── definition_dots_button.dart      NEW  senses popup trigger (popup_menu_2, as translation)
+│   │       └── definition_options_content.dart  NEW  the senses list
+│   └── words_table/
+│       ├── words_table_screen.dart    columns per mode; filled = word + translation or definition
+│       └── anki_export.dart           fixed definition column (ADR-0005)
+vocab-photo-api/src/
+├── define.ts                          NEW  dictionary route: key from secret, headword filter, suggestions
+├── index.ts, routing.ts               register the new route
+└── session/
+    ├── types.ts                       optional definition (≤500 chars), detail mode, blank = all three empty
+    ├── page.ts                        columns per detail mode; old documents = translation only
+    └── anki.ts                        fixed definition column (ADR-0005)
 ```
 
-**C4 Container (L2):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. ONE Container per declared target_surface (frontmatter); the web container below is one example surface. -->
+**C4 Container (L2):**
 
 ```mermaid
 C4Container
-    title <feature> — Containers
+    title definition-mode — Containers
 
-    Person(actor, "<Actor>")
+    Person(learner, "learner")
+    Person(partner, "partner")
 
-    Container_Boundary(app, "<Our system>") {
-        Container(web, "<Web/UI>", "<technology>", "<purpose>")
-        Container(api, "<API/handler>", "<technology>", "<purpose>")
-        ContainerDb(db, "<Datastore>", "<technology>", "<purpose>")
+    Container_Boundary(vocab, "Vocabulary app + vocab-photo-api Worker") {
+        Container(app, "Vocabulary app", "Flutter, Riverpod", "Word rows per mode, lookups, export, publish")
+        ContainerDb(isar, "Session store", "Isar on device", "Sessions with translations, definitions and senses")
+        ContainerDb(prefs, "Preferences", "Key-value on device", "Word detail mode, current session pointer")
+        Container(worker, "vocab-photo-api Worker", "Cloudflare Worker, TypeScript", "Photo analysis, dictionary route, session publish")
+        ContainerDb(kv, "Published sessions", "Cloudflare KV, 30-day TTL", "Entries with optional definition and the detail mode")
+        Container(page, "Shared page", "Server-rendered HTML from the Worker", "Columns per detail mode, AnkiDroid download")
     }
 
-    System_Ext(ext, "<External>", "<purpose>")
+    System_Ext(mw, "Merriam-Webster Collegiate API", "Short senses, spelling suggestions")
+    System_Ext(ai, "Anthropic Messages API", "Photo analysis with context description")
+    System_Ext(gt, "Google Translate", "Translations")
 
-    Rel(actor, web, "<interaction>", "<protocol>")
-    Rel(web, api, "<calls>")
-    Rel(api, db, "<reads/writes>", "<driver>")
-    Rel(api, ext, "<emits>", "<protocol>")
+    Rel(learner, app, "Chooses mode, fills definitions, exports, publishes")
+    Rel(app, isar, "Reads and writes sessions")
+    Rel(app, prefs, "Reads and writes the mode")
+    Rel(app, worker, "Analyse photo, define word, publish session", "HTTPS, app secret")
+    Rel(app, gt, "Translates a word", "HTTPS")
+    Rel(worker, mw, "Looks up senses", "HTTPS, secret key")
+    Rel(worker, ai, "Analyses a photo", "HTTPS")
+    Rel(worker, kv, "Stores and reads session documents")
+    Rel(worker, page, "Renders")
+    Rel(partner, page, "Reads definitions, downloads the file", "HTTPS")
 ```
 
 ## 6. Runtime view
