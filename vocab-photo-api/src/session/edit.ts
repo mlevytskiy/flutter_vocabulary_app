@@ -28,22 +28,22 @@ import {
 /** A page request carries one cell at most; anything this big is not from the page. */
 const MAX_PAGE_BODY_BYTES = 16 * 1024;
 
-function pageError(status: number, code: string, error: string, extra: Record<string, unknown> = {}): Response {
+export function pageError(status: number, code: string, error: string, extra: Record<string, unknown> = {}): Response {
   return jsonResponse({ error, code, ...extra }, status);
 }
 
 /** Unknown and expired ids answer the same (AC-32). */
-function gone(): Response {
+export function gone(): Response {
   return pageError(404, "gone", "This word list is gone.");
 }
 
-function badRequest(error: string): Response {
+export function badRequest(error: string): Response {
   return pageError(400, "bad_request", error);
 }
 
 type Body = { ok: true; body: Record<string, unknown> } | { ok: false; response: Response };
 
-async function readPageBody(request: Request): Promise<Body> {
+export async function readPageBody(request: Request): Promise<Body> {
   const text = await request.text();
   if (text.length > MAX_PAGE_BODY_BYTES) {
     return { ok: false, response: pageError(413, "bad_request", "The request is too large.") };

@@ -15,6 +15,8 @@ export interface Env {
   SOURCES?: R2Bucket;
   /** Merriam-Webster Collegiate key (definition-mode, ADR-0002). A secret: `wrangler secret put MW_API_KEY`. */
   MW_API_KEY: string;
+  /** Overrides the dictionary's base URL; unset in production. The tests point it at a local stub. */
+  MW_API_URL?: string;
   /** Successful dictionary lookups, one key per lowercased word, 30-day TTL (sad §7). */
   DEFINITIONS: KVNamespace;
   /** Editable sessions, rows, cell revisions, photo slots and autofill counters (good-looking-web, ADR-0003). Schema in `migrations/`. */

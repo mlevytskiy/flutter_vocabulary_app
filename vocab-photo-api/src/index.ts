@@ -4,6 +4,7 @@ import { matchRoute, type RouteContext, type RouteDefinition } from "./routing";
 import { sessionRoutes } from "./session/handlers";
 import { editRoutes } from "./session/edit";
 import { changesRoutes } from "./session/changes";
+import { autofillRoutes } from "./autofill/routes";
 import { logEvent } from "./log";
 import { defineRoutes } from "./define";
 
@@ -258,6 +259,7 @@ const ROUTES: RouteDefinition[] = [
   ...sessionRoutes,
   ...editRoutes,
   ...changesRoutes,
+  ...autofillRoutes,
 ];
 
 export default {

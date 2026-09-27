@@ -12,12 +12,12 @@ import type { RouteContext, RouteDefinition } from "./routing";
 
 const MW_URL = "https://www.dictionaryapi.com/api/v3/references/collegiate/json/";
 const MW_TIMEOUT_MS = 4_000;
-const MAX_WORD_CHARS = 100;
+export const MAX_WORD_CHARS = 100;
 const MAX_SUGGESTIONS = 5;
 /** Same lifetime as published sessions (sad §7). */
 export const DEFINITION_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
-type LookupResult =
+export type LookupResult =
   | { outcome: "senses"; word: string; senses: string[] }
   | { outcome: "not_found"; word: string; suggestions: string[] }
   | { outcome: "unavailable"; error: string };
@@ -39,24 +39,31 @@ async function handleDefine({ request, env }: RouteContext): Promise<Response> {
   }
 
   const started = Date.now();
+  const { result, cached } = await lookUpCached(env, word);
+  log(cached ? "cache hit" : result.outcome === "not_found" ? "not found" : result.outcome === "senses" ? "found" : "unavailable", word, started);
+  return jsonResponse(result, result.outcome === "unavailable" ? 503 : 200);
+}
+
+/**
+ * A word's senses, from the cache when it has them, else from the dictionary
+ * (caching a hit). Shared by the app's `/define` and the page's metered
+ * autofill (T9), which does its own logging -- without the word.
+ */
+export async function lookUpCached(env: Env, word: string): Promise<{ result: LookupResult; cached: boolean }> {
   // v2: senses are "definition: …\nexample: …" strings (see formatSense);
   // answers cached in the older shortdef format are ignored.
   const cacheKey = `def:v2:${word.toLowerCase()}`;
   const cached = await readCache(env, cacheKey);
-  if (cached) {
-    log("cache hit", word, started);
-    return jsonResponse({ outcome: "senses", word, senses: cached });
-  }
+  if (cached) return { result: { outcome: "senses", word, senses: cached }, cached: true };
 
   const result = await lookUp(env, word);
-  log(result.outcome === "not_found" ? "not found" : result.outcome === "senses" ? "found" : "unavailable", word, started);
   if (result.outcome === "senses") {
     // Only successful answers are cached, so an outage can never stick.
     await env.DEFINITIONS.put(cacheKey, JSON.stringify(result.senses), {
       expirationTtl: DEFINITION_CACHE_TTL_SECONDS,
     });
   }
-  return jsonResponse(result, result.outcome === "unavailable" ? 503 : 200);
+  return { result, cached: false };
 }
 
 async function readCache(env: Env, key: string): Promise<string[] | null> {
@@ -76,7 +83,7 @@ async function lookUp(env: Env, word: string): Promise<LookupResult> {
   if (!env.MW_API_KEY) return { outcome: "unavailable", error: "Dictionary is not configured" };
   let response: Response;
   try {
-    response = await fetch(`${MW_URL}${encodeURIComponent(word)}?key=${encodeURIComponent(env.MW_API_KEY)}`, {
+    response = await fetch(`${env.MW_API_URL || MW_URL}${encodeURIComponent(word)}?key=${encodeURIComponent(env.MW_API_KEY)}`, {
       signal: AbortSignal.timeout(MW_TIMEOUT_MS),
     });
   } catch {

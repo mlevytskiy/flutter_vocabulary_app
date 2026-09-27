@@ -2,13 +2,15 @@
 // (D1/KV/R2/rate limiters simulated under a throwaway --persist-to dir, with the
 // D1 migrations applied), waits until it answers, runs `node --test` over
 // test/**/*.test.mjs against it, then stops it. No package beyond wrangler
-// itself (sad §10).
+// itself (sad §10). The dictionary is a local stub (`test/mw-stub.mjs`), so no
+// test spends the real Merriam-Webster quota.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { startMwStub } from "../test/mw-stub.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -53,6 +55,7 @@ const port = await freePort();
 const inspectorPort = await freePort();
 const baseUrl = `http://127.0.0.1:${port}`;
 const stateDir = mkdtempSync(join(tmpdir(), "vocab-photo-api-test-"));
+const mwStub = await startMwStub();
 
 const migrate = spawnSync(
   "npx",
@@ -75,6 +78,9 @@ const worker = spawn(
     "--inspector-port", String(inspectorPort),
     "--persist-to", stateDir,
     "--env-file", devVars,
+    // After --env-file, so these win over a real key in .dev.vars.
+    "--var", `MW_API_URL:${mwStub.url}`,
+    "--var", "MW_API_KEY:test-key",
     "--show-interactive-dev-session=false",
     "--log-level", "warn",
   ],
@@ -93,6 +99,7 @@ function stopWorker() {
     }
   }
   rmSync(stateDir, { recursive: true, force: true });
+  mwStub.close();
 }
 process.on("SIGINT", () => {
   stopWorker();
@@ -113,6 +120,7 @@ try {
       VOCAB_API_BASE_URL: baseUrl,
       VOCAB_API_DEV_VARS: join(root, devVars),
       VOCAB_API_STATE_DIR: stateDir,
+      VOCAB_API_MW_STUB_URL: mwStub.url,
     },
   });
   if (code !== 0) console.error("--- wrangler dev output ---\n" + log);

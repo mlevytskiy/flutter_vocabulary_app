@@ -20,6 +20,7 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /s/<id>/rows` | **public** + page write limit | add a row when its first cell gets text |
 | `POST /s/<id>/rows/delete` | **public** + page write limit | delete a row nobody changed meanwhile |
 | `GET /s/<id>/changes?since=<rev>` | **public** | what changed after a revision (polling) |
+| `POST /s/<id>/define` | **public** + page write limit | fill a row's empty Definition cell (metered) |
 
 Every route in `src/index.ts` declares `public: true` or `false` for itself
 (`src/routing.ts`). Anything not marked public is behind the `x-app-secret` check and
@@ -208,7 +209,9 @@ of exactly three shapes — never Merriam-Webster's raw format:
 Successful answers are cached in the `DEFINITIONS` KV namespace for 30 days, keyed by the
 lowercased word; misses and failures are never cached. One log line per lookup
 (`define <cache hit|found|not found|unavailable> "<word>" <ms>`), readable with
-`npx wrangler tail`.
+`npx wrangler tail`. The app's lookups are not counted against the shared pages' daily
+allowance (see `POST /s/<id>/define`). `MW_API_URL` (a var, unset in production) replaces the
+dictionary's base URL; the tests point it at a local stub.
 
 ### `GET /s/<id>/sources/<sourceId>` — public
 
@@ -291,6 +294,33 @@ row id). `cells` are single changed cells of other rows, `deleted` the tombstone
 of the list, the answer is `{ "rev", "reload": true }`: load the page again. A missing or
 malformed `since` is `400 bad_request`; an unknown or expired id `404 gone`. Polling is not
 rate-limited.
+
+### `POST /s/<id>/define` — public
+
+Body: `{ "rowId" }`. Looks up the row's word (cache first, as `/define`) and writes the first
+sense that fits a cell (≤ 500 characters) into its Definition cell — only while that cell is
+still empty, so a filled cell is never overwritten (AC-19). A column autofill is one request
+per cell.
+
+Metering (ADR-0003): every lookup takes one unit of the page's allowance (**50 per UTC day**)
+and one of the all-pages share (**500 per UTC day**, half of Merriam-Webster's 1,000 — the
+rest is kept for the app, whose `/define` is never counted). Both are taken in one D1
+transaction, only while both are below their limits, so racing lookups cannot pass them. A
+lookup counts whether it finds something or not; a filled, deleted or wordless row is refused
+before it and costs nothing.
+
+- `200 { "rowId", "field": "definition", "value", "rev" }` — filled.
+- `429 { "code": "autofill_paused", "reason": "page|all_pages", "resumesAt" }` — today's
+  allowance or share is spent; `resumesAt` is the next 00:00 UTC (show it in local time).
+  Distinct from the write limit's `rate_limited`.
+- `422 { "code": "nothing_found" }` — the dictionary has nothing for the word (unit spent).
+- `409 { "code": "conflict", "value", "rev" }` — the cell has text (or `deleted: true`).
+- `503 { "code": "dictionary_unavailable" }` — the dictionary did not answer (logged as
+  `dictionary unavailable`, the spec §7 KPI).
+- `404 unknown_row` / `gone`; `400 bad_request` (also for a row without a word).
+
+Log lines: `autofill filled`, `autofill nothing found`, `autofill paused` (with the reason) —
+never the word or the definition.
 
 ## AnkiDroid file format
 
@@ -450,7 +480,9 @@ applied), runs
 `.dev.vars`, or `.dev.vars.example` when there is none. Shared helpers (`baseUrl`,
 `appHeaders()`, `publish()`, `get()`, and `d1()` / `kvPut()` / `kvDelete()` for reading
 and seeding the local state `wrangler dev` serves from) live in `test/helpers.mjs`. The tests only work through
-`npm test`, because they need the address it passes in.
+`npm test`, because they need the address it passes in. The dictionary is a local stub
+(`test/mw-stub.mjs`, passed to `wrangler dev` as `MW_API_URL` and a fake `MW_API_KEY`), so no
+test uses the real Merriam-Webster quota, even with a real key in `.dev.vars`.
 
 ## Rate limiting
 
