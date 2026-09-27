@@ -16,7 +16,7 @@
 | [T9](t9-metered-definition-autofill.md) | Meter definition autofill with the page allowance and the all-pages share | ports | Maksym | M | T6 | done |
 | [T10](t10-download-and-daily-cleanup.md) | Build the AnkiDroid file from D1 and clean up expired sessions daily | infra | Maksym | S | T4 | done |
 | [T11](t11-server-rendered-two-layout-page.md) | Render the two-layout table, photo markup and CSP on the server | ui | Maksym | L | T4 | done |
-| [T12](t12-client-cell-editing-and-conflicts.md) | Edit cells in place with save-on-leave, saved/not-saved states and conflict choice | ui | Maksym | L | T6, T11 | todo |
+| [T12](t12-client-cell-editing-and-conflicts.md) | Edit cells in place with save-on-leave, saved/not-saved states and conflict choice | ui | Maksym | L | T6, T11 | done |
 | [T13](t13-client-add-and-delete-with-undo.md) | Add rows with the plus button and delete rows with a 5-second Undo | ui | Maksym | M | T7, T12 | todo |
 | [T14](t14-client-polling-with-idle-stop.md) | Poll for other partners' changes, pausing when hidden and stopping after 5 idle minutes | ui | Maksym | M | T8, T13 | todo |
 | [T15](t15-client-autofill.md) | Autofill a cell or a whole column, and open a collapsed column | ui | Maksym | L | T1, T9, T13 | todo |

@@ -55,6 +55,19 @@ export const STYLE = `
              border: 1px dashed #999; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
   .no-translation td.c-translation .v, .no-definition td.c-definition .v { display: none; }
 
+  .v[contenteditable]:focus { outline: 2px solid #2962ff; outline-offset: 3px; border-radius: 2px; }
+  td[data-state="saving"] .v { opacity: 0.6; }
+  td[data-state="unsaved"], td[data-state="conflict"] { background: #fff1f0; box-shadow: inset 3px 0 #d93025; }
+  .cell-note { font-size: 0.8rem; margin: 4px 0 0; max-width: max(var(--w-word), 12rem); }
+  .cell-note:empty { display: none; }
+  td[data-state="saved"] .cell-note { color: #1e7d32; }
+  td[data-state="unsaved"] .cell-note, td[data-state="conflict"] .cell-note { color: #b3261e; }
+  .cell-note p { margin: 0; }
+  .cell-note q { display: block; margin: 2px 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; color: #1b1b1b; }
+  .cell-note button { font: inherit; margin: 0 6px 0 0; padding: 4px 8px; border-radius: 4px;
+                      border: 1px solid #999; background: #fff; color: #1b1b1b; cursor: pointer; }
+  .banner { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; background: #fdecea; color: #b3261e; }
+
   .photos figure { margin: 0; }
   .pager-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
   .slide { flex: 0 0 100%; scroll-snap-align: start; }
@@ -94,6 +107,12 @@ export const STYLE = `
     .slide img, .placeholder { border-color: #333; }
     .thumb { border-color: #1c1c1c; background: #333; }
     .needs-word-mark { color: #e0a040; }
+    td[data-state="unsaved"], td[data-state="conflict"] { background: #3a1d1b; }
+    td[data-state="saved"] .cell-note { color: #81c995; }
+    td[data-state="unsaved"] .cell-note, td[data-state="conflict"] .cell-note { color: #f28b82; }
+    .cell-note q { color: #ececec; }
+    .cell-note button { background: #262626; color: #ececec; border-color: #555; }
+    .banner { background: #3a1d1b; color: #f28b82; }
     .gone { color: #ccc; }
   }
 `;

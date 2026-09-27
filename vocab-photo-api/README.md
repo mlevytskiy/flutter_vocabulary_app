@@ -217,6 +217,9 @@ link never leaks as a referrer. The page loads `src/session/client/page.js` (pla
 with JSDoc, checked by `npm run typecheck` through `tsconfig.client.json`), which wrangler
 bundles as text (`rules` in `wrangler.jsonc`) and the Worker serves at
 `/assets/page-<hash>.js` with a one-year immutable cache; only the current hash answers.
+The script makes the cells editable in place: leaving a cell saves it through
+`POST /s/<id>/cells`; the cell then shows a brief "saved", stays marked "not saved" with the
+reason, or shows both values when someone else saved it meanwhile (see below).
 A missing or expired id returns a **`404` HTML page** saying the list is gone — a human is
 reading this URL, not a client.
 
