@@ -108,10 +108,18 @@ export const STYLE = `
   .banner { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; background: #fdecea; color: #b3261e; }
 
   .photos figure { margin: 0; }
-  .pager-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
+  .pager-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .pager-track::-webkit-scrollbar { display: none; }
+  .pager-track:focus-visible { outline: 2px solid #2962ff; outline-offset: 2px; border-radius: 6px; }
   .slide { flex: 0 0 100%; scroll-snap-align: start; }
-  .slide img { display: block; width: 100%; height: auto; max-height: calc(100vh - 96px);
+  .slide img { display: block; width: 100%; height: auto; max-height: calc(100vh - 136px);
                object-fit: contain; border-radius: 6px; border: 1px solid #ddd; }
+  /* The pager's arrows (AC-05), under the photo, either side of its "N of M". */
+  .pager-nav:not([hidden]) { display: flex; justify-content: center; gap: 16px; margin: 6px 0 0; }
+  .pager-nav button, .dialog-bar button { font: inherit; font-size: 1.4rem; line-height: 1; width: 40px; height: 40px;
+                                          padding: 0; border: 1px solid #ccc; border-radius: 50%; background: #fff;
+                                          color: #1b1b1b; cursor: pointer; }
+  .pager-nav button:disabled, .dialog-bar button:disabled { opacity: 0.35; cursor: default; }
   .placeholder { aspect-ratio: 3 / 4; border: 1px dashed #bbb; border-radius: 6px; display: flex;
                  align-items: center; justify-content: center; color: #888; font-size: 0.85rem; }
   .slide figcaption { text-align: center; color: #666; font-size: 0.85rem; margin: 4px 0 0; }
@@ -122,11 +130,38 @@ export const STYLE = `
   .photo-button.stack .thumb:nth-child(1) { transform: rotate(-7deg); }
   .photo-button.stack .thumb:nth-child(2) { transform: rotate(5deg); }
 
+  /* The phone's photo dialog (AC-07): full screen, a strip of photos moved by
+     the script's swipe, each photo zoomed by pinch or a double tap. */
+  .photo-dialog { width: 100vw; max-width: none; height: 100vh; height: 100dvh; max-height: none; margin: 0;
+                  padding: 0; border: 0; background: #000; color: #fff; overflow: hidden; }
+  .photo-dialog[open] { display: flex; flex-direction: column; }
+  .photo-dialog::backdrop { background: #000; }
+  .dialog-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px; }
+  .dialog-count { flex: 1; text-align: center; font-size: 0.9rem; }
+  .dialog-bar button { border-color: #555; background: #1b1b1b; color: #fff; }
+  .dialog-bar [data-dialog="close"] { margin-left: 8px; }
+  .dialog-view { flex: 1; min-height: 0; overflow: hidden; touch-action: none; }
+  .dialog-strip { display: flex; height: 100%; transition: transform 0.25s ease-out; }
+  .dialog-strip.dragging { transition: none; }
+  .dialog-slide { flex: 0 0 100%; height: 100%; margin: 0; overflow: hidden; display: flex;
+                  align-items: center; justify-content: center; }
+  .dialog-slide img { display: block; max-width: 100%; max-height: 100%; object-fit: contain;
+                      transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+  .dialog-slide .placeholder { width: min(80%, 20rem); color: #aaa; border-color: #555; }
+  html.dialog-open, html.dialog-open body { overflow: hidden; }
+  @media (prefers-reduced-motion: reduce) { .dialog-strip { transition: none; } }
+
   @media (min-width: 900px) {
     table { max-width: 100%; }
     .has-photos .layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--w-photos);
                   gap: 24px; align-items: start; }
     .photos { position: sticky; top: 16px; }
+    /* A recognised row of the photo on display (AC-05, AC-34). Wide layout
+       only: there is no row highlighting on a phone (spec §3). A cell's own
+       not-saved state still shows over it. */
+    tr.from-photo td { background: #e8f0fe; }
+    tr.from-photo td:first-child { box-shadow: inset 3px 0 #2962ff; }
+    tr.from-photo td[data-state="unsaved"], tr.from-photo td[data-state="conflict"] { background: #fff1f0; }
   }
   @media (max-width: 899.98px) {
     :root { --w-word: 6.5rem; --w-translation: 6.5rem; --w-definition: min(18rem, 75vw); }
@@ -161,5 +196,11 @@ export const STYLE = `
     .toast button { color: #1a56d6; }
     @keyframes changed { from { background: #4a3f10; } to { background: transparent; } }
     .gone { color: #ccc; }
+    .pager-nav button { background: #262626; color: #ececec; border-color: #555; }
+  }
+  @media (prefers-color-scheme: dark) and (min-width: 900px) {
+    tr.from-photo td { background: #1c2a44; }
+    tr.from-photo td:first-child { box-shadow: inset 3px 0 #8ab4f8; }
+    tr.from-photo td[data-state="unsaved"], tr.from-photo td[data-state="conflict"] { background: #3a1d1b; }
   }
 `;

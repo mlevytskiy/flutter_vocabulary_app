@@ -115,7 +115,9 @@ function renderHeader(field: Field, collapsed: boolean): string {
  * The photo pager (wide layout) and the photo button (phone layout), from the
  * declared slots in order. A slot whose bytes never arrived is an empty
  * placeholder in its place. No slots (none declared, or "include photos"
- * off) renders neither (AC-08, AC-24, AC-26).
+ * off) renders neither (AC-08, AC-24, AC-26). The pager's arrows and the
+ * phone's photo dialog (AC-05, AC-07) are wired by the script, which fills
+ * the dialog's strip from the pager's slides when it opens.
  */
 function renderPhotos(session: StoredSession): string {
   const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
@@ -139,12 +141,16 @@ function renderPhotos(session: StoredSession): string {
     .join("");
   const label = total === 1 ? "Show the source photo" : `Show the ${total} source photos`;
   return `<aside class="photos" aria-label="Source photos">
-<div class="pager-track">
+<div class="pager-track" tabindex="0" aria-label="Source photos, use the arrow keys to move">
 ${slots.map(slide).join("\n")}
 </div>
-<div class="pager-nav" hidden><button type="button" data-pager="prev">Previous photo</button> <button type="button" data-pager="next">Next photo</button></div>
+<div class="pager-nav" hidden><button type="button" data-pager="prev" aria-label="Previous photo">‹</button><button type="button" data-pager="next" aria-label="Next photo">›</button></div>
 </aside>
-<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>`;
+<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>
+<dialog class="photo-dialog" aria-label="Source photos">
+<div class="dialog-bar"><button type="button" data-dialog="prev" aria-label="Previous photo">‹</button><span class="dialog-count" aria-live="polite"></span><button type="button" data-dialog="next" aria-label="Next photo">›</button><button type="button" data-dialog="close" aria-label="Close the photos">×</button></div>
+<div class="dialog-view"><div class="dialog-strip"></div></div>
+</dialog>`;
 }
 
 export function renderSessionPage(session: StoredSession, scriptPath: string): string {

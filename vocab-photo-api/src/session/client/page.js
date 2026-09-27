@@ -100,6 +100,17 @@ const IDLE_MS = 5 * 60 * 1000;
 const COLUMN_GAP_MS = 340;
 /** The translation endpoint (ADR-0007, T1), English to Ukrainian as in the app. */
 const TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=uk&dt=t&q=";
+/** How long the pager's scroll must be still before a swipe counts as done. */
+const SETTLE_MS = 120;
+/** The photo dialog (AC-07): the most a photo zooms, and what a double tap zooms to. */
+const MAX_ZOOM = 4;
+const TAP_ZOOM = 2.5;
+const DOUBLE_TAP_MS = 300;
+/** A swipe turns the photo when it covers this share of the width, or moves faster (px/ms). */
+const SWIPE_SHARE = 0.2;
+const SWIPE_SPEED = 0.4;
+/** Below this a touch is a tap, not a drag (px). */
+const TAP_SLOP = 10;
 const SVG_NS = "http://www.w3.org/2000/svg";
 /** The app's lightning (`Icons.electric_bolt`), drawn inline: images come only from this origin. */
 const BOLT_PATH = "M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z";
@@ -109,6 +120,9 @@ document.documentElement.classList.add("js");
 const main = /** @type {HTMLElement | null} */ (document.querySelector("main[data-session]"));
 const tbody = main?.querySelector("tbody") ?? null;
 const blankRow = /** @type {HTMLTemplateElement | null} */ (main?.querySelector("template#blank-row") ?? null);
+/** The wide layout, where the pager and its row highlighting are (spec §3: none on a phone). */
+const WIDE = window.matchMedia("(min-width: 900px)");
+const REDUCED_MOTION = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 const state = {
   session: main?.dataset.session ?? "",
@@ -141,6 +155,40 @@ const state = {
   },
   /** @type {Set<Field>} the columns whose lightning is running */
   columnRuns: new Set(),
+  /** The photo on display in the pager (AC-05); its rows are highlighted. */
+  photo: {
+    index: 0,
+    /** @type {string | null} */
+    source: /** @type {HTMLElement | null} */ (main?.querySelector(".photos .slide") ?? null)?.dataset.source ?? null,
+    /** Waits for a swipe's scrolling to stop. */
+    settle: 0,
+  },
+  /** The phone's photo dialog (AC-07): the photo shown, and where the table was when it opened. */
+  dialog: { index: 0, scrollX: 0, scrollY: 0, tableLeft: 0, tableTop: 0 },
+};
+
+/**
+ * A touch gesture in the photo dialog: the pointers down, the shown photo's
+ * zoom (`scale`, moved by `x`/`y`), and where the gesture's current phase began.
+ */
+const gesture = {
+  /** @type {Map<number, { x: number, y: number }>} */
+  pointers: new Map(),
+  scale: 1,
+  x: 0,
+  y: 0,
+  startScale: 1,
+  startX: 0,
+  startY: 0,
+  startDist: 0,
+  startMid: { x: 0, y: 0 },
+  downX: 0,
+  downAt: 0,
+  /** The finger went further than a tap. */
+  moved: false,
+  /** Two fingers were down: the gesture is a zoom, not a swipe or a tap. */
+  pinched: false,
+  lastTap: 0,
 };
 
 /** `plaintext-only` keeps pasted formatting out; older browsers throw on it. */
@@ -1072,6 +1120,7 @@ function insertRow(incoming) {
     /** @type {DocumentFragment} */ (blankRow.content.cloneNode(true)).firstElementChild
   );
   tr.dataset.row = incoming.rowId;
+  // adoptRow highlights it when its photo is on display.
   if (incoming.sourceId !== null) tr.dataset.source = incoming.sourceId;
   for (const field of FIELDS) {
     const td = /** @type {HTMLTableCellElement} */ (tr.querySelector(`td[data-field="${field}"]`));
@@ -1127,6 +1176,360 @@ function photoArrived(id) {
     picture.alt = "";
     thumb.replaceWith(picture);
   }
+  // The open dialog shows it too.
+  const shown = main.querySelectorAll(".dialog-slide")[index]?.querySelector(".placeholder");
+  if (shown) shown.replaceWith(img.cloneNode());
+}
+
+/**
+ * AC-05, AC-06: a row is highlighted while the photo it was recognised from is
+ * on display. Only a recognised row has `data-source`, so a typed row and one
+ * added on the page never are; an edit leaves `data-source` alone (AC-34).
+ * @param {HTMLTableRowElement} tr
+ */
+function markFromPhoto(tr) {
+  const source = tr.dataset.source;
+  tr.classList.toggle("from-photo", source !== undefined && source === state.photo.source);
+}
+
+/**
+ * Highlights the rows of the photo on display. After a swipe, when none of
+ * them is on screen, the table scrolls to the first (AC-05) -- in the wide
+ * layout only, where the pager is.
+ * @param {boolean} scroll
+ */
+function highlightRows(scroll) {
+  if (!tbody) return;
+  for (const row of state.rows.values()) markFromPhoto(row.tr);
+  if (!scroll || !WIDE.matches) return;
+  const rows = Array.from(tbody.querySelectorAll("tr.from-photo:not(.pending-delete)"));
+  if (rows.length === 0) return;
+  // The sticky header hides the top of the viewport.
+  const top = main?.querySelector("thead")?.getBoundingClientRect().height ?? 0;
+  const visible = rows.some((tr) => {
+    const box = tr.getBoundingClientRect();
+    return box.bottom > top && box.top < window.innerHeight;
+  });
+  if (!visible) rows[0].scrollIntoView({ block: "center", behavior: REDUCED_MOTION.matches ? "auto" : "smooth" });
+}
+
+/** The pager's slides, in order. */
+function slides() {
+  return /** @type {HTMLElement[]} */ (Array.from(main?.querySelectorAll(".photos .slide") ?? []));
+}
+
+/**
+ * Puts photo `index` on display in the pager: its "N of M" is under it, the
+ * arrows stop at the ends, and its rows are highlighted. `move` scrolls the
+ * track there (an arrow or a key); a swipe has already put it there.
+ * @param {number} index
+ * @param {boolean} move
+ */
+function showPhoto(index, move) {
+  const all = slides();
+  if (all.length === 0) return;
+  const target = Math.max(0, Math.min(all.length - 1, index));
+  const track = /** @type {HTMLElement | null} */ (main?.querySelector(".pager-track") ?? null);
+  if (move && track) {
+    track.scrollTo({ left: target * track.clientWidth, behavior: REDUCED_MOTION.matches ? "auto" : "smooth" });
+  }
+  const prev = /** @type {HTMLButtonElement | null} */ (main?.querySelector('[data-pager="prev"]') ?? null);
+  const next = /** @type {HTMLButtonElement | null} */ (main?.querySelector('[data-pager="next"]') ?? null);
+  if (prev) prev.disabled = target === 0;
+  if (next) next.disabled = target === all.length - 1;
+  if (target === state.photo.index) return;
+  state.photo.index = target;
+  state.photo.source = all[target].dataset.source ?? null;
+  highlightRows(true);
+}
+
+/** @param {HTMLElement} photos the pager, `aside.photos` */
+function wirePager(photos) {
+  const track = /** @type {HTMLElement | null} */ (photos.querySelector(".pager-track"));
+  const nav = /** @type {HTMLElement | null} */ (photos.querySelector(".pager-nav"));
+  if (!track) return;
+  if (nav && slides().length > 1) nav.hidden = false;
+  showPhoto(0, false);
+  // A swipe (or a trackpad) scrolls the track; the photo it snaps to is the one on display.
+  track.addEventListener(
+    "scroll",
+    () => {
+      window.clearTimeout(state.photo.settle);
+      state.photo.settle = window.setTimeout(() => {
+        if (track.clientWidth > 0) showPhoto(Math.round(track.scrollLeft / track.clientWidth), false);
+      }, SETTLE_MS);
+    },
+    { passive: true }
+  );
+  track.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    showPhoto(state.photo.index + (event.key === "ArrowRight" ? 1 : -1), true);
+  });
+  nav?.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-pager]") : null;
+    if (button instanceof HTMLElement) {
+      showPhoto(state.photo.index + (button.dataset.pager === "next" ? 1 : -1), true);
+    }
+  });
+}
+
+/**
+ * AC-07: the phone's photo button opens a full-screen dialog on the first
+ * photo. Its photos are the pager's, copied in as it opens, so a photo that
+ * arrived by poll is there too. Closing returns to the table where it was.
+ * @param {HTMLDialogElement} dialog
+ */
+function openDialog(dialog) {
+  const strip = /** @type {HTMLElement} */ (dialog.querySelector(".dialog-strip"));
+  const all = slides();
+  strip.replaceChildren(
+    ...all.map((slide) => {
+      const figure = document.createElement("figure");
+      figure.className = "dialog-slide";
+      const picture = slide.querySelector("img, .placeholder");
+      if (picture) {
+        const copy = /** @type {HTMLElement} */ (picture.cloneNode(true));
+        // Off-screen in the strip, a lazy image would wait for a swipe to load.
+        if (copy instanceof HTMLImageElement) copy.loading = "eager";
+        copy.draggable = false;
+        figure.append(copy);
+      }
+      return figure;
+    })
+  );
+  const scroller = main?.querySelector(".table-scroll");
+  state.dialog.scrollX = window.scrollX;
+  state.dialog.scrollY = window.scrollY;
+  state.dialog.tableLeft = scroller?.scrollLeft ?? 0;
+  state.dialog.tableTop = scroller?.scrollTop ?? 0;
+  for (const button of dialog.querySelectorAll('[data-dialog="prev"], [data-dialog="next"]')) {
+    /** @type {HTMLElement} */ (button).hidden = all.length < 2;
+  }
+  showInDialog(dialog, 0, false);
+  document.documentElement.classList.add("dialog-open");
+  dialog.showModal();
+  /** @type {HTMLElement | null} */ (dialog.querySelector('[data-dialog="close"]'))?.focus();
+}
+
+/**
+ * The dialog closed (its × or Escape): the table is back as it was, at the
+ * same scroll position (AC-07).
+ * @param {HTMLDialogElement} dialog
+ */
+function dialogClosed(dialog) {
+  document.documentElement.classList.remove("dialog-open");
+  window.scrollTo(state.dialog.scrollX, state.dialog.scrollY);
+  const scroller = main?.querySelector(".table-scroll");
+  if (scroller) {
+    scroller.scrollLeft = state.dialog.tableLeft;
+    scroller.scrollTop = state.dialog.tableTop;
+  }
+  gesture.pointers.clear();
+  /** @type {HTMLElement} */ (dialog.querySelector(".dialog-strip")).replaceChildren();
+}
+
+/**
+ * Shows photo `index` in the dialog, unzoomed, with its "N of M".
+ * @param {HTMLDialogElement} dialog
+ * @param {number} index
+ * @param {boolean} animate
+ */
+function showInDialog(dialog, index, animate) {
+  const strip = /** @type {HTMLElement} */ (dialog.querySelector(".dialog-strip"));
+  const total = strip.children.length;
+  zoomTo(dialog, 1, 0, 0);
+  state.dialog.index = Math.max(0, Math.min(total - 1, index));
+  strip.classList.toggle("dragging", !animate);
+  strip.style.transform = `translateX(${-100 * state.dialog.index}%)`;
+  const count = dialog.querySelector(".dialog-count");
+  if (count) count.textContent = total > 0 ? `${state.dialog.index + 1} of ${total}` : "";
+  const prev = /** @type {HTMLButtonElement | null} */ (dialog.querySelector('[data-dialog="prev"]'));
+  const next = /** @type {HTMLButtonElement | null} */ (dialog.querySelector('[data-dialog="next"]'));
+  if (prev) prev.disabled = state.dialog.index === 0;
+  if (next) next.disabled = state.dialog.index >= total - 1;
+}
+
+/** @param {HTMLDialogElement} dialog */
+function dialogImage(dialog) {
+  const slide = dialog.querySelectorAll(".dialog-slide")[state.dialog.index];
+  return /** @type {HTMLImageElement | null} */ (slide?.querySelector("img") ?? null);
+}
+
+/**
+ * Zooms the shown photo to `scale`, moved by `x`/`y`, kept so it always covers
+ * the middle of the screen (it cannot be dragged off). A CSS transform only;
+ * set through the style property, which the CSP allows.
+ * @param {HTMLDialogElement} dialog
+ * @param {number} scale
+ * @param {number} x
+ * @param {number} y
+ */
+function zoomTo(dialog, scale, x, y) {
+  const img = dialogImage(dialog);
+  gesture.scale = Math.max(1, Math.min(MAX_ZOOM, scale));
+  if (!img || gesture.scale === 1) {
+    gesture.x = 0;
+    gesture.y = 0;
+  } else {
+    const slide = /** @type {HTMLElement} */ (img.parentElement);
+    gesture.x = clampPan(x, img.offsetLeft, img.offsetWidth, slide.clientWidth, gesture.scale);
+    gesture.y = clampPan(y, img.offsetTop, img.offsetHeight, slide.clientHeight, gesture.scale);
+  }
+  if (img) img.style.transform = `translate(${gesture.x}px, ${gesture.y}px) scale(${gesture.scale})`;
+}
+
+/**
+ * The pan along one axis that keeps a zoomed photo's edges outside the view,
+ * or centred when it is still narrower than the view.
+ * @param {number} pan @param {number} offset @param {number} size @param {number} view @param {number} scale
+ */
+function clampPan(pan, offset, size, view, scale) {
+  const scaled = size * scale;
+  if (scaled <= view) return (view - scaled) / 2 - offset;
+  return Math.min(-offset, Math.max(view - offset - scaled, pan));
+}
+
+/**
+ * A point on screen measured from the shown photo's untransformed box, the
+ * frame its `translate` works in (it is centred in its slide).
+ * @param {HTMLDialogElement} dialog @param {{ x: number, y: number }} point
+ */
+function inSlide(dialog, point) {
+  const box = /** @type {HTMLElement} */ (dialog.querySelector(".dialog-view")).getBoundingClientRect();
+  const img = dialogImage(dialog);
+  return { x: point.x - box.left - (img?.offsetLeft ?? 0), y: point.y - box.top - (img?.offsetTop ?? 0) };
+}
+
+/** @param {HTMLDialogElement} dialog */
+function pinchStart(dialog) {
+  const [a, b] = Array.from(gesture.pointers.values());
+  gesture.startScale = gesture.scale;
+  gesture.startX = gesture.x;
+  gesture.startY = gesture.y;
+  if (b) {
+    gesture.startDist = Math.hypot(a.x - b.x, a.y - b.y);
+    gesture.startMid = inSlide(dialog, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  } else if (a) {
+    gesture.startMid = inSlide(dialog, a);
+  }
+}
+
+/**
+ * Swipe between photos, pinch or double-tap to zoom, drag a zoomed photo --
+ * with pointer events and CSS transforms only (no library, sad §2). The view
+ * has `touch-action: none`, so the browser leaves every touch to this.
+ * @param {HTMLDialogElement} dialog
+ */
+function wireDialogGestures(dialog) {
+  const view = /** @type {HTMLElement} */ (dialog.querySelector(".dialog-view"));
+  const strip = /** @type {HTMLElement} */ (dialog.querySelector(".dialog-strip"));
+
+  view.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    view.setPointerCapture(event.pointerId);
+    gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (gesture.pointers.size === 1) {
+      gesture.downX = event.clientX;
+      gesture.downAt = event.timeStamp;
+      gesture.moved = false;
+      gesture.pinched = false;
+      strip.classList.add("dragging");
+    } else {
+      gesture.pinched = true;
+    }
+    pinchStart(dialog);
+  });
+
+  view.addEventListener("pointermove", (event) => {
+    const point = gesture.pointers.get(event.pointerId);
+    if (!point) return;
+    point.x = event.clientX;
+    point.y = event.clientY;
+    const [a, b] = Array.from(gesture.pointers.values());
+    if (b) {
+      // Pinch: the point between the fingers stays under them.
+      const mid = inSlide(dialog, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      const scale = Math.max(1, Math.min(MAX_ZOOM, (gesture.startScale * Math.hypot(a.x - b.x, a.y - b.y)) / gesture.startDist));
+      const ratio = scale / gesture.startScale;
+      zoomTo(
+        dialog,
+        scale,
+        mid.x - (gesture.startMid.x - gesture.startX) * ratio,
+        mid.y - (gesture.startMid.y - gesture.startY) * ratio
+      );
+      return;
+    }
+    const at = inSlide(dialog, a);
+    const dx = at.x - gesture.startMid.x;
+    const dy = at.y - gesture.startMid.y;
+    if (!gesture.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
+    gesture.moved = true;
+    if (gesture.scale > 1) {
+      zoomTo(dialog, gesture.scale, gesture.startX + dx, gesture.startY + dy);
+    } else if (!gesture.pinched) {
+      // Unzoomed: the strip follows the finger, with some give at either end.
+      const last = strip.children.length - 1;
+      const edge = (state.dialog.index === 0 && dx > 0) || (state.dialog.index === last && dx < 0);
+      strip.style.transform = `translateX(calc(${-100 * state.dialog.index}% + ${edge ? dx / 3 : dx}px))`;
+    }
+  });
+
+  /** @param {PointerEvent} event */
+  const up = (event) => {
+    if (!gesture.pointers.delete(event.pointerId)) return;
+    if (gesture.pointers.size > 0) {
+      // One finger left of a pinch: it drags from here.
+      pinchStart(dialog);
+      return;
+    }
+    const dx = event.clientX - gesture.downX;
+    const speed = Math.abs(dx) / Math.max(1, event.timeStamp - gesture.downAt);
+    if (event.type === "pointercancel") {
+      showInDialog(dialog, state.dialog.index, true);
+    } else if (!gesture.moved && !gesture.pinched) {
+      // A double tap zooms in on that point, or back out.
+      if (event.timeStamp - gesture.lastTap < DOUBLE_TAP_MS) {
+        gesture.lastTap = 0;
+        const at = inSlide(dialog, { x: event.clientX, y: event.clientY });
+        if (gesture.scale > 1) {
+          zoomTo(dialog, 1, 0, 0);
+        } else {
+          zoomTo(dialog, TAP_ZOOM, at.x - (at.x - gesture.x) * TAP_ZOOM, at.y - (at.y - gesture.y) * TAP_ZOOM);
+        }
+      } else {
+        gesture.lastTap = event.timeStamp;
+      }
+    } else if (gesture.scale === 1 && !gesture.pinched) {
+      const turn = Math.abs(dx) > view.clientWidth * SWIPE_SHARE || speed > SWIPE_SPEED;
+      showInDialog(dialog, state.dialog.index + (turn ? (dx < 0 ? 1 : -1) : 0), true);
+      return;
+    }
+    strip.classList.remove("dragging");
+  };
+  view.addEventListener("pointerup", up);
+  view.addEventListener("pointercancel", up);
+}
+
+/** @param {HTMLDialogElement} dialog @param {HTMLElement} button the photo button */
+function wireDialog(dialog, button) {
+  button.addEventListener("click", () => openDialog(dialog));
+  dialog.addEventListener("close", () => dialogClosed(dialog));
+  dialog.addEventListener("click", (event) => {
+    const control = event.target instanceof Element ? event.target.closest("[data-dialog]") : null;
+    if (!(control instanceof HTMLElement)) return;
+    if (control.dataset.dialog === "close") {
+      dialog.close();
+    } else {
+      showInDialog(dialog, state.dialog.index + (control.dataset.dialog === "next" ? 1 : -1), true);
+    }
+  });
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    showInDialog(dialog, state.dialog.index + (event.key === "ArrowRight" ? 1 : -1), true);
+  });
+  wireDialogGestures(dialog);
 }
 
 /**
@@ -1165,6 +1568,7 @@ function makeEditable(el, field) {
  */
 function adoptRow(tr, phase = "live") {
   const row = /** @type {Row} */ ({ id: tr.dataset.row ?? "", tr, cells: {}, phase, pendingDelete: false });
+  markFromPhoto(tr);
   for (const field of FIELDS) {
     const td = /** @type {HTMLTableCellElement} */ (tr.querySelector(`td[data-field="${field}"]`));
     const el = /** @type {HTMLElement} */ (td.querySelector(".v"));
@@ -1317,6 +1721,13 @@ if (main) {
     wireTable(tbody);
     const add = main.querySelector(".add-row .add");
     if (blankRow && add) add.addEventListener("click", () => addBlankRow(tbody, blankRow));
+
+    // The photo pager (wide) and the photo dialog (phone), when there are photos.
+    const photos = /** @type {HTMLElement | null} */ (main.querySelector("aside.photos"));
+    if (photos) wirePager(photos);
+    const dialog = main.querySelector("dialog.photo-dialog");
+    const photoButton = main.querySelector(".photo-button");
+    if (dialog instanceof HTMLDialogElement && photoButton instanceof HTMLElement) wireDialog(dialog, photoButton);
 
     // The column lightnings (US-09) and a collapsed column's add control (US-10).
     const thead = main.querySelector("thead");

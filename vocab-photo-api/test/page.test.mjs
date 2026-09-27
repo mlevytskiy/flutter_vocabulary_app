@@ -165,6 +165,62 @@ test("declared photos render in order, a pending one as a placeholder; one photo
   assert.match(single, /class="photo-button" aria-label="Show the source photo"/);
 });
 
+// T16: the pager's arrows and the phone dialog's frame are in the markup,
+// hidden until the script wires them (AC-05, AC-07); a photo-less page has neither.
+test("a page with photos has the pager arrows, a focusable track and the photo dialog", async () => {
+  const [first, second] = [randomUUID(), randomUUID()];
+  const { id } = await publish({
+    sources: [
+      { id: first, order: 0 },
+      { id: second, order: 1 },
+    ],
+    entries: [{ word: "kettle", translation: "чайник", sourceId: first }],
+  });
+  const { html } = await page(id);
+
+  assert.match(html, /<div class="pager-track" tabindex="0" aria-label="Source photos, use the arrow keys to move">/);
+  assert.match(html, /<div class="pager-nav" hidden>.*data-pager="prev" aria-label="Previous photo".*data-pager="next" aria-label="Next photo"/s);
+  const dialog = html.match(/<dialog class="photo-dialog" aria-label="Source photos">(.*?)<\/dialog>/s);
+  assert.ok(dialog, "the photo dialog is rendered");
+  assert.match(dialog[1], /class="dialog-count" aria-live="polite"/);
+  assert.match(dialog[1], /data-dialog="close" aria-label="Close the photos"/);
+  assert.match(dialog[1], /<div class="dialog-strip"><\/div>/);
+
+  const bare = await publish({ entries: [{ word: "apple", translation: "яблуко" }] });
+  const none = (await page(bare.id)).html.split("<body>")[1];
+  assert.doesNotMatch(none, /<dialog/);
+  assert.doesNotMatch(none, /class="pager-nav"/);
+});
+
+// AC-06, AC-34: only a recognised row is linked to a photo, and it stays linked
+// after its word is corrected; a typed row and a row added on the page are not.
+test("an edited recognised row keeps its photo; typed and page-added rows have none", async () => {
+  const photo = randomUUID();
+  const { id } = await publish({
+    sources: [{ id: photo, order: 0 }],
+    entries: [
+      { word: "kettel", translation: "чайник", sourceId: photo },
+      { word: "typed", translation: "набрано" },
+    ],
+  });
+  const [kettle] = storedRows(id);
+  const fixed = await pagePost(`/s/${id}/cells`, { rowId: kettle.id, field: "word", value: "kettle", baseRev: kettle.word_rev });
+  assert.equal(fixed.status, 200);
+  const added = randomUUID();
+  assert.equal((await pagePost(`/s/${id}/rows`, { rowId: added, field: "word", value: "cup" })).status, 200);
+  const { html } = await page(id);
+
+  const rows = Object.fromEntries(
+    [...html.matchAll(/<tr data-row="([^"]+)"([^>]*)>.*?<td class="c-word"[^>]*><div class="v">([^<]*)<\/div>/g)].map((m) => [
+      m[3],
+      m[2],
+    ])
+  );
+  assert.match(rows.kettle, new RegExp(`data-source="${photo}"`));
+  assert.doesNotMatch(rows.typed, /data-source/);
+  assert.doesNotMatch(rows.cup, /data-source/);
+});
+
 test("a row with an empty word carries the needs-a-word mark (AC-31)", async () => {
   const { id } = await publish({
     entries: [
