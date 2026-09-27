@@ -39,7 +39,9 @@ async function handleDefine({ request, env }: RouteContext): Promise<Response> {
   }
 
   const started = Date.now();
-  const cacheKey = `def:${word.toLowerCase()}`;
+  // v2: senses are "definition: …\nexample: …" strings (see formatSense);
+  // answers cached in the older shortdef format are ignored.
+  const cacheKey = `def:v2:${word.toLowerCase()}`;
   const cached = await readCache(env, cacheKey);
   if (cached) {
     log("cache hit", word, started);
@@ -95,7 +97,14 @@ async function lookUp(env: Env, word: string): Promise<LookupResult> {
 /**
  * An unknown word comes back as an array of spelling-suggestion strings; a
  * known one as entries. Compounds and run-ons (`direct` → `direct current`)
- * are dropped when the headword itself has entries.
+ * are dropped when the headword itself has entries, and so are abbreviation
+ * entries (`Test` → "Testament").
+ *
+ * Each sense becomes one string for the app's Definition field:
+ *   definition: <the explanation, synonyms removed>
+ *   example: <how the word is used>        (only when the dictionary has one)
+ * read from the full `def` data, which carries the example sentences that
+ * `shortdef` leaves out.
  */
 export function parseEntries(word: string, entries: unknown): LookupResult {
   if (!Array.isArray(entries)) return { outcome: "unavailable", error: "Dictionary answered with an unexpected format" };
@@ -103,15 +112,110 @@ export function parseEntries(word: string, entries: unknown): LookupResult {
     const suggestions = entries.filter((e): e is string => typeof e === "string").slice(0, MAX_SUGGESTIONS);
     return { outcome: "not_found", word, suggestions };
   }
-  type Entry = { meta?: { id?: unknown }; shortdef?: unknown };
-  const all = entries.filter((e): e is Entry => typeof e === "object" && e !== null);
+  const all = entries.filter((e): e is Entry => typeof e === "object" && e !== null && e.fl !== "abbreviation");
   const headword = word.toLowerCase();
   const own = all.filter((e) => typeof e.meta?.id === "string" && e.meta.id.split(":")[0].toLowerCase() === headword);
-  const senses = (own.length ? own : all)
-    .flatMap((e) => (Array.isArray(e.shortdef) ? e.shortdef : []))
-    .filter((s): s is string => typeof s === "string" && s.trim() !== "")
-    .map((s) => s.trim());
-  return senses.length ? { outcome: "senses", word, senses } : { outcome: "not_found", word, suggestions: [] };
+  const senses: string[] = [];
+  for (const entry of own.length ? own : all) {
+    const fromDef = sensesOf(entry);
+    // Entries without usable `def` data fall back to their shortdef lines.
+    const found = fromDef.length ? fromDef : fallbackShortdef(entry);
+    for (const sense of found) if (!senses.includes(sense)) senses.push(sense);
+  }
+  const capped = senses.slice(0, MAX_SENSES);
+  return capped.length ? { outcome: "senses", word, senses: capped } : { outcome: "not_found", word, suggestions: [] };
+}
+
+const MAX_SENSES = 10;
+
+type Entry = { meta?: { id?: unknown }; fl?: unknown; def?: unknown; shortdef?: unknown };
+type Sense = { dt?: unknown };
+
+/** Walks `def[].sseq`: each item is a `sense`, a `bs` (binding sense) or a `pseq` of those. */
+function sensesOf(entry: Entry): string[] {
+  const out: string[] = [];
+  const visit = (item: unknown): void => {
+    if (!Array.isArray(item) || typeof item[0] !== "string") return;
+    const [kind, data] = item as [string, unknown];
+    if (kind === "sense") add(data as Sense);
+    else if (kind === "bs") add((data as { sense?: Sense })?.sense);
+    else if (kind === "pseq" && Array.isArray(data)) data.forEach(visit);
+  };
+  const add = (sense: Sense | undefined): void => {
+    const formatted = formatSense(sense);
+    if (formatted) out.push(formatted);
+  };
+  const defs = Array.isArray(entry.def) ? entry.def : [];
+  for (const d of defs) {
+    const sseq = (d as { sseq?: unknown })?.sseq;
+    if (!Array.isArray(sseq)) continue;
+    for (const group of sseq) if (Array.isArray(group)) group.forEach(visit);
+  }
+  return out;
+}
+
+/**
+ * "definition: …" plus "\nexample: …" when the sense has an example. Null for
+ * senses with nothing left once synonyms are removed (`{bc}{sx|cupel||}`) and
+ * for heading senses whose meaning is in their sub-senses ("…: such as").
+ */
+export function formatSense(sense: Sense | undefined): string | null {
+  const dt = Array.isArray(sense?.dt) ? sense!.dt : [];
+  let text = "";
+  let example: string | null = null;
+  const scan = (items: unknown[]): void => {
+    for (const item of items) {
+      if (!Array.isArray(item)) continue;
+      const [kind, data] = item as [string, unknown];
+      if (kind === "text" && typeof data === "string" && !text) text = cleanMarkup(data);
+      else if (kind === "vis" && Array.isArray(data) && example === null) {
+        const first = data.find((v) => typeof (v as { t?: unknown })?.t === "string") as { t: string } | undefined;
+        if (first) example = cleanMarkup(first.t);
+      } else if (kind === "uns" && Array.isArray(data)) {
+        // Usage notes nest their own text/vis items; only their examples are kept.
+        for (const note of data) if (Array.isArray(note)) scanExamplesOnly(note);
+      }
+    }
+  };
+  const scanExamplesOnly = (items: unknown[]): void => {
+    for (const item of items) {
+      if (!Array.isArray(item) || item[0] !== "vis" || !Array.isArray(item[1]) || example !== null) continue;
+      const first = item[1].find((v: unknown) => typeof (v as { t?: unknown })?.t === "string") as { t: string } | undefined;
+      if (first) example = cleanMarkup(first.t);
+    }
+  };
+  scan(dt);
+  text = text.replace(/[\s:;,]+$/, "").trim();
+  if (!text || /such as$/i.test(text)) return null;
+  return example ? `definition: ${text}\nexample: ${example}` : `definition: ${text}`;
+}
+
+/**
+ * Merriam-Webster's inline markup → plain text. `{bc}` is the bold colon in
+ * front of a definition and `{sx|word||}` a synonym cross-reference: both are
+ * removed, so "{bc}moving slowly {bc}{sx|sluggish||}" becomes "moving slowly".
+ * Link tokens keep their word; formatting tokens keep their content.
+ */
+export function cleanMarkup(raw: string): string {
+  return raw
+    .replace(/\{bc\}\s*\{sx\|[^}]*\}(\s*,?\s*\{sx\|[^}]*\})*/g, "")
+    .replace(/\{sx\|[^}]*\}/g, "")
+    .replace(/\{bc\}/g, " ")
+    .replace(/\{(?:a_link|d_link|i_link|et_link|mat|dxt)\|([^|}]*)[^}]*\}/g, "$1")
+    .replace(/\{ldquo\}/g, "\u201c")
+    .replace(/\{rdquo\}/g, "\u201d")
+    .replace(/\{[^}]*\}/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fallbackShortdef(entry: Entry): string[] {
+  const lines = Array.isArray(entry.shortdef) ? entry.shortdef : [];
+  return lines
+    .filter((l): l is string => typeof l === "string")
+    .map((l) => l.split(" : ")[0].replace(/\s*\u2014.*$/, "").trim())
+    .filter((l) => l && !/such as$/i.test(l))
+    .map((l) => `definition: ${l}`);
 }
 
 function log(outcome: string, word: string, started: number): void {

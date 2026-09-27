@@ -112,7 +112,8 @@ export function renderSessionPage(doc: SessionDocument): string {
     .map(
       (entry, i) =>
         `<tr><td class="n">${i + 1}</td><td>${escapeHtml(entry.word)}</td>${columns
-          .map((c) => `<td>${escapeHtml(c.value(entry))}</td>`)
+          // A definition is "definition: …\nexample: …": keep its line break.
+          .map((c) => `<td>${escapeHtml(c.value(entry)).replace(/\n/g, "<br>")}</td>`)
           .join("")}</tr>`
     )
     .join("\n");
