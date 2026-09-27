@@ -5,6 +5,7 @@ import '../../../core/models/translation_result.dart';
 import '../../../core/providers.dart' show WordDetailMode;
 import '../../../core/services/pronunciation_service.dart';
 import '../../../core/widgets/synced_text_field_row.dart';
+import 'definition_dots_button.dart';
 import 'pronunciation_buttons.dart';
 import 'translation_dots_button.dart';
 
@@ -30,6 +31,16 @@ class WordRowItem extends StatelessWidget {
   final bool isLoadingDefinition;
   final bool shouldShowDefinitionIcon;
   final VoidCallback onFillDefinition;
+
+  /// The definition dots popup (spec AC-08): the senses stored for this row,
+  /// its popup controller, the lookup it can trigger, and what a picked sense
+  /// does. Built only where the Definition field is shown.
+  final List<String>? definitionSenses;
+  final bool canLoadDefinitionSenses;
+  final CustomPopupMenuController? definitionPopupController;
+  final Future<List<String>?> Function()? onLoadDefinitionSenses;
+  final ValueChanged<String>? onSelectDefinition;
+  final VoidCallback? onCloseDefinitionOptions;
   final bool isDragMode;
   final TextEditingController wordController;
   final TextEditingController translationController;
@@ -79,6 +90,12 @@ class WordRowItem extends StatelessWidget {
     this.isLoadingDefinition = false,
     this.shouldShowDefinitionIcon = false,
     required this.onFillDefinition,
+    this.definitionSenses,
+    this.canLoadDefinitionSenses = true,
+    this.definitionPopupController,
+    this.onLoadDefinitionSenses,
+    this.onSelectDefinition,
+    this.onCloseDefinitionOptions,
     required this.isDragMode,
     required this.wordController,
     required this.translationController,
@@ -305,9 +322,8 @@ class WordRowItem extends StatelessWidget {
                 if (detailMode == WordDetailMode.both) ...[
                   const SizedBox(height: 12),
                   Padding(
-                    padding: EdgeInsets.only(
-                        left: dragHandleWidth, right: dotsButtonSlot),
-                    child: _definitionFieldWithIcon(context),
+                    padding: EdgeInsets.only(left: dragHandleWidth),
+                    child: _definitionFieldWithDots(context),
                   ),
                 ],
               ],
@@ -335,18 +351,50 @@ class WordRowItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _detailField(context,
-                  controller: wordController,
-                  focusNode: wordFocusNode,
-                  label: 'Word',
-                  minLines: 1),
+              Row(
+                children: [
+                  Expanded(
+                    child: _detailField(context,
+                        controller: wordController,
+                        focusNode: wordFocusNode,
+                        label: 'Word',
+                        minLines: 1),
+                  ),
+                  // The dots slot of the Definition line below, so both
+                  // fields keep the same width.
+                  const SizedBox(width: 26),
+                ],
+              ),
               const SizedBox(height: 12),
-              _definitionFieldWithIcon(context),
+              _definitionFieldWithDots(context),
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  /// The Definition field and, beside it, its dots button -- the same 4 px gap
+  /// and 22 px slot the Translation field's dots use.
+  Widget _definitionFieldWithDots(BuildContext context) {
+    final controller = definitionPopupController;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: _definitionFieldWithIcon(context)),
         const SizedBox(width: 4),
-        const SizedBox(width: 22),
+        if (controller != null)
+          DefinitionDotsButton(
+            senses: definitionSenses,
+            canLoadSenses: canLoadDefinitionSenses,
+            controller: controller,
+            onLoadSenses: onLoadDefinitionSenses ?? () async => null,
+            onSelectSense: onSelectDefinition ?? (_) {},
+            onOpen: onOpenTranslationOptions,
+            onClose: onCloseDefinitionOptions ?? () {},
+          )
+        else
+          const SizedBox(width: 22),
       ],
     );
   }

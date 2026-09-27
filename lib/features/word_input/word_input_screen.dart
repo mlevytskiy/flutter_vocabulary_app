@@ -112,6 +112,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   final List<FocusNode> _wordFocusNodes = [];
   final List<FocusNode> _translationFocusNodes = [];
   final Map<int, CustomPopupMenuController> _popupControllers = {};
+  // The definition dots' popup controllers, per row -- kept exactly like
+  // _popupControllers (same pruning), for the same package reasons.
+  final Map<int, CustomPopupMenuController> _definitionPopupControllers = {};
   final ScreenshotController _screenshotController = ScreenshotController();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
@@ -447,6 +450,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // while the close icon hid the new one (the split hashCodes in the logs).
       // Drop only controllers for indices that no longer exist.
       _popupControllers.removeWhere((index, _) => index >= _wordPairs.length);
+      _definitionPopupControllers.removeWhere((index, _) => index >= _wordPairs.length);
 
       for (var i = 0; i < _wordPairs.length; i++) {
         _addControllersForIndex(i);
@@ -934,6 +938,46 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
   }
 
+  /// The definition dots popup's load action (spec AC-08): looks the Word up
+  /// and stores the senses for the row without touching the Definition text.
+  /// Returns the senses, an empty list when the dictionary has none, or null
+  /// when it could not be reached -- the popup explains each.
+  Future<List<String>?> _loadDefinitionSenses(int index) async {
+    if (index < 0 || index >= _wordControllers.length) return null;
+    final word = _wordControllers[index].text.trim();
+    if (word.length < 2) return null;
+    final result = await ref.read(dictionaryServiceProvider).define(word);
+    if (!mounted || index >= _wordControllers.length) return null;
+    switch (result.kind) {
+      case DefinitionKind.senses:
+        setState(() {
+          _definitionSenses[index] = result.senses;
+          _sensesWord[index] = word;
+        });
+        _pushRow(index);
+        return result.senses;
+      case DefinitionKind.notFound:
+        return const [];
+      case DefinitionKind.unavailable:
+        return null;
+    }
+  }
+
+  /// A sense picked in the popup replaces the Definition text and counts as
+  /// auto-populated, like a picked translation chip.
+  void _selectDefinitionSense(int index, String sense) {
+    if (index < 0 || index >= _definitionControllers.length) return;
+    setState(() => _definitionMarkedFilled[index] = true);
+    _definitionControllers[index].text = sense;
+    _pushRow(index, definition: sense);
+  }
+
+  void _closeDefinitionOptions(int index) {
+    setState(() {
+      _definitionPopupControllers[index]?.hideMenu();
+    });
+  }
+
   void _selectTranslationOption(int index, String selectedTranslation) {
     _translationControllers[index].text = selectedTranslation;
     // Auto-populated -> counts as "filled" regardless of length.
@@ -1173,6 +1217,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
         // Видаляємо з popup controllers якщо є
         _popupControllers.remove(index);
+        _definitionPopupControllers.remove(index);
         ref.read(wordInputNotifierProvider.notifier).removeAt(index);
       }
     });
@@ -1243,6 +1288,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // to -- see _restoreFromStore. Row count is unchanged here, so this drops
       // nothing; it just stops orphaning the controllers those States hold.
       _popupControllers.removeWhere((index, _) => index >= _wordPairs.length);
+      _definitionPopupControllers.removeWhere((index, _) => index >= _wordPairs.length);
 
       ref.read(wordInputNotifierProvider.notifier).reorder(oldIndex, newIndex);
     });
@@ -1289,6 +1335,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         marked: _definitionMarkedFilled[index],
       ),
       onFillDefinition: () => _fillDefinition(index),
+      definitionSenses: _effectiveSenses(index),
+      canLoadDefinitionSenses: _wordControllers[index].text.trim().length >= 2,
+      definitionPopupController: _definitionPopupControllers.putIfAbsent(index, () => MyCustomPopupMenuController()),
+      onLoadDefinitionSenses: () => _loadDefinitionSenses(index),
+      onSelectDefinition: (sense) => _selectDefinitionSense(index, sense),
+      onCloseDefinitionOptions: () => _closeDefinitionOptions(index),
       isDragMode: isDragMode,
       wordController: _wordControllers[index],
       translationController: _translationControllers[index],

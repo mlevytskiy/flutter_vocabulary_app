@@ -17,7 +17,7 @@
 | T10 | [Keep per-row definition state in the input screen and notifier](./t10-row-definition-state.md) | app | Maksym | M | T1 | done |
 | T11 | [Lay out word rows per word detail mode](./t11-row-layouts-per-mode.md) | ui | Maksym | M | T2, T10 | done |
 | T12 | [Fill a definition from the lightning icon](./t12-definition-lightning.md) | ui | Maksym | S | T8, T11 | done |
-| T13 | [Pick a sense from the definition dots popup](./t13-definition-senses-popup.md) | ui | Maksym | M | T8, T11 | todo |
+| T13 | [Pick a sense from the definition dots popup](./t13-definition-senses-popup.md) | ui | Maksym | M | T8, T11 | done |
 | T14 | [Show words-table columns per mode with the filled rule](./t14-words-table-columns.md) | ui | Maksym | S | T1, T2 | todo |
 | T15 | [Write the fixed definition column in the app AnkiDroid export](./t15-app-anki-definition-column.md) | app | Maksym | S | T1, T2, T7 | todo |
 | T16 | [Publish definitions and the detail mode](./t16-publish-definitions.md) | app | Maksym | S | T1, T2, T5 | todo |

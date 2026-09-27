@@ -7,7 +7,7 @@ acs: ["AC-08"]
 files_hint: ["lib/features/word_input/widgets/definition_dots_button.dart", "lib/features/word_input/widgets/definition_options_content.dart", "lib/features/word_input/widgets/word_row_item.dart", "lib/features/word_input/word_input_screen.dart", "test/definition_senses_popup_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T13 — Pick a sense from the definition dots popup
