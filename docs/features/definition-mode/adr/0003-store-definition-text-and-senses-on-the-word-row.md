@@ -25,7 +25,7 @@ Each word row is an embedded `WordPair` inside an Isar `Session`. Translations s
 
 ## Considered options
 
-1. **Definition text plus the fetched senses as JSON** (`definition`, `definitionOptionsJson`), mirroring translation.
+1. **Definition text plus the fetched senses as JSON** (`definition`, `definitionOptionsJson`, and the `definitionMarkedFilled` flag that drives the lightning icon's filled state), mirroring translation.
 2. **Definition text only**, senses kept in memory for the screen's lifetime.
 
 ## Decision outcome
@@ -39,7 +39,7 @@ Each word row is an embedded `WordPair` inside an Isar `Session`. Translations s
 - Photo descriptions are stored as `definition`, no longer discarded.
 
 **Negative**
-- Two more fields per row and a schema regeneration; the senses JSON must be dropped when the word changes (as translation options are today).
+- Three more fields per row and a schema regeneration; the senses JSON must be dropped when the word changes (as translation options are today), while the definition text itself is kept (spec §8, resolved 2026-09-27).
 
 **Neutral**
 - Moving the senses to memory-only later is a one-field removal.

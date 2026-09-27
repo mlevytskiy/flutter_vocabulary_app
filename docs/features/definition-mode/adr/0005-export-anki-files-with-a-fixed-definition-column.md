@@ -24,12 +24,12 @@ The AnkiDroid file is written in two places — the app (`lib/features/words_tab
 
 ## Considered options
 
-1. **One back field** — translation, a line break, then the definition, in the existing 3-column shape.
+1. **Mode-dependent columns** — the file carries only the columns the current mode shows (word + translation, word + definition, or all three), so column 2 means different things in different exports.
 2. **Separate definition column** — word, translation, definition, tags (`#tags column:4`); the column the mode hides is left empty.
 
 ## Decision outcome
 
-**Chosen:** option 2 (owner's choice during specify). Column meaning is identical in every export, and the definition can be templated separately inside Anki. The format spec in `vocab-photo-api/README.md` is updated once and both writers follow it, each with a byte-level test (app) or typecheck plus curl check (Worker).
+**Chosen:** option 2 (owner's choice during specify; a single combined back field was also considered there and rejected). Column meaning is identical in every export, and the definition can be templated separately inside Anki. The format spec in `vocab-photo-api/README.md` is updated once and both writers follow it, each with a byte-level test (app) or typecheck plus curl check (Worker).
 
 ## Consequences
 

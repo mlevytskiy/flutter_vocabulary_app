@@ -31,6 +31,8 @@ target_surfaces: [mobile-app, backend-service, web-frontend]
 | partner | reads definitions on the shared page and downloads the AnkiDroid file from it | No |
 | Tech Lead (Maksym, app owner) | SAD approval, D10 key decision, licence check | Yes |
 
+- Decision override: no separate security review, despite spec §6.1 "Security review: Required" — rationale: the new secret lives only as a Worker secret (ADR-0002), never in the app or git, and all new text reuses the existing page and file escaping plus the Worker's 500-character limit; one-owner project (critic resolution, 2026-09-27).
+
 ## 2. Constraints
 
 **Technical.**
@@ -47,6 +49,7 @@ target_surfaces: [mobile-app, backend-service, web-frontend]
 **Conventions.**
 - [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2: typed routes only; services via providers; screen data in a `@riverpod` notifier, controllers/focus/loading flags in widget `State`; no new or removed packages; no new domain models (a new field on `WordPair` is not a new model).
 - Override — CLAUDE.md rule 3 ("do not change how anything looks") is scoped to structural refactors. This feature changes the row layout **only in definition and both modes**, as the spec asks; translation mode stays pixel-identical (spec AC-02) and its code is branched around, not rewritten. Risk tracked in §11.
+- Override — CLAUDE.md rule 5 ("no new domain models — ask first"): `DefinitionResult` (§5) is a plain response type beside its service, like `translation_result.dart`, not a stored domain model; approved by the owner during design (2026-09-27). Tracked in §11.
 - Verification per [`docs/tasks/README.md`](../../tasks/README.md) "How to check a task": `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test`, the `CLAUDE.md` greps, and `npm run typecheck` in `vocab-photo-api/`.
 
 **Regulatory / external.**
@@ -140,7 +143,7 @@ vocab-photo-api/src/
 ├── index.ts, routing.ts               register the new route
 └── session/
     ├── types.ts                       optional definition (≤500 chars), detail mode, blank = all three empty
-    ├── page.ts                        columns per detail mode; old documents = translation only
+    ├── page.ts                        columns per detail mode; old documents = translation only; "Definitions: Merriam-Webster" attribution when definitions are shown
     └── anki.ts                        fixed definition column (ADR-0005)
 ```
 
@@ -248,7 +251,7 @@ sequenceDiagram
 
 The app is built and installed on the owner's phone as today; the Worker is deployed with `wrangler deploy` from `vocab-photo-api/`. This feature adds one Worker secret — the dictionary key, stored with `wrangler secret put MW_API_KEY`, never in git or in the app — and one KV namespace, `DEFINITIONS`, declared in `wrangler.jsonc` beside `SESSIONS`. **Deploy order: Worker first, then the app** (ADR-0004): an older Worker silently drops definitions and has no dictionary route.
 
-**Dictionary cache (inline decision, not an ADR).** The Worker caches each **successful** lookup — the word's short senses — in `DEFINITIONS`, keyed by the lowercased word, for **30 days** (the same lifetime as published sessions; KV expiry, no clean-up job). "Not found" and failures are never cached, so an outage cannot stick. The alternative, no cache, was rejected to stretch the 1,000/day allowance across repeated words. If the licence check (§11) rules out storing dictionary text, the fix is deleting the namespace and the cache read/write — about an hour. *Note: the §5 container diagram was approved before this decision and does not draw `DEFINITIONS`; it is a second KV store owned by the Worker, alongside "Published sessions".*
+**Dictionary cache (inline decision, not an ADR).** The Worker caches each **successful** lookup — the word's short senses — in `DEFINITIONS`, keyed by the lowercased word, for **30 days** (the same lifetime as published sessions; KV expiry, no clean-up job). "Not found" and failures are never cached, so an outage cannot stick. The alternative, no cache, was rejected to stretch the 1,000/day allowance across repeated words. If the licence check (§11) rules out storing dictionary text, the fix is deleting the namespace and the cache read/write — about an hour. *Note: §5 (container diagram and file tree) and §6 flow 1 were approved before this decision, so neither draws the cache: `DEFINITIONS` is a second KV store owned by the Worker beside "Published sessions"; `define.ts` reads it before calling the dictionary and writes it after a successful lookup; flow 1 gains a cache-hit branch (served without a dictionary call) — drawn by the `sequences` stage.*
 
 **Monitoring:**
 - One Worker log line per lookup: outcome (`cache hit` / `found` / `not found` / `unavailable`) and duration — read with `npx wrangler tail`.
@@ -316,8 +319,9 @@ ADR files live under `docs/features/definition-mode/adr/NNNN-<title>.md`. Inline
 | Dictionary allowance exhausted (abuse or heavy use) | Low | Tap-only lookups, stored senses per row, 30-day Worker cache, per-lookup log lines (§7) | Maksym |
 | AnkiDroid needs a 3-field note type once for the new column | Low | Import steps in `vocab-photo-api/README.md` and the app's share sheet copy | Maksym |
 | `lib/config/vocab_api_config.dart` is tracked by git despite CLAUDE.md rule 4 | Low | Accepted — the dictionary key goes to a Worker secret instead (ADR-0002); untracking the file is a separate clean-up | Maksym |
-| Open architectural decision: may the free dictionary's text be cached, shown on a public shared link and exported? | Open question | Resolve before the first Worker deploy; if no, drop the cache (§7) and keep dictionary senses on the device only — spec §8 | Maksym |
-| Open architectural decision: should editing a word clear its hidden (not shown in the current mode) definition or translation? | Open question | Resolve before `sdd:tasks`; default now: kept, like translations today — spec §8 | Maksym |
+| Open architectural decision: may the free dictionary's text be cached, shown on a public shared link and exported? | Open question | Resolve before the first Worker deploy (owner moved this from spec §8's "before sdd:design" on 2026-09-27: it blocks deploying, not building); default: yes, with "Definitions: Merriam-Webster" attribution on the page; if no, drop the cache (§7) and keep dictionary senses on the device only | Maksym |
+| `DefinitionResult` is a new type despite CLAUDE.md rule 5 | Low | Owner-approved override (§2): response type only, never stored; the row stores text + JSON (ADR-0003) | Maksym |
+| A hidden translation or definition can go stale after the word is edited | Low | Resolved 2026-09-27 (spec §8): the hidden text is kept; its stored alternatives (translation options, dictionary senses) are dropped on word change, so the dots offer a reload | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
 - `lib/features/word_input/word_input_screen.dart` grows beyond its ~1,300 lines with parallel per-row definition lists; the parallel-lists clean-up stays optional ([`docs/architecture.md`](../../architecture.md) §3).
