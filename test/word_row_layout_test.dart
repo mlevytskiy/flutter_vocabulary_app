@@ -187,6 +187,24 @@ void main() {
       expect(taps, 1, reason: '$mode');
     }
   });
+
+  testWidgets('the Definition hint is lighter than typed text', (tester) async {
+    await pumpRow(
+        tester,
+        translationRow(
+          word: TextEditingController(text: 'claim'),
+          translation: TextEditingController(),
+          mode: WordDetailMode.definition,
+        ));
+    final field = tester.widget<TextField>(fieldLabelled('Definition'));
+    final hint = field.decoration!.hintStyle!.color!;
+    final text = field.style!.color ??
+        Theme.of(tester.element(fieldLabelled('Definition')))
+            .colorScheme
+            .onSurface;
+    expect(hint.a, lessThan(0.6));
+    expect(hint.a, lessThan(text.a));
+  });
 }
 
 // Recorded from the pre-feature widget; see the header comment.

@@ -408,7 +408,8 @@ class WordRowItem extends StatelessWidget {
             controller: definitionController,
             focusNode: definitionFocusNode,
             label: 'Definition',
-            minLines: 2),
+            minLines: 2,
+            lightHint: true),
         if (isLoadingDefinition || shouldShowDefinitionIcon)
           Positioned(
             top: 2,
@@ -445,6 +446,7 @@ class WordRowItem extends StatelessWidget {
     required FocusNode focusNode,
     required String label,
     required int minLines,
+    bool lightHint = false,
   }) {
     final style =
         Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
@@ -461,6 +463,15 @@ class WordRowItem extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         hintText: label,
+        // The Definition hint is kept well lighter than typed text, so an
+        // empty field never reads as a filled one.
+        hintStyle: lightHint
+            ? style.copyWith(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.45))
+            : null,
         border: const OutlineInputBorder(borderSide: BorderSide(width: 1)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
