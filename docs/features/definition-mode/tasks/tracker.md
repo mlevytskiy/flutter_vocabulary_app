@@ -13,7 +13,7 @@
 | T6 | [Render shared-page columns from the detail mode](./t6-shared-page-columns.md) | ui | Maksym | S | T5 | done |
 | T7 | [Write the fixed definition column in the Worker AnkiDroid file](./t7-worker-anki-definition-column.md) | ports | Maksym | S | T5 | done |
 | T8 | [Add DictionaryService and DefinitionResult in the app](./t8-dictionary-service.md) | app | Maksym | S | — | done |
-| T9 | [Store photo descriptions as definitions](./t9-photo-description-to-definition.md) | app | Maksym | S | T1 | todo |
+| T9 | [Store photo descriptions as definitions](./t9-photo-description-to-definition.md) | app | Maksym | S | T1 | done |
 | T10 | [Keep per-row definition state in the input screen and notifier](./t10-row-definition-state.md) | app | Maksym | M | T1 | done |
 | T11 | [Lay out word rows per word detail mode](./t11-row-layouts-per-mode.md) | ui | Maksym | M | T2, T10 | todo |
 | T12 | [Fill a definition from the lightning icon](./t12-definition-lightning.md) | ui | Maksym | S | T8, T11 | todo |

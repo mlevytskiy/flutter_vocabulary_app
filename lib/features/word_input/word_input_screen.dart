@@ -36,6 +36,24 @@ import 'word_input_notifier.dart';
 /// cap the Worker keeps the first 20 in reading order (D2 in docs/roadmap.md).
 const int _photoWordCap = 20;
 
+/// One photo word as a word row (definition-mode T9). The photo analysis's
+/// context description is the row's definition in every mode -- the mode only
+/// decides what is shown -- and it no longer stands in for a missing
+/// translation (spec AC-09, AC-10). Pure: the photo path makes no dictionary
+/// lookups.
+WordPair wordPairFromPhoto(VocabWord w) {
+  final translation = w.translation ?? '';
+  final definition = w.description ?? '';
+  return WordPair(
+    word: w.word,
+    translation: translation,
+    definition: definition,
+    wordMarkedFilled: w.word.isNotEmpty,
+    translationMarkedFilled: translation.isNotEmpty,
+    definitionMarkedFilled: definition.isNotEmpty,
+  );
+}
+
 class WordInputScreen extends ConsumerStatefulWidget {
   const WordInputScreen({super.key});
 
@@ -1024,27 +1042,27 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     setState(() {
       for (final w in words) {
-        final translation = w.translation ?? w.description ?? '';
+        final pair = wordPairFromPhoto(w);
         if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
-          _wordPairs[0] = WordPair(word: w.word, translation: translation);
-          _wordControllers[0].text = w.word;
-          _translationControllers[0].text = translation;
+          // The row already holds the texts, so the controller listeners see
+          // no change; the single _pushRow below persists everything.
+          _wordPairs[0] = pair;
+          _wordControllers[0].text = pair.word;
+          _translationControllers[0].text = pair.translation;
+          _definitionControllers[0].text = pair.definition;
           // Photo recognition auto-populated this row -> "filled".
-          _translationMarkedFilled[0] = translation.isNotEmpty;
-          _wordMarkedFilled[0] = w.word.isNotEmpty;
+          _translationMarkedFilled[0] = pair.translationMarkedFilled;
+          _wordMarkedFilled[0] = pair.wordMarkedFilled;
+          _definitionMarkedFilled[0] = pair.definitionMarkedFilled;
           reusedFirstRow = true;
         } else {
           // The marks travel on the pair itself: these objects are handed to
           // the notifier by addAll() below, so they must already carry them.
-          _wordPairs.add(WordPair(
-            word: w.word,
-            translation: translation,
-            wordMarkedFilled: w.word.isNotEmpty,
-            translationMarkedFilled: translation.isNotEmpty,
-          ));
+          _wordPairs.add(pair);
           _addControllersForIndex(_wordPairs.length - 1);
-          _translationMarkedFilled[_wordPairs.length - 1] = translation.isNotEmpty;
-          _wordMarkedFilled[_wordPairs.length - 1] = w.word.isNotEmpty;
+          _translationMarkedFilled[_wordPairs.length - 1] = pair.translationMarkedFilled;
+          _wordMarkedFilled[_wordPairs.length - 1] = pair.wordMarkedFilled;
+          _definitionMarkedFilled[_wordPairs.length - 1] = pair.definitionMarkedFilled;
           appendedPairs.add(_wordPairs[_wordPairs.length - 1]);
         }
       }
@@ -1052,7 +1070,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     });
 
     if (reusedFirstRow) {
-      _pushRow(0, word: _wordPairs[0].word, translation: _wordPairs[0].translation);
+      _pushRow(0,
+          word: _wordPairs[0].word,
+          translation: _wordPairs[0].translation,
+          definition: _wordPairs[0].definition);
     }
     if (appendedPairs.isNotEmpty) {
       ref.read(wordInputNotifierProvider.notifier).addAll(appendedPairs);

@@ -7,7 +7,7 @@ acs: ["AC-09", "AC-10"]
 files_hint: ["lib/features/word_input/word_input_screen.dart", "test/photo_words_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Store photo descriptions as definitions
