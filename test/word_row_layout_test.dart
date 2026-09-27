@@ -205,6 +205,22 @@ void main() {
     expect(hint.a, lessThan(0.6));
     expect(hint.a, lessThan(text.a));
   });
+
+  testWidgets('the Definition field starts at 1 line and grows to 4',
+      (tester) async {
+    for (final mode in [WordDetailMode.definition, WordDetailMode.both]) {
+      await pumpRow(
+          tester,
+          translationRow(
+            word: TextEditingController(text: 'claim'),
+            translation: TextEditingController(),
+            mode: mode,
+          ));
+      final field = tester.widget<TextField>(fieldLabelled('Definition'));
+      expect(field.minLines, 1, reason: '$mode');
+      expect(field.maxLines, 4, reason: '$mode');
+    }
+  });
 }
 
 // Recorded from the pre-feature widget; see the header comment.

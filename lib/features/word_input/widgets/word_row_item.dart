@@ -408,7 +408,8 @@ class WordRowItem extends StatelessWidget {
             controller: definitionController,
             focusNode: definitionFocusNode,
             label: 'Definition',
-            minLines: 2,
+            minLines: 1,
+            maxLines: 4,
             lightHint: true),
         if (isLoadingDefinition || shouldShowDefinitionIcon)
           Positioned(
@@ -446,6 +447,7 @@ class WordRowItem extends StatelessWidget {
     required FocusNode focusNode,
     required String label,
     required int minLines,
+    int? maxLines,
     bool lightHint = false,
   }) {
     final style =
@@ -456,7 +458,9 @@ class WordRowItem extends StatelessWidget {
       style: style,
       strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
       minLines: minLines,
-      maxLines: null,
+      // Null grows without limit (the Word field); the Definition field stops
+      // at 4 lines and scrolls inside beyond that.
+      maxLines: maxLines,
       keyboardType: TextInputType.multiline,
       textInputAction: TextInputAction.newline,
       textAlignVertical: TextAlignVertical.top,
