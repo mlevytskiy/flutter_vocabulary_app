@@ -13,33 +13,48 @@ const WordPairSchema = Schema(
   name: r'WordPair',
   id: -8222807404021742096,
   properties: {
-    r'hasTranslationOptions': PropertySchema(
+    r'definition': PropertySchema(
       id: 0,
+      name: r'definition',
+      type: IsarType.string,
+    ),
+    r'definitionMarkedFilled': PropertySchema(
+      id: 1,
+      name: r'definitionMarkedFilled',
+      type: IsarType.bool,
+    ),
+    r'definitionOptionsJson': PropertySchema(
+      id: 2,
+      name: r'definitionOptionsJson',
+      type: IsarType.string,
+    ),
+    r'hasTranslationOptions': PropertySchema(
+      id: 3,
       name: r'hasTranslationOptions',
       type: IsarType.bool,
     ),
     r'translation': PropertySchema(
-      id: 1,
+      id: 4,
       name: r'translation',
       type: IsarType.string,
     ),
     r'translationMarkedFilled': PropertySchema(
-      id: 2,
+      id: 5,
       name: r'translationMarkedFilled',
       type: IsarType.bool,
     ),
     r'translationOptionsJson': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'translationOptionsJson',
       type: IsarType.string,
     ),
     r'word': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'word',
       type: IsarType.string,
     ),
     r'wordMarkedFilled': PropertySchema(
-      id: 5,
+      id: 8,
       name: r'wordMarkedFilled',
       type: IsarType.bool,
     )
@@ -56,6 +71,13 @@ int _wordPairEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.definition.length * 3;
+  {
+    final value = object.definitionOptionsJson;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.translation.length * 3;
   {
     final value = object.translationOptionsJson;
@@ -73,12 +95,15 @@ void _wordPairSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.hasTranslationOptions);
-  writer.writeString(offsets[1], object.translation);
-  writer.writeBool(offsets[2], object.translationMarkedFilled);
-  writer.writeString(offsets[3], object.translationOptionsJson);
-  writer.writeString(offsets[4], object.word);
-  writer.writeBool(offsets[5], object.wordMarkedFilled);
+  writer.writeString(offsets[0], object.definition);
+  writer.writeBool(offsets[1], object.definitionMarkedFilled);
+  writer.writeString(offsets[2], object.definitionOptionsJson);
+  writer.writeBool(offsets[3], object.hasTranslationOptions);
+  writer.writeString(offsets[4], object.translation);
+  writer.writeBool(offsets[5], object.translationMarkedFilled);
+  writer.writeString(offsets[6], object.translationOptionsJson);
+  writer.writeString(offsets[7], object.word);
+  writer.writeBool(offsets[8], object.wordMarkedFilled);
 }
 
 WordPair _wordPairDeserialize(
@@ -88,12 +113,15 @@ WordPair _wordPairDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = WordPair(
-    hasTranslationOptions: reader.readBoolOrNull(offsets[0]) ?? false,
-    translation: reader.readStringOrNull(offsets[1]) ?? '',
-    translationMarkedFilled: reader.readBoolOrNull(offsets[2]) ?? false,
-    translationOptionsJson: reader.readStringOrNull(offsets[3]),
-    word: reader.readStringOrNull(offsets[4]) ?? '',
-    wordMarkedFilled: reader.readBoolOrNull(offsets[5]) ?? false,
+    definition: reader.readStringOrNull(offsets[0]) ?? '',
+    definitionMarkedFilled: reader.readBoolOrNull(offsets[1]) ?? false,
+    definitionOptionsJson: reader.readStringOrNull(offsets[2]),
+    hasTranslationOptions: reader.readBoolOrNull(offsets[3]) ?? false,
+    translation: reader.readStringOrNull(offsets[4]) ?? '',
+    translationMarkedFilled: reader.readBoolOrNull(offsets[5]) ?? false,
+    translationOptionsJson: reader.readStringOrNull(offsets[6]),
+    word: reader.readStringOrNull(offsets[7]) ?? '',
+    wordMarkedFilled: reader.readBoolOrNull(offsets[8]) ?? false,
   );
   return object;
 }
@@ -106,16 +134,22 @@ P _wordPairDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
-    case 1:
       return (reader.readStringOrNull(offset) ?? '') as P;
-    case 2:
+    case 1:
       return (reader.readBoolOrNull(offset) ?? false) as P;
-    case 3:
+    case 2:
       return (reader.readStringOrNull(offset)) as P;
+    case 3:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
     case 4:
       return (reader.readStringOrNull(offset) ?? '') as P;
     case 5:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset) ?? '') as P;
+    case 8:
       return (reader.readBoolOrNull(offset) ?? false) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -124,6 +158,302 @@ P _wordPairDeserializeProp<P>(
 
 extension WordPairQueryFilter
     on QueryBuilder<WordPair, WordPair, QFilterCondition> {
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'definition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'definition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'definition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'definition',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'definition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'definition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'definition',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'definition',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> definitionIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'definition',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'definition',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionMarkedFilledEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'definitionMarkedFilled',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'definitionOptionsJson',
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'definitionOptionsJson',
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'definitionOptionsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'definitionOptionsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'definitionOptionsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'definitionOptionsJson',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'definitionOptionsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'definitionOptionsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'definitionOptionsJson',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonMatches(String pattern,
+          {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'definitionOptionsJson',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'definitionOptionsJson',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
+      definitionOptionsJsonIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'definitionOptionsJson',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<WordPair, WordPair, QAfterFilterCondition>
       hasTranslationOptionsEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {

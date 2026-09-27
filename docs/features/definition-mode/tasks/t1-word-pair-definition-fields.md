@@ -7,7 +7,7 @@ acs: ["AC-11", "AC-12", "AC-13"]
 files_hint: ["lib/core/models/word_pair.dart", "lib/core/models/word_pair.g.dart", "test/word_pair_test.dart", "test/session_store_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Add definition fields and the filled-row helper to WordPair

@@ -25,6 +25,18 @@ class WordPair {
   bool wordMarkedFilled;
   bool translationMarkedFilled;
 
+  /// English explanation of the word (definition-mode). Shown, exported and
+  /// published only when the word detail mode includes definitions, but always
+  /// kept: changing the mode never deletes it.
+  String definition;
+
+  /// The dictionary senses already fetched for this row, as JSON — reused by
+  /// the definition dots popup without a second lookup (ADR-0003). Dropped when
+  /// the Word changes, like [translationOptionsJson].
+  String? definitionOptionsJson;
+
+  bool definitionMarkedFilled;
+
   WordPair({
     this.word = '',
     this.translation = '',
@@ -32,6 +44,9 @@ class WordPair {
     this.translationOptionsJson,
     this.wordMarkedFilled = false,
     this.translationMarkedFilled = false,
+    this.definition = '',
+    this.definitionOptionsJson,
+    this.definitionMarkedFilled = false,
   });
 
   @ignore
@@ -60,6 +75,9 @@ class WordPair {
         translationOptionsJson: json['translationOptionsJson'] as String?,
         wordMarkedFilled: json['wordMarkedFilled'] as bool? ?? false,
         translationMarkedFilled: json['translationMarkedFilled'] as bool? ?? false,
+        definition: json['definition'] as String? ?? '',
+        definitionOptionsJson: json['definitionOptionsJson'] as String?,
+        definitionMarkedFilled: json['definitionMarkedFilled'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -69,6 +87,9 @@ class WordPair {
         'translationOptionsJson': translationOptionsJson,
         'wordMarkedFilled': wordMarkedFilled,
         'translationMarkedFilled': translationMarkedFilled,
+        'definition': definition,
+        'definitionOptionsJson': definitionOptionsJson,
+        'definitionMarkedFilled': definitionMarkedFilled,
       };
 
   /// A verbatim copy — used when writing to / reading from the store so the
@@ -80,10 +101,25 @@ class WordPair {
         translationOptionsJson: translationOptionsJson,
         wordMarkedFilled: wordMarkedFilled,
         translationMarkedFilled: translationMarkedFilled,
+        definition: definition,
+        definitionOptionsJson: definitionOptionsJson,
+        definitionMarkedFilled: definitionMarkedFilled,
       );
 
   @ignore
-  bool get isEmpty => word.trim().isEmpty && translation.trim().isEmpty;
+  bool get isEmpty =>
+      word.trim().isEmpty &&
+      translation.trim().isEmpty &&
+      definition.trim().isEmpty;
+
+  /// A row counts as filled — listed, exported and published — when it has a
+  /// word plus a translation or a definition, whatever the word detail mode
+  /// (spec AC-12). Mode-independent on purpose: switching modes must never make
+  /// rows appear or disappear.
+  @ignore
+  bool get isFilled =>
+      word.trim().isNotEmpty &&
+      (translation.trim().isNotEmpty || definition.trim().isNotEmpty);
   @ignore
   bool get isValid => word.trim().isNotEmpty && translation.trim().isNotEmpty;
 }

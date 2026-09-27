@@ -121,6 +121,31 @@ void main() {
       expect(session.words.length, 3);
     });
 
+    // definition-mode AC-13: definitions survive a restart; a definition-only
+    // row is not a blank row.
+    test('round-trips definitions and keeps definition-only rows', () async {
+      final session = Session.create()
+        ..words = [
+          WordPair(
+            word: 'tenacious',
+            definition: 'persistent in maintaining something valued',
+            definitionOptionsJson: '{"senses":["a"]}',
+            definitionMarkedFilled: true,
+          ),
+          WordPair(word: 'claim', translation: 'заява'),
+        ];
+
+      await store.put(session);
+      final back = (await store.byId(session.sessionId))!;
+
+      expect(back.words.length, 2);
+      expect(back.words[0].definition,
+          'persistent in maintaining something valued');
+      expect(back.words[0].definitionOptionsJson, '{"senses":["a"]}');
+      expect(back.words[0].definitionMarkedFilled, isTrue);
+      expect(back.words[1].definition, '');
+    });
+
     // AC-4
     test('an empty store answers with null / [] and never throws', () async {
       expect(await store.newest(), isNull);
