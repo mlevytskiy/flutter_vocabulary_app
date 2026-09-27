@@ -29,6 +29,14 @@
     {
       "binding": "SESSIONS",
       "id": "c91ab09fd1ed406c8cfa6293e43ce4c8"
+    },
+    // Dictionary cache (definition-mode, sad §7): successful lookups, one key
+    // per lowercased word, written with a 30-day expirationTtl. Create it with
+    // `npx wrangler kv namespace create DEFINITIONS` and paste the id here
+    // before the first deploy; `wrangler dev` simulates it locally.
+    {
+      "binding": "DEFINITIONS",
+      "id": "REPLACE_WITH_DEFINITIONS_NAMESPACE_ID"
     }
   ],
   // Raw bytes of a session's sources (the photo). R2 has no per-object TTL:
@@ -44,7 +52,7 @@
       "bucket_name": "vocab-photo-sources"
     }
   ]
-  // Secrets (ANTHROPIC_API_KEY, APP_SHARED_SECRET) are NOT set here.
+  // Secrets (ANTHROPIC_API_KEY, APP_SHARED_SECRET, MW_API_KEY) are NOT set here.
   // Set them with `npx wrangler secret put <NAME>` (production) and in
   // `.dev.vars` (local dev only, gitignored) — see README.md.
 }

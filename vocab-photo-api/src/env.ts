@@ -11,4 +11,8 @@ export interface Env {
    * of the Worker is unaffected.
    */
   SOURCES?: R2Bucket;
+  /** Merriam-Webster Collegiate key (definition-mode, ADR-0002). A secret: `wrangler secret put MW_API_KEY`. */
+  MW_API_KEY: string;
+  /** Successful dictionary lookups, one key per lowercased word, 30-day TTL (sad §7). */
+  DEFINITIONS: KVNamespace;
 }

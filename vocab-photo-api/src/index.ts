@@ -2,6 +2,7 @@ import type { Env } from "./env";
 import { CORS_HEADERS, MAX_RAW_BYTES, isAllowedMediaType, jsonResponse, type AllowedMediaType } from "./http";
 import { matchRoute, type RouteContext, type RouteDefinition } from "./routing";
 import { sessionRoutes } from "./session/handlers";
+import { defineRoutes } from "./define";
 
 export type { Env } from "./env";
 
@@ -243,11 +244,12 @@ async function handleAnalyze({ request, env, url }: RouteContext): Promise<Respo
 }
 
 // Every route declares whether it is public. Anything not marked `public: true`
-// -- /analyze, and the session writes -- is behind the shared secret and the
+// -- /analyze, /define, and the session writes -- is behind the shared secret and the
 // per-IP rate limiter. The shared page and its sources are public by
 // definition: the link is the only credential (docs/idea-brief.md §5).
 const ROUTES: RouteDefinition[] = [
   { method: "POST", pattern: /^\/analyze$/, public: false, handler: handleAnalyze },
+  ...defineRoutes,
   ...sessionRoutes,
 ];
 
