@@ -7,7 +7,7 @@ acs: ["AC-11", "AC-13"]
 files_hint: ["lib/features/word_input/word_input_screen.dart", "lib/features/word_input/word_input_notifier.dart", "lib/features/word_input/word_input_notifier.g.dart", "test/word_input_notifier_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Keep per-row definition state in the input screen and notifier

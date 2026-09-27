@@ -47,6 +47,9 @@ class WordInputNotifier extends _$WordInputNotifier {
     final pointer = await store.currentSessionId();
     if (pointer != null) prev = await store.byId(pointer);
     prev ??= await store.newest();
+    // Isar hands back embedded lists as fixed-length; the screen grows this one
+    // (its trailing blank row), so give it a growable copy.
+    if (prev != null) prev.words = prev.words.toList();
 
     // Case 1 — nothing stored: a new session, one empty row, no snackbar.
     if (prev == null) return _startNewSession(store);
@@ -91,6 +94,7 @@ class WordInputNotifier extends _$WordInputNotifier {
     final store = await ref.read(sessionStoreProvider.future);
     final prev = await store.byId(id);
     if (prev == null) return;
+    prev.words = prev.words.toList(); // growable, see build()
 
     final current = state.valueOrNull;
     if (current != null && current.sessionId != id && current.isEmpty) {
@@ -118,7 +122,9 @@ class WordInputNotifier extends _$WordInputNotifier {
 
   /// Every argument left out keeps its current value. [translationOptions] is
   /// set only when non-null — pass `clearTranslationOptions: true` to drop it,
-  /// which is what the screen does whenever the Word field changes.
+  /// which is what the screen does whenever the Word field changes. The
+  /// definition fields follow the same rules (definition-mode, ADR-0003); a
+  /// row's definition is never dropped by an update that does not name it.
   void updateAt(
     int i, {
     String? word,
@@ -128,6 +134,10 @@ class WordInputNotifier extends _$WordInputNotifier {
     bool clearTranslationOptions = false,
     bool? wordMarkedFilled,
     bool? translationMarkedFilled,
+    String? definition,
+    String? definitionOptionsJson,
+    bool clearDefinitionOptions = false,
+    bool? definitionMarkedFilled,
   }) {
     if (!state.hasValue) return;
     final session = state.value!;
@@ -143,8 +153,16 @@ class WordInputNotifier extends _$WordInputNotifier {
       wordMarkedFilled: wordMarkedFilled ?? current.wordMarkedFilled,
       translationMarkedFilled:
           translationMarkedFilled ?? current.translationMarkedFilled,
+      definition: definition ?? current.definition,
+      definitionOptionsJson: clearDefinitionOptions
+          ? null
+          : definitionOptionsJson ?? current.definitionOptionsJson,
+      definitionMarkedFilled:
+          definitionMarkedFilled ?? current.definitionMarkedFilled,
     );
-    if (translationOptions != null) next.translationOptions = translationOptions;
+    if (translationOptions != null) {
+      next.translationOptions = translationOptions;
+    }
     session.words[i] = next;
     state = AsyncData(session);
     _scheduleSave();

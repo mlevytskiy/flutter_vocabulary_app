@@ -12,6 +12,7 @@ import 'package:popup_menu_2/popup_menu_2.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/models/definition_result.dart';
 import '../../core/models/session.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
@@ -73,6 +74,20 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // auto-populated (photo recognition, or a real translate-to-Word result
   // via the Word icon). See docs/lightning_icon_rules.md.
   final List<bool> _wordMarkedFilled = [];
+  // definition-mode (sad §5): the Definition field's per-row state, kept in
+  // lockstep with the Translation lists above. Which fields are *shown* is the
+  // word detail mode's business; these always exist so switching modes never
+  // loses a definition.
+  final List<TextEditingController> _definitionControllers = [];
+  final List<FocusNode> _definitionFocusNodes = [];
+  final List<bool> _isLoadingDefinition = [];
+  final List<bool> _definitionMarkedFilled = [];
+  // The dictionary senses fetched for a row and the Word they were fetched
+  // for. Hidden while the Word differs and not persisted then, so a Word edit
+  // drops the senses but never the definition text (spec §8, resolved) --
+  // the same keying _translationOptions / _optionsWord use.
+  final List<List<String>?> _definitionSenses = [];
+  final List<String?> _sensesWord = [];
   // Per-row focus tracking for the "item in focus" rule (see
   // docs/lightning_icon_rules.md): a lightning icon only ever shows while
   // its own row (word or translation field) currently has focus.
@@ -92,10 +107,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// up, so the first edit dismisses that one and never someone else's.
   bool _restoreSnackBarVisible = false;
 
+  /// Read once in initState: dispose() may not touch `ref` (Riverpod forbids
+  /// it once the element is torn down), yet it still has to stop speech.
+  late final PronunciationService _pronunciation;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _pronunciation = ref.read(pronunciationServiceProvider);
     _addControllersForIndex(0);
     // Request focus on the first field after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -188,6 +208,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final translationController = TextEditingController(text: _wordPairs[index].translation);
     final wordFocusNode = FocusNode();
     final translationFocusNode = FocusNode();
+    final definitionController = TextEditingController(text: _wordPairs[index].definition);
+    final definitionFocusNode = FocusNode();
 
     // Rebuild on focus change so the lightning icons can appear/disappear
     // per the "item in focus" rule (docs/lightning_icon_rules.md).
@@ -195,6 +217,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       if (mounted) setState(() {});
     });
     translationFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+    definitionFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
 
@@ -250,6 +275,19 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       if (translationChanged) _pushRow(index, translation: translationController.text);
     });
 
+    definitionController.addListener(() {
+      final definitionChanged = definitionController.text != _wordPairs[index].definition;
+      if (definitionChanged) _dismissRestoreSnackBar();
+      _wordPairs[index].definition = definitionController.text;
+      _checkAndAddNewPair();
+
+      final isEmptyNow = definitionController.text.isEmpty;
+      setState(() {
+        if (isEmptyNow) _definitionMarkedFilled[index] = false;
+      });
+      if (definitionChanged) _pushRow(index, definition: definitionController.text);
+    });
+
     _wordControllers.add(wordController);
     _translationControllers.add(translationController);
     _isLoadingTranslation.add(false);
@@ -260,6 +298,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     _wordMarkedFilled.add(false);
     _wordFocusNodes.add(wordFocusNode);
     _translationFocusNodes.add(translationFocusNode);
+    _definitionControllers.add(definitionController);
+    _definitionFocusNodes.add(definitionFocusNode);
+    _isLoadingDefinition.add(false);
+    _definitionMarkedFilled.add(false);
+    _definitionSenses.add(null);
+    _sensesWord.add(null);
   }
 
   /// The single funnel from the screen's parallel per-row lists into the
@@ -267,8 +311,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// restored row looks exactly as it did before the kill: the text, the dots
   /// state, the cached dictionary behind the dots, and the two lightning
   /// "filled" marks (docs/lightning_icon_rules.md).
-  void _pushRow(int index, {String? word, String? translation}) {
+  void _pushRow(int index, {String? word, String? translation, String? definition}) {
     if (index < 0 || index >= _translationOptions.length) return;
+    final senses = _effectiveSenses(index);
     // Persist only what the dots actually show: a block whose word no longer
     // matches is hidden, so it must not be written either. This keeps restore
     // able to re-key a persisted block to the restored word (see
@@ -285,6 +330,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           clearTranslationOptions: options == null,
           wordMarkedFilled: _wordMarkedFilled[index],
           translationMarkedFilled: _translationMarkedFilled[index],
+          definition: definition,
+          definitionOptionsJson: senses != null ? DefinitionResult.encodeSenses(senses) : null,
+          clearDefinitionOptions: senses == null,
+          definitionMarkedFilled: _definitionMarkedFilled[index],
         );
   }
 
@@ -344,6 +393,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     for (final n in _translationFocusNodes) {
       n.dispose();
     }
+    for (final c in _definitionControllers) {
+      c.dispose();
+    }
+    for (final n in _definitionFocusNodes) {
+      n.dispose();
+    }
 
     setState(() {
       _wordPairs
@@ -359,6 +414,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _wordMarkedFilled.clear();
       _wordFocusNodes.clear();
       _translationFocusNodes.clear();
+      _definitionControllers.clear();
+      _definitionFocusNodes.clear();
+      _isLoadingDefinition.clear();
+      _definitionMarkedFilled.clear();
+      _definitionSenses.clear();
+      _sensesWord.clear();
       // Keep each surviving row's popup controller. CustomPopupMenu binds the
       // controller it is first handed in its own initState and never rebinds
       // (no didUpdateWidget), so a row whose State outlives this rebuild -- row
@@ -380,6 +441,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _optionsWord[i] = pair.translationOptions != null ? pair.word.trim() : null;
         _wordMarkedFilled[i] = pair.wordMarkedFilled;
         _translationMarkedFilled[i] = pair.translationMarkedFilled;
+        // Senses are only persisted while they match the Word (see _pushRow).
+        final senses = DefinitionResult.decodeSenses(pair.definitionOptionsJson);
+        _definitionSenses[i] = senses.isEmpty ? null : senses;
+        _sensesWord[i] = senses.isEmpty ? null : pair.word.trim();
+        _definitionMarkedFilled[i] = pair.definitionMarkedFilled;
       }
       _checkAndAddNewPair();
     });
@@ -434,13 +500,36 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     while (_wordMarkedFilled.length < target) {
       _wordMarkedFilled.add(false);
     }
+    while (_definitionControllers.length < target) {
+      _definitionControllers.add(TextEditingController());
+    }
+    while (_definitionFocusNodes.length < target) {
+      final node = FocusNode();
+      node.addListener(() {
+        if (mounted) setState(() {});
+      });
+      _definitionFocusNodes.add(node);
+    }
+    while (_isLoadingDefinition.length < target) {
+      _isLoadingDefinition.add(false);
+    }
+    while (_definitionMarkedFilled.length < target) {
+      _definitionMarkedFilled.add(false);
+    }
+    while (_definitionSenses.length < target) {
+      _definitionSenses.add(null);
+    }
+    while (_sensesWord.length < target) {
+      _sensesWord.add(null);
+    }
   }
 
   void _checkAndAddNewPair() {
     if (_wordPairs.isEmpty) return;
 
     final lastPair = _wordPairs.last;
-    if (lastPair.word.trim().isNotEmpty || lastPair.translation.trim().isNotEmpty) {
+    // Any content -- a definition-only row too -- earns a fresh blank row.
+    if (!lastPair.isEmpty) {
       final newPair = WordPair(word: '', translation: '');
       setState(() {
         _wordPairs.add(newPair);
@@ -483,7 +572,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// "Item in focus" per docs/lightning_icon_rules.md: true while either
   /// the Word or the Translation field of this row currently has focus.
   bool _isItemFocused(int index) {
-    return _wordFocusNodes[index].hasFocus || _translationFocusNodes[index].hasFocus;
+    return _wordFocusNodes[index].hasFocus ||
+        _translationFocusNodes[index].hasFocus ||
+        _definitionFocusNodes[index].hasFocus;
   }
 
   bool _shouldShowWordIcon(int index) {
@@ -545,6 +636,17 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final current = _wordControllers[index].text.trim();
     if (current.isEmpty) return null;
     return _optionsWord[index] == current ? opts : null;
+  }
+
+  /// The row's cached dictionary senses, only while they still describe the
+  /// current Word -- the definition counterpart of [_effectiveOptions].
+  List<String>? _effectiveSenses(int index) {
+    if (index < 0 || index >= _definitionSenses.length) return null;
+    final senses = _definitionSenses[index];
+    if (senses == null) return null;
+    final current = _wordControllers[index].text.trim();
+    if (current.isEmpty) return null;
+    return _sensesWord[index] == current ? senses : null;
   }
 
   Future<TranslationResult?> _loadTranslationOptions(int index) async {
@@ -964,6 +1066,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // Для першого айтема тільки очищуємо поля
         _wordControllers[0].clear();
         _translationControllers[0].clear();
+        _definitionControllers[0].clear();
+        _isLoadingDefinition[0] = false;
+        _definitionMarkedFilled[0] = false;
+        _definitionSenses[0] = null;
+        _sensesWord[0] = null;
         _wordPairs[0] = WordPair(word: '', translation: '');
         _isLoadingTranslation[0] = false;
         _isLoadingWordTranslation[0] = false;
@@ -971,7 +1078,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _optionsWord[0] = null;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
-        _pushRow(0, word: '', translation: '');
+        _pushRow(0, word: '', translation: '', definition: '');
       } else {
         // Для інших айтемів видаляємо повністю
         // Dispose контролерів перед видаленням
@@ -992,6 +1099,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _wordFocusNodes.removeAt(index);
         _translationFocusNodes[index].dispose();
         _translationFocusNodes.removeAt(index);
+        _definitionControllers[index].dispose();
+        _definitionControllers.removeAt(index);
+        _definitionFocusNodes[index].dispose();
+        _definitionFocusNodes.removeAt(index);
+        _isLoadingDefinition.removeAt(index);
+        _definitionMarkedFilled.removeAt(index);
+        _definitionSenses.removeAt(index);
+        _sensesWord.removeAt(index);
 
         // Видаляємо з popup controllers якщо є
         _popupControllers.remove(index);
@@ -1050,6 +1165,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       final translationFocusNode = _translationFocusNodes.removeAt(oldIndex);
       _translationFocusNodes.insert(newIndex, translationFocusNode);
 
+      // 7b. The definition lists travel with their row (definition-mode).
+      void move<T>(List<T> list) => list.insert(newIndex, list.removeAt(oldIndex));
+      move(_definitionControllers);
+      move(_definitionFocusNodes);
+      move(_isLoadingDefinition);
+      move(_definitionMarkedFilled);
+      move(_definitionSenses);
+      move(_sensesWord);
+
       // 8. _popupControllers: prune only out-of-range indices, never clear.
       // Clearing handed each surviving row's live State (kept alive across the
       // reorder by its ValueKey) a fresh controller the package never rebinds
@@ -1064,7 +1188,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    ref.read(pronunciationServiceProvider).stop();
+    _pronunciation.stop();
     for (var controller in _wordControllers) {
       controller.dispose();
     }
@@ -1075,6 +1199,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       node.dispose();
     }
     for (var node in _translationFocusNodes) {
+      node.dispose();
+    }
+    for (var controller in _definitionControllers) {
+      controller.dispose();
+    }
+    for (var node in _definitionFocusNodes) {
       node.dispose();
     }
     super.dispose();
