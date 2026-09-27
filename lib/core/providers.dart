@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/session.dart';
 import 'services/google_translate_service.dart';
@@ -56,4 +57,49 @@ class DragMode extends _$DragMode {
   bool build() => false;
 
   void toggle() => state = !state;
+}
+
+/// What every word row shows and every output carries (definition-mode):
+/// translation, definition, or both. Changes what is shown, never what is
+/// stored.
+enum WordDetailMode { translation, definition, both }
+
+/// Short name used across the app and the design docs; the class cannot be
+/// called `WordDetailMode` because the enum is.
+final wordDetailModeProvider = wordDetailModeNotifierProvider;
+
+/// The learner's word detail mode. Unlike drag mode it survives a restart, so
+/// it is persisted under one preferences key; it is still a display preference
+/// and never goes on `Session`. Starts as [WordDetailMode.translation] and
+/// switches once the stored value is read ([loaded]).
+@Riverpod(keepAlive: true)
+class WordDetailModeNotifier extends _$WordDetailModeNotifier {
+  static const prefsKey = 'word_detail_mode';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  WordDetailMode build() {
+    loaded;
+    return WordDetailMode.translation;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(prefsKey);
+    // A choice made before the stored value arrived wins over it.
+    if (_setByLearner) return;
+    state = WordDetailMode.values.firstWhere(
+      (m) => m.name == stored,
+      orElse: () => WordDetailMode.translation,
+    );
+  }
+
+  Future<void> set(WordDetailMode mode) async {
+    _setByLearner = true;
+    state = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefsKey, mode.name);
+  }
 }

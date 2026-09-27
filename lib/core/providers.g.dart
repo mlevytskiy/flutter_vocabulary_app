@@ -303,5 +303,27 @@ final dragModeProvider = NotifierProvider<DragMode, bool>.internal(
 );
 
 typedef _$DragMode = Notifier<bool>;
+String _$wordDetailModeNotifierHash() =>
+    r'28e72097edeb289a03d22f20b11a35ac5ec2be47';
+
+/// The learner's word detail mode. Unlike drag mode it survives a restart, so
+/// it is persisted under one preferences key; it is still a display preference
+/// and never goes on `Session`. Starts as [WordDetailMode.translation] and
+/// switches once the stored value is read ([loaded]).
+///
+/// Copied from [WordDetailModeNotifier].
+@ProviderFor(WordDetailModeNotifier)
+final wordDetailModeNotifierProvider =
+    NotifierProvider<WordDetailModeNotifier, WordDetailMode>.internal(
+  WordDetailModeNotifier.new,
+  name: r'wordDetailModeNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$wordDetailModeNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -7,7 +7,7 @@ acs: ["AC-01"]
 files_hint: ["lib/core/providers.dart", "lib/core/providers.g.dart", "test/word_detail_mode_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Add the persisted word detail mode provider
