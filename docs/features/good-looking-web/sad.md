@@ -392,22 +392,36 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 
 ## 11. Risks and technical debt
 
-<!-- 🎯 Why: ⭐ collects EVERYTHING that can break — not only the technical. Without §11 risks get
-     discussed at standups and lost; debt lives only in the head of whoever accepted it.
-     📋 Write: a risk/debt table — severity — mitigation — owner. Accepted debt in its own block.
-     📌 The first risk is often a product risk, not a technical one. That's normal. -->
-
 <!-- Severity literals: Low / Medium / High for regular risks; "Open question" for rows created by
      a Save-as-OQ resolution during the Socratic walk (see references/socratic.md). -->
 
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| <e.g. Worker lag may reach hours during a downstream outage> | Medium | <alert >10 min, on-call playbook, retry backoff> | <DevOps> |
-| <e.g. No event-schema versioning in v1> | Medium | <ADR-NNNN planned for v2, tolerate unknown fields> | <Backend> |
-| Open architectural decision: <decision-headline> | Open question | Resolve before <stage trigger or YYYY-MM-DD>; <inline rationale from the Save-as-OQ> | <owner> |
+| The translation endpoint is undocumented, and whether it answers a browser on another origin (CORS) could not be confirmed during design (it answered 429 to the design machine) | High | First task: a spike — a page on `wrangler dev` gets a translation in Chrome and Safari; if it fails, supersede ADR-0007 with a Worker proxy that has its own limit | Maksym (Tech Lead) |
+| D1 has one primary location; saves from a partner far from it may miss cell save p95 ≤ 1.0 s | Medium | Create the database with a location hint near the owner; read save timing in Cloudflare analytics before release (§10 QG-1) | Maksym (Tech Lead) |
+| The R2 30-day lifecycle rule cannot be proven from the repo, so photos could outlive their session | Medium | Confirm the rule in the Cloudflare dashboard before release; optionally let the daily clean-up also delete an expired session's R2 prefix | Maksym (Security Lead) |
+| Source photos are public for 30 days with no takedown (D4; spec OQ-4 first half) | Medium | The "include photos" switch with its 30-day notice (AC-23, AC-24); accepted in v1 | Maksym (Security Lead) |
+| The link is a write credential: a forwarded link can be used to vandalise the list | Medium | Undo covers wrong taps; republishing restores the list under the same link (ADR-0008); the write rate limit bounds scripted abuse (§8); accepted in v1 | Maksym (Security Lead) |
+| Republishing erases the partners' edits on that page | Medium | A warning in the share sheet before a republish (ADR-0008) | Maksym |
+| Page state is managed by hand in roughly 600–900 lines of framework-free JavaScript (ADR-0002) | Medium | One state object, `textContent` only, `checkJs`; e2e-through-UI tests for conflicts, Undo, polling and the layout switch | Maksym (Tech Lead) |
+| The dictionary's free key is non-commercial, and its text now appears on a public page on demand (open since definition-mode) | Medium | Carried over from definition-mode; confirm the key's terms before release | Maksym |
+| Two session stores during the 30-day transition (D1 plus read-only `SESSIONS` KV) | Low | Lazy import on first open (ADR-0003); remove the KV binding 30 days after release | Maksym |
+| Kept 1600 px photos grow device storage (about 0.4 MB per photo, kept as long as the session) | Low | Revisit when the app gets session deletion | Maksym |
+| A background upload is lost if the app is closed before it finishes | Low | The page shows a placeholder and keeps the rows linked, as AC-37 accepts | Maksym |
+| Partners on one network share one IP's write budget (60 writes / 60 s) | Low | The AC-35 test at a normal pace; raise the number if it is ever hit | Maksym |
+| After 5 minutes idle, a page stops polling and shows a stale list until the next interaction | Low | "Updates paused" hint plus an immediate catch-up poll on the next interaction (§6) | Maksym |
+| CLAUDE.md overrides — rule 3 (the page and the share sheet change look) and rule 5 (new `SourcePhoto` type and fields) (§2) | Low | Scoped to the page, the share sheet and the photo fields; the input screen and words table stay pixel-identical | Maksym |
+| The Worker had no test harness before this feature (brownfield gotcha) | Low | `node --test` against `wrangler dev` (§10), set up with the first Worker task | Maksym (Tech Lead) |
+| Open architectural decision: the layout breakpoint and the maximum widths of Word, Translation and Definition on each layout (spec OQ-5) | Open question | Resolve at `sdd:screens`; the owner wants to see them before deciding | Maksym |
+
+**Spec open questions after design:** OQ-1 → ADR-0007 (conditional on the spike); OQ-2 and OQ-3 → kept at the spec's defaults (§4); OQ-4 → republish overwrites the same link (ADR-0008), takedown stays an accepted risk (above); OQ-5 → the open row above.
 
 **Accepted debt (acceptable in v1, plan to fix later):**
-- <e.g. the entity is immutable / unversioned — OK for v1, may need audit versioning in v2>
+- No takedown of a published session or photo before its 30 days (D4).
+- No per-visitor names or edit history (D6).
+- Translation autofill is not metered.
+- Page interface text is English only.
+- No automated alerts; a weekly manual check (§7).
 
 ## 12. Glossary
 
