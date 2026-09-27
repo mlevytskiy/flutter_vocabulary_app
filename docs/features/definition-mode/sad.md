@@ -262,21 +262,20 @@ The app is built and installed on the owner's phone as today; the Worker is depl
 
 ## 8. Crosscutting concepts
 
-<!-- 🎯 Why: CROSS-CUTTING PATTERNS spanning several modules: logging, errors, authorization, ID
-     strategy, events, caching. ⭐ The second-densest section. A pattern inside one module is NOT
-     here; a project-wide convention belongs in the convention file.
-     📋 Write: a table — concept / convention / where defined. One row per concept.
-     📌 e.g. «sortable time-based IDs generated in the app layer» as a default from the convention file. -->
-
 | Concept | Convention | Where defined |
 |---|---|---|
-| Logging | <e.g. structured, fields `module=<name>`> | <convention file §X or here> |
-| Authentication | <e.g. token-based via middleware> | <convention file §X> |
-| Error handling | <e.g. domain sentinel → ports error mapping → JSON> | <convention file §X> |
-| ID strategy | <e.g. sortable time-based ID in the app layer> | <convention file §X> |
-| Internationalisation | <e.g. N/A, single language> | — |
-| Observability | <e.g. tracing on the request boundary> | — |
-| Events | <module-specific patterns, if any> | <here> |
+| Services and state | Services via providers in `lib/core/providers.dart`; screen data in a `@riverpod` notifier; controllers, focus nodes, loading flags in widget `State` | [`docs/architecture.md`](../../architecture.md) §2 |
+| Word detail mode | One keep-alive provider, persisted under a single preferences key (`word_detail_mode`), default translation; never stored on a session | here, §4 seed 1 |
+| "Filled" row | One helper decides filled = non-empty word **and** (translation **or** definition), mode-independent; used by the words table, export, publish and the auto-added empty row | here, spec AC-12 |
+| Data never deleted by mode | Mode only changes what is shown and exported; hidden translation/definition stay stored | feature `CONTEXT.md` invariant |
+| Worker authentication | `x-app-secret` header on every app → Worker call, including the new dictionary route | existing, `vocab-photo-api` |
+| Dictionary outcomes | The Worker returns exactly three outcomes — senses / not found with suggestions / temporarily unavailable — never the dictionary's raw format; headword filter applied in the Worker | here, ADR-0002, §6 flow 1 |
+| Timeouts | Worker → dictionary 4 s; app → Worker dictionary route 6 s (existing: translate 15 s, publish 20 s) | here |
+| Field limits | Word, translation and definition each ≤ 500 characters, checked in the Worker; a row is blank only when all three are empty | `src/session/types.ts`, ADR-0004 |
+| Escaping | All dictionary, photo and typed text is escaped as HTML on the page (`escapeHtml`) and in the AnkiDroid file (`ankiField`) | existing, `page.ts` / `anki_export.dart` / `anki.ts` |
+| Error handling | `SessionStore` never throws; a failed lookup leaves the field unchanged and shows a plain message (snackbar) | existing, [`docs/architecture.md`](../../architecture.md) §3 |
+| Logging | Worker: one line per lookup with outcome + duration; app: debug-log stopwatch around the lookup | §7 |
+| Internationalisation | N/A — UI copy stays in its current English/Ukrainian mix; definitions are English by nature | — |
 
 ## 9. Architecture decisions
 
