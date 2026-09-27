@@ -4,7 +4,7 @@ owner: "Maksym (learner, app owner)"
 reviewers: ["Maksym (Tech Lead)", "Maksym (Security Lead)"]
 updated_at: "2026-09-27"
 feature_size: "M"
-target_surfaces: []  # filled in §4 — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
+target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (ADR-0001) — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
 ---
 
 # Software Architecture Document — good-looking-web
@@ -110,17 +110,23 @@ C4Context
 
 ## 4. Solution strategy
 
-<!-- 🎯 Why: the 3–4 STRATEGIC PILLARS every ADR grows from. Without §4 each ADR looks random —
-     there's no umbrella. ⭐ The densest section — the blast-radius gate fires almost always here
-     (decisions are irreversible + multi-module).
-     📋 Write: 3–4 choices; each a heading + 2–3 sentences of rationale.
-     📌 «Store content as a table of typed blocks» is a pillar — ADR-0001 grows from it. -->
-
 **Top strategic choices (the seeds for ADRs):**
 
-1. **<e.g. Module isolation through events>** — <2–3 sentences citing quality goals + constraints>.
-2. **<e.g. Single-store persistence>** — <2–3 sentences>.
-3. **<e.g. Server-rendered read side>** — <2–3 sentences>.
+1. **Three surfaces: the app, the Worker API and the shared page** ([ADR-0001](adr/0001-change-app-worker-api-and-shared-page-as-three-surfaces.md)) — `target_surfaces: [mobile-app, backend-service, web-frontend]`. The app keeps and publishes photos (US-11, US-12), the Worker stores editable sessions and meters autofill, and the page becomes an editing client. The app stays Flutter (cross-platform, no UI-architecture change); the page's UI architecture is choice 2.
+2. **Server-rendered table, enhanced with plain JavaScript** ([ADR-0002](adr/0002-render-the-table-on-the-server-and-enhance-it-with-plain-javascript.md)) — the Worker still renders the complete table, so it is readable before any script runs (quality goal 3); one framework-free script served by the Worker adds editing, conflicts, Undo, polling, the pager and the dialog. The two layouts are CSS media queries on one DOM, so a width change never re-renders or loses typed text (AC-36). No new package, no build step.
+3. **Editable sessions and autofill counters in D1** ([ADR-0003](adr/0003-store-editable-sessions-and-autofill-counters-in-d1.md)) — KV cannot give "0 lost edits" (sad §2), so sessions, rows, cell revisions, photo slots and both counters move to one D1 database with conditional writes. New publishes go to D1; links published before this feature are imported from `SESSIONS` KV on first open. A daily cron trigger deletes sessions past their 30 days (D4).
+4. **Optimistic concurrency with a revision per cell** ([ADR-0004](adr/0004-detect-edit-conflicts-with-a-revision-per-cell.md)) — every write raises the session's revision; each cell remembers the revision of its last change; a save applies only if the cell is still at the revision the partner started from, else both values come back for the partner to choose (AC-11). Delete-with-Undo is client-side: the delete is sent after 5 s with the row's three cell revisions, so a change made meanwhile cancels it (AC-15, AC-15b).
+5. **Polling for changes since the last seen revision** ([ADR-0005](adr/0005-poll-for-changes-since-the-last-seen-revision.md)) — every ~5 s, paused while the tab is hidden; the answer carries changed cells, new rows, deleted-row tombstones and newly arrived photos (AC-12, AC-37).
+6. **Photos declared at publish, bytes uploaded after** ([ADR-0006](adr/0006-declare-source-photos-in-the-publish-payload-and-upload-bytes-after.md)) — the app ids each photo when it is taken; the publish request lists up to 10 photos and each row's photo id; the link dialog opens at once and the bytes follow in the background with retries; an undelivered photo is a placeholder in its place (AC-37). With "include photos" off, nothing about photos is sent (AC-24).
+7. **Translation autofill from the partner's browser** ([ADR-0007](adr/0007-call-the-translation-endpoint-from-the-partners-browser.md)) — the page calls the same free translation endpoint the app uses, unmetered (spec OQ-1 default); a spike in Chrome and Safari is the first task, with a Worker proxy as the fallback if it fails.
+8. **Republishing overwrites the same link** ([ADR-0008](adr/0008-overwrite-the-same-link-when-a-session-is-republished.md)) — the app keeps the published id and an edit token on its `Session`; a republish replaces the page's rows and photos under the same link and expiry, after a warning in the share sheet (spec OQ-4 default).
+
+**Tactical decisions that follow (inline, no ADR):**
+
+- **Metering** lives in D1 beside the data (ADR-0003): a definition lookup from a page first takes one unit of that page's allowance (50 per UTC day) and one unit of the all-pages share (500 per UTC day), both as "increment only while below the limit"; if either is spent, the page gets "paused until 00:00 UTC" (AC-18, AC-18b). Every lookup counts, found or not; a column autofill counts one per cell (AC-20). The app's own `/define` calls are not counted — pages simply stop at 500 of the 1,000 (AC-29). Translation autofill is not metered (choice 7).
+- **Column autofill** runs in the browser as a sequence of single-cell lookups in table order (AC-19, AC-20), each saved like a partner's edit (choice 4), so it reports progress and stops cleanly when the allowance runs out.
+- **Columns shown** are derived from the data, not from the published detail mode (spec §1 decision revising definition-mode ADR-0004 for the page): a column with no text collapses to an "add" control local to that partner's page (AC-21, AC-22). The downloaded file keeps definition-mode ADR-0005's fixed places and is built from D1 (AC-30, AC-31).
+- **Numbers kept at the spec's defaults:** 50 lookups per page per day and 500 for all pages (spec OQ-2), the first 10 photos taken (spec OQ-3), the layout breakpoint and column maximum widths chosen at `screens` (spec OQ-5) — see §11.
 
 Each tactical decision in later sections should trace to one of these seeds. Tactical decisions that *contradict* a strategic choice are red flags — surface them in §11.
 
