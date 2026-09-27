@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/models/session.dart';
+import '../../core/models/source_photo.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
@@ -49,7 +50,10 @@ class WordInputNotifier extends _$WordInputNotifier {
     prev ??= await store.newest();
     // Isar hands back embedded lists as fixed-length; the screen grows this one
     // (its trailing blank row), so give it a growable copy.
-    if (prev != null) prev.words = prev.words.toList();
+    if (prev != null) {
+      prev.words = prev.words.toList();
+      prev.sources = prev.sources.toList();
+    }
 
     // Case 1 — nothing stored: a new session, one empty row, no snackbar.
     if (prev == null) return _startNewSession(store);
@@ -95,6 +99,7 @@ class WordInputNotifier extends _$WordInputNotifier {
     final prev = await store.byId(id);
     if (prev == null) return;
     prev.words = prev.words.toList(); // growable, see build()
+    prev.sources = prev.sources.toList();
 
     final current = state.valueOrNull;
     if (current != null && current.sessionId != id && current.isEmpty) {
@@ -124,7 +129,9 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// set only when non-null — pass `clearTranslationOptions: true` to drop it,
   /// which is what the screen does whenever the Word field changes. The
   /// definition fields follow the same rules (definition-mode, ADR-0003); a
-  /// row's definition is never dropped by an update that does not name it.
+  /// row's definition is never dropped by an update that does not name it, and
+  /// neither is its photo link: [sourceId] sets it, `clearSourceId: true`
+  /// drops it (good-looking-web T17).
   void updateAt(
     int i, {
     String? word,
@@ -138,6 +145,8 @@ class WordInputNotifier extends _$WordInputNotifier {
     String? definitionOptionsJson,
     bool clearDefinitionOptions = false,
     bool? definitionMarkedFilled,
+    String? sourceId,
+    bool clearSourceId = false,
   }) {
     if (!state.hasValue) return;
     final session = state.value!;
@@ -159,6 +168,7 @@ class WordInputNotifier extends _$WordInputNotifier {
           : definitionOptionsJson ?? current.definitionOptionsJson,
       definitionMarkedFilled:
           definitionMarkedFilled ?? current.definitionMarkedFilled,
+      sourceId: clearSourceId ? null : sourceId ?? current.sourceId,
     );
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
@@ -196,6 +206,17 @@ class WordInputNotifier extends _$WordInputNotifier {
     // growing that row is not a content change. Stamping it would restart the
     // session clock on a launch where the user did nothing at all.
     if (newPairs.every((p) => p.isEmpty)) return;
+    _scheduleSave();
+  }
+
+  /// Records a photo just kept for this session (good-looking-web T17). The
+  /// screen calls it before adding the rows recognised from it, so the rows
+  /// never point at a photo the session does not list.
+  void addSource(SourcePhoto photo) {
+    if (!state.hasValue) return;
+    final session = state.value!;
+    session.sources.add(photo);
+    state = AsyncData(session);
     _scheduleSave();
   }
 

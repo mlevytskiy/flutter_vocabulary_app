@@ -137,6 +137,13 @@ class PhotoScaler {
       return await _compress(path, minSide, quality).timeout(_resizeTimeout);
     }
   }
+
+  /// The copy of the photo at [path] that the app keeps and publishes with the
+  /// session (good-looking-web sad §5): 1600 px on the shorter side, JPEG 80 —
+  /// small book print stays readable when zoomed, and three photos still upload
+  /// in 30 s on 4G. The 640 px copy for `/analyze` is unchanged.
+  Future<Uint8List> keptCopy(String path) =>
+      resizeFileToMinSide(path, minSide: 1600, quality: 80);
 }
 
 Future<Uint8List> _compress(String path, int minSide, int quality) async {

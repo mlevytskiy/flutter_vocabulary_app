@@ -37,6 +37,11 @@ class WordPair {
 
   bool definitionMarkedFilled;
 
+  /// The `SourcePhoto.id` of the photo this row was recognised from; null for
+  /// a typed row and for every row saved before good-looking-web (AC-25, AC-26).
+  /// Editing the row keeps it; clearing the row drops it.
+  String? sourceId;
+
   WordPair({
     this.word = '',
     this.translation = '',
@@ -47,6 +52,7 @@ class WordPair {
     this.definition = '',
     this.definitionOptionsJson,
     this.definitionMarkedFilled = false,
+    this.sourceId,
   });
 
   @ignore
@@ -78,6 +84,7 @@ class WordPair {
         definition: json['definition'] as String? ?? '',
         definitionOptionsJson: json['definitionOptionsJson'] as String?,
         definitionMarkedFilled: json['definitionMarkedFilled'] as bool? ?? false,
+        sourceId: json['sourceId'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -90,6 +97,7 @@ class WordPair {
         'definition': definition,
         'definitionOptionsJson': definitionOptionsJson,
         'definitionMarkedFilled': definitionMarkedFilled,
+        'sourceId': sourceId,
       };
 
   /// A verbatim copy — used when writing to / reading from the store so the
@@ -104,6 +112,7 @@ class WordPair {
         definition: definition,
         definitionOptionsJson: definitionOptionsJson,
         definitionMarkedFilled: definitionMarkedFilled,
+        sourceId: sourceId,
       );
 
   @ignore

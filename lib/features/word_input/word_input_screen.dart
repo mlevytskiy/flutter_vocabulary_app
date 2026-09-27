@@ -14,6 +14,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/models/definition_result.dart';
 import '../../core/models/session.dart';
+import '../../core/models/source_photo.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
@@ -40,8 +41,9 @@ const int _photoWordCap = 20;
 /// context description is the row's definition in every mode -- the mode only
 /// decides what is shown -- and it no longer stands in for a missing
 /// translation (spec AC-09, AC-10). Pure: the photo path makes no dictionary
-/// lookups.
-WordPair wordPairFromPhoto(VocabWord w) {
+/// lookups. [sourceId] links the row to the photo it came from, when the app
+/// kept that photo (good-looking-web T17, AC-25).
+WordPair wordPairFromPhoto(VocabWord w, {String? sourceId}) {
   final translation = w.translation ?? '';
   final definition = w.description ?? '';
   return WordPair(
@@ -51,6 +53,7 @@ WordPair wordPairFromPhoto(VocabWord w) {
     wordMarkedFilled: w.word.isNotEmpty,
     translationMarkedFilled: translation.isNotEmpty,
     definitionMarkedFilled: definition.isNotEmpty,
+    sourceId: sourceId,
   );
 }
 
@@ -332,7 +335,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// restored row looks exactly as it did before the kill: the text, the dots
   /// state, the cached dictionary behind the dots, and the two lightning
   /// "filled" marks (docs/lightning_icon_rules.md).
-  void _pushRow(int index, {String? word, String? translation, String? definition}) {
+  void _pushRow(int index,
+      {String? word, String? translation, String? definition, String? sourceId, bool clearSourceId = false}) {
     if (index < 0 || index >= _translationOptions.length) return;
     final senses = _effectiveSenses(index);
     // Persist only what the dots actually show: a block whose word no longer
@@ -355,6 +359,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           definitionOptionsJson: senses != null ? DefinitionResult.encodeSenses(senses) : null,
           clearDefinitionOptions: senses == null,
           definitionMarkedFilled: _definitionMarkedFilled[index],
+          sourceId: sourceId,
+          clearSourceId: clearSourceId,
         );
   }
 
@@ -1064,6 +1070,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _isAnalyzingPhoto = true;
     });
 
+    // The kept copy, started once the /analyze copy is done so it runs while
+    // the request is out. Null when it could not be made: the words still
+    // arrive, only without a photo (good-looking-web T17).
+    Future<SourcePhoto?>? kept;
+    var keptHandedOver = false;
     try {
       final compressStopwatch = Stopwatch()..start();
       final bytes = await PhotoScaler.instance.resizeFileToMinSide(
@@ -1072,6 +1083,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         quality: 85,
       );
       compressStopwatch.stop();
+      kept = _keepSourcePhoto(picked.path);
 
       final requestStopwatch = Stopwatch()..start();
       final result = await ref.read(vocabPhotoServiceProvider).analyzePhoto(
@@ -1091,11 +1103,16 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           compressDuration: compressStopwatch.elapsed,
           requestDuration: requestStopwatch.elapsed,
           aiDuration: result.aiDuration,
-        ).then((selected) {
-          if (selected != null && selected.isNotEmpty) {
-            _addWordsFromPhoto(selected);
+        ).then((selected) async {
+          final source = await kept;
+          if (selected != null && selected.isNotEmpty && mounted) {
+            _addWordsFromPhoto(selected, source: source);
+          } else if (source != null) {
+            // No row came from it, so it is not a source photo.
+            await ref.read(sourcePhotoStoreProvider).delete(source);
           }
         });
+        keptHandedOver = true;
       }
     } on VocabPhotoException catch (e) {
       debugPrint('VOCAB: analyze failed: ${e.message}');
@@ -1112,6 +1129,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         );
       }
     } finally {
+      if (!keptHandedOver && kept != null) {
+        final store = ref.read(sourcePhotoStoreProvider);
+        kept.then((source) {
+          if (source != null) store.delete(source);
+        });
+      }
       if (mounted) {
         setState(() {
           _isAnalyzingPhoto = false;
@@ -1120,15 +1143,32 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
   }
 
+  Future<SourcePhoto?> _keepSourcePhoto(String path) async {
+    final takenAt = DateTime.now();
+    final store = ref.read(sourcePhotoStoreProvider);
+    try {
+      final bytes = await PhotoScaler.instance.keptCopy(path);
+      return await store.keep(bytes, takenAt: takenAt);
+    } catch (e) {
+      debugPrint('VOCAB: kept photo copy failed: $e');
+      return null;
+    }
+  }
+
   /// Appends words kept in the photo-results dialog to the main word list,
   /// reusing the still-empty first row if the screen hasn't been touched yet.
-  void _addWordsFromPhoto(List<VocabWord> words) {
+  /// With a kept [source], the photo joins the session first and every row
+  /// added here points at it.
+  void _addWordsFromPhoto(List<VocabWord> words, {SourcePhoto? source}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
+    if (source != null) {
+      ref.read(wordInputNotifierProvider.notifier).addSource(source);
+    }
 
     setState(() {
       for (final w in words) {
-        final pair = wordPairFromPhoto(w);
+        final pair = wordPairFromPhoto(w, sourceId: source?.id);
         if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
           // The row already holds the texts, so the controller listeners see
           // no change; the single _pushRow below persists everything.
@@ -1159,7 +1199,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _pushRow(0,
           word: _wordPairs[0].word,
           translation: _wordPairs[0].translation,
-          definition: _wordPairs[0].definition);
+          definition: _wordPairs[0].definition,
+          sourceId: _wordPairs[0].sourceId);
     }
     if (appendedPairs.isNotEmpty) {
       ref.read(wordInputNotifierProvider.notifier).addAll(appendedPairs);
@@ -1185,7 +1226,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         _optionsWord[0] = null;
         _translationMarkedFilled[0] = false;
         _wordMarkedFilled[0] = false;
-        _pushRow(0, word: '', translation: '', definition: '');
+        _pushRow(0, word: '', translation: '', definition: '', clearSourceId: true);
       } else {
         // Для інших айтемів видаляємо повністю
         // Dispose контролерів перед видаленням

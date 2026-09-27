@@ -85,7 +85,10 @@ class SessionStore {
           ..words = [
             for (final w in s.words)
               if (!w.isEmpty) w.copy(),
-          ];
+          ]
+          ..sources = [for (final p in s.sources) p.copy()]
+          ..publishedId = s.publishedId
+          ..editToken = s.editToken;
         s.id = await _isar.sessions.put(toWrite);
       });
     } catch (_) {

@@ -17,28 +17,44 @@ const SessionSchema = CollectionSchema(
   name: r'Session',
   id: 4817823809690647594,
   properties: {
-    r'isShared': PropertySchema(
+    r'editToken': PropertySchema(
       id: 0,
+      name: r'editToken',
+      type: IsarType.string,
+    ),
+    r'isShared': PropertySchema(
+      id: 1,
       name: r'isShared',
       type: IsarType.bool,
     ),
     r'lastLocalModifiedAt': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'lastLocalModifiedAt',
       type: IsarType.dateTime,
     ),
+    r'publishedId': PropertySchema(
+      id: 3,
+      name: r'publishedId',
+      type: IsarType.string,
+    ),
     r'sessionId': PropertySchema(
-      id: 2,
+      id: 4,
       name: r'sessionId',
       type: IsarType.string,
     ),
+    r'sources': PropertySchema(
+      id: 5,
+      name: r'sources',
+      type: IsarType.objectList,
+      target: r'SourcePhoto',
+    ),
     r'updatedAt': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -65,7 +81,10 @@ const SessionSchema = CollectionSchema(
     )
   },
   links: {},
-  embeddedSchemas: {r'WordPair': WordPairSchema},
+  embeddedSchemas: {
+    r'WordPair': WordPairSchema,
+    r'SourcePhoto': SourcePhotoSchema
+  },
   getId: _sessionGetId,
   getLinks: _sessionGetLinks,
   attach: _sessionAttach,
@@ -78,7 +97,27 @@ int _sessionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.editToken;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.publishedId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.sessionId.length * 3;
+  bytesCount += 3 + object.sources.length * 3;
+  {
+    final offsets = allOffsets[SourcePhoto]!;
+    for (var i = 0; i < object.sources.length; i++) {
+      final value = object.sources[i];
+      bytesCount += SourcePhotoSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
   bytesCount += 3 + object.words.length * 3;
   {
     final offsets = allOffsets[WordPair]!;
@@ -96,12 +135,20 @@ void _sessionSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeBool(offsets[0], object.isShared);
-  writer.writeDateTime(offsets[1], object.lastLocalModifiedAt);
-  writer.writeString(offsets[2], object.sessionId);
-  writer.writeDateTime(offsets[3], object.updatedAt);
+  writer.writeString(offsets[0], object.editToken);
+  writer.writeBool(offsets[1], object.isShared);
+  writer.writeDateTime(offsets[2], object.lastLocalModifiedAt);
+  writer.writeString(offsets[3], object.publishedId);
+  writer.writeString(offsets[4], object.sessionId);
+  writer.writeObjectList<SourcePhoto>(
+    offsets[5],
+    allOffsets,
+    SourcePhotoSchema.serialize,
+    object.sources,
+  );
+  writer.writeDateTime(offsets[6], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[4],
+    offsets[7],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -115,13 +162,22 @@ Session _sessionDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Session();
+  object.editToken = reader.readStringOrNull(offsets[0]);
   object.id = id;
-  object.isShared = reader.readBool(offsets[0]);
-  object.lastLocalModifiedAt = reader.readDateTime(offsets[1]);
-  object.sessionId = reader.readString(offsets[2]);
-  object.updatedAt = reader.readDateTime(offsets[3]);
+  object.isShared = reader.readBool(offsets[1]);
+  object.lastLocalModifiedAt = reader.readDateTime(offsets[2]);
+  object.publishedId = reader.readStringOrNull(offsets[3]);
+  object.sessionId = reader.readString(offsets[4]);
+  object.sources = reader.readObjectList<SourcePhoto>(
+        offsets[5],
+        SourcePhotoSchema.deserialize,
+        allOffsets,
+        SourcePhoto(),
+      ) ??
+      [];
+  object.updatedAt = reader.readDateTime(offsets[6]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[4],
+        offsets[7],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -138,14 +194,26 @@ P _sessionDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readBool(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
-    case 3:
       return (reader.readDateTime(offset)) as P;
+    case 3:
+      return (reader.readStringOrNull(offset)) as P;
     case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
+      return (reader.readObjectList<SourcePhoto>(
+            offset,
+            SourcePhotoSchema.deserialize,
+            allOffsets,
+            SourcePhoto(),
+          ) ??
+          []) as P;
+    case 6:
+      return (reader.readDateTime(offset)) as P;
+    case 7:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -347,6 +415,152 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
 
 extension SessionQueryFilter
     on QueryBuilder<Session, Session, QFilterCondition> {
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'editToken',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'editToken',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'editToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'editToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'editToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'editToken',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'editToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'editToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'editToken',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'editToken',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'editToken',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'editToken',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> idEqualTo(Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -461,6 +675,153 @@ extension SessionQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'publishedId',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'publishedId',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'publishedId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'publishedId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'publishedId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'publishedId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'publishedId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'publishedId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'publishedId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'publishedId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'publishedId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      publishedIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'publishedId',
+        value: '',
       ));
     });
   }
@@ -592,6 +953,91 @@ extension SessionQueryFilter
         property: r'sessionId',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sources',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sources',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sources',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sources',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      sourcesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sources',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'sources',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -735,6 +1181,13 @@ extension SessionQueryFilter
 
 extension SessionQueryObject
     on QueryBuilder<Session, Session, QFilterCondition> {
+  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesElement(
+      FilterQuery<SourcePhoto> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'sources');
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> wordsElement(
       FilterQuery<WordPair> q) {
     return QueryBuilder.apply(this, (query) {
@@ -747,6 +1200,18 @@ extension SessionQueryLinks
     on QueryBuilder<Session, Session, QFilterCondition> {}
 
 extension SessionQuerySortBy on QueryBuilder<Session, Session, QSortBy> {
+  QueryBuilder<Session, Session, QAfterSortBy> sortByEditToken() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'editToken', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> sortByEditTokenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'editToken', Sort.desc);
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterSortBy> sortByIsShared() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isShared', Sort.asc);
@@ -768,6 +1233,18 @@ extension SessionQuerySortBy on QueryBuilder<Session, Session, QSortBy> {
   QueryBuilder<Session, Session, QAfterSortBy> sortByLastLocalModifiedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> sortByPublishedId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'publishedId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> sortByPublishedIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'publishedId', Sort.desc);
     });
   }
 
@@ -798,6 +1275,18 @@ extension SessionQuerySortBy on QueryBuilder<Session, Session, QSortBy> {
 
 extension SessionQuerySortThenBy
     on QueryBuilder<Session, Session, QSortThenBy> {
+  QueryBuilder<Session, Session, QAfterSortBy> thenByEditToken() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'editToken', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> thenByEditTokenDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'editToken', Sort.desc);
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
@@ -834,6 +1323,18 @@ extension SessionQuerySortThenBy
     });
   }
 
+  QueryBuilder<Session, Session, QAfterSortBy> thenByPublishedId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'publishedId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> thenByPublishedIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'publishedId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterSortBy> thenBySessionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
@@ -861,6 +1362,13 @@ extension SessionQuerySortThenBy
 
 extension SessionQueryWhereDistinct
     on QueryBuilder<Session, Session, QDistinct> {
+  QueryBuilder<Session, Session, QDistinct> distinctByEditToken(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'editToken', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Session, Session, QDistinct> distinctByIsShared() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isShared');
@@ -870,6 +1378,13 @@ extension SessionQueryWhereDistinct
   QueryBuilder<Session, Session, QDistinct> distinctByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastLocalModifiedAt');
+    });
+  }
+
+  QueryBuilder<Session, Session, QDistinct> distinctByPublishedId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'publishedId', caseSensitive: caseSensitive);
     });
   }
 
@@ -895,6 +1410,12 @@ extension SessionQueryProperty
     });
   }
 
+  QueryBuilder<Session, String?, QQueryOperations> editTokenProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'editToken');
+    });
+  }
+
   QueryBuilder<Session, bool, QQueryOperations> isSharedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isShared');
@@ -908,9 +1429,21 @@ extension SessionQueryProperty
     });
   }
 
+  QueryBuilder<Session, String?, QQueryOperations> publishedIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'publishedId');
+    });
+  }
+
   QueryBuilder<Session, String, QQueryOperations> sessionIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sessionId');
+    });
+  }
+
+  QueryBuilder<Session, List<SourcePhoto>, QQueryOperations> sourcesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sources');
     });
   }
 

@@ -55,6 +55,25 @@ final sessionStoreProvider = FutureProvider<SessionStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SessionStoreRef = FutureProviderRef<SessionStore>;
+String _$sourcePhotoStoreHash() => r'5ba15f72c22a820489d043a9260d86a9f9d91b3d';
+
+/// The kept 1600 px copies of the session photos (good-looking-web T17).
+///
+/// Copied from [sourcePhotoStore].
+@ProviderFor(sourcePhotoStore)
+final sourcePhotoStoreProvider = Provider<SourcePhotoStore>.internal(
+  sourcePhotoStore,
+  name: r'sourcePhotoStoreProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sourcePhotoStoreHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SourcePhotoStoreRef = ProviderRef<SourcePhotoStore>;
 String _$googleTranslateServiceHash() =>
     r'6afdf9f3d52ebdc231e65e17d05446c50f457432';
 

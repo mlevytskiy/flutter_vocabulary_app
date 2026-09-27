@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:isar_community/isar.dart';
 
+import 'source_photo.dart';
 import 'word_pair.dart';
 
 part 'session.g.dart';
@@ -30,6 +31,16 @@ class Session {
 
   List<WordPair> words = [];
 
+  /// Photos taken in this session, in the order they were taken. A row
+  /// recognised from one points at it through `WordPair.sourceId`; a session
+  /// from before good-looking-web has none (AC-26).
+  List<SourcePhoto> sources = [];
+
+  /// The shared page this session was last published to, and the token that
+  /// lets a republish overwrite it (ADR-0008). Null until the first publish.
+  String? publishedId;
+  String? editToken;
+
   Session();
 
   static Session create() {
@@ -53,7 +64,13 @@ class Session {
     ..words = (json['words'] as List<dynamic>?)
             ?.map((w) => WordPair.fromJson(w as Map<String, dynamic>))
             .toList() ??
-        <WordPair>[];
+        <WordPair>[]
+    ..sources = (json['sources'] as List<dynamic>?)
+            ?.map((s) => SourcePhoto.fromJson(s as Map<String, dynamic>))
+            .toList() ??
+        <SourcePhoto>[]
+    ..publishedId = json['publishedId'] as String?
+    ..editToken = json['editToken'] as String?;
 
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,
@@ -61,5 +78,8 @@ class Session {
         'lastLocalModifiedAt': lastLocalModifiedAt.toIso8601String(),
         'isShared': isShared,
         'words': words.map((w) => w.toJson()).toList(),
+        'sources': sources.map((s) => s.toJson()).toList(),
+        'publishedId': publishedId,
+        'editToken': editToken,
       };
 }
