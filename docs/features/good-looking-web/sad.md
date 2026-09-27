@@ -425,13 +425,24 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 
 ## 12. Glossary
 
-<!-- 🎯 Why: ⭐ the DOMAIN GLOSSARY that ends arguments a year later («checkpoint — weekly or
-     biweekly? quarter — calendar or fiscal?»).
-     📋 Write: a term / meaning table. Business + technical terms mixed.
-     📌 e.g. «Lesson | a unit inside a course made of blocks (text, video)». -->
+Terms from [CONTEXT.md](./CONTEXT.md) and the [project CONTEXT](../../../CONTEXT.md) are canonical; the terms marked *design* were introduced by this SAD and are candidates for a `/sdd:glossary good-looking-web` follow-up.
 
 | Term | Meaning |
 |---|---|
-| <e.g. domain object A> | <its meaning in this domain> |
-| <e.g. domain object B> | <its meaning> |
-| <e.g. domain invariant name> | <the rule, in plain language> |
+| learner | The phone owner who collects words into sessions and publishes them. NOT partner. |
+| partner | A person who opens a session's shared link; no app, no account. NOT learner. |
+| session | A set of words collected together, stored on the learner's device; published, it also lives in the Worker's database for 30 days. NOT a login session. |
+| shared page | The public web page of a published session; anyone holding the link can read and edit it. NOT an app screen. |
+| word row | One line of a session: an English word with its translation, definition and, if recognised from a photo, its source photo. |
+| source photo | A photo the learner took that has at least one word row recognised from it at publishing time. NOT any image. |
+| autofill | Filling one translation or definition cell, or every empty cell of one column, with a tap on a lightning on the shared page. NOT word recognition from a photo. |
+| autofill allowance | How many definition lookups one shared page may still make today (50 per UTC day). NOT the project-wide dictionary quota. |
+| all-pages share *(design)* | The part of the daily dictionary quota all shared pages together may use — 500 of the 1,000 calls; the rest is kept for the app. |
+| session revision *(design)* | A counter per published session that goes up with every write; the polling cursor. |
+| cell revision *(design)* | The session revision at which a cell was last changed; a save applies only if the cell is still at the revision the partner started from (ADR-0004). |
+| conflict *(design)* | A save refused because the cell changed since the partner started editing; the page shows both values for the partner to choose. |
+| change feed *(design)* | The Worker's answer to "what changed since revision N": changed cells, new rows, tombstones, arrived photos (ADR-0005). |
+| tombstone *(design)* | The record of a deleted row, kept so polling pages learn about the delete. |
+| photo slot *(design)* | A source photo declared at publish; "pending" until its bytes arrive, then "arrived"; a pending slot shows as a placeholder (ADR-0006). |
+| edit token *(design)* | A random secret returned on first publish and kept by the app; required to overwrite the same link on republish (ADR-0008). |
+| idle stop *(design)* | Polling stops after 5 minutes without interaction on the page and resumes with a catch-up poll on the next one (§6). |
