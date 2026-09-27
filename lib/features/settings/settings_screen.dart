@@ -42,8 +42,9 @@ class SettingsScreen extends ConsumerWidget {
           RadioGroup<WordDetailMode>(
             groupValue: detailMode,
             onChanged: (mode) {
-              if (mode != null)
+              if (mode != null) {
                 ref.read(wordDetailModeProvider.notifier).set(mode);
+              }
             },
             child: const Column(
               children: [
