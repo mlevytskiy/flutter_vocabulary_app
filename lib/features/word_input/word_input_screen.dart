@@ -1539,34 +1539,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                     itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
                   ),
           ),
-          // The settings entry point: bottom-left, opposite the speed dial's
-          // own bottom-right corner (D9 (c) in docs/roadmap.md). Kept out of
-          // the Screenshot above, so it never appears in a shared screenshot.
-          //
-          // Mirrors the speed dial's plus button: same elevation, same white
-          // glyph on a filled circle, purple instead of red. The plain
-          // constructor, not `.small`, because `.small` switches the default
-          // shape to a 12px RoundedRectangleBorder and a square button would
-          // not read as the same control.
-          //
-          // The Scaffold lifts the speed dial above the bottom safe area (the
-          // home indicator); this button lives in the body, which extends
-          // under it, so it adds that same inset to stay on the plus button's
-          // line. With the keyboard up the inset is 0, as it is for the dial.
-          Positioned(
-            left: 16.0,
-            bottom: 16.0 + MediaQuery.paddingOf(context).bottom,
-            child: FloatingActionButton(
-              heroTag: null,
-              onPressed: () => const SettingsRoute().push(context),
-              tooltip: 'Settings',
-              elevation: 8.0,
-              shape: const CircleBorder(),
-              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.settings),
-            ),
-          ),
           if (_isAnalyzingPhoto)
             Container(
               color: Colors.black45,
@@ -1588,9 +1560,41 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
         ],
       ),
-      floatingActionButton: WordInputSpeedDial(
-        onTakePhoto: _takePhotoForVocabulary,
-        onScreenshot: _takeScreenshot,
+      // Both round buttons share the Scaffold's FAB slot, so the Scaffold moves
+      // them together: above a snackbar, above the keyboard, above the bottom
+      // safe area -- always on one line. A full-width row, centred, puts the
+      // settings button bottom-left and the speed dial bottom-right (D9 (c) in
+      // docs/roadmap.md), each 16px from its edge like endFloat's margin. The
+      // gap between them is not hit-testable, so rows underneath stay tappable.
+      // Kept out of the Screenshot in the body, so neither appears in a shared
+      // screenshot.
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Mirrors the speed dial's plus button: same elevation, same white
+            // glyph on a filled circle, purple instead of red. The plain
+            // constructor, not `.small`, because `.small` switches the default
+            // shape to a 12px RoundedRectangleBorder and a square button would
+            // not read as the same control.
+            FloatingActionButton(
+              heroTag: null,
+              onPressed: () => const SettingsRoute().push(context),
+              tooltip: 'Settings',
+              elevation: 8.0,
+              shape: const CircleBorder(),
+              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.settings),
+            ),
+            WordInputSpeedDial(
+              onTakePhoto: _takePhotoForVocabulary,
+              onScreenshot: _takeScreenshot,
+            ),
+          ],
+        ),
       ),
     );
   }
