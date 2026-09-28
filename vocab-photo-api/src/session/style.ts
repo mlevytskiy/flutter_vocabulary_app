@@ -22,8 +22,11 @@ export const STYLE = `
          background: #fafafa; color: #1b1b1b; }
   main { max-width: 1440px; margin: 0 auto; padding: 16px; }
   h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  /* The title row; its short meta line ("24 words · available until 28.10.2026") is the phone's. */
+  .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; }
+  .meta-short { display: none; color: #666; font-size: 0.85rem; }
   .meta { color: #666; font-size: 0.9rem; margin: 0 0 16px; }
-  .actions { margin: 0 0 16px; }
+  .actions { display: flex; align-items: center; gap: 16px; margin: 0 0 16px; }
   .btn { display: inline-block; padding: 10px 16px; border-radius: 6px; background: #2962ff;
          color: #fff; font-weight: 600; text-decoration: none; }
   .btn:active { background: #1e4fd6; }
@@ -54,7 +57,6 @@ export const STYLE = `
   .add-col { font: inherit; font-size: 0.85rem; font-weight: 600; padding: 2px 6px; white-space: nowrap;
              border: 1px dashed #999; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
   .no-translation td.c-translation > *, .no-definition td.c-definition > * { display: none; }
-  .paused-hint { color: #666; font-size: 0.85rem; font-style: italic; margin: -8px 0 16px; }
 
   /* The lightning (US-08, US-09): the app's purple bolt, in an empty cell and beside the header. */
   .bolt { display: none; }
@@ -94,8 +96,6 @@ export const STYLE = `
   @keyframes changed { from { background: #fff3c4; } to { background: transparent; } }
   .toasts { position: fixed; left: 12px; bottom: 16px; z-index: 3; display: flex; flex-direction: column;
             gap: 8px; max-width: min(28rem, calc(100vw - 24px)); }
-  /* Clear of the phone's photo button (bottom right), when there is one. */
-  .has-photos .toasts { max-width: min(28rem, calc(100vw - 104px)); }
   .toast { display: flex; align-items: center; gap: 12px; margin: 0; padding: 10px 12px; border-radius: 6px;
            background: #1b1b1b; color: #fff; font-size: 0.9rem; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
   .toast-body { min-width: 0; }
@@ -123,8 +123,9 @@ export const STYLE = `
   .placeholder { aspect-ratio: 3 / 4; border: 1px dashed #bbb; border-radius: 6px; display: flex;
                  align-items: center; justify-content: center; color: #888; font-size: 0.85rem; }
   .slide figcaption { text-align: center; color: #666; font-size: 0.85rem; margin: 4px 0 0; }
-  .photo-button { display: none; position: fixed; right: 16px; bottom: 16px; z-index: 2;
-                  width: 64px; height: 64px; padding: 0; border: 0; background: none; cursor: pointer; }
+  /* The phone's photo button, beside the download link. */
+  .photo-button { display: none; position: relative; flex: none; width: 44px; height: 44px;
+                  padding: 0; border: 0; background: none; cursor: pointer; }
   .thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #ccc;
            border: 2px solid #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
   .photo-button.stack .thumb:nth-child(1) { transform: rotate(-7deg); }
@@ -156,6 +157,10 @@ export const STYLE = `
     .has-photos .layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--w-photos);
                   gap: 24px; align-items: start; }
     .photos { position: sticky; top: 16px; }
+    /* The next photo peeks in at the side, so there is visibly more than one. */
+    .pager-track { gap: 12px; }
+    .slide { flex-basis: 88%; }
+    .slide:only-child { flex-basis: 100%; }
     /* A recognised row of the photo on display (AC-05, AC-34). Wide layout
        only: there is no row highlighting on a phone (spec §3). A cell's own
        not-saved state still shows over it. */
@@ -169,7 +174,16 @@ export const STYLE = `
     .table-scroll { overflow: auto; max-height: 100vh; max-height: 100dvh; border-radius: 6px; }
     table { width: max-content; }
     .photos { display: none; }
-    .js .photo-button { display: block; }
+    /* At the right edge of the actions row, clear of the rotated stack's corners. */
+    .js .photo-button { display: block; margin: 0 8px 0 auto; }
+    /* One row: the short meta stays beside "Vocabulary" and wraps inside itself
+       on a narrow phone instead of dropping under the title. */
+    .title { margin: 0 0 12px; flex-wrap: nowrap; }
+    .title h1 { flex: none; }
+    .meta-short { min-width: 0; }
+    .title h1 { margin: 0; }
+    .meta-short { display: inline; }
+    .meta { display: none; }
   }
 
   @media (prefers-color-scheme: dark) {
@@ -177,7 +191,7 @@ export const STYLE = `
     table { background: #1c1c1c; border-color: #333; }
     th { background: #262626; }
     th, td { border-color: #2e2e2e; }
-    .meta, .n, .credit, .slide figcaption, .placeholder { color: #9a9a9a; }
+    .meta, .meta-short, .n, .credit, .slide figcaption, .placeholder { color: #9a9a9a; }
     .slide img, .placeholder { border-color: #333; }
     .thumb { border-color: #1c1c1c; background: #333; }
     .needs-word-mark { color: #e0a040; }
@@ -185,7 +199,7 @@ export const STYLE = `
     td[data-state="saved"] .cell-note { color: #81c995; }
     td[data-state="unsaved"] .cell-note, td[data-state="conflict"] .cell-note { color: #f28b82; }
     .cell-note q { color: #ececec; }
-    .paused-hint, td[data-state="notice"] .cell-note { color: #9a9a9a; }
+    td[data-state="notice"] .cell-note { color: #9a9a9a; }
     .js .bolt { color: #b39ddb; }
     .bolt:hover, .bolt:focus-visible { background: #2e2540; }
     .cell-note button { background: #262626; color: #ececec; border-color: #555; }

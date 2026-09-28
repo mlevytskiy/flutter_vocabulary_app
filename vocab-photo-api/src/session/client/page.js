@@ -1031,11 +1031,15 @@ function schedule() {
 function pauseUpdates() {
   state.poll.idle = true;
   if (!main || state.poll.hint) return;
-  const hint = document.createElement("p");
-  hint.className = "paused-hint";
+  // A snackbar that stays until the partner is back (resume() removes it).
+  const hint = document.createElement("div");
+  hint.className = "toast paused-toast";
   hint.setAttribute("role", "status");
-  hint.textContent = "Updates paused while you were away. Click or tap anywhere to see the latest changes.";
-  main.querySelector(".meta")?.after(hint);
+  const body = document.createElement("div");
+  body.className = "toast-body";
+  body.textContent = "Updates paused while you were away. Click or tap anywhere to see the latest changes.";
+  hint.append(body);
+  main.querySelector(".toasts")?.append(hint);
   state.poll.hint = hint;
 }
 
@@ -1231,7 +1235,9 @@ function showPhoto(index, move) {
   const target = Math.max(0, Math.min(all.length - 1, index));
   const track = /** @type {HTMLElement | null} */ (main?.querySelector(".pager-track") ?? null);
   if (move && track) {
-    track.scrollTo({ left: target * track.clientWidth, behavior: REDUCED_MOTION.matches ? "auto" : "smooth" });
+    // Slides are narrower than the track (the next one peeks in), so scroll by their offsets.
+    const left = all[target].offsetLeft - all[0].offsetLeft;
+    track.scrollTo({ left, behavior: REDUCED_MOTION.matches ? "auto" : "smooth" });
   }
   const prev = /** @type {HTMLButtonElement | null} */ (main?.querySelector('[data-pager="prev"]') ?? null);
   const next = /** @type {HTMLButtonElement | null} */ (main?.querySelector('[data-pager="next"]') ?? null);
@@ -1241,6 +1247,25 @@ function showPhoto(index, move) {
   state.photo.index = target;
   state.photo.source = all[target].dataset.source ?? null;
   highlightRows(true);
+}
+
+/**
+ * The slide the track has snapped to: the one whose start is nearest its
+ * scroll position, or the last one once the track is scrolled to its end
+ * (the last slide cannot reach the start while the one before it peeks).
+ * @param {HTMLElement} track
+ */
+function slideAt(track) {
+  const all = slides();
+  if (all.length === 0) return 0;
+  if (track.scrollLeft >= track.scrollWidth - track.clientWidth - 1) return all.length - 1;
+  /** @param {HTMLElement} slide */
+  const distance = (slide) => Math.abs(slide.offsetLeft - all[0].offsetLeft - track.scrollLeft);
+  let best = 0;
+  all.forEach((slide, i) => {
+    if (distance(slide) < distance(all[best])) best = i;
+  });
+  return best;
 }
 
 /** @param {HTMLElement} photos the pager, `aside.photos` */
@@ -1256,7 +1281,7 @@ function wirePager(photos) {
     () => {
       window.clearTimeout(state.photo.settle);
       state.photo.settle = window.setTimeout(() => {
-        if (track.clientWidth > 0) showPhoto(Math.round(track.scrollLeft / track.clientWidth), false);
+        if (track.clientWidth > 0) showPhoto(slideAt(track), false);
       }, SETTLE_MS);
     },
     { passive: true }

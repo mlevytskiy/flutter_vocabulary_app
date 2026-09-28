@@ -163,6 +163,23 @@ test("declared photos render in order, a pending one as a placeholder; one photo
   const one = await publish({ sources: [{ id: photo, order: 0 }], entries: [{ word: "cup", translation: "чашка" }] });
   const single = (await page(one.id)).html;
   assert.match(single, /class="photo-button" aria-label="Show the source photo"/);
+  // The phone's photo button sits beside the download link.
+  assert.match(single, /<p class="actions"><a class="btn"[^>]*>Download for AnkiDroid<\/a><button type="button" class="photo-button"/);
+});
+
+// The title row carries the phone's short meta line; the long one stays for the wide layout.
+test("the title carries a short meta line with a numeric expiry date", async () => {
+  const session = await publish({ entries: [{ word: "cup", translation: "чашка" }, { word: "tea", translation: "чай" }] });
+  const { html } = await page(session.id);
+  const expires = new Date(Date.now() + 30 * 24 * 3600 * 1000);
+  const two = (n) => String(n).padStart(2, "0");
+  const day = (d) => `${two(d.getUTCDate())}.${two(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
+  const short = html.match(/<span class="meta-short">2 words · available until (\d\d\.\d\d\.\d{4})<\/span>/);
+  assert.ok(short, "short meta line");
+  // Around the 30-day expiry (either side of a UTC midnight).
+  assert.ok([day(expires), day(new Date(expires.getTime() - 60_000))].includes(short[1]), short[1]);
+  assert.match(html, /<header class="title"><h1>Vocabulary<\/h1><span class="meta-short">/);
+  assert.match(html, /<p class="meta">2 words · published .* · available until /);
 });
 
 // T16: the pager's arrows and the phone dialog's frame are in the markup,

@@ -501,9 +501,90 @@ Worker ships **before** any app build that publishes definitions or looks them u
 3. `npx wrangler secret put MW_API_KEY`.
 4. `npm run typecheck && npm run deploy`.
 5. Smoke-test the live Worker:
-   `curl -X POST <url>/defcurl -X POST ine -H "x-app-secret: <secret>" -d '{"word":"tenacious"}'` → `senses`.
+   `curl -X POST <url>/define -H "x-app-secret: <secret>" -d '{"word":"tenacious"}'` → `senses`.
 6. Open a link published **before** this deploy: it must render exactly as before.
 7. Only now install the new app build.
+
+### Deploying good-looking-web (checklist)
+
+Release order (sad §7), each step backward compatible: **D1 → Worker → app build**. An older
+app keeps publishing as before (no photos, no token) against the new Worker, and links published
+to KV before the release import into D1 on first open.
+
+1. **D1.** Create the database near the owner and put its id in `wrangler.jsonc` (done
+   2026-09-27, `vocab-sessions`, id in the config), then apply the schema:
+
+   ```bash
+   npx wrangler d1 create vocab-sessions --location weur
+   npx wrangler d1 migrations apply DB --remote
+   npx wrangler d1 migrations list DB --remote      # → "No migrations to apply!"
+   ```
+
+2. **Bindings already in `wrangler.jsonc`** — nothing to create, but check before deploying:
+   - the daily clean-up cron `0 3 * * *` (`triggers.crons`); after deploy it shows under the
+     Worker's *Settings → Triggers* in the dashboard;
+   - `PAGE_WRITE_LIMITER`, 300 page writes / 60 s per IP (see [Rate limiting](#rate-limiting));
+     its `namespace_id` must not collide with another Worker on the account;
+   - `SOURCES` → `vocab-photo-sources`.
+3. **R2 lifecycle.** Confirm the 30-day rule is on the bucket (sad §11: a photo must not outlive
+   its session by more than a day):
+
+   ```bash
+   npx wrangler r2 bucket lifecycle list vocab-photo-sources
+   # → expire-sources, enabled, all prefixes, "Expire objects after 30 days"
+   ```
+
+4. **Worker.** `npm test && npm run typecheck && npm run deploy`.
+5. **Smoke-test the live Worker:** open a link published before this deploy (it imports from KV
+   and renders); publish from the current app build (no photos) and edit a cell on the page from
+   two browsers.
+6. **App.** Release the build with photo keeping, the "include photos" switch and republish.
+   Publish a session with photos and check they appear on the deployed page.
+7. **30 days after release** (every pre-release KV link has expired by then): remove the
+   `SESSIONS` entry from `kv_namespaces`, the KV import (`importLegacySession` in
+   `src/session/store.ts`) and `SESSIONS` in `src/env.ts`, and deploy.
+   Put a reminder in the calendar on release day.
+
+### KPIs (spec §7, sad §7)
+
+A weekly manual check; no automated alerts. The D1 counts cover live sessions only (the cron
+deletes a session 30 days after its first publish), so read them as "the last 30 days".
+Replace the date with the release day.
+
+```bash
+npx wrangler d1 execute DB --remote --command "<query>"
+```
+
+```sql
+-- KPI 1: share of published sessions with ≥1 page write (save, add, delete, autofill).
+-- A page write raises rev above replaced_rev; a publish or republish does not.
+SELECT count(*) AS sessions, sum(rev > replaced_rev) AS edited,
+       round(100.0 * sum(rev > replaced_rev) / max(count(*), 1), 1) AS edited_pct
+FROM sessions WHERE created_at >= '2026-10-01';
+
+-- KPI 2 (narrowed, sad §11): publishes that declared photos. A publish with the switch off
+-- sends nothing about photos, so the denominator is every publish, with or without photos.
+SELECT count(*) AS with_photos,
+       round(100.0 * count(*) / max((SELECT count(*) FROM sessions WHERE created_at >= '2026-10-01'), 1), 1) AS pct
+FROM sessions AS s
+WHERE created_at >= '2026-10-01' AND EXISTS (SELECT 1 FROM sources WHERE session_id = s.id);
+
+-- Photos declared but never uploaded (stay placeholders on the page).
+SELECT status, count(*) AS n FROM sources GROUP BY status;
+
+-- Definition lookups all shared pages spent per UTC day (stops at 500).
+SELECT utc_day, used FROM all_pages_autofill ORDER BY utc_day DESC LIMIT 14;
+```
+
+From Workers observability (*Workers → vocab-photo-api → Logs*), filtered by the JSON `event`
+field of the log lines (`src/log.ts`):
+
+- **KPI 3, days the app's lightning failed:** days with `define unavailable` (the app's
+  `/define`) or `event = "dictionary unavailable"` (a page's autofill). Target: none.
+- **KPI 4, definition autofill fill rate (narrowed: translation autofill never reaches the
+  Worker):** `autofill filled` ÷ (`autofill filled` + `autofill nothing found`). Target ≥ 85%.
+- Cell save and autofill p95 (spec §6: ≤ 1.0 s, ≤ 3.0 s): request duration of
+  `POST /s/*/cells` and `POST /s/*/define` in the Worker's metrics.
 
 ## Tests
 

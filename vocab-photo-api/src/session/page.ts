@@ -48,6 +48,14 @@ function formatDate(iso: string): string {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 }
 
+/** `28.10.2026`: the short date of the phone layout's meta line. */
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${two(d.getUTCDate())}.${two(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
+}
+
 type Field = "word" | "translation" | "definition";
 
 const FIELD_TITLES: Record<Field, string> = { word: "Word", translation: "Translation", definition: "Definition" };
@@ -112,7 +120,7 @@ function renderHeader(field: Field, collapsed: boolean): string {
 }
 
 /**
- * The photo pager (wide layout) and the photo button (phone layout), from the
+ * The photo pager (wide layout) and the phone's photo dialog, from the
  * declared slots in order. A slot whose bytes never arrived is an empty
  * placeholder in its place. No slots (none declared, or "include photos"
  * off) renders neither (AC-08, AC-24, AC-26). The pager's arrows and the
@@ -131,6 +139,26 @@ function renderPhotos(session: StoredSession): string {
         : `<div class="placeholder" role="img" aria-label="Source photo ${position}, not available">Photo not available</div>`;
     return `<figure class="slide" data-source="${escapeHtml(slot.id)}">${picture}<figcaption>${position}</figcaption></figure>`;
   };
+  return `<aside class="photos" aria-label="Source photos">
+<div class="pager-track" tabindex="0" aria-label="Source photos, use the arrow keys to move">
+${slots.map(slide).join("\n")}
+</div>
+<div class="pager-nav" hidden><button type="button" data-pager="prev" aria-label="Previous photo">‹</button><button type="button" data-pager="next" aria-label="Next photo">›</button></div>
+</aside>
+<dialog class="photo-dialog" aria-label="Source photos">
+<div class="dialog-bar"><button type="button" data-dialog="prev" aria-label="Previous photo">‹</button><span class="dialog-count" aria-live="polite"></span><button type="button" data-dialog="next" aria-label="Next photo">›</button><button type="button" data-dialog="close" aria-label="Close the photos">×</button></div>
+<div class="dialog-view"><div class="dialog-strip"></div></div>
+</dialog>`;
+}
+
+/**
+ * The phone layout's photo button, next to the download link: up to three
+ * stacked thumbnails that open the photo dialog. Nothing without slots.
+ */
+function renderPhotoButton(session: StoredSession): string {
+  const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
+  if (slots.length === 0) return "";
+  const total = slots.length;
   const thumbs = slots
     .slice(0, 3)
     .map((slot) =>
@@ -140,31 +168,22 @@ function renderPhotos(session: StoredSession): string {
     )
     .join("");
   const label = total === 1 ? "Show the source photo" : `Show the ${total} source photos`;
-  return `<aside class="photos" aria-label="Source photos">
-<div class="pager-track" tabindex="0" aria-label="Source photos, use the arrow keys to move">
-${slots.map(slide).join("\n")}
-</div>
-<div class="pager-nav" hidden><button type="button" data-pager="prev" aria-label="Previous photo">‹</button><button type="button" data-pager="next" aria-label="Next photo">›</button></div>
-</aside>
-<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>
-<dialog class="photo-dialog" aria-label="Source photos">
-<div class="dialog-bar"><button type="button" data-dialog="prev" aria-label="Previous photo">‹</button><span class="dialog-count" aria-live="polite"></span><button type="button" data-dialog="next" aria-label="Next photo">›</button><button type="button" data-dialog="close" aria-label="Close the photos">×</button></div>
-<div class="dialog-view"><div class="dialog-strip"></div></div>
-</dialog>`;
+  return `<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>`;
 }
 
 export function renderSessionPage(session: StoredSession, scriptPath: string): string {
   const collapsed = collapsedColumns(session);
   const count = session.rows.length;
+  const words = `${count} ${count === 1 ? "word" : "words"}`;
   const photos = renderPhotos(session);
   const classes = [photos ? "has-photos" : "", ...collapsed.map((field) => `no-${field}`)].filter((c) => c !== "");
   const head = (["word", "translation", "definition"] as Field[])
     .map((field) => renderHeader(field, collapsed.includes(field)))
     .join("");
   const body = `<main data-session="${escapeHtml(session.id)}" data-rev="${session.rev}" data-max-rows="${MAX_ENTRIES}"${classes.length > 0 ? ` class="${classes.join(" ")}"` : ""}>
-<h1>Vocabulary</h1>
-<p class="meta">${count} ${count === 1 ? "word" : "words"} · published ${escapeHtml(formatDate(session.createdAt))} · available until ${escapeHtml(formatDate(session.expiresAt))}</p>
-<p class="actions"><a class="btn" href="/s/${encodeURIComponent(session.id)}/words.txt" download>Download for AnkiDroid</a></p>
+<header class="title"><h1>Vocabulary</h1><span class="meta-short">${words} · available until ${escapeHtml(formatShortDate(session.expiresAt))}</span></header>
+<p class="meta">${words} · published ${escapeHtml(formatDate(session.createdAt))} · available until ${escapeHtml(formatDate(session.expiresAt))}</p>
+<p class="actions"><a class="btn" href="/s/${encodeURIComponent(session.id)}/words.txt" download>Download for AnkiDroid</a>${renderPhotoButton(session)}</p>
 <div class="layout">
 <div class="table-area">
 <div class="table-scroll">

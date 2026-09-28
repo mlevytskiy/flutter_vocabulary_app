@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/session.dart';
 import '../../core/models/source_photo.dart';
 import '../../core/models/word_pair.dart';
@@ -12,6 +14,7 @@ import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
 import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
+import 'photo_viewer.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
   const WordsTableScreen({super.key, this.sessionId});
@@ -29,6 +32,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   /// True while `POST /sessions` is in flight. Disables the Share button so a
   /// double tap cannot publish twice; the request itself times out (AC-16).
   bool _isPublishing = false;
+
+  /// The "Include photos (N)" switch above the table; on until switched off.
+  bool _includePhotos = true;
 
   @override
   void initState() {
@@ -103,14 +109,21 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     final session = _session();
-    // "include photos (N)": N counts only photos with a linked row that will
-    // be published; with none the switch is not shown (AC-23).
-    final linkedIds = {for (final pair in wordPairs) pair.sourceId};
-    final photoCount = (session?.sources ?? const <SourcePhoto>[])
-        .where((photo) => linkedIds.contains(photo.id))
-        .length;
+    final includePhotos =
+        _includePhotos && _linkedPhotos(session, wordPairs).isNotEmpty;
     final publishedBefore = session?.publishedId != null;
-    var includePhotos = true;
+    // The warning names what sharing again does: replacing the partner's
+    // edits (ADR-0008) and, with photos, putting them on a public page.
+    const photosNote =
+        'Included photos are visible to anyone with the link for 30 days.';
+    final String? warning = switch ((publishedBefore, includePhotos)) {
+      (true, true) => 'This list was shared before. Sharing it again replaces '
+          'the edits made on the shared page. $photosNote',
+      (true, false) => 'This list was shared before. Sharing it again '
+          'replaces the edits made on the shared page.',
+      (false, true) => photosNote,
+      (false, false) => null,
+    };
     final choice = await showModalBottomSheet<_ShareChoice>(
       context: context,
       builder: (sheetContext) => Padding(
@@ -118,44 +131,30 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
         child: SafeArea(
-          child: StatefulBuilder(
-            builder: (sheetContext, setSheetState) => Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.insert_drive_file_outlined),
+                title: const Text('Share file'),
+                subtitle: const Text('Text file for AnkiDroid'),
+                onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
+              ),
+              ListTile(
+                leading: const Icon(Icons.link),
+                title: const Text('Share link'),
+                subtitle:
+                    const Text('A web page anyone with the link can read'),
+                onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
+              ),
+              if (warning != null)
                 ListTile(
-                  leading: const Icon(Icons.insert_drive_file_outlined),
-                  title: const Text('Share file'),
-                  subtitle: const Text('Text file for AnkiDroid'),
-                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
+                  leading: Icon(publishedBefore
+                      ? Icons.warning_amber_outlined
+                      : Icons.photo_library_outlined),
+                  subtitle: Text(warning),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.link),
-                  title: const Text('Share link'),
-                  subtitle:
-                      const Text('A web page anyone with the link can read'),
-                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
-                ),
-                if (photoCount > 0)
-                  SwitchListTile(
-                    secondary: const Icon(Icons.photo_library_outlined),
-                    title: Text('Include photos ($photoCount)'),
-                    subtitle: const Text(
-                        'Included photos are visible to anyone with the link '
-                        'for 30 days.'),
-                    value: includePhotos,
-                    onChanged: (value) =>
-                        setSheetState(() => includePhotos = value),
-                  ),
-                // ADR-0008: a republish overwrites the same page.
-                if (publishedBefore)
-                  const ListTile(
-                    leading: Icon(Icons.warning_amber_outlined),
-                    subtitle:
-                        Text('This list was shared before. Sharing it again '
-                            'replaces the edits made on the shared page.'),
-                  ),
-              ],
-            ),
+            ],
           ),
         ),
       ),
@@ -166,9 +165,18 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       case _ShareChoice.file:
         await _shareWords(wordPairs);
       case _ShareChoice.link:
-        await _shareLink(wordPairs,
-            includePhotos: photoCount > 0 && includePhotos);
+        await _shareLink(wordPairs, includePhotos: includePhotos);
     }
+  }
+
+  /// The photos a link would carry: "include photos (N)" counts only photos
+  /// with a linked row that will be published; with none the switch is not
+  /// shown (AC-23).
+  List<SourcePhoto> _linkedPhotos(Session? session, List<WordPair> wordPairs) {
+    final linkedIds = {for (final pair in wordPairs) pair.sourceId};
+    return (session?.sources ?? const <SourcePhoto>[])
+        .where((photo) => linkedIds.contains(photo.id))
+        .toList();
   }
 
   Future<void> _shareLink(List<WordPair> wordPairs,
@@ -289,9 +297,20 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                       '${SessionPublishService.maxSources} photos taken.'),
             ],
             const SizedBox(height: 12),
-            SelectableText(
-              published.url,
-              style: const TextStyle(fontSize: 13),
+            // Tapping the link opens the page in the browser.
+            Semantics(
+              link: true,
+              child: InkWell(
+                onTap: () => _openLink(published.url),
+                child: Text(
+                  published.url,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(dialogContext).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -321,17 +340,33 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     );
   }
 
+  Future<void> _openLink(String url) async {
+    bool opened;
+    try {
+      opened = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+    } catch (_) {
+      opened = false;
+    }
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the link')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessionId = widget.sessionId;
-    final words = sessionId == null
-        ? ref.watch(wordInputNotifierProvider).valueOrNull?.words
-        : ref.watch(sessionByIdProvider(sessionId)).valueOrNull?.words;
+    final session = sessionId == null
+        ? ref.watch(wordInputNotifierProvider).valueOrNull
+        : ref.watch(sessionByIdProvider(sessionId)).valueOrNull;
     // definition-mode: every filled row -- a word plus a translation or a
     // definition -- whatever the mode (spec AC-12); the mode picks columns.
-    final wordPairs = (words ?? const <WordPair>[])
+    final wordPairs = (session?.words ?? const <WordPair>[])
         .where((pair) => pair.isFilled)
         .toList();
+    final photos = _linkedPhotos(session, wordPairs);
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
@@ -368,75 +403,187 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
             )
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: DataTable(
-                    // Wrapped definitions need taller rows; translation mode
-                    // keeps the table's default fixed row height.
-                    dataRowMaxHeight:
-                        showDefinition ? double.infinity : null,
-                    headingRowColor: WidgetStateProperty.all(
-                      Theme.of(context).colorScheme.primaryContainer,
-                    ),
-                    border: TableBorder.all(
-                      color: Colors.grey.shade300,
-                      width: 1,
-                    ),
-                    columns: [
-                      const DataColumn(
-                        label: Text(
-                          '#',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const DataColumn(
-                        label: Text(
-                          'Word',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      if (showTranslation)
-                        const DataColumn(
-                          label: Text(
-                            'Translation',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      if (showDefinition)
-                        const DataColumn(
-                          label: Text(
-                            'Definition',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                    ],
-                    rows: List<DataRow>.generate(
-                      wordPairs.length,
-                      (index) => DataRow(
-                        cells: [
-                          DataCell(Text('${index + 1}')),
-                          DataCell(Text(wordPairs[index].word)),
-                          if (showTranslation)
-                            DataCell(Text(wordPairs[index].translation)),
-                          if (showDefinition)
-                            // Definitions run long: wrap within a column
-                            // instead of stretching the table sideways.
-                            DataCell(ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 280),
-                              child: Text(wordPairs[index].definition),
-                            )),
-                        ],
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (photos.isNotEmpty)
+                  SwitchListTile(
+                    // Tapping the stack opens the photos, as on the page.
+                    secondary: Semantics(
+                      button: true,
+                      label: 'Show photos',
+                      child: GestureDetector(
+                        onTap: () => showPhotoViewer(context, photos),
+                        child: _PhotoStack(photos: photos),
                       ),
                     ),
+                    title: Text('Include photos (${photos.length})'),
+                    value: _includePhotos,
+                    onChanged: (value) =>
+                        setState(() => _includePhotos = value),
                   ),
+                Expanded(
+                    child: _table(wordPairs,
+                        showTranslation: showTranslation,
+                        showDefinition: showDefinition)),
+              ],
+            ),
+    );
+  }
+
+  Widget _table(List<WordPair> wordPairs,
+      {required bool showTranslation, required bool showDefinition}) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: DataTable(
+            // Wrapped definitions need taller rows; translation mode
+            // keeps the table's default fixed row height.
+            dataRowMaxHeight: showDefinition ? double.infinity : null,
+            headingRowColor: WidgetStateProperty.all(
+              Theme.of(context).colorScheme.primaryContainer,
+            ),
+            border: TableBorder.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+            columns: [
+              const DataColumn(
+                label: Text(
+                  '#',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
               ),
+              const DataColumn(
+                label: Text(
+                  'Word',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (showTranslation)
+                const DataColumn(
+                  label: Text(
+                    'Translation',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              if (showDefinition)
+                const DataColumn(
+                  label: Text(
+                    'Definition',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+            ],
+            rows: List<DataRow>.generate(
+              wordPairs.length,
+              (index) => DataRow(
+                cells: [
+                  DataCell(Text('${index + 1}')),
+                  DataCell(Text(wordPairs[index].word)),
+                  if (showTranslation)
+                    DataCell(Text(wordPairs[index].translation)),
+                  if (showDefinition)
+                    // Definitions run long: wrap within a column
+                    // instead of stretching the table sideways.
+                    DataCell(ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 280),
+                      child: Text(wordPairs[index].definition),
+                    )),
+                ],
+              ),
             ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 enum _ShareChoice { file, link }
+
+/// Up to three of the kept photos as small stacked thumbnails, the way the
+/// shared page's photo button shows them.
+class _PhotoStack extends ConsumerStatefulWidget {
+  const _PhotoStack({required this.photos});
+
+  final List<SourcePhoto> photos;
+
+  @override
+  ConsumerState<_PhotoStack> createState() => _PhotoStackState();
+}
+
+class _PhotoStackState extends ConsumerState<_PhotoStack> {
+  static const _size = 40.0;
+  static const _turns = [-7.0, 5.0, 0.0];
+
+  late List<Future<Uint8List?>> _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_PhotoStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final ids = widget.photos.map((p) => p.id).join(',');
+    if (ids != oldWidget.photos.map((p) => p.id).join(',')) _load();
+  }
+
+  void _load() {
+    final store = ref.read(sourcePhotoStoreProvider);
+    _bytes = widget.photos.take(3).map(store.read).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final stacked = _bytes.length > 1;
+    return SizedBox(
+      width: _size,
+      height: _size,
+      child: Stack(
+        children: [
+          for (final (i, bytes) in _bytes.indexed)
+            Transform.rotate(
+              angle: stacked ? _turns[i] * math.pi / 180 : 0,
+              child: _thumb(bytes),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _thumb(Future<Uint8List?> bytes) => Container(
+        width: _size,
+        height: _size,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade400,
+          border: Border.all(color: Colors.white, width: 2),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(
+                color: Colors.black38, blurRadius: 4, offset: Offset(0, 1)),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: FutureBuilder<Uint8List?>(
+            future: bytes,
+            builder: (context, snapshot) {
+              final data = snapshot.data;
+              return data == null
+                  ? const SizedBox.expand()
+                  : Image.memory(data,
+                      fit: BoxFit.cover,
+                      cacheWidth: 120,
+                      gaplessPlayback: true,
+                      errorBuilder: (_, __, ___) => const SizedBox.expand());
+            },
+          ),
+        ),
+      );
+}

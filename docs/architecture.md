@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-20"
+updated_at: "2026-09-28"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -25,14 +25,21 @@ lib/
   core/
     providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, sessionStore,
                                 googleTranslateService, pronunciationService, sessionPublishService,
-                                sessionById, dictionaryService (definition-mode); plus the
+                                sessionById, dictionaryService (definition-mode),
+                                sourcePhotoStore, photoUploadService (keepAlive, so uploads outlive
+                                the words table; good-looking-web); plus the
                                 dragMode display preference (task-13) and the persisted
                                 wordDetailMode preference (definition-mode)
     models/                     vocab_word.dart — moved, unchanged
                                 word_pair.dart (+.g) — Isar @embedded row: the two strings plus the
-                                dots/lightning extras that make a restored row look untouched
+                                dots/lightning extras that make a restored row look untouched;
+                                sourceId links a recognised row to its photo (good-looking-web)
                                 session.dart (+.g) — Isar @collection: a set of words with an
-                                identity and timestamps (task-03)
+                                identity and timestamps (task-03); its sources (photos taken, in
+                                order) and the publishedId + editToken a republish overwrites
+                                (good-looking-web, ADR-0008)
+                                source_photo.dart (+.g) — Isar @embedded reference to a kept photo:
+                                id (the declared source id), fileName, takenAt (good-looking-web)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
@@ -42,8 +49,15 @@ lib/
                                 (translate_a/single with dt=t,bd,at + the part-of-speech rule)
                                 pronunciation_service.dart (task-04)
                                 session_publish_service.dart (task-05: POST /sessions → public link;
-                                sends the word detail mode + definitions, definition-mode)
+                                sends the word detail mode + definitions, definition-mode; with
+                                "include photos" on, declares up to 10 photos and each row's
+                                sourceId; republishes with the stored token, good-looking-web)
                                 dictionary_service.dart (definition-mode: POST /define on the Worker)
+                                source_photo_store.dart (the kept 1600 px photo files under
+                                source_photos/ in the documents dir; never throws, good-looking-web)
+                                photo_upload_service.dart (background POST /sessions/<id>/sources/
+                                <sourceId> after a publish, retried with growing pauses; the link
+                                dialog never waits for it, good-looking-web)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
@@ -59,7 +73,10 @@ lib/
     words_table/
       words_table_screen.dart         reads words from the notifier (no sessionId) or from
                                       sessionByIdProvider (a History row), read-only either way;
-                                      Share → bottom sheet: file (TSV) or link (publish, task-05)
+                                      Share → bottom sheet: file (TSV) or link (publish, task-05);
+                                      the "Include photos (N)" switch with stacked thumbnails sits
+                                      above the table; the sheet warns about public photos and that
+                                      a republish replaces the partner's edits (good-looking-web)
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
                                       a row opens WordsTableScreen for that sessionId
@@ -133,7 +150,14 @@ flowchart LR
   M -->|watch| S
   M -->|watch| T
   S -->|define| X[dictionaryServiceProvider<br/>Worker /define]
+  S -->|keep photo| K[sourcePhotoStoreProvider<br/>source_photos/ files]
+  T -->|publish| U[sessionPublishServiceProvider<br/>Worker POST /sessions]
+  T -->|enqueue declared photos| V[photoUploadServiceProvider<br/>Worker POST /sessions/id/sources]
+  V -->|read bytes| K
 ```
+
+- The shared page itself (editing, photos, autofill) is served by the Worker, not the app: see
+  `vocab-photo-api/README.md` and `docs/features/good-looking-web/sad.md`.
 
 - `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced
   save. Its `build()` runs the **launch rule**: reuse the current session if this device touched

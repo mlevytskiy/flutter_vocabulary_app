@@ -24,7 +24,7 @@
 | [T17](t17-app-keep-source-photos.md) | Keep each source photo in the app and link recognised rows to it | domain | Maksym | M | — | review |
 | [T18](t18-app-publish-photos-and-background-upload.md) | Publish rows with photo links and upload declared photos in the background | app | Maksym | M | T5, T17 | done |
 | [T19](t19-app-share-sheet-include-photos.md) | Add the include-photos switch and the republish warning to the share sheet | ui | Maksym | S | T18 | review |
-| [T20](t20-nfr-verification.md) | Run the concurrency, limits and performance checks from sad §10 | tests | Maksym | M | T10, T14, T15, T16 | todo |
-| [T21](t21-docs-and-deploy-checklist.md) | Update the docs and run the deploy checklist | docs | Maksym | S | T10, T19, T20 | todo |
+| [T20](t20-nfr-verification.md) | Run the concurrency, limits and performance checks from sad §10 | tests | Maksym | M | T10, T14, T15, T16 | review |
+| [T21](t21-docs-and-deploy-checklist.md) | Update the docs and run the deploy checklist | docs | Maksym | S | T10, T19, T20 | in_progress |
 
 **Total:** 21 tasks, ~18 person-days (S = half a day, M/L = one day; L tasks are the fullest days and the first to split if they overrun).
