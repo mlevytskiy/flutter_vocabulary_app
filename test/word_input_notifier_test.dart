@@ -153,4 +153,103 @@ void main() {
     expect(stored.editToken, 'tok-2');
     expect(stored.lastLocalModifiedAt, touched); // not a content change
   });
+
+  // edit-session-from-history T2 (ADR-0001, AC-03, AC-07, AC-08).
+  group('switchTo', () {
+    Future<Session> past(String word) async {
+      final at = DateTime(2026, 9, 1, 12);
+      final s = Session.create()
+        ..updatedAt = at
+        ..lastLocalModifiedAt = at
+        ..words = [WordPair(word: word, translation: word)];
+      await store.put(s);
+      return s;
+    }
+
+    test('makes the picked session current without stamping its edit times',
+        () async {
+      final picked = await past('tea');
+      await container.read(wordInputNotifierProvider.future);
+      final notifier = container.read(wordInputNotifierProvider.notifier);
+
+      final before = DateTime.now();
+      expect(await notifier.switchTo(picked.sessionId), isTrue);
+
+      final now = container.read(wordInputNotifierProvider).value!;
+      expect(now.sessionId, picked.sessionId);
+      expect(now.words.map((w) => w.word), ['tea']);
+      expect(now.lastLocalModifiedAt, DateTime(2026, 9, 1, 12));
+      expect(now.updatedAt, DateTime(2026, 9, 1, 12));
+      expect(await store.currentSessionId(), picked.sessionId);
+      final stored = await store.byId(picked.sessionId);
+      expect(stored!.lastLocalModifiedAt, DateTime(2026, 9, 1, 12));
+      final pickedAt = await store.switchedAt(picked.sessionId);
+      expect(pickedAt, isNotNull);
+      expect(pickedAt!.isBefore(before), isFalse);
+
+      // The picked session can grow like any other.
+      notifier.addAll([WordPair()]);
+      expect(words(), hasLength(2));
+    });
+
+    test('a word typed just before the switch is saved in the left session',
+        () async {
+      final picked = await past('tea');
+      final notifier = await seeded([WordPair(word: 'coffee')]);
+      final leftId =
+          container.read(wordInputNotifierProvider).value!.sessionId;
+      notifier.updateAt(0, translation: 'кава');
+
+      await notifier.switchTo(picked.sessionId);
+
+      final left = await store.byId(leftId);
+      expect(left, isNotNull);
+      expect(left!.words.single.translation, 'кава');
+      // ...and nothing written later lands in it.
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      expect((await store.byId(picked.sessionId))!.lastLocalModifiedAt,
+          DateTime(2026, 9, 1, 12));
+    });
+
+    test('an empty left session is deleted', () async {
+      final picked = await past('tea');
+      final left = await container.read(wordInputNotifierProvider.future);
+      expect(left.isEmpty, isTrue);
+
+      await container
+          .read(wordInputNotifierProvider.notifier)
+          .switchTo(picked.sessionId);
+
+      expect(await store.byId(left.sessionId), isNull);
+    });
+
+    test('clears the RESTORE offer', () async {
+      final cold = await past('old');
+      await store.setCurrentSessionId(cold.sessionId);
+      await container.read(wordInputNotifierProvider.future);
+      final notifier = container.read(wordInputNotifierProvider.notifier);
+      expect(notifier.restorableSessionId, cold.sessionId);
+
+      final picked = await past('tea');
+      await notifier.switchTo(picked.sessionId);
+
+      expect(notifier.restorableSessionId, isNull);
+    });
+
+    test('an unknown id returns false and changes nothing', () async {
+      final notifier = await seeded([WordPair(word: 'coffee')]);
+      await notifier.flush();
+      final current = container.read(wordInputNotifierProvider).value!;
+      final sessionsBefore = (await store.nonEmpty()).length;
+
+      expect(await notifier.switchTo('gone'), isFalse);
+
+      final after = container.read(wordInputNotifierProvider).value!;
+      expect(after.sessionId, current.sessionId);
+      expect(after.words.single.word, 'coffee');
+      expect(await store.currentSessionId(), current.sessionId);
+      expect((await store.nonEmpty()).length, sessionsBefore);
+      expect(await store.switchedAt('gone'), isNull);
+    });
+  });
 }

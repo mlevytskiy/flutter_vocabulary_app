@@ -115,6 +115,37 @@ class WordInputNotifier extends _$WordInputNotifier {
     state = AsyncData(prev);
   }
 
+  /// Makes a session picked on the History words screen the current one
+  /// (edit-session-from-history, ADR-0001). The left session is saved first so
+  /// a word typed within the save delay is kept, and dropped if it never got a
+  /// word. The pick is recorded beside the pointer; the picked session's edit
+  /// times are left alone (ADR-0002). Returns false, touching nothing, when
+  /// the picked session is not in the store.
+  Future<bool> switchTo(String sessionId) async {
+    final store = await ref.read(sessionStoreProvider.future);
+    final picked = await store.byId(sessionId);
+    if (picked == null) return false;
+    picked.words = picked.words.toList(); // growable, see build()
+    picked.sources = picked.sources.toList();
+
+    await flush();
+    final current = state.valueOrNull;
+    if (current != null &&
+        current.sessionId != sessionId &&
+        current.isEmpty) {
+      await store.delete(current.sessionId);
+    }
+
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    _dirty = false;
+    await store.setCurrentSessionId(picked.sessionId);
+    await store.setSwitched(picked.sessionId, DateTime.now());
+    restorableSessionId = null;
+    state = AsyncData(picked);
+    return true;
+  }
+
   void setPairs(List<WordPair> pairs) {
     if (!state.hasValue) return;
     final session = state.value!;
