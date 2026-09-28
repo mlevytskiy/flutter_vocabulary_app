@@ -254,4 +254,68 @@ void main() {
     expect(row.wordMarkedFilled, isTrue);
     expect(row.translationMarkedFilled, isTrue);
   });
+
+  // edit-session-from-history T3 (ADR-0002, AC-09): a session picked from
+  // History counts as warm for the idle window after the pick.
+  group('a recent pick', () {
+    Future<void> relaunch() async {
+      container.dispose();
+      container = ProviderContainer(overrides: [
+        sessionStoreProvider.overrideWith((ref) async => store),
+      ]);
+    }
+
+    test('picked 2 minutes ago reopens with no RESTORE, twice in a row',
+        () async {
+      final prev = await seed(ago: const Duration(days: 7));
+      await store.setSwitched(
+          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 2)));
+
+      var session = await launch();
+      expect(session.sessionId, prev.sessionId);
+      expect(restorableId(), isNull);
+
+      await relaunch();
+      session = await launch();
+      expect(session.sessionId, prev.sessionId);
+      expect(restorableId(), isNull);
+      expect(await store.switchedAt(prev.sessionId), isNotNull,
+          reason: 'the pointer re-save leaves the pick record alone');
+    });
+
+    test('picked 6 minutes ago: a new session and the RESTORE offer',
+        () async {
+      final prev = await seed(ago: const Duration(days: 7));
+      await store.setSwitched(
+          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 6)));
+
+      final session = await launch();
+
+      expect(session.sessionId, isNot(prev.sessionId));
+      expect(restorableId(), prev.sessionId);
+    });
+
+    test('a pick record for another session is ignored', () async {
+      final prev = await seed(ago: const Duration(days: 7));
+      await store.setSwitched('other', DateTime.now());
+
+      final session = await launch();
+
+      expect(session.sessionId, isNot(prev.sessionId));
+      expect(restorableId(), prev.sessionId);
+    });
+
+    test('a dangling pointer falling back to the newest ignores the record',
+        () async {
+      final prev =
+          await seed(ago: const Duration(days: 7), makeCurrent: false);
+      await store.setCurrentSessionId('gone');
+      await store.setSwitched(prev.sessionId, DateTime.now());
+
+      final session = await launch();
+
+      expect(session.sessionId, isNot(prev.sessionId));
+      expect(restorableId(), prev.sessionId);
+    });
+  });
 }

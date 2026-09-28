@@ -47,6 +47,10 @@ class WordInputNotifier extends _$WordInputNotifier {
     Session? prev;
     final pointer = await store.currentSessionId();
     if (pointer != null) prev = await store.byId(pointer);
+    // A History pick (edit-session-from-history, ADR-0002) only counts for the
+    // session the pointer names, never for the newest-session fallback.
+    final pickedAt =
+        prev == null ? null : await store.switchedAt(prev.sessionId);
     prev ??= await store.newest();
     // Isar hands back embedded lists as fixed-length; the screen grows this one
     // (its trailing blank row), so give it a growable copy.
@@ -66,9 +70,11 @@ class WordInputNotifier extends _$WordInputNotifier {
       return prev;
     }
 
-    // Case 3 — still warm: carry on in it, extras and all. No snackbar.
-    if (DateTime.now().difference(prev.lastLocalModifiedAt) <
-        kSessionIdleWindow) {
+    // Case 3 — still warm: carry on in it, extras and all. No snackbar. A
+    // recent pick from History keeps it warm too.
+    var touched = prev.lastLocalModifiedAt;
+    if (pickedAt != null && pickedAt.isAfter(touched)) touched = pickedAt;
+    if (DateTime.now().difference(touched) < kSessionIdleWindow) {
       await store.setCurrentSessionId(prev.sessionId);
       return prev;
     }

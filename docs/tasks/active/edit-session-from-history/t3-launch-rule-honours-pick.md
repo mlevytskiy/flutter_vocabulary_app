@@ -7,7 +7,7 @@ acs: ["AC-09"]
 files_hint: ["lib/features/word_input/word_input_notifier.dart", "test/word_input_launch_rule_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Let the launch rule honour a recent pick
@@ -22,9 +22,9 @@ In `WordInputNotifier.build()`, case 3 ("still warm"): warm if `now − max(prev
 
 ## Definition of Done
 
-- [ ] `test/word_input_launch_rule_test.dart`: a session last edited a week ago but picked 2 minutes ago reopens with no restore offer, on two relaunches in a row; picked 6 minutes ago → a new session plus the restore offer; a pick record for another session id is ignored; a dangling pointer falling back to the newest session ignores the record.
-- [ ] Existing launch-rule tests still pass unchanged.
-- [ ] `flutter analyze` adds no issue.
+- [x] `test/word_input_launch_rule_test.dart`: a session last edited a week ago but picked 2 minutes ago reopens with no restore offer, on two relaunches in a row; picked 6 minutes ago → a new session plus the restore offer; a pick record for another session id is ignored; a dangling pointer falling back to the newest session ignores the record.
+- [x] Existing launch-rule tests still pass unchanged.
+- [x] `flutter analyze` adds no issue.
 
 ## Notes
 
