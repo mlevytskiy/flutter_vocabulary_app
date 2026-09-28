@@ -14,7 +14,7 @@ status: "todo"
 
 ## Why
 
-Derives from [ADR-0002](../adr/0002-remember-the-switch-time-beside-the-current-session-pointer.md) (Rules) and [sad §5, §8](../sad.md); feeds [spec AC-09](../spec.md).
+Derives from [ADR-0002](../../../features/edit-session-from-history/adr/0002-remember-the-switch-time-beside-the-current-session-pointer.md) (Rules) and [sad §5, §8](../../../features/edit-session-from-history/sad.md); feeds [spec AC-09](../../../features/edit-session-from-history/spec.md).
 
 ## What
 

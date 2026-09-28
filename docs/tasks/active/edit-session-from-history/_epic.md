@@ -1,15 +1,15 @@
 # Epic — edit-session-from-history
 
-> **Spec:** [spec.md](../spec.md) · **Design:** [sad.md](../sad.md) · **ADRs:** [adr/](../adr/) · Data model / API: N/A (no schema or contract change — quick route)
+> **Spec:** [spec.md](../../../features/edit-session-from-history/spec.md) · **Design:** [sad.md](../../../features/edit-session-from-history/sad.md) · **ADRs:** [adr/](../../../features/edit-session-from-history/adr/) · Data model / API: N/A (no schema or contract change — quick route)
 
 ## Goal
 
-The learner can carry on with any earlier session in two taps from History, never losing a word from either session, and History stays ordered by real edits ([spec §2](../spec.md)).
+The learner can carry on with any earlier session in two taps from History, never losing a word from either session, and History stays ordered by real edits ([spec §2](../../../features/edit-session-from-history/spec.md)).
 
 ## Scope
 
 - **In:** `SessionStore` (pick record), `WordInputNotifier` (switchTo, launch rule), the History words screen (button + question), the main screen (late-result guard, restore snackbar).
-- **Out:** editing on the History screen, merging sessions, shared-page changes, deleting sessions ([spec §3](../spec.md)).
+- **Out:** editing on the History screen, merging sessions, shared-page changes, deleting sessions ([spec §3](../../../features/edit-session-from-history/spec.md)).
 
 ## Task map
 
@@ -28,7 +28,7 @@ T2 and T3 share `word_input_notifier.dart`, so `implement` runs them one after t
 
 ## Tasks
 
-See [tracker.md](./tracker.md) for status. Machine contract: [tasks.json](../tasks.json).
+See [tracker.md](./tracker.md) for status. Machine contract: [tasks.json](../../../features/edit-session-from-history/tasks.json).
 
 | # | Task | Layer | Blocked by | DoD (short) |
 |---|---|---|---|---|

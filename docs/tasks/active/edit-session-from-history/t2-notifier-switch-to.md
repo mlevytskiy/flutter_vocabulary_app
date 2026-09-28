@@ -14,7 +14,7 @@ status: "todo"
 
 ## Why
 
-Derives from [ADR-0001](../adr/0001-make-a-history-session-current-by-swapping-the-notifiers-session.md), [sad §6 flow 1](../sad.md) and [spec AC-03, AC-07, AC-08](../spec.md).
+Derives from [ADR-0001](../../../features/edit-session-from-history/adr/0001-make-a-history-session-current-by-swapping-the-notifiers-session.md), [sad §6 flow 1](../../../features/edit-session-from-history/sad.md) and [spec AC-03, AC-07, AC-08](../../../features/edit-session-from-history/spec.md).
 
 ## What
 

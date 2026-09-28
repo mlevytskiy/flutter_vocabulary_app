@@ -14,7 +14,7 @@ status: "todo"
 
 ## Why
 
-Derives from [ADR-0003](../adr/0003-ignore-lookup-results-that-return-after-a-switch.md), [sad §8 "Async result guard", §11 risk 1](../sad.md) and [spec AC-07b, AC-09](../spec.md).
+Derives from [ADR-0003](../../../features/edit-session-from-history/adr/0003-ignore-lookup-results-that-return-after-a-switch.md), [sad §8 "Async result guard", §11 risk 1](../../../features/edit-session-from-history/sad.md) and [spec AC-07b, AC-09](../../../features/edit-session-from-history/spec.md).
 
 ## What
 

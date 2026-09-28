@@ -14,7 +14,7 @@ status: "todo"
 
 ## Why
 
-Derives from [spec AC-01..AC-04, AC-06, AC-08](../spec.md) and [sad §5, §8 Navigation](../sad.md).
+Derives from [spec AC-01..AC-04, AC-06, AC-08](../../../features/edit-session-from-history/spec.md) and [sad §5, §8 Navigation](../../../features/edit-session-from-history/sad.md).
 
 ## What
 

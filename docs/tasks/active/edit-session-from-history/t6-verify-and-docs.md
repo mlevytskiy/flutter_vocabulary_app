@@ -4,7 +4,7 @@ title: "Verify the whole switch on the device and update the docs"
 layer: "docs"
 deps: ["T3", "T4", "T5"]
 acs: ["AC-05", "AC-07", "AC-10"]
-files_hint: ["docs/architecture.md", "docs/roadmap.md", "docs/features/edit-session-from-history/tasks/"]
+files_hint: ["docs/architecture.md", "docs/roadmap.md", "docs/tasks/active/edit-session-from-history/"]
 owner: "Maksym"
 estimate: "S"
 status: "todo"
@@ -14,7 +14,7 @@ status: "todo"
 
 ## Why
 
-Covers the ACs that need the real app and the shared page — [spec AC-05, AC-07, AC-10](../spec.md) — and the [spec §6 NFR](../spec.md) / [sad §10](../sad.md) checks.
+Covers the ACs that need the real app and the shared page — [spec AC-05, AC-07, AC-10](../../../features/edit-session-from-history/spec.md) — and the [spec §6 NFR](../../../features/edit-session-from-history/spec.md) / [sad §10](../../../features/edit-session-from-history/sad.md) checks.
 
 ## What
 

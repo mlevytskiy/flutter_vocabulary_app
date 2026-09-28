@@ -53,7 +53,7 @@
       "deps": ["T3", "T4", "T5"],
       "acs": ["AC-05", "AC-07", "AC-10"],
       "dod": "device checklist in T6 passes (switch within the save delay loses nothing, shared page unchanged until re-share, no Edit action on the shared page, before/after screenshots show 0 differing areas, switch <= 1 s); architecture.md and roadmap.md list the feature",
-      "files_hint": ["docs/architecture.md", "docs/roadmap.md", "docs/features/edit-session-from-history/tasks/"]
+      "files_hint": ["docs/architecture.md", "docs/roadmap.md", "docs/tasks/active/edit-session-from-history/"]
     }
   ]
 }
