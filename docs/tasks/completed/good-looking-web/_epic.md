@@ -74,7 +74,7 @@ flowchart LR
 
 ## Tasks
 
-See [tracker.md](./tracker.md) for status.
+See [tracker.md](tracker.md) for status.
 
 | # | Task | Layer | Blocked by | DoD (short) |
 |---|---|---|---|---|
