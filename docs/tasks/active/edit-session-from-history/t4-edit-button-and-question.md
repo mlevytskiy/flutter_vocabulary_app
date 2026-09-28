@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-04", "AC-06", "AC-08"]
 files_hint: ["lib/features/words_table/words_table_screen.dart", "test/words_table_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Add the red Edit button and question to the History words screen
@@ -25,9 +25,9 @@ In `WordsTableScreen`:
 
 ## Definition of Done
 
-- [ ] `test/words_table_test.dart`: no button for the current session or with no sessionId; button for a past session; No leaves the screen and current session unchanged; Yes shows the main screen with the picked words; a missing session shows the snackbar and stays.
-- [ ] Nothing else on the words screen changes (CLAUDE.md rule 3).
-- [ ] `flutter analyze` adds no issue; `grep Navigator.push` stays clean.
+- [x] `test/words_table_test.dart`: no button for the current session or with no sessionId; button for a past session; No leaves the screen and current session unchanged; Yes shows the main screen with the picked words; a missing session shows the snackbar and stays.
+- [x] Nothing else on the words screen changes (CLAUDE.md rule 3).
+- [x] `flutter analyze` adds no issue; `grep Navigator.push` stays clean.
 
 ## Notes
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session.dart';
@@ -11,6 +12,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
+import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 /// definition-mode T14: the words table lists every filled row and shows the
@@ -281,7 +283,169 @@ void main() {
             '10 photos taken.'),
         findsOneWidget);
   });
+
+  // edit-session-from-history T4 (AC-01..AC-04, AC-06, AC-08): the red Edit
+  // button and its question on a History session's words screen.
+  group('Edit button', () {
+    late Session current;
+    late Session past;
+    late _FakeWordInput input;
+    late GoRouter router;
+
+    Future<void> pumpHistoryTable(WidgetTester tester, String? shownId,
+        {bool pastExists = true}) async {
+      SharedPreferences.setMockInitialValues({});
+      current = Session.create()
+        ..words = [WordPair(word: 'coffee', translation: 'кава')];
+      past = Session.create()
+        ..words = [
+          WordPair(word: 'tea', translation: 'чай'),
+          WordPair(word: 'milk', translation: 'молоко'),
+        ];
+      input = _FakeWordInput(current, {
+        current.sessionId: current,
+        if (pastExists) past.sessionId: past,
+      });
+      final container = ProviderContainer(overrides: [
+        wordInputNotifierProvider.overrideWith(() => input),
+        sessionByIdProvider(past.sessionId).overrideWith((ref) async => past),
+        sessionByIdProvider(current.sessionId)
+            .overrideWith((ref) async => current),
+      ]);
+      addTearDown(container.dispose);
+      await tester.runAsync(() async {
+        await container.read(wordDetailModeProvider.notifier).loaded;
+        await container.read(wordInputNotifierProvider.future);
+        await container.read(sessionByIdProvider(past.sessionId).future);
+        await container.read(sessionByIdProvider(current.sessionId).future);
+      });
+      router = GoRouter(
+        initialLocation: shownId == null
+            ? '/table'
+            : '/table?sessionId=${shownId == 'past' ? past.sessionId : current.sessionId}',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (context, state) => const _MainStub(),
+            routes: [
+              GoRoute(
+                path: 'table',
+                builder: (context, state) => WordsTableScreen(
+                    sessionId: state.uri.queryParameters['sessionId']),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(routerConfig: router),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    Finder editButton() => find.widgetWithIcon(FloatingActionButton, Icons.edit);
+
+    Future<void> askAndAnswer(WidgetTester tester, String answer) async {
+      await tester.tap(editButton());
+      await tester.pumpAndSettle();
+      expect(find.text('Do you want to edit this list of words?'),
+          findsOneWidget);
+      await tester.tap(find.text(answer));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a past session shows a round red Edit button',
+        (tester) async {
+      await pumpHistoryTable(tester, 'past');
+      expect(editButton(), findsOneWidget);
+      final fab = tester.widget<FloatingActionButton>(editButton());
+      expect(fab.backgroundColor, Colors.red);
+      expect(fab.tooltip, 'Edit');
+    });
+
+    testWidgets('no button for the current session', (tester) async {
+      await pumpHistoryTable(tester, 'current');
+      expect(editButton(), findsNothing);
+    });
+
+    testWidgets('no button without a sessionId', (tester) async {
+      await pumpHistoryTable(tester, null);
+      expect(editButton(), findsNothing);
+    });
+
+    testWidgets('No closes the question and changes nothing', (tester) async {
+      await pumpHistoryTable(tester, 'past');
+      await askAndAnswer(tester, 'No');
+
+      expect(find.text('Do you want to edit this list of words?'),
+          findsNothing);
+      expect(find.byType(WordsTableScreen), findsOneWidget);
+      expect(input.switchedTo, isEmpty);
+      expect(find.text('tea'), findsOneWidget);
+    });
+
+    testWidgets('Yes opens the main screen on the picked words',
+        (tester) async {
+      await pumpHistoryTable(tester, 'past');
+      await askAndAnswer(tester, 'Yes');
+
+      expect(input.switchedTo, [past.sessionId]);
+      expect(find.byType(WordsTableScreen), findsNothing);
+      expect(find.text('main: tea, milk'), findsOneWidget);
+      expect(router.canPop(), isFalse,
+          reason: 'Back leaves the app, never back to History');
+    });
+
+    testWidgets('a session that is gone: a message, and it stays',
+        (tester) async {
+      await pumpHistoryTable(tester, 'past', pastExists: false);
+      await askAndAnswer(tester, 'Yes');
+
+      expect(find.text("This session can't be opened for editing"),
+          findsOneWidget);
+      expect(find.byType(WordsTableScreen), findsOneWidget);
+      expect(find.byType(_MainStub), findsNothing);
+    });
+  });
 }
+
+/// Stands in for the main screen: shows the notifier's words.
+class _MainStub extends ConsumerWidget {
+  const _MainStub();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final words = ref.watch(wordInputNotifierProvider).valueOrNull?.words ??
+        const <WordPair>[];
+    return Scaffold(
+      body: Text('main: ${words.map((w) => w.word).join(', ')}'),
+    );
+  }
+}
+
+/// The notifier without Isar: a map of sessions, and a log of switches.
+class _FakeWordInput extends WordInputNotifier {
+  _FakeWordInput(this._current, this._sessions);
+
+  final Session _current;
+  final Map<String, Session> _sessions;
+  final List<String> switchedTo = [];
+
+  @override
+  Future<Session> build() async => _current;
+
+  @override
+  Future<bool> switchTo(String sessionId) async {
+    final picked = _sessions[sessionId];
+    if (picked == null) return false;
+    switchedTo.add(sessionId);
+    state = AsyncData(picked);
+    return true;
+  }
+}
+
 
 class _FakePublisher extends SessionPublishService {
   /// The photos the last publish was asked to include.
