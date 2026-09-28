@@ -181,7 +181,7 @@ export function renderSessionPage(session: StoredSession, scriptPath: string): s
     .map((field) => renderHeader(field, collapsed.includes(field)))
     .join("");
   const body = `<main data-session="${escapeHtml(session.id)}" data-rev="${session.rev}" data-max-rows="${MAX_ENTRIES}"${classes.length > 0 ? ` class="${classes.join(" ")}"` : ""}>
-<header class="title"><h1>Vocabulary</h1><span class="meta-short">${words} · available until ${escapeHtml(formatShortDate(session.expiresAt))}</span></header>
+<header class="title"><h1>Vocabulary</h1><span class="meta-short">${words} · until ${escapeHtml(formatShortDate(session.expiresAt))}</span></header>
 <p class="meta">${words} · published ${escapeHtml(formatDate(session.createdAt))} · available until ${escapeHtml(formatDate(session.expiresAt))}</p>
 <p class="actions"><a class="btn" href="/s/${encodeURIComponent(session.id)}/words.txt" download>Download for AnkiDroid</a>${renderPhotoButton(session)}</p>
 <div class="layout">

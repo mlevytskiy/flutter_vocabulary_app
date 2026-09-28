@@ -174,7 +174,7 @@ test("the title carries a short meta line with a numeric expiry date", async () 
   const expires = new Date(Date.now() + 30 * 24 * 3600 * 1000);
   const two = (n) => String(n).padStart(2, "0");
   const day = (d) => `${two(d.getUTCDate())}.${two(d.getUTCMonth() + 1)}.${d.getUTCFullYear()}`;
-  const short = html.match(/<span class="meta-short">2 words · available until (\d\d\.\d\d\.\d{4})<\/span>/);
+  const short = html.match(/<span class="meta-short">2 words · until (\d\d\.\d\d\.\d{4})<\/span>/);
   assert.ok(short, "short meta line");
   // Around the 30-day expiry (either side of a UTC midnight).
   assert.ok([day(expires), day(new Date(expires.getTime() - 60_000))].includes(short[1]), short[1]);

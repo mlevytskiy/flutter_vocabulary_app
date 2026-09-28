@@ -22,7 +22,7 @@ export const STYLE = `
          background: #fafafa; color: #1b1b1b; }
   main { max-width: 1440px; margin: 0 auto; padding: 16px; }
   h1 { font-size: 1.4rem; margin: 0 0 4px; }
-  /* The title row; its short meta line ("24 words · available until 28.10.2026") is the phone's. */
+  /* The title row; its short meta line ("24 words · until 28.10.2026") is the phone's. */
   .title { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 12px; }
   .meta-short { display: none; color: #666; font-size: 0.85rem; }
   .meta { color: #666; font-size: 0.9rem; margin: 0 0 16px; }
@@ -176,11 +176,10 @@ export const STYLE = `
     .photos { display: none; }
     /* At the right edge of the actions row, clear of the rotated stack's corners. */
     .js .photo-button { display: block; margin: 0 8px 0 auto; }
-    /* One row: the short meta stays beside "Vocabulary" and wraps inside itself
-       on a narrow phone instead of dropping under the title. */
-    .title { margin: 0 0 12px; flex-wrap: nowrap; }
+    /* One line: the short meta sits right after "Vocabulary" and never wraps. */
+    .title { margin: 0 0 12px; flex-wrap: nowrap; column-gap: 6px; }
     .title h1 { flex: none; }
-    .meta-short { min-width: 0; }
+    .meta-short { white-space: nowrap; }
     .title h1 { margin: 0; }
     .meta-short { display: inline; }
     .meta { display: none; }
