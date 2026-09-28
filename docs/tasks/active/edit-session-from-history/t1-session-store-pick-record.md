@@ -7,7 +7,7 @@ acs: ["AC-09"]
 files_hint: ["lib/core/services/session_store.dart", "test/session_store_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Store the pick record beside the current-session pointer
@@ -25,8 +25,8 @@ In `SessionStore`, next to `current_session_id`:
 
 ## Definition of Done
 
-- [ ] `test/session_store_test.dart`: after `setSwitched(A, t)`, `switchedAt(A) == t` and `switchedAt(B) == null`; the record survives reopening the store; a corrupt value reads as `null`.
-- [ ] `flutter analyze` adds no issue; the `CLAUDE.md` greps stay clean.
+- [x] `test/session_store_test.dart`: after `setSwitched(A, t)`, `switchedAt(A) == t` and `switchedAt(B) == null`; the record survives reopening the store; a corrupt value reads as `null`.
+- [x] `flutter analyze` adds no issue; the `CLAUDE.md` greps stay clean.
 
 ## Notes
 

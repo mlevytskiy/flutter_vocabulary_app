@@ -214,5 +214,34 @@ void main() {
       expect(await store.byId(session.sessionId), isNull);
       expect(await store.nonEmpty(), isEmpty);
     });
+
+    // edit-session-from-history T1 (ADR-0002, AC-09): the pick record is
+    // answered only for the session it names.
+    test('switchedAt answers only for the session that was picked', () async {
+      final at = DateTime(2026, 9, 29, 10, 30, 15);
+      await store.setSwitched('A', at);
+
+      expect(await store.switchedAt('A'), at);
+      expect(await store.switchedAt('B'), isNull);
+    });
+
+    test('the pick record survives reopening the store', () async {
+      final at = DateTime(2026, 9, 29, 10, 30, 15);
+      await store.setSwitched('A', at);
+      await store.close();
+      store = await SessionStore.open(directory: dir.path);
+
+      expect(await store.switchedAt('A'), at);
+    });
+
+    test('a missing or corrupt pick record reads as null', () async {
+      expect(await store.switchedAt('A'), isNull);
+
+      await store.setSwitched('A', DateTime(2026, 9, 29));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('switched_at', 'not a time');
+
+      expect(await store.switchedAt('A'), isNull);
+    });
   });
 }

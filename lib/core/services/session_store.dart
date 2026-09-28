@@ -12,6 +12,8 @@ import '../models/session.dart';
 /// launch because of a bad write is worse than one that loses a session.
 class SessionStore {
   static const _currentSessionKey = 'current_session_id';
+  static const _switchedSessionKey = 'switched_session_id';
+  static const _switchedAtKey = 'switched_at';
 
   final Isar _isar;
   final SharedPreferences _prefs;
@@ -123,5 +125,30 @@ class SessionStore {
 
   Future<void> setCurrentSessionId(String sessionId) async {
     await _prefs.setString(_currentSessionKey, sessionId);
+  }
+
+  /// Records that the learner picked [sessionId] from History at [at]
+  /// (edit-session-from-history, ADR-0002). Kept beside the current-session
+  /// pointer rather than on the session so a pick never looks like an edit.
+  /// Nothing clears it; [switchedAt] only answers for the id it names.
+  Future<void> setSwitched(String sessionId, DateTime at) async {
+    try {
+      await _prefs.setString(_switchedSessionKey, sessionId);
+      await _prefs.setString(_switchedAtKey, at.toIso8601String());
+    } catch (_) {
+      // ignored on purpose, see the class doc
+    }
+  }
+
+  /// When [sessionId] was last picked from History, or null if the pick
+  /// record names another session, is missing, or cannot be read.
+  Future<DateTime?> switchedAt(String sessionId) async {
+    try {
+      if (_prefs.getString(_switchedSessionKey) != sessionId) return null;
+      final at = _prefs.getString(_switchedAtKey);
+      return at == null ? null : DateTime.tryParse(at);
+    } catch (_) {
+      return null;
+    }
   }
 }
