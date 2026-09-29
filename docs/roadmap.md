@@ -35,6 +35,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 13 | A Settings screen, reachable from the FAB corner; the drag-and-drop option moves into it and out of the top bar | owner report 2026-09-23 → [task-13](tasks/completed/task-13-settings-screen-and-fab.md) | M | code complete 2026-09-23 |
 | 14 | A Settings option: show a **definition** instead of, or beside, the translation. Definition rows go vertical (Word on top, Definition under it) | owner report 2026-09-27 → [task-19](tasks/active/task-19-definition-mode-setting.md) · [spec](features/definition-mode/spec.md) | M | spec'd |
 | 15 | The shared page becomes a working table: full-width spreadsheet layout (separate phone layout), source photos beside their words, edit / add / delete rows, per-cell and per-column autofill within a per-page allowance — absorbs step 6 | owner report 2026-09-27 → [spec](features/good-looking-web/spec.md) | M | spec'd |
+| 16 | Carry on with an earlier session: a red Edit button on a History session's words screen makes it the current one, without losing a word from either session | owner request → [spec](features/edit-session-from-history/spec.md) · [tasks](tasks/active/edit-session-from-history/tracker.md) | XS | code complete 2026-09-29 |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker

@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-07", "AC-10"]
 files_hint: ["docs/architecture.md", "docs/roadmap.md", "docs/tasks/active/edit-session-from-history/"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "in_progress"
 ---
 
 # T6 — Verify the whole switch on the device and update the docs
@@ -31,8 +31,18 @@ Device pass (release build), then docs:
 ## Definition of Done
 
 - [ ] All six checklist items ticked in this file with the date.
-- [ ] `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test` and the `CLAUDE.md` greps are clean.
+- [x] `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test` and the `CLAUDE.md` greps are clean. (2026-09-29: 165 tests pass; analyze shows only the 9 pre-existing infos; greps show only `PhotoScaler.instance`.)
 
 ## Notes
 
 Needs the owner's phone; not automatable.
+
+## Checklist
+
+- [ ] 1. Type a word, switch within half a second → both sessions correct in History (AC-07) — device
+- [ ] 2. Shared session A: switch to A and edit → page unchanged; share again → same link, after the warning (AC-10) — device
+- [ ] 3. The shared page offers no way to make a session current (AC-05) — device
+- [ ] 4. Before/after screenshots: 0 differing areas outside the new button and question — device
+- [ ] 5. Yes → main screen with ≤100 words in ≤ 1 s — device
+- [ ] 5b. Photo lookup, then switch before its dialog → nothing lands in the picked session (AC-07b) — device
+- [x] 6. `docs/architecture.md` §1/§3 and `docs/roadmap.md` step 16 updated — 2026-09-29
