@@ -9,7 +9,7 @@
 | T2 | [Add WordInputNotifier.switchTo](./t2-notifier-switch-to.md) | app | Maksym | S | T1 | done |
 | T3 | [Let the launch rule honour a recent pick](./t3-launch-rule-honours-pick.md) | app | Maksym | S | T1 | done |
 | T4 | [Add the red Edit button and question to the History words screen](./t4-edit-button-and-question.md) | ui | Maksym | S | T2 | done |
-| T5 | [Drop late lookup results and hide the restore snackbar after a switch](./t5-drop-late-results.md) | ui | Maksym | M | T2 | todo |
+| T5 | [Drop late lookup results and hide the restore snackbar after a switch](./t5-drop-late-results.md) | ui | Maksym | M | T2 | done |
 | T6 | [Verify the whole switch on the device and update the docs](./t6-verify-and-docs.md) | docs | Maksym | S | T3, T4, T5 | todo |
 
 **Total:** 6 tasks, ~1.5 person-days.

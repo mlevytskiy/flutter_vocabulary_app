@@ -199,8 +199,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (!Platform.isAndroid) return true;
     if (_isRecoveringLostPhoto || _isAnalyzingPhoto) return true;
     _isRecoveringLostPhoto = true;
+    final sessionId = _sessionIdNow;
     try {
       final LostDataResponse response = await ImagePicker().retrieveLostData();
+      if (_sessionIdNow != sessionId) return true;
       if (response.isEmpty) return false;
       if (response.exception != null) {
         if (mounted) {
@@ -392,6 +394,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         .closed
         .then((_) => _restoreSnackBarVisible = false);
   }
+
+  /// The session this screen writes into right now. A lookup reads it before
+  /// its await and drops its result when a switch from History changed it in
+  /// the meantime (edit-session-from-history, ADR-0003).
+  String? get _sessionIdNow =>
+      ref.read(wordInputNotifierProvider).valueOrNull?.sessionId;
 
   /// Takes the RESTORE snackbar down on the first edit, so tapping RESTORE can
   /// never discard words the user has already typed. Guarded by a flag so it
@@ -694,8 +702,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       _isLoadingTranslation[index] = true;
     });
 
+    final sessionId = _sessionIdNow;
     try {
       final translation = await ref.read(googleTranslateServiceProvider).translateWord(word, from: 'en', to: 'uk');
+      if (_sessionIdNow != sessionId) return null;
 
       if (mounted) {
         setState(() {
@@ -712,6 +722,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
       return translation.result;
     } catch (e) {
+      if (_sessionIdNow != sessionId) return null;
       if (mounted) {
         setState(() {
           _isLoadingTranslation[index] = false;
@@ -748,6 +759,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   Future<void> _fillWordWithAI(int index) async {
     final translationText = _translationControllers[index].text.trim();
     if (translationText.isEmpty) return;
+    final sessionId = _sessionIdNow;
 
     setState(() {
       _isLoadingWordTranslation[index] = true;
@@ -763,6 +775,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             from: 'auto',
             to: 'en',
           );
+      if (_sessionIdNow != sessionId) return;
 
       _wordControllers[index].text = translation.text;
 
@@ -783,6 +796,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       });
       _pushRow(index, word: _wordControllers[index].text);
     } catch (e) {
+      if (_sessionIdNow != sessionId) return;
       setState(() {
         _isLoadingWordTranslation[index] = false;
       });
@@ -815,6 +829,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (word.isEmpty) return;
 
     final wordStartsWithEnglishLetter = isEnglishLetter(word[0]);
+    final sessionId = _sessionIdNow;
 
     setState(() {
       _isLoadingTranslation[index] = true;
@@ -830,6 +845,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // Google Translate: English -> Ukrainian, with the part-of-speech
         // rule picking the best of the returned set.
         final translation = await translateService.translateWord(word, from: 'en', to: 'uk');
+        if (_sessionIdNow != sessionId) return;
 
         _translationControllers[index].text = translation.best;
 
@@ -853,6 +869,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // Word doesn't start with an English letter -> auto-detect its
         // language and translate to English instead.
         final translation = await translateService.translate(word, from: 'auto', to: 'en');
+        if (_sessionIdNow != sessionId) return;
         final gotRealTranslation = isRealTranslation(word, translation.text);
 
         if (gotRealTranslation) {
@@ -893,6 +910,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       }
     } catch (e) {
       // Помилка перекладу - показати повідомлення
+      if (_sessionIdNow != sessionId) return;
       setState(() {
         _isLoadingTranslation[index] = false;
       });
@@ -914,9 +932,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final word = _wordControllers[index].text.trim();
     if (word.length < 2) return;
 
+    final sessionId = _sessionIdNow;
     setState(() => _isLoadingDefinition[index] = true);
     final result = await ref.read(dictionaryServiceProvider).define(word);
     if (!mounted || index >= _wordControllers.length) return;
+    if (_sessionIdNow != sessionId) return;
     setState(() => _isLoadingDefinition[index] = false);
 
     switch (result.kind) {
@@ -952,8 +972,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (index < 0 || index >= _wordControllers.length) return null;
     final word = _wordControllers[index].text.trim();
     if (word.length < 2) return null;
+    final sessionId = _sessionIdNow;
     final result = await ref.read(dictionaryServiceProvider).define(word);
     if (!mounted || index >= _wordControllers.length) return null;
+    if (_sessionIdNow != sessionId) return null;
     switch (result.kind) {
       case DefinitionKind.senses:
         setState(() {
@@ -1066,6 +1088,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   }
 
   Future<void> _processPickedPhoto(XFile picked) async {
+    final sessionId = _sessionIdNow;
     setState(() {
       _isAnalyzingPhoto = true;
     });
@@ -1095,6 +1118,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             limit: _photoWordCap,
           );
       requestStopwatch.stop();
+      if (_sessionIdNow != sessionId) return;
 
       if (mounted) {
         showVocabResultDialog(
@@ -1105,7 +1129,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           aiDuration: result.aiDuration,
         ).then((selected) async {
           final source = await kept;
-          if (selected != null && selected.isNotEmpty && mounted) {
+          if (selected != null && selected.isNotEmpty && mounted && _sessionIdNow == sessionId) {
             _addWordsFromPhoto(selected, source: source);
           } else if (source != null) {
             // No row came from it, so it is not a source photo.
@@ -1448,6 +1472,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // Read before restoring: rebuilding the rows can itself mutate the
         // notifier, which clears this.
         final restorable = ref.read(wordInputNotifierProvider.notifier).restorableSessionId;
+        // A switch from History cancels the offer (edit-session-from-history).
+        if (restorable == null) _dismissRestoreSnackBar();
         if (session.words.isNotEmpty) _restoreFromStore(session.words);
         if (restorable != null) _showRestoreSnackBar();
       });

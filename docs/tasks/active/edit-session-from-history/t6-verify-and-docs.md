@@ -24,6 +24,8 @@ Device pass (release build), then docs:
 3. The shared page offers no way to make a session current (AC-05).
 4. Before/after screenshots of History, words screen and main screen → 0 differing areas outside the new button and question.
 5. Yes → main screen with ≤100 words in ≤ 1 s.
+5b. Start a photo lookup, switch to a past session from History before the results dialog appears →
+    no dialog and no words land in the picked session (AC-07b; not automatable, see T5 notes).
 6. `docs/architecture.md` (§1 notifier/store lines) and `docs/roadmap.md` (a step row for this feature) updated.
 
 ## Definition of Done
