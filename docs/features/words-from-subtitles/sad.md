@@ -33,6 +33,7 @@ target_surfaces: [mobile-app, backend-service]  # decided in §4 (ADR-0001) — 
 - Decision override: a per-feature model picker in Settings (Sonnet 5 default, Sonnet 5.5, Haiku 4.5, Opus 5.5) — rationale: the owner wants to compare models after release. Spec §1, AC-21 (ADR-0004).
 - Decision override: the subtitle results dialog shows a model · time · cost line — rationale: the comparison needs it in front of the learner; replaces "no timing line" in the AC-20 decision.
 - Decision override: no time target for a 100-word import; the 20-word target (p95 ≤ 30 s) applies to the default model — rationale: the owner accepts waits over a minute, which lets one AI call serve the whole import (§4).
+- Decision override: ADR-0001 keeps "also change the shared page" and ADR-0004 keeps "model set in Worker configuration" as considered options although the critic flagged them as excluded by the spec — rationale: both were live options when the owner decided; the spec's §3 non-goal and AC-21 record the outcome of those decisions, not a prior constraint (critic resolution 2026-09-30).
 - Decision override: the app strips the subtitle file and the Worker checks a bounded list of short lines instead of the subtitle format — rationale: owner's choice; the weaker shape check is tracked in §11 (ADR-0002).
 
 ## 2. Constraints
@@ -236,7 +237,7 @@ The only infrastructure change is one D1 migration (`0002_subtitle_imports`) app
 |---|---|---|
 | Logging | Worker: `logEvent` one line per import — model, tokens, AI ms, words returned, outcome; never dialogue lines or session words. App: `debugPrint` as the photo flow | `vocab-photo-api/src/log.ts`; here |
 | Authentication | `x-app-secret` against `APP_SHARED_SECRET` on the non-public route, then the shared `RATE_LIMITER`; the shared page cannot reach the route (AC-13) | `src/index.ts` `ROUTES` |
-| Abuse bounds | Body ≤ 1 MB; ≤ 6,000 lines of ≤ 200 characters; ≤ 500 session words; `maximum` 1–100; level and purpose from fixed sets; model on the allow-list (ADR-0004); 10 imports / 10 min per address and 20 imports per UTC day across all addresses (ADR-0003), both counted before the AI call, failed calls included | here |
+| Abuse bounds | Dialogue lines of ≤ 200 characters each (the parser splits longer ones) totalling ≤ 1 MB, so every file the app accepts (≤ 1 MB, AC-11) fits and nothing is refused for size after Start; ≤ 500 session words; `maximum` 1–100; level and purpose from fixed sets; model on the allow-list (ADR-0004); 10 imports / 10 min per address and 20 imports per UTC day across all addresses (ADR-0003), both counted before the AI call, failed calls included | here |
 | Address privacy | The allowance stores SHA-256 of `cf-connecting-ip`, never the address; rows older than a day are deleted by the daily cleanup | here; `src/session/cleanup.ts` |
 | Error handling | Worker answers JSON `{error}` with distinct statuses for bad input, too large, too many imports, no English lines and AI failure; the app maps each to the AC-10 / AC-11 / AC-12 / AC-14 message, closes the loading dialog and leaves the session unchanged | `vocab_photo_service.dart` pattern; the `api` stage fixes the codes |
 | Complete or nothing | The Worker returns words only after the whole reply parses and passes the shape check; the app opens the dialog only for a full response (AC-12) | here |
@@ -261,8 +262,8 @@ ADR files live under `docs/features/words-from-subtitles/adr/NNNN-<title>.md`.
 
 **QG-1. The list is exactly what was asked for**
 - **When:** a feature-length film is imported with any offered model, level and purpose, maximum 20 and 100, and a session that already holds some of the film's words.
-- **Then:** 100% of imports propose ≤ the maximum (spec §6); no proposed word is already in the session (AC-15); no name, caption or formatting mark appears (AC-08); raising the maximum from 20 to 30 keeps the same 20 at the top (AC-19).
-- **How verify:** Worker tests with a stubbed Anthropic reply (over-long list, session words, duplicates) assert the filter and the cut; a Dart unit test asserts the app's count check; parser unit tests over SRT/VTT fixtures with tags, `[captions]`, `(captions)`, `NAME:` labels and ♪; the device pass on 5 test films checks level fit and ordering by eye.
+- **Then:** 100% of imports propose ≤ the maximum (spec §6); no proposed word is already in the session (AC-15); no name, caption or formatting mark appears (AC-08); raising the maximum from 20 to 30 keeps the same 20 at the top (AC-19) — a ranking property of the model, tracked as a risk in §11.
+- **How verify:** Worker tests with a stubbed Anthropic reply (over-long list, session words, duplicates) assert the filter and the cut; a Dart unit test asserts the app's count check; parser unit tests over SRT/VTT fixtures with tags, `[captions]`, `(captions)`, `NAME:` labels and ♪; the device pass on 5 test films checks level fit and ordering by eye, and imports one film at maximum 20 and 30 per model to compare the top 20.
 
 **QG-2. Complete or nothing, in bounded time**
 - **When:** the learner taps Start on a feature-length film (≤ 2 h of subtitles).
@@ -272,18 +273,19 @@ ADR files live under `docs/features/words-from-subtitles/adr/NNNN-<title>.md`.
 **QG-3. A bounded AI cost surface**
 - **When:** a request arrives without the app secret, with a model not on the list, over the size bounds, as the 11th import from one address within 10 minutes, or as the 21st import of a UTC day from any address.
 - **Then:** it is refused before any AI call — ≤ 10 subtitle imports per 10 minutes per app address and ≤ 20 subtitle imports per UTC day across all addresses (spec §6, AC-14); a 1 MB file imports and a 1 MB + 1 byte file gets the AC-11 message naming 1 MB (spec §6).
-- **How verify:** Worker tests: no secret → refused; unknown model → refused; 6,001 lines → refused; 11 imports in a window → the 11th refused and the stub AI was called 10 times; 21 imports in a day from 3 addresses → the 21st refused; app test with 1 MB and 1 MB + 1 byte fixtures.
+- **How verify:** Worker tests: no secret → refused; unknown model → refused; lines totalling 1 MB + 1 byte → refused; a 201-character line → refused; the stripped lines of a 1 MB fixture file → accepted; 11 imports in a window → the 11th refused and the stub AI was called 10 times; 21 imports in a day from 3 addresses → the 21st refused; app test with 1 MB and 1 MB + 1 byte fixtures.
 
 ## 11. Risks and technical debt
 
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| With a leaked app secret, the route accepts any text dressed as short lines, so it can be used for word picking on arbitrary text (weaker than a subtitle-format check, ADR-0002) | Medium | The reply is only a word list; the daily cap of 20 imports across all addresses bounds the worst case at about $6 a day (Opus 5.5 at 100 words); the per-address window, the size bounds and the model allow-list sit under it | Maksym (Security Lead) |
+| With a leaked app secret, the route accepts any text dressed as short lines, so it can be used for word picking on arbitrary text (weaker than a subtitle-format check, ADR-0002) | Medium | The reply is only a word list; the daily cap of 20 imports across all addresses bounds the worst case at about $26 a day (Opus 5.5 with a full 1 MB of lines and 16,000 output tokens, about $1.30 an import); the per-address window, the size bounds and the model allow-list sit under it | Maksym (Security Lead) |
 | Level and purpose are judged by the model, so a word at or below the chosen level can slip through (AC-06, AC-07) | Medium | Prompt states the level scale and the purpose; the learner removes words in the results dialog; the model picker is how the owner compares accuracy | Maksym |
 | Four models differ in request rules (reasoning settings, output limits), and the Anthropic price list can change, making the cost line stale | Low | One request builder with per-model settings covered by Worker tests; the price table lives in one app file with its date | Maksym (Tech Lead) |
 | A 100-word import can take minutes on the slower models; the app gives up at 240 s | Low | Owner accepted no 100-word target; failures show the AC-12 message; tune the timeout from measured times | Maksym |
 | Fixed 10-minute windows allow up to 20 imports across a window boundary (ADR-0003) | Low | Accepted; the daily cap still bounds the day | Maksym (Security Lead) |
 | The daily cap is shared, so whoever abuses a leaked secret also blocks the owner's own imports until the next UTC day | Medium | Accepted: the cap trades availability for a bounded bill; rotating the secret (new app build) ends the abuse | Maksym (Security Lead) |
+| The model ranks words afresh on every call, so importing the same film at maximum 20 and then 30 may not keep exactly the same 20 on top (AC-19, CONTEXT invariant 4) | Medium | The prompt fixes the ranking rule per purpose; the device pass imports one film at 20 and 30 with each model and compares the top 20; if it drifts, rank a fixed longer list once and cut it on the phone | Maksym |
 | A heavy day of model comparison (4 models × 5 films) reaches the 20-a-day cap exactly | Low | Spread comparisons over two days or raise the constant in `allowance.ts` | Maksym |
 | The allowance stores a hash of the caller's address in D1 — the first address-derived data the Worker keeps | Low | Hash only, deleted within a day by the daily cleanup; noted for the security review | Maksym (Security Lead) |
 | CLAUDE.md overrides — rule 3 (new dialogs, Settings controls, the "Definition" label, the cost line) and rule 5 (`file_selector`, small option types) (§2) | Low | Scoped to this feature; the photo flow changes only its label | Maksym |

@@ -16,6 +16,7 @@ updated_at: "2026-09-30"
 - **The loading dialog cannot be dismissed.** It ends only when the words arrive or an error is shown, so the learner cannot switch sessions while an import runs (AC-16).
 - **Errors after Start close the loading dialog and show a message on the main screen** with the session unchanged. A file over the size limit is refused inside the import dialog, before Start.
 - **Settings gains the default purpose, level and maximum plus a "remember my last choices" switch** (on by default), on the existing Settings screen.
+- **Settings also offers the subtitle model** — Sonnet 5 (default), Sonnet 5.5, Haiku 4.5 or Opus 5.5 — for subtitle imports only, and the subtitle results dialog shows one line with the model, the time taken and the approximate cost (owner, design 2026-09-30; spec AC-21).
 - **Design input flagged, not decided here:** a 100-word list may need to be fetched in parts. Which package opens files is decided in `design`, per the owner's approval.
 
 ### Assumptions ledger (easy depth)
@@ -32,8 +33,8 @@ updated_at: "2026-09-30"
 | SCR-02 | Import dialog | Pick the subtitle file, purpose, English level and word maximum, then Start | "From subtitles" in the SCR-01 speed dial; back from SCR-03 | SCR-03 to pick a file; SCR-04 on Start; closed back to SCR-01 |
 | SCR-03 | Phone file chooser | The phone's own screen for picking a file | "Choose file" in SCR-02 | Back to SCR-02, with or without a file |
 | SCR-04 | Loading dialog | Shows that words are being picked; cannot be dismissed | Start in SCR-02 | SCR-05 when the words arrive; SCR-01 with an error message |
-| SCR-05 | Results dialog | The proposed words with translation, definition and film sentence, each removable; Done adds the rest | Words arrive while SCR-04 shows | Done or close → SCR-01 |
-| SCR-06 | Settings screen | Existing settings plus the default purpose, level, maximum and the "remember my last choices" switch | The settings button on SCR-01 | Back to SCR-01 |
+| SCR-05 | Results dialog | The proposed words with translation, definition and film sentence, each removable; for a subtitle import, one line with the model, time and approximate cost; Done adds the rest | Words arrive while SCR-04 shows | Done or close → SCR-01 |
+| SCR-06 | Settings screen | Existing settings plus the default purpose, level, maximum, the "remember my last choices" switch and the subtitle model | The settings button on SCR-01 | Back to SCR-01 |
 | SCR-07 | History, words table and share sheet | Existing screens where the session and its words are viewed and shared | Side menu on SCR-01 | Back to SCR-01; the shared link or file |
 
 ## Flows
@@ -105,7 +106,7 @@ flowchart TD
     L -->|current session changed before words arrive| X[SCR-01 Words dropped, no session changes]
 ```
 
-When the words arrive, the results dialog lists each one with its translation, its definition under the label "Definition", and the sentence from the film (AC-02, AC-18). The learner removes the words they don't want; Done adds the rest at the end of the current session in the order shown (AC-03). Removing every word and tapping Done, or closing the dialog without Done, leaves the session unchanged (AC-04). If nothing qualifies, the dialog opens without the photo timing line, says "No new words above your level in these subtitles.", and Done changes nothing (AC-20). The loading dialog blocks switching sessions, and if the current session is no longer the one the import started in, the words are dropped (AC-16).
+When the words arrive, the results dialog lists each one with its translation, its definition under the label "Definition", and the sentence from the film (AC-02, AC-18). The learner removes the words they don't want; Done adds the rest at the end of the current session in the order shown (AC-03). Removing every word and tapping Done, or closing the dialog without Done, leaves the session unchanged (AC-04). If nothing qualifies, the dialog opens without the photo timing line (only the model, time and cost line), says "No new words above your level in these subtitles.", and Done changes nothing (AC-20). The loading dialog blocks switching sessions, and if the current session is no longer the one the import started in, the words are dropped (AC-16).
 
 ### Flow: US-05 — Only useful words
 
@@ -185,3 +186,4 @@ After an import, the subtitle words are ordinary words of the current session. T
 | AC-18 | Flow US-04 → D | Label "Definition" (photo dialog too) |
 | AC-19 | Flow US-02 → D1 | Most important first, per purpose |
 | AC-20 | Flow US-04 → N | "No new words above your level in these subtitles." |
+| AC-21 | Platform decisions; SCR-05, SCR-06 | Model chosen in Settings; model, time and cost line in the results dialog |

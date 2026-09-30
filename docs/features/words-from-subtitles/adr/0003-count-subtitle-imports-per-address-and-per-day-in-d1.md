@@ -36,7 +36,7 @@ Each subtitle import is one paid AI call worth roughly $0.07–0.30 at 100 words
 ## Consequences
 
 **Positive**
-- Exactly the spec's two limits, worst-case spend about $6 a day even with a leaked secret used from many addresses.
+- Exactly the spec's two limits, worst-case spend about $26 a day even with a leaked secret used from many addresses (20 imports of a full 1 MB of lines on Opus 5.5, about $1.30 each).
 - Reuses D1, the atomic-batch pattern and the daily cleanup already in the Worker.
 
 **Negative**

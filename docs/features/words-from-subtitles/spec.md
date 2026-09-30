@@ -210,7 +210,7 @@ Committed approach: everything happens in dialogs over the main screen. A new it
 ## 6.1 Security / privacy
 
 - **Data classification:** internal. Subtitle text is published film dialogue, not personal data, but it is sent to the server and on to the AI provider.
-- **Personal data touched:** none new. The default and last-used import purpose, English level and word maximum, and the remember switch, are stored on the device as preferences only.
+- **Personal data touched:** the default and last-used import purpose, English level, word maximum, remember switch and subtitle model are stored on the device as preferences only. To count the import allowance the service keeps a one-way hash of the caller's address, never the address itself, and deletes it within a day (owner decision, design 2026-09-30).
 - **AuthZ/AuthN impact:** the word picking from subtitles accepts only requests from the learner's app, checked the same way as the photo word picking. Nothing on the shared page can reach it.
 - **Abuse cases:**
   - Free AI through a leaked app secret (the sharpest vector — the secret ships inside the app): the service accepts only a bounded list of short dialogue lines (the app strips the file first), only the models on the offered list, applies the per-address import allowance and the daily cap across all addresses (AC-14), and returns only picked words, so it cannot be used as a general AI.

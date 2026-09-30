@@ -30,7 +30,7 @@ An SRT or VTT file is cue numbers, timings, formatting tags (`<i>`, `{\an8}`), s
 
 ## Decision outcome
 
-**Chosen:** option 1 (owner's choice). The parser in `lib/core/services/subtitle_parser.dart` reads SRT and VTT, drops cue numbers, timings, tags, bracketed and parenthesised captions, `NAME:` labels and music marks, and returns the spoken lines; a file with no cue blocks is refused on the phone with the AC-10 message and no request. The request to `POST /subtitles/words` carries at most 6,000 lines of at most 200 characters in a body of at most 1 MB, plus level, purpose, maximum, model and the current session's words. Whether the lines are English is judged by the model, which returns a flag the Worker turns into the AC-10 response.
+**Chosen:** option 1 (owner's choice). The parser in `lib/core/services/subtitle_parser.dart` reads SRT and VTT, drops cue numbers, timings, tags, bracketed and parenthesised captions, `NAME:` labels and music marks, and returns the spoken lines; a file with no cue blocks is refused on the phone with the AC-10 message and no request. The request to `POST /subtitles/words` carries dialogue lines of at most 200 characters each (the parser splits longer ones) totalling at most 1 MB — so every file the app accepts (≤ 1 MB, AC-11) fits — plus level, purpose, maximum, model and the current session's words. Whether the lines are English is judged by the model, which returns a flag the Worker turns into the AC-10 response.
 
 ## Consequences
 
