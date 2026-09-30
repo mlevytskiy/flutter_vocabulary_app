@@ -7,7 +7,7 @@ acs: ["AC-14"]
 files_hint: ["docs/features/words-from-subtitles/migrations/01_create_subtitle_imports.up.sql", "docs/features/words-from-subtitles/migrations/01_create_subtitle_imports.down.sql", "vocab-photo-api/migrations/", "vocab-photo-api/migrations/down/"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Promote the subtitle allowance migration into the Worker
