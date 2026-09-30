@@ -7,7 +7,7 @@ acs: ["AC-14"]
 files_hint: ["vocab-photo-api/src/subtitles/allowance.ts", "vocab-photo-api/src/session/cleanup.ts", "vocab-photo-api/src/index.ts", "vocab-photo-api/test/subtitles-allowance.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Take one subtitle import from the address window and the daily cap, and clean up old windows
