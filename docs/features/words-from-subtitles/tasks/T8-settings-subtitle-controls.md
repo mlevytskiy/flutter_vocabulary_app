@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-05b", "AC-09", "AC-21"]
 files_hint: ["lib/features/settings/settings_screen.dart", "test/settings_screen_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Add the subtitle import controls and the model picker to Settings
