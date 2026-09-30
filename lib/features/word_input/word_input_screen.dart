@@ -24,6 +24,7 @@ import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
+import 'subtitle_import_flow.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
@@ -1159,6 +1160,22 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// reusing the still-empty first row if the screen hasn't been touched yet.
   /// With a kept [source], the photo joins the session first and every row
   /// added here points at it.
+  /// words-from-subtitles: the "From subtitles" speed-dial item. Kept words
+  /// go through [_addWordsFromPhoto] with no source photo, so they are
+  /// ordinary rows (AC-17).
+  Future<void> _importFromSubtitles() => runSubtitleImport(
+        context: context,
+        ref: ref,
+        currentSessionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.sessionId,
+        sessionWords: () => [
+          for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+            if (pair.word.trim().isNotEmpty && pair.word.trim().length <= 500) pair.word.trim(),
+        ].take(500).toList(),
+        addWords: (words) {
+          if (mounted) _addWordsFromPhoto(words);
+        },
+      );
+
   void _addWordsFromPhoto(List<VocabWord> words, {SourcePhoto? source}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
@@ -1591,6 +1608,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       floatingActionButton: WordInputSpeedDial(
         onTakePhoto: _takePhotoForVocabulary,
         onScreenshot: _takeScreenshot,
+        onFromSubtitles: _importFromSubtitles,
       ),
     );
   }

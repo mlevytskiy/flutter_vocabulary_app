@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-05b", "AC-06", "AC-10", "
 files_hint: ["lib/features/word_input/widgets/word_input_speed_dial.dart", "lib/features/word_input/word_input_screen.dart", "test/subtitle_import_flow_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T11 — Wire the From subtitles speed-dial item through parse, request, results and Done
@@ -33,6 +33,8 @@ status: "todo"
 - [ ] lint clean (`flutter analyze` / `tsc`, whichever this task touches)
 
 ## Notes
+
+- As built: the flow lives in `lib/features/word_input/subtitle_import_flow.dart` (`runSubtitleImport`), with the file picker, session reader, session words and append callback passed in, so it is widget-tested without Isar or the platform file chooser. The screen passes its existing `_addWordsFromPhoto` with no source photo (AC-17).
 
 - All dialogs are `showDialog`, with no new route (CLAUDE.md rule 1).
 - Photo flow behaviour unchanged (CLAUDE.md rule 3).
