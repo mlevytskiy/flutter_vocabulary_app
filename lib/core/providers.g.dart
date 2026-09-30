@@ -148,6 +148,26 @@ final sessionPublishServiceProvider = Provider<SessionPublishService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SessionPublishServiceRef = ProviderRef<SessionPublishService>;
+String _$subtitleWordsServiceHash() =>
+    r'56f13395451925ab40ca0224660f990ec0cd6ce7';
+
+/// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
+///
+/// Copied from [subtitleWordsService].
+@ProviderFor(subtitleWordsService)
+final subtitleWordsServiceProvider = Provider<SubtitleWordsService>.internal(
+  subtitleWordsService,
+  name: r'subtitleWordsServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$subtitleWordsServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SubtitleWordsServiceRef = ProviderRef<SubtitleWordsService>;
 String _$photoUploadServiceHash() =>
     r'8c9008e9902f73f6fe215aff73ac7796edf87107';
 

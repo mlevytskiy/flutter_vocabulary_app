@@ -7,7 +7,7 @@ acs: ["AC-10", "AC-12", "AC-14", "AC-21"]
 files_hint: ["lib/core/services/subtitle_words_service.dart", "lib/core/providers.dart", "test/subtitle_words_service_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Call POST /subtitles/words from the app and map every answer to its message

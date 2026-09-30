@@ -12,6 +12,7 @@ import 'services/pronunciation_service.dart';
 import 'services/session_publish_service.dart';
 import 'services/session_store.dart';
 import 'services/source_photo_store.dart';
+import 'services/subtitle_words_service.dart';
 import 'services/vocab_photo_service.dart';
 
 part 'providers.g.dart';
@@ -42,6 +43,10 @@ DictionaryService dictionaryService(Ref ref) => DictionaryService();
 
 @Riverpod(keepAlive: true)
 SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();
+
+/// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
+@Riverpod(keepAlive: true)
+SubtitleWordsService subtitleWordsService(Ref ref) => SubtitleWordsService();
 
 /// Background upload of the photos a publish declared (good-looking-web T18).
 /// keepAlive, so uploads outlive the words table (sad §8).
