@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-09", "AC-11"]
 files_hint: ["pubspec.yaml", "lib/features/word_input/widgets/subtitle_import_dialog.dart", "lib/features/word_input/widgets/import_loading_dialog.dart", "test/subtitle_import_dialog_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Add file_selector and build the import dialog and the loading dialog
@@ -29,7 +29,7 @@ status: "todo"
 - [ ] `flutter pub get`
 - [ ] `flutter test test/subtitle_import_dialog_test.dart`
 - [ ] `flutter analyze`
-- [ ] a manual pick on an Android device opens the system chooser and returns a file
+- [ ] a manual pick on an Android device opens the system chooser and returns a file — **pending: needs the owner's phone (checked in T13)**
 - [ ] lint clean (`flutter analyze` / `tsc`, whichever this task touches)
 
 ## Notes
