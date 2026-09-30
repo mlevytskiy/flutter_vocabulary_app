@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-06", "AC-12", "AC-17", "AC-19", "AC-21"]
 files_hint: ["docs/features/words-from-subtitles/_audit/device-pass.md"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "blocked"
 ---
 
 # T13 — Run the device pass for the spec §6 targets on 5 films and every model
@@ -28,5 +28,7 @@ status: "todo"
 - [ ] lint clean (`flutter analyze` / `tsc`, whichever this task touches)
 
 ## Notes
+
+- **Blocked (implement, 2026-10-01):** needs the owner's phone, the deployed Worker (D1 migration 0002 applied remotely) and real Anthropic spend. The results sheet is ready at `_audit/device-pass.md`.
 
 - If the AC-19 top-20 drifts, record it and raise the sad §11 fallback (rank once and cut on the phone) with the owner rather than changing code here.

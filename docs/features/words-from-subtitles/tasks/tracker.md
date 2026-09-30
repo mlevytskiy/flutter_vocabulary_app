@@ -17,6 +17,6 @@
 | [T10](T10-import-and-loading-dialogs.md) | Add file_selector and build the import dialog and the loading dialog | ui | Maksym | M | T6 | done |
 | [T11](T11-wire-subtitle-import-flow.md) | Wire the From subtitles speed-dial item through parse, request, results and Done | wiring | Maksym | M | T5, T7, T9, T10 | done |
 | [T12](T12-worker-readme-and-deploy.md) | Document the subtitle route, its migration and the AI stub in the Worker README | docs | Maksym | S | T4 | done |
-| [T13](T13-device-pass.md) | Run the device pass for the spec §6 targets on 5 films and every model | tests | Maksym | M | T11, T12 | todo |
+| [T13](T13-device-pass.md) | Run the device pass for the spec §6 targets on 5 films and every model | tests | Maksym | M | T11, T12 | blocked |
 
 **Total:** 13 tasks, about 11.5 person-days (S = half a day, M = one day).
