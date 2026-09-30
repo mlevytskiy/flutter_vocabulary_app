@@ -1,0 +1,267 @@
+{
+  "slug": "words-from-subtitles",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Promote the subtitle allowance migration into the Worker",
+      "layer": "migration",
+      "deps": [],
+      "acs": [
+        "AC-14"
+      ],
+      "dod": "The staged pair is promoted as 0002_subtitle_imports.sql (+ down/), applies with `wrangler d1 migrations apply DB --local`, reverts with the down file, re-applies, and `npm test` still passes on the fresh database.",
+      "files_hint": [
+        "docs/features/words-from-subtitles/migrations/01_create_subtitle_imports.up.sql",
+        "docs/features/words-from-subtitles/migrations/01_create_subtitle_imports.down.sql",
+        "vocab-photo-api/migrations/",
+        "vocab-photo-api/migrations/down/"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Take one subtitle import from the address window and the daily cap, and clean up old windows",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-14"
+      ],
+      "dod": "`takeSubtitleImport` takes a unit from both counters or neither (the 11th take in a window and the 21st of a day are refused, and neither counter moves on a refusal), stores only the SHA-256 hex of the address, and the daily cleanup deletes every window before the current one; covered by tests.",
+      "files_hint": [
+        "vocab-photo-api/src/subtitles/allowance.ts",
+        "vocab-photo-api/src/session/cleanup.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/subtitles-allowance.test.mjs"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Build the pick-words prompt, the per-model request and the reply check, with a local AI stub for tests",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-19",
+        "AC-21"
+      ],
+      "dod": "For each purpose and level the system prompt states the level scale, the purpose ranking rule, the exclusions (names, captions, marks), \"maximum + 10 ranked candidates\" and the JSON shape; each allow-listed model gets a valid request (max_tokens 16,000); the reply check accepts a complete list or the no-English flag and rejects a cut-off (`stop_reason: max_tokens`), non-JSON or wrongly shaped reply; `ANTHROPIC_API_URL` points the Worker at a local stub in `npm test`.",
+      "files_hint": [
+        "vocab-photo-api/src/subtitles/prompt.ts",
+        "vocab-photo-api/src/env.ts",
+        "vocab-photo-api/scripts/test.mjs",
+        "vocab-photo-api/test/anthropic-stub.mjs",
+        "vocab-photo-api/test/subtitles-prompt.test.mjs"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Serve POST /subtitles/words per the contract and register it behind the app secret",
+      "layer": "ports",
+      "deps": [
+        "T2",
+        "T3"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-10",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-19",
+        "AC-20",
+        "AC-21"
+      ],
+      "dod": "Every response in contracts/openapi.yaml is produced by a test through `npm test`: 200 with ≤ maximum words, none in sessionWords (any case), no duplicates, in rank order, and 200 with an empty list; 400 bad_request / unknown_model and 413 too_large before the allowance is touched; 401 without the secret; 429 too_many_imports with the stub AI not called; 422 no_english_lines; 502 words_not_picked for a cut-off, malformed or 225 s-late reply.",
+      "files_hint": [
+        "vocab-photo-api/src/subtitles/routes.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/subtitles.test.mjs"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Strip SRT and VTT files to dialogue lines in pure Dart",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-10"
+      ],
+      "dod": "Unit tests over SRT and VTT fixtures show cue numbers, timings, tags, [captions], (captions), NAME: labels and music marks removed, lines over 200 chars split, empty or non-subtitle input reported as \"no subtitle blocks\", and a 1 MB fixture stripped to lines totalling ≤ 1,048,576 UTF-8 bytes.",
+      "files_hint": [
+        "lib/core/services/subtitle_parser.dart",
+        "test/subtitle_parser_test.dart",
+        "test/fixtures/subtitles/"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Add the import option types, the price table and the import preferences notifier",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-05",
+        "AC-05b",
+        "AC-09",
+        "AC-21"
+      ],
+      "dod": "Unit tests show the notifier reads the five keys from data-model.md with first-launch defaults (understand this film, B2, 20, update on, Sonnet 5), falls back to the default for a missing or unknown stored value, refuses a maximum outside 1–100, and `recordUsed` overwrites purpose, level and maximum only while \"Update with each import\" is on; `build_runner` and `flutter analyze` are clean.",
+      "files_hint": [
+        "lib/core/models/subtitle_import_options.dart",
+        "lib/core/providers.dart",
+        "test/subtitle_import_prefs_test.dart"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Call POST /subtitles/words from the app and map every answer to its message",
+      "layer": "infra",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-12",
+        "AC-14",
+        "AC-21"
+      ],
+      "dod": "Tests with `http`'s `MockClient` show a 200 parsed into `VocabWord`s plus model, AI time and token counts; 422 → the no-English error; any 429 → the too-many-imports error; 400, 401, 413, 502, other statuses, a socket error, non-JSON and a 240 s timeout → the could-not-pick error; the request sends `x-app-secret` and the contract's camelCase body.",
+      "files_hint": [
+        "lib/core/services/subtitle_words_service.dart",
+        "lib/core/providers.dart",
+        "test/subtitle_words_service_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Add the subtitle import controls and the model picker to Settings",
+      "layer": "ui",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-05b",
+        "AC-09",
+        "AC-21"
+      ],
+      "dod": "Widget tests show Settings (SCR-06) with purpose, level, maximum, the \"Update with each import\" switch and the four models, each change saved through the notifier; a maximum of 0 or 101 is not saved and shows \"must be from 1 to 100\"; the existing settings tests still pass.",
+      "files_hint": [
+        "lib/features/settings/settings_screen.dart",
+        "test/settings_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Rename Description to Definition and add the info line and empty message to the results dialog",
+      "layer": "ui",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-18",
+        "AC-20",
+        "AC-21"
+      ],
+      "dod": "Widget tests show \"Definition\" for photo and subtitle words; the photo dialog otherwise unchanged (its timing lines still shown); in subtitle mode no photo timing line, one \"<model> · <time> · ≈ $<cost>\" line computed from the T6 price table, and \"No new words above your level in these subtitles.\" when the list is empty, with Done returning an empty list.",
+      "files_hint": [
+        "lib/features/word_input/widgets/vocab_result_dialog.dart",
+        "test/photo_words_test.dart",
+        "test/vocab_result_dialog_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Add file_selector and build the import dialog and the loading dialog",
+      "layer": "ui",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-09",
+        "AC-11"
+      ],
+      "dod": "Widget tests (file picking behind an injectable callback) show the import dialog (SCR-02) opening with the stored purpose, level and maximum; Start disabled until a file is chosen and the maximum is 1–100; a file over 1,048,576 bytes refused with \"too large, the largest accepted is 1 MB\" and Start disabled; a cancelled pick leaving the dialog unchanged; Start returning the file bytes, extension and chosen values; the loading dialog (SCR-04) not dismissible by the barrier or back.",
+      "files_hint": [
+        "pubspec.yaml",
+        "lib/features/word_input/widgets/subtitle_import_dialog.dart",
+        "lib/features/word_input/widgets/import_loading_dialog.dart",
+        "test/subtitle_import_dialog_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Wire the From subtitles speed-dial item through parse, request, results and Done",
+      "layer": "wiring",
+      "deps": [
+        "T5",
+        "T7",
+        "T9",
+        "T10"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-05b",
+        "AC-06",
+        "AC-10",
+        "AC-12",
+        "AC-14",
+        "AC-16",
+        "AC-17"
+      ],
+      "dod": "Widget tests with a fake service show: the speed-dial item opens the import dialog; Start records the used values only while \"Update with each import\" is on; the loading dialog appears; a file with no subtitle blocks, 422, 429 and every other failure each close it with the AC-10, AC-14 or AC-12 message and leave the session unchanged; a result for a session that changed since Start is dropped; a list longer than the maximum is rejected as AC-12; Done appends the kept words in order as ordinary word rows with no source photo, and removing everything or closing adds nothing.",
+      "files_hint": [
+        "lib/features/word_input/widgets/word_input_speed_dial.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/subtitle_import_flow_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Document the subtitle route, its migration and the AI stub in the Worker README",
+      "layer": "docs",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-14"
+      ],
+      "dod": "The README describes `POST /subtitles/words` (link to the contract), the allowance limits and where to change them, `wrangler d1 migrations apply DB --remote` before deploy, the new cleanup delete, `ANTHROPIC_API_URL` for tests, and the log line fields; the documented commands work on a clean checkout.",
+      "files_hint": [
+        "vocab-photo-api/README.md"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Run the device pass for the spec §6 targets on 5 films and every model",
+      "layer": "tests",
+      "deps": [
+        "T11",
+        "T12"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-06",
+        "AC-12",
+        "AC-17",
+        "AC-19",
+        "AC-21"
+      ],
+      "dod": "`_audit/device-pass.md` records, for 5 test films, the time to the results dialog at maximum 20 on Sonnet 5 (p95 ≤ 30 s), the times at maximum 100 for each of the four models, 0 partial lists, word counts ≤ the maximum, the top 20 at maximum 20 against maximum 30 per model (AC-19 drift, sad §11), and subtitle words shown like typed words in the words table, History, the shared link and the file export.",
+      "files_hint": [
+        "docs/features/words-from-subtitles/_audit/device-pass.md"
+      ]
+    }
+  ]
+}

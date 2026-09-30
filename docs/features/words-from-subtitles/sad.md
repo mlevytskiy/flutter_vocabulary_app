@@ -227,6 +227,211 @@ sequenceDiagram
 
 **Critical flow 2:** N/A at design — Settings and the remembered choices are local reads and writes with no second participant; `sequences` decides whether they need a diagram.
 
+### Flow F1: prepare a subtitle import (US-01, US-02, US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user
+    participant UI as ui
+    participant DEV as data-store (device)
+    participant FC as external-system (file chooser)
+
+    Note over L,UI: Precondition: the learner is on the main screen (SCR-01)
+    L->>UI: chooses From subtitles in the speed dial
+    UI->>DEV: reads the import values (purpose, level, maximum)
+    DEV-->>UI: stored values, or understand this film, B2 and 20 when nothing is stored
+    UI-->>L: import dialog (SCR-02) with the values from Settings
+    opt learner changes the purpose, level or maximum
+        L->>UI: sets a value
+        alt maximum below 1 or above 100
+            UI-->>L: maximum must be from 1 to 100, Start stays disabled
+        end
+    end
+    L->>UI: taps Choose file
+    UI->>FC: opens the phone file chooser (SCR-03)
+    alt learner cancels
+        FC-->>UI: no file
+        UI-->>L: import dialog unchanged
+    else file picked
+        FC-->>UI: the chosen file
+        UI->>UI: checks the file size
+        alt larger than 1 MB
+            UI-->>L: file too large, the largest accepted is 1 MB, Start stays disabled
+        else at most 1 MB
+            UI-->>L: file chosen, Start enabled
+        end
+    end
+    Note over L,UI: Postcondition: nothing is stored yet, and closing the dialog now changes nothing
+```
+
+### Flow F2: set the import values, the update switch and the subtitle model in Settings (US-03, US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user
+    participant UI as ui
+    participant DEV as data-store (device)
+
+    Note over L,UI: Precondition: the learner opens Settings (SCR-06) from the main screen
+    UI->>DEV: reads the import values (purpose, level, maximum), the Update with each import switch and the subtitle model
+    DEV-->>UI: stored values, or understand this film, B2, 20, update on and Sonnet 5 when nothing is stored
+    UI-->>L: Settings with the import values, the update switch and the four offered models
+    alt learner sets the maximum below 1 or above 100
+        L->>UI: enters the value
+        UI-->>L: maximum must be from 1 to 100, the value is not saved
+    else learner changes a value, the update switch or the subtitle model
+        L->>UI: changes the setting
+        UI->>DEV: saves the changed setting
+        Note over UI,DEV: persists the import preferences on the device (one set of values, the switch, the model)
+        UI-->>L: Settings show the new value
+    end
+    Note over L,DEV: Postcondition: with update on, the next Start overwrites these values with the ones used (F3), with update off they stay fixed until edited here
+```
+
+### Flow F3: run a subtitle import (US-01, US-02, US-04, US-05, US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user
+    participant UI as ui
+    participant DEV as data-store (device)
+    participant SVC as service
+    participant ALW as data-store (allowance)
+    participant AI as external-system (AI model)
+
+    Note over L,UI: Precondition: import dialog with a file of at most 1 MB and a maximum from 1 to 100 (F1)
+    L->>UI: taps Start
+    opt Update with each import is on
+        UI->>DEV: saves the purpose, level and maximum used as the Settings values
+        Note over UI,DEV: persists the import preferences on the device
+    end
+    UI->>UI: closes the import dialog, records the current session, shows the loading dialog (SCR-04) that cannot be dismissed
+    UI->>UI: checks the extension and strips the file to dialogue lines, without numbers, timings, tags, captions or speaker labels
+    alt not an srt or vtt file, or no subtitle blocks
+        UI-->>L: main screen, no English subtitles to read in this file, session unchanged
+    else dialogue lines found
+        UI->>DEV: reads the current session words and the subtitle model
+        DEV-->>UI: session words, model
+        UI->>SVC: dialogue lines, purpose, level, maximum, model, session words, with the app secret
+        SVC->>SVC: checks the app secret, the request rate, the bounds and the model allow-list
+        alt missing or wrong app secret
+            SVC-->>UI: refused, nothing picked
+            Note over SVC: any caller without the app secret, such as the shared page or a stranger, gets this refusal (AC-13)
+            UI-->>L: main screen, the words could not be picked, try again
+        else lines or session words out of bounds, or a model not on the offered list
+            SVC-->>UI: bad request, nothing picked
+            UI-->>L: main screen, the words could not be picked, try again
+        else request accepted
+            SVC->>ALW: takes one import from the address window and from the daily total, in one atomic step
+            Note over SVC,ALW: persists the import allowance counters (hashed address with its 10-minute window, and the UTC-day total)
+            ALW-->>SVC: counts after taking
+            alt over 10 in this window, or over 20 today
+                SVC-->>UI: too many imports
+                UI-->>L: main screen, wait a few minutes and try again
+            else within the allowance
+                SVC->>AI: dialogue lines as data, the pick-words prompt for the purpose and level, asking for up to maximum plus 10 ranked candidates
+                AI-->>SVC: ranked candidates, or the no-English-lines flag, or nothing in time
+                SVC->>SVC: checks the reply is complete and has the word-list shape
+                alt no reply in time, reply cut off, or not a word list
+                    SVC-->>UI: words could not be picked
+                    UI-->>L: main screen, the words could not be picked, try again from the speed dial
+                else reply says no English lines
+                    SVC-->>UI: no English lines
+                    UI-->>L: main screen, no English subtitles to read in this file
+                else complete ranked list
+                    SVC->>SVC: drops words already in the session (any letter case) and duplicates, keeps the first maximum in rank order
+                    SVC-->>UI: words with translation, definition and film sentence, most important first, plus model, AI time and token counts
+                    UI->>UI: checks the list holds at most the maximum and works out the approximate cost
+                    alt current session is no longer the one recorded at Start
+                        UI-->>L: loading dialog closes, words dropped, neither session changes
+                    else no word qualifies
+                        UI-->>L: results dialog (SCR-05) with the model, time and cost line and No new words above your level in these subtitles.
+                    else words proposed
+                        UI-->>L: results dialog (SCR-05) with the words, most important first, and the model, time and cost line
+                    end
+                end
+            end
+        end
+    end
+    Note over UI,SVC: no connection, or no answer within 240 s, ends like the words-could-not-be-picked branch (AC-12)
+    Note over L,SVC: Postcondition: the session is unchanged in every branch, only Done in the results dialog adds words (F4)
+```
+
+### Flow F4: review and keep the proposed words (US-04, US-07)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user
+    participant UI as ui
+    participant DEV as data-store (device)
+
+    Note over L,UI: Precondition: results dialog (SCR-05) open after a photo or subtitle import, in the session the import started in
+    UI-->>L: each word with its translation, the label Definition and its film sentence
+    opt learner removes words
+        L->>UI: crosses out the words not wanted
+    end
+    alt Done with at least one word kept
+        L->>UI: taps Done
+        UI->>DEV: appends the kept words at the end of the current session, in the order shown, as ordinary word rows with no source photo
+        Note over UI,DEV: persists the kept word rows in the current session
+        DEV-->>UI: saved
+        UI-->>L: main screen with the kept words at the end of the session
+    else Done with every word removed, Done on the empty list, or dialog closed without Done
+        L->>UI: taps Done or closes the dialog
+        UI-->>L: main screen, session unchanged
+    end
+    Note over L,DEV: Postcondition: kept words are ordinary word rows, so the words table, History, the shared link, the shared file and the export show them like typed words through the existing, unchanged flows
+```
+
+**Coverage (sequences 2026-09-30).** All flows are synchronous — no queue, webhook or scheduled step, so no idempotency, retry or dead-letter branch.
+
+| User story | Flows |
+|---|---|
+| US-01 | F1, F3, F4 |
+| US-02 | F1, F2, F3 |
+| US-03 | F1, F2, F3 (values written at Start) |
+| US-04 | F3, F4 |
+| US-05 | F3 |
+| US-06 | F1 (too large), F3 |
+| US-07 | F4 (postcondition) |
+
+| AC | Shown by |
+|---|---|
+| AC-01 | F1 — dialog opens with the Settings values |
+| AC-02 | F3 `else` words proposed |
+| AC-03 | F4 `alt` Done with words kept |
+| AC-04 | F4 `else` everything removed or closed |
+| AC-05 | F3 `opt` Update with each import on, then F1 — *see spec amendment below* |
+| AC-05b | F2 update off, then F1 |
+| AC-06 | F3 — model asked for words above the level only, service keeps the first maximum |
+| AC-07 | F3 — pick-words prompt per purpose |
+| AC-08 | F3 — the app strips tags, captions and speaker labels, the prompt excludes names |
+| AC-09 | F1 `alt` maximum out of range, F2 `alt` maximum out of range |
+| AC-10 | F3 `alt` not srt/vtt or no blocks, and `else` no English lines |
+| AC-11 | F1 `alt` larger than 1 MB |
+| AC-12 | F3 `alt` no reply in time, cut off or not a list, plus the no-connection note |
+| AC-13 | F3 `alt` missing or wrong app secret. The shared page having no import is non-runtime (no UI exists) — N/A |
+| AC-14 | F3 `alt` over the window or the day |
+| AC-15 | F3 — service drops session words before the cut |
+| AC-16 | F3 — non-dismissible loading dialog, `alt` session changed |
+| AC-17 | F4 postcondition — ordinary rows through the existing, unchanged flows |
+| AC-18 | F4 — label Definition |
+| AC-19 | F3 — ranked candidates, first maximum kept in rank order |
+| AC-20 | F3 `else` no word qualifies, F4 Done on the empty list |
+| AC-21 | F2 model choice, F3 allow-list refusal and the model, time and cost line. The photo import keeping its model is unchanged code — N/A |
+
+**Notes and flags (sequences 2026-09-30).**
+
+- **Spec amendment needed — Settings values (owner decision, 2026-09-30).** Settings holds **one** set of import values (purpose, level, maximum) plus an **"Update with each import"** switch, on by default: with it on, Start overwrites the Settings values with the ones used; with it off, they stay fixed until edited in Settings. There is no separate "last used" store. First-launch values: "understand this film", B2, 20, update on, Sonnet 5. This changes AC-05's Then ("Settings still shows the default C1" becomes "Settings shows B1"), the spec §1 remember-switch decision, US-03 wording, the CONTEXT term "remembered choices", §8 *Preferences* and §12 here, and ux-flows US-03. Route through `/sdd:clarify words-from-subtitles` or a manual edit before `tasks`.
+- **Seed flow above.** "Critical flow 1" was drawn at `design` with concrete participant names and is left untouched (additive rule). F3 supersedes it in detail: it moves the size check before Start (F1) and runs the extension check and stripping after the loading dialog shows. "Critical flow 2: N/A" is superseded by F2.
+- **Participant labels** are written without angle brackets (`ui`, `service`, `data-store (…)`), because the renderers drop `<ui>` as an unknown HTML tag.
+- **Persist steps for `data-model`:** server — the import allowance counters (hashed address with its 10-minute window, and the UTC-day total, taken in one atomic step, F3) — a new table, so a schema change. Device — the import preferences (key-value, F2/F3) and the kept word rows (existing rows, no new field, F4).
+- **No new participants** beyond §3/§5. No ADR-worthy decision surfaced; the Settings change sits below the ADR gate (local preference shape, reversible).
+
 ## 7. Deployment view
 
 The only infrastructure change is one D1 migration (`0002_subtitle_imports`) applied with `wrangler d1 migrations apply` before the Worker deploy; the daily 03:00 UTC cron already exists and gains one delete. Monitoring stays `wrangler tail`: the route logs one line per import (model, input and output tokens, AI time, word count, outcome) and never the dialogue text. Spend is watched in the Anthropic console; one owner means no alerting.

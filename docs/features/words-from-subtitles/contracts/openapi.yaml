@@ -1,0 +1,296 @@
+# words-from-subtitles — the Worker's subtitle word-picking route.
+# DERIVED, not hand-written:
+#   fields + constraints  ← data-model.md (allowance), sad.md §8 Abuse bounds, ADR-0002 / ADR-0004,
+#                           existing schema (src/session/types.ts MAX_ENTRIES / MAX_FIELD_CHARS)
+#   error responses       ← sad.md §6 Flow F3 alt-branches
+#   endpoint + shape      ← spec.md §4 US-01/02/05/06, §5 ACs
+# Wire conventions are the Worker's own, not the SDD defaults (owner decision, api stage
+# 2026-09-30): `x-app-secret` header, unversioned path, camelCase JSON, error body
+# `{error, code}` as in src/session/changes.ts and the page write limiter. See
+# api-sync-report.md "Deviations".
+openapi: 3.1.0
+
+info:
+  title: vocab-photo-api — subtitle words
+  version: 0.1.0
+  description: |
+    A learner who watches films in English has no quick way to turn one into a word list:
+    a feature-length subtitle file holds one to two thousand different words. The phone app
+    strips a subtitle file to its dialogue lines (ADR-0002) and sends them here with the
+    import purpose, the learner's English level, the word maximum, the chosen AI model and
+    the words already in the current session. The Worker checks the app secret, the bounds
+    and the model allow-list, takes one import from the per-address and daily allowance
+    (ADR-0003), asks the model once for words above that level that fit the purpose, most
+    important first, drops the session's words and duplicates, and returns at most the
+    maximum, with the model, AI time and token counts for the results dialog's
+    model · time · cost line (AC-21). The response is complete or an error, never a partial
+    list (AC-12). Only the learner's app holds the secret; the shared page cannot call it (AC-13).
+
+servers:
+  - url: https://vocab-photo-api.<account>.workers.dev
+    description: Production (the real host is in lib/config/vocab_api_config.dart, gitignored)
+  - url: http://localhost:8787
+    description: Local (`wrangler dev`)
+
+# Every non-public Worker route is behind the app secret, then the shared RATE_LIMITER
+# (src/index.ts `fetch`). This route is not public.
+security:
+  - AppSecret: []
+
+paths:
+  /subtitles/words:
+    post:
+      summary: Pick words from a subtitle file's dialogue lines
+      description: |
+        Order of checks (sad §6 F3, sad §8): app secret → per-IP rate limit (shared, 20/60 s) →
+        body and bounds → model allow-list → allowance (one atomic D1 batch, ADR-0003) →
+        one AI call (aborted at 225 s) → reply shape check → drop session words (any letter
+        case) and duplicates → keep the first `maximum` in rank order.
+        Nothing before the allowance step touches the allowance; a unit taken there is not
+        given back when the AI call fails. Not idempotent and not retried by the app: a new
+        call is a new import (no async actor or retry note in F3).
+      operationId: pickSubtitleWords
+      tags: [subtitles]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubtitleWordsRequest" }
+            examples:
+              understandFilm:
+                summary: A few stripped lines, level B2, maximum 20, default model
+                value:
+                  lines:
+                    - "I was reluctant to leave, but the tide was coming in."
+                    - "Grab the rope and don't let go."
+                    - "We'll wait for the fog to lift."
+                  purpose: understand_film
+                  level: B2
+                  maximum: 20
+                  model: claude-sonnet-5
+                  sessionWords: ["harbour", "tide"]
+      responses:
+        "200":
+          description: |
+            The whole list, most important first for the purpose (AC-19), at most `maximum`
+            words (AC-06), none already in `sessionWords` (AC-15). An empty `words` means no
+            word qualified (AC-20) — still a 200, with the model, time and usage.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SubtitleWordsResult" }
+              examples:
+                wordsProposed:
+                  value:
+                    words:
+                      - word: reluctant
+                        translation: "неохочий"
+                        description: "Unwilling and hesitant to do something."
+                        context: "I was reluctant to leave, but the tide was coming in."
+                    model: claude-sonnet-5
+                    timings: { aiMs: 18450 }
+                    usage: { inputTokens: 31250, outputTokens: 2140 }
+                noWordQualifies:
+                  value:
+                    words: []
+                    model: claude-haiku-4-5-20251001
+                    timings: { aiMs: 6120 }
+                    usage: { inputTokens: 30980, outputTokens: 95 }
+        "400":
+          description: |
+            F3 `else lines or session words out of bounds, or a model not on the offered list`.
+            Body not JSON, a field missing or of the wrong type, `lines` empty or a line over
+            200 characters, `sessionWords` over 500 or a word over 500 characters, `maximum`
+            outside 1–100, `level` or `purpose` not in its set → `bad_request`; `model` not on
+            the allow-list → `unknown_model` (AC-21). The allowance is not touched. The app shows
+            the AC-12 message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              examples:
+                badRequest:
+                  value: { error: "maximum must be a whole number from 1 to 100", code: bad_request }
+                unknownModel:
+                  value: { error: "This model is not offered for subtitle imports", code: unknown_model }
+        "401":
+          description: |
+            F3 `alt missing or wrong app secret` (AC-13). Answered by the shared `fetch` handler
+            before the route runs, so it carries no `code` (existing behaviour, unchanged).
+            The app shows the AC-12 message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "Unauthorized" }
+        "413":
+          description: |
+            The dialogue lines total more than 1 MB (1,048,576 bytes of UTF-8 across all lines,
+            sad §8 Abuse bounds), or the whole body is over 2 MB → `too_large`. Unreachable
+            from a file the app accepted (≤ 1 MB, AC-11: stripping only shrinks it); a backstop
+            against a leaked secret (spec §6.1). The allowance is not touched. The app shows
+            the AC-12 message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "The subtitle lines are too large", code: too_large }
+        "422":
+          description: |
+            F3 `else reply says no English lines` (AC-10): the model found no English dialogue.
+            A unit of the allowance was taken. The app shows "no English subtitles to read in
+            this file".
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "No English subtitles to read in this file", code: no_english_lines }
+        "429":
+          description: |
+            Two sources, both shown by the app as the AC-14 message ("wait a few minutes and
+            try again"):
+            - F3 `alt over 10 in this window, or over 20 today` → `too_many_imports`
+              (ADR-0003; which limit was hit is logged, not returned).
+            - The shared per-IP `RATE_LIMITER` (20 requests / 60 s, all secret-gated routes),
+              answered by the `fetch` handler with no `code` (existing behaviour, unchanged).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              examples:
+                allowance:
+                  value:
+                    error: "Too many subtitle imports. Wait a few minutes and try again."
+                    code: too_many_imports
+                rateLimiter:
+                  value: { error: "Too many requests, please slow down" }
+        "502":
+          description: |
+            F3 `alt no reply in time, reply cut off, or not a word list` (AC-12): the AI call
+            failed, took over 225 s, stopped at `max_tokens`, or its reply is not a complete
+            word list → `words_not_picked`. No partial list is ever returned. A unit of the
+            allowance was taken. The app shows the AC-12 message.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorBody" }
+              example: { error: "The words could not be picked, please try again", code: words_not_picked }
+
+components:
+  securitySchemes:
+    AppSecret:
+      type: apiKey
+      in: header
+      name: x-app-secret
+      description: |
+        The app-embedded shared secret, compared with `APP_SHARED_SECRET` in `src/index.ts`
+        (sad §8 Authentication). The app reads it from `VocabApiConfig.appSecret`.
+
+  schemas:
+    # The Worker's error body (src/index.ts, src/session/changes.ts): a human message the app
+    # may show or log, plus a snake_case `code` the app switches on. Answers from the shared
+    # `fetch` handler (401, rate-limiter 429, 404, 405) carry no `code`.
+    ErrorBody:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          description: Human-readable reason; the app maps by status/code, not by this text.
+        code:
+          type: string
+          enum: [bad_request, unknown_model, too_large, no_english_lines, too_many_imports, words_not_picked]
+
+    ImportPurpose:
+      type: string
+      enum: [understand_film, frequent_words]
+      description: |
+        CONTEXT "import purpose": `understand_film` = "understand this film" (every word above
+        the level needed to follow this film, rare ones included); `frequent_words` =
+        "frequent words for the future" (words above the level common in English generally).
+
+    EnglishLevel:
+      type: string
+      enum: [A1, A2, B1, B2, C1, C2]
+      description: CONTEXT "English level" — the learner's level; words at or below it are not proposed (AC-06).
+
+    SubtitleModel:
+      type: string
+      enum: [claude-sonnet-5, claude-sonnet-5-5, claude-haiku-4-5-20251001, claude-opus-5-5]
+      description: |
+        The Worker's allow-list (ADR-0004), as Anthropic model ids: Sonnet 5 (default, the photo
+        model), Sonnet 5.5, Haiku 4.5, Opus 5.5. Any other value → 400 `unknown_model`.
+
+    SubtitleWordsRequest:
+      type: object
+      required: [lines, purpose, level, maximum, model, sessionWords]
+      additionalProperties: false
+      properties:
+        lines:
+          type: array
+          minItems: 1
+          description: |
+            Spoken lines in file order, already stripped by the app of cue numbers, timings,
+            tags, captions, speaker labels and music marks (ADR-0002, AC-08). Lines together
+            hold at most 1,048,576 bytes of UTF-8 (else 413); the app's parser splits a longer
+            line. Treated as data only, never as instructions (spec §6.1).
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+        purpose: { $ref: "#/components/schemas/ImportPurpose" }
+        level: { $ref: "#/components/schemas/EnglishLevel" }
+        maximum:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: CONTEXT "word maximum" — a limit, not a target (AC-06, AC-09).
+        model: { $ref: "#/components/schemas/SubtitleModel" }
+        sessionWords:
+          type: array
+          maxItems: 500
+          description: |
+            The words already in the current session (AC-15); may be empty. Compared case-
+            insensitively. Bounds from the existing session limits (src/session/types.ts
+            MAX_ENTRIES, MAX_FIELD_CHARS). Never logged or stored (sad §8 Logging).
+          items:
+            type: string
+            maxLength: 500
+
+    SubtitleWord:
+      type: object
+      required: [word, translation, description, context]
+      additionalProperties: false
+      description: |
+        Same keys as a `/analyze` word, so the app reuses `VocabWord.fromJson` (CLAUDE.md
+        rule 5 — no new domain model). `description` is shown under the label "Definition" (AC-18).
+      properties:
+        word: { type: string, minLength: 1, description: The English word or short phrase. }
+        translation: { type: string, description: Ukrainian translation fitting its sense in the film. }
+        description: { type: string, description: A short English definition fitting that sense. }
+        context: { type: string, description: "The spoken line from the film it came from (AC-02, AC-08)." }
+
+    SubtitleWordsResult:
+      type: object
+      required: [words, model, timings, usage]
+      additionalProperties: false
+      properties:
+        words:
+          type: array
+          maxItems: 100
+          description: |
+            Most important first for the purpose (AC-19); never more than the request's
+            `maximum` (AC-06 — the app checks again, spec §6 "Word maximum respected").
+          items: { $ref: "#/components/schemas/SubtitleWord" }
+        model: { $ref: "#/components/schemas/SubtitleModel" }
+        timings:
+          type: object
+          required: [aiMs]
+          additionalProperties: false
+          description: Same shape as `/analyze`'s `timings`.
+          properties:
+            aiMs: { type: integer, minimum: 0, description: Time of the AI call in milliseconds. }
+        usage:
+          type: object
+          required: [inputTokens, outputTokens]
+          additionalProperties: false
+          description: |
+            Token counts of the AI call, for the app's approximate cost (ADR-0004; the price
+            table lives in the app). `inputTokens` includes cache reads and writes.
+          properties:
+            inputTokens: { type: integer, minimum: 0 }
+            outputTokens: { type: integer, minimum: 0 }
