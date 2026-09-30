@@ -7,7 +7,7 @@ acs: ["AC-18", "AC-20", "AC-21"]
 files_hint: ["lib/features/word_input/widgets/vocab_result_dialog.dart", "test/photo_words_test.dart", "test/vocab_result_dialog_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Rename Description to Definition and add the info line and empty message to the results dialog

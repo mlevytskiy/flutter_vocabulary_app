@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/models/subtitle_import_options.dart';
 import '../../../core/models/vocab_word.dart';
 
 String _formatDuration(Duration d) {
@@ -25,7 +26,47 @@ Future<List<VocabWord>?> showVocabResultDialog(
     'Sending & receiving response: ${_formatDuration(requestDuration)}',
     if (aiDuration != null) '  └ AI processing on server: ${_formatDuration(aiDuration)}',
   ];
+  return _showResultDialog(
+    context,
+    words,
+    headerText: timingLines.join('\n'),
+    emptyMessage: 'No vocabulary words found in this photo.',
+  );
+}
 
+/// The model · time · approximate cost line of a subtitle import (AC-21).
+String subtitleInfoLine({
+  required SubtitleModel model,
+  required Duration elapsed,
+  required int inputTokens,
+  required int outputTokens,
+}) {
+  final cost = model.costUsd(inputTokens: inputTokens, outputTokens: outputTokens);
+  final costText = cost < 0.001 ? '< \$0.001' : '≈ \$${cost.toStringAsFixed(3)}';
+  return '${model.label} · ${_formatDuration(elapsed)} · $costText';
+}
+
+/// The same dialog after a subtitle import (words-from-subtitles): the
+/// [infoLine] from [subtitleInfoLine] in place of the photo timing lines, and
+/// its own message when no word qualified (AC-20).
+Future<List<VocabWord>?> showSubtitleResultDialog(
+  BuildContext context,
+  List<VocabWord> words, {
+  required String infoLine,
+}) =>
+    _showResultDialog(
+      context,
+      words,
+      headerText: infoLine,
+      emptyMessage: 'No new words above your level in these subtitles.',
+    );
+
+Future<List<VocabWord>?> _showResultDialog(
+  BuildContext context,
+  List<VocabWord> words, {
+  required String headerText,
+  required String emptyMessage,
+}) {
   // Words the user hasn't crossed out; whatever is left here when the
   // dialog is closed gets added to the main screen.
   final remainingWords = List<VocabWord>.of(words);
@@ -44,7 +85,7 @@ Future<List<VocabWord>?> showVocabResultDialog(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    timingLines.join('\n'),
+                    headerText,
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade600,
@@ -53,7 +94,7 @@ Future<List<VocabWord>?> showVocabResultDialog(
                   const SizedBox(height: 12),
                   Flexible(
                     child: remainingWords.isEmpty
-                        ? const Text('No vocabulary words found in this photo.')
+                        ? Text(emptyMessage)
                         : ListView.separated(
                             shrinkWrap: true,
                             itemCount: remainingWords.length,
@@ -74,7 +115,7 @@ Future<List<VocabWord>?> showVocabResultDialog(
                                             style: const TextStyle(fontWeight: FontWeight.bold),
                                           ),
                                           if (w.translation != null) Text('Translation: ${w.translation}'),
-                                          if (w.description != null) Text('Description: ${w.description}'),
+                                          if (w.description != null) Text('Definition: ${w.description}'),
                                           if (w.context != null)
                                             Text(
                                               'Context: ${w.context}',
