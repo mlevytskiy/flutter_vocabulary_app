@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/session.dart';
+import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
 import 'services/google_translate_service.dart';
 import 'services/photo_scaler.dart';
@@ -118,5 +119,95 @@ class WordDetailModeNotifier extends _$WordDetailModeNotifier {
     state = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(prefsKey, mode.name);
+  }
+}
+
+/// Short name used across the app and the design docs.
+final subtitleImportPrefsProvider = subtitleImportPrefsNotifierProvider;
+
+/// The subtitle import values in Settings (words-from-subtitles, data-model.md
+/// Device preferences): one set of purpose, level and maximum, the "Update with
+/// each import" switch, and the model. Persisted like the word detail mode;
+/// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
+/// values are read ([loaded]). A missing or unknown value keeps its default.
+@Riverpod(keepAlive: true)
+class SubtitleImportPrefsNotifier extends _$SubtitleImportPrefsNotifier {
+  static const purposeKey = 'subtitle_purpose';
+  static const levelKey = 'subtitle_level';
+  static const maximumKey = 'subtitle_maximum';
+  static const updateEachImportKey = 'subtitle_update_each_import';
+  static const modelKey = 'subtitle_model';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  SubtitleImportPrefs build() {
+    loaded;
+    return SubtitleImportPrefs.firstLaunch;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    // A choice made before the stored values arrived wins over them.
+    if (_setByLearner) return;
+    const d = SubtitleImportPrefs.firstLaunch;
+    final purpose = prefs.getString(purposeKey);
+    final level = prefs.getString(levelKey);
+    final maximum = prefs.getInt(maximumKey);
+    final model = prefs.getString(modelKey);
+    state = SubtitleImportPrefs(
+      purpose: ImportPurpose.values.where((p) => p.name == purpose).firstOrNull ?? d.purpose,
+      level: EnglishLevel.values.where((l) => l.wire == level).firstOrNull ?? d.level,
+      maximum: maximum != null && SubtitleImportPrefs.isValidMaximum(maximum) ? maximum : d.maximum,
+      updateEachImport: prefs.getBool(updateEachImportKey) ?? d.updateEachImport,
+      model: SubtitleModel.values.where((m) => m.name == model).firstOrNull ?? d.model,
+    );
+  }
+
+  Future<void> setPurpose(ImportPurpose purpose) async {
+    _update(state.copyWith(purpose: purpose));
+    await (await SharedPreferences.getInstance()).setString(purposeKey, purpose.name);
+  }
+
+  Future<void> setLevel(EnglishLevel level) async {
+    _update(state.copyWith(level: level));
+    await (await SharedPreferences.getInstance()).setString(levelKey, level.wire);
+  }
+
+  /// False, and nothing saved, when [maximum] is outside 1–100 (AC-09).
+  Future<bool> setMaximum(int maximum) async {
+    if (!SubtitleImportPrefs.isValidMaximum(maximum)) return false;
+    _update(state.copyWith(maximum: maximum));
+    await (await SharedPreferences.getInstance()).setInt(maximumKey, maximum);
+    return true;
+  }
+
+  Future<void> setUpdateEachImport(bool on) async {
+    _update(state.copyWith(updateEachImport: on));
+    await (await SharedPreferences.getInstance()).setBool(updateEachImportKey, on);
+  }
+
+  Future<void> setModel(SubtitleModel model) async {
+    _update(state.copyWith(model: model));
+    await (await SharedPreferences.getInstance()).setString(modelKey, model.name);
+  }
+
+  /// Called at Start (F3): with "Update with each import" on, the values used
+  /// become the Settings values; with it off, nothing changes (AC-05, AC-05b).
+  Future<void> recordUsed({
+    required ImportPurpose purpose,
+    required EnglishLevel level,
+    required int maximum,
+  }) async {
+    if (!state.updateEachImport) return;
+    await setPurpose(purpose);
+    await setLevel(level);
+    await setMaximum(maximum);
+  }
+
+  void _update(SubtitleImportPrefs next) {
+    _setByLearner = true;
+    state = next;
   }
 }

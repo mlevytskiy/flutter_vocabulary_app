@@ -384,5 +384,28 @@ final wordDetailModeNotifierProvider =
 );
 
 typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+String _$subtitleImportPrefsNotifierHash() =>
+    r'1c51c1bcfd4b6dd54478eb525338c3ba7fd99fc1';
+
+/// The subtitle import values in Settings (words-from-subtitles, data-model.md
+/// Device preferences): one set of purpose, level and maximum, the "Update with
+/// each import" switch, and the model. Persisted like the word detail mode;
+/// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
+/// values are read ([loaded]). A missing or unknown value keeps its default.
+///
+/// Copied from [SubtitleImportPrefsNotifier].
+@ProviderFor(SubtitleImportPrefsNotifier)
+final subtitleImportPrefsNotifierProvider =
+    NotifierProvider<SubtitleImportPrefsNotifier, SubtitleImportPrefs>.internal(
+  SubtitleImportPrefsNotifier.new,
+  name: r'subtitleImportPrefsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$subtitleImportPrefsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$SubtitleImportPrefsNotifier = Notifier<SubtitleImportPrefs>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-05", "AC-05b", "AC-09", "AC-21"]
 files_hint: ["lib/core/models/subtitle_import_options.dart", "lib/core/providers.dart", "test/subtitle_import_prefs_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Add the import option types, the price table and the import preferences notifier

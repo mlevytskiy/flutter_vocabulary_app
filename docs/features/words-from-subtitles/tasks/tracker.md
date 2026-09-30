@@ -10,7 +10,7 @@
 | [T3](T3-worker-prompt-and-ai-stub.md) | Build the pick-words prompt, the per-model request and the reply check, with a local AI stub for tests | app | Maksym | M | — | done |
 | [T4](T4-worker-subtitles-route.md) | Serve POST /subtitles/words per the contract and register it behind the app secret | ports | Maksym | M | T2, T3 | done |
 | [T5](T5-subtitle-parser.md) | Strip SRT and VTT files to dialogue lines in pure Dart | domain | Maksym | M | — | done |
-| [T6](T6-import-options-and-prefs.md) | Add the import option types, the price table and the import preferences notifier | domain | Maksym | M | — | todo |
+| [T6](T6-import-options-and-prefs.md) | Add the import option types, the price table and the import preferences notifier | domain | Maksym | M | — | done |
 | [T7](T7-subtitle-words-service.md) | Call POST /subtitles/words from the app and map every answer to its message | infra | Maksym | M | T6 | todo |
 | [T8](T8-settings-subtitle-controls.md) | Add the subtitle import controls and the model picker to Settings | ui | Maksym | M | T6 | todo |
 | [T9](T9-result-dialog-subtitle-mode.md) | Rename Description to Definition and add the info line and empty message to the results dialog | ui | Maksym | S | T6 | todo |
