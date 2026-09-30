@@ -7,7 +7,7 @@ acs: ["AC-13", "AC-14"]
 files_hint: ["vocab-photo-api/README.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T12 — Document the subtitle route, its migration and the AI stub in the Worker README

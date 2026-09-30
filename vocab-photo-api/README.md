@@ -12,6 +12,7 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 |---|---|---|
 | `POST /analyze` | secret + rate limit | photo in, marked words out |
 | `POST /define` | secret + rate limit | a word's dictionary senses (definition-mode) |
+| `POST /subtitles/words` | secret + rate limit + subtitle import allowance | a subtitle file's dialogue lines in, ranked words out (words-from-subtitles) |
 | `POST /sessions` | secret + rate limit | publish (or republish) a word list, get a link |
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
 | `GET /s/<id>` | **public** | the page a person reads |
@@ -103,6 +104,62 @@ useful for telling apart "the model is slow" from "the phone's network is slow" 
 Flutter app subtracts this from its own end-to-end request time to show both.
 
 Error response (non-2xx): `{ "error": "<message>" }`
+
+## Endpoint: `POST /subtitles/words` (words-from-subtitles)
+
+The contract is `docs/features/words-from-subtitles/contracts/openapi.yaml`; the code is
+`src/subtitles/`. The app strips a subtitle file to its dialogue lines on the phone (ADR-0002)
+and sends them as JSON with the `x-app-secret` header:
+
+```json
+{ "lines": ["I was reluctant to leave, but the tide was coming in."],
+  "purpose": "understand_film", "level": "B2", "maximum": 20,
+  "model": "claude-sonnet-5", "sessionWords": ["tide"] }
+```
+
+- `lines`: 1 or more strings of 1–200 characters, at most 1 MB (1,048,576 bytes) together.
+- `purpose`: `understand_film` | `frequent_words`. `level`: `A1`…`C2`. `maximum`: 1–100.
+- `model`: one of the allow-list in `src/subtitles/prompt.ts` (`SUBTITLE_MODELS`):
+  `claude-sonnet-5` (the default in the app), `claude-sonnet-5-5`, `claude-haiku-4-5-20251001`,
+  `claude-opus-5-5`. Each model's reasoning settings sit in `MODEL_SETTINGS` in the same file.
+- `sessionWords`: the words already in the session, at most 500 of at most 500 characters.
+  They are compared case-insensitively and never sent to the AI or logged.
+
+One AI call ranks up to `maximum + 10` candidates most important first; the Worker drops the
+session's words and repeats and returns the first `maximum`:
+
+```json
+{ "words": [{ "word": "reluctant", "translation": "неохочий",
+              "description": "Unwilling and hesitant to do something.",
+              "context": "I was reluctant to leave, but the tide was coming in." }],
+  "model": "claude-sonnet-5", "timings": { "aiMs": 18450 },
+  "usage": { "inputTokens": 31250, "outputTokens": 2140 } }
+```
+
+An empty `words` list means nothing qualified. Errors are `{ "error": "...", "code": "..." }`:
+
+| Status | `code` | When |
+|---|---|---|
+| 400 | `bad_request` | a field missing or out of bounds (the allowance is not touched) |
+| 400 | `unknown_model` | `model` is not on the allow-list |
+| 401 | — | no or wrong `x-app-secret` |
+| 413 | `too_large` | the lines total more than 1 MB, or the body more than 2 MB |
+| 422 | `no_english_lines` | the model found no English dialogue |
+| 429 | `too_many_imports` | over 10 imports in this address's 10-minute window, or over 20 today from all addresses |
+| 429 | — | the shared per-IP rate limiter (see Rate limiting) |
+| 502 | `words_not_picked` | the AI call failed, took over 225 s, was cut off or refused, or its reply was not a complete word list |
+
+**The allowance** (ADR-0003, `src/subtitles/allowance.ts`): each import takes one unit from its
+address's fixed 10-minute window and one from the UTC day's total, in one D1 batch, before the
+AI call; a unit is not given back when the call fails. Raise `SUBTITLE_WINDOW_LIMIT` (10) or
+`SUBTITLE_DAY_LIMIT` (20) there. The address is stored only as its SHA-256; the daily clean-up
+deletes every window before the current one, so no hash lives a day. The day totals hold no
+address and stay.
+
+**Logs:** one `subtitle import` line per import (model, outcome, AI ms, words returned, input
+and output tokens), or `subtitle import refused` (with `window` / `day`) / `subtitle import
+failed` (with the reason). Never the lines or the session words. Spend is in the Anthropic
+console.
 
 ## Shared sessions
 
@@ -431,6 +488,7 @@ then apply the schema:
 npx wrangler d1 create vocab-sessions --location weur   # prints an id → replace REPLACE_WITH_VOCAB_SESSIONS_DATABASE_ID
 npx wrangler d1 migrations apply DB --remote            # --local for wrangler dev
 # Revert a migration by hand (never picked up by `migrations apply`):
+npx wrangler d1 execute DB --local --file migrations/down/0002_subtitle_imports.sql   # newest first
 npx wrangler d1 execute DB --local --file migrations/down/0001_sessions.sql
 ```
 
@@ -545,6 +603,32 @@ to KV before the release import into D1 on first open.
    `src/session/store.ts`) and `SESSIONS` in `src/env.ts`, and deploy.
    Put a reminder in the calendar on release day.
 
+### Deploying words-from-subtitles (checklist)
+
+Release order (sad §7): **D1 → Worker → app build**. An older app never calls the new route.
+
+1. **D1.** Apply `0002_subtitle_imports` (the allowance tables):
+
+   ```bash
+   npx wrangler d1 migrations apply DB --remote
+   npx wrangler d1 migrations list DB --remote      # → "No migrations to apply!"
+   ```
+
+2. **Worker.** `npm test && npm run typecheck && npm run deploy`. Nothing new to configure:
+   the route uses `ANTHROPIC_API_KEY`, `APP_SHARED_SECRET`, the existing cron and the existing
+   rate limiter. `ANTHROPIC_API_URL` and `SUBTITLE_AI_TIMEOUT_MS` are for tests only; leave them
+   unset in production.
+3. **Smoke-test the live Worker** (one import of the daily 20):
+
+   ```bash
+   curl -s https://<worker>/subtitles/words -H "x-app-secret: $APP_SHARED_SECRET" \
+     -H "content-type: application/json" \
+     -d '{"lines":["I was reluctant to leave, but the tide was coming in."],"purpose":"understand_film","level":"B2","maximum":3,"model":"claude-sonnet-5","sessionWords":[]}'
+   ```
+
+   It answers `200` with at most 3 words; `wrangler tail` shows one `subtitle import` line.
+4. **App.** Release the build with the "From subtitles" speed-dial item.
+
 ### KPIs (spec §7, sad §7)
 
 A weekly manual check; no automated alerts. The D1 counts cover live sessions only (the cron
@@ -601,7 +685,15 @@ applied), runs
 and seeding the local state `wrangler dev` serves from) live in `test/helpers.mjs`. The tests only work through
 `npm test`, because they need the address it passes in. The dictionary is a local stub
 (`test/mw-stub.mjs`, passed to `wrangler dev` as `MW_API_URL` and a fake `MW_API_KEY`), so no
-test uses the real Merriam-Webster quota, even with a real key in `.dev.vars`.
+test uses the real Merriam-Webster quota, even with a real key in `.dev.vars`. The AI behind
+`POST /subtitles/words` is a local stub too (`test/anthropic-stub.mjs`, passed as
+`ANTHROPIC_API_URL` with a fake `ANTHROPIC_API_KEY`): the first dialogue line picks its reply
+(`STUB:empty`, `STUB:no-english`, `STUB:cutoff`, `STUB:malformed`, `STUB:refusal`,
+`STUB:error`, `STUB:slow:<ms>`), and `GET <stub>/__calls` counts the calls.
+`SUBTITLE_AI_TIMEOUT_MS=3000` shortens the 225 s abort for the slow case. Code that only needs
+`DB.prepare().bind()` and `batch()` (the allowance) is unit-tested against the real
+migrations in `node:sqlite` through `test/sqlite-d1.mjs`, imported straight from `src/*.ts`
+(Node 23 strips the types).
 
 ## Rate limiting
 
