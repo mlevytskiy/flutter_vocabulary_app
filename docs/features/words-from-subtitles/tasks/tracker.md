@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|---|
 | [T1](T1-promote-allowance-migration.md) | Promote the subtitle allowance migration into the Worker | migration | Maksym | S | — | done |
 | [T2](T2-worker-allowance.md) | Take one subtitle import from the address window and the daily cap, and clean up old windows | infra | Maksym | M | T1 | done |
-| [T3](T3-worker-prompt-and-ai-stub.md) | Build the pick-words prompt, the per-model request and the reply check, with a local AI stub for tests | app | Maksym | M | — | todo |
+| [T3](T3-worker-prompt-and-ai-stub.md) | Build the pick-words prompt, the per-model request and the reply check, with a local AI stub for tests | app | Maksym | M | — | done |
 | [T4](T4-worker-subtitles-route.md) | Serve POST /subtitles/words per the contract and register it behind the app secret | ports | Maksym | M | T2, T3 | todo |
 | [T5](T5-subtitle-parser.md) | Strip SRT and VTT files to dialogue lines in pure Dart | domain | Maksym | M | — | todo |
 | [T6](T6-import-options-and-prefs.md) | Add the import option types, the price table and the import preferences notifier | domain | Maksym | M | — | todo |

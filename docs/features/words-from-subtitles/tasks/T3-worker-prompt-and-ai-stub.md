@@ -7,7 +7,7 @@ acs: ["AC-06", "AC-07", "AC-08", "AC-19", "AC-21"]
 files_hint: ["vocab-photo-api/src/subtitles/prompt.ts", "vocab-photo-api/src/env.ts", "vocab-photo-api/scripts/test.mjs", "vocab-photo-api/test/anthropic-stub.mjs", "vocab-photo-api/test/subtitles-prompt.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Build the pick-words prompt, the per-model request and the reply check, with a local AI stub for tests

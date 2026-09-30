@@ -1,5 +1,7 @@
 export interface Env {
   ANTHROPIC_API_KEY: string;
+  /** Overrides the Anthropic API's base URL for subtitle imports; unset in production. The tests point it at a local stub. */
+  ANTHROPIC_API_URL?: string;
   APP_SHARED_SECRET: string;
   RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
   /** Page writes per IP: save cell, add row, delete row, define (good-looking-web, sad §8). */

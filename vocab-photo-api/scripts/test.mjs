@@ -3,7 +3,8 @@
 // D1 migrations applied), waits until it answers, runs `node --test` over
 // test/**/*.test.mjs against it, then stops it. No package beyond wrangler
 // itself (sad §10). The dictionary is a local stub (`test/mw-stub.mjs`), so no
-// test spends the real Merriam-Webster quota.
+// test spends the real Merriam-Webster quota. The AI behind subtitle imports is
+// a local stub too (`test/anthropic-stub.mjs`), so no test spends Anthropic credit.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
@@ -11,6 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startMwStub } from "../test/mw-stub.mjs";
+import { startAnthropicStub } from "../test/anthropic-stub.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -56,6 +58,7 @@ const inspectorPort = await freePort();
 const baseUrl = `http://127.0.0.1:${port}`;
 const stateDir = mkdtempSync(join(tmpdir(), "vocab-photo-api-test-"));
 const mwStub = await startMwStub();
+const aiStub = await startAnthropicStub();
 
 const migrate = spawnSync(
   "npx",
@@ -81,6 +84,8 @@ const worker = spawn(
     // After --env-file, so these win over a real key in .dev.vars.
     "--var", `MW_API_URL:${mwStub.url}`,
     "--var", "MW_API_KEY:test-key",
+    "--var", `ANTHROPIC_API_URL:${aiStub.url}`,
+    "--var", "ANTHROPIC_API_KEY:test-key",
     // GET /__scheduled runs the cron handler (the daily clean-up).
     "--test-scheduled",
     "--show-interactive-dev-session=false",
@@ -102,6 +107,7 @@ function stopWorker() {
   }
   rmSync(stateDir, { recursive: true, force: true });
   mwStub.close();
+  aiStub.close();
 }
 process.on("SIGINT", () => {
   stopWorker();
@@ -123,6 +129,7 @@ try {
       VOCAB_API_DEV_VARS: join(root, devVars),
       VOCAB_API_STATE_DIR: stateDir,
       VOCAB_API_MW_STUB_URL: mwStub.url,
+      VOCAB_API_AI_STUB_URL: aiStub.url,
     },
   });
   if (code !== 0) console.error("--- wrangler dev output ---\n" + log);
