@@ -7,7 +7,7 @@ acs: ["AC-06", "AC-10", "AC-12", "AC-13", "AC-14", "AC-15", "AC-19", "AC-20", "A
 files_hint: ["vocab-photo-api/src/subtitles/routes.ts", "vocab-photo-api/src/index.ts", "vocab-photo-api/test/subtitles.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Serve POST /subtitles/words per the contract and register it behind the app secret

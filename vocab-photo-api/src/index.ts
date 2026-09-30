@@ -9,6 +9,7 @@ import { logEvent } from "./log";
 import { defineRoutes } from "./define";
 import { deleteExpiredSessions } from "./session/cleanup";
 import { assetRoutes } from "./session/assets";
+import { subtitleRoutes } from "./subtitles/routes";
 
 export type { Env } from "./env";
 
@@ -250,7 +251,7 @@ async function handleAnalyze({ request, env, url }: RouteContext): Promise<Respo
 }
 
 // Every route declares whether it is public. Anything not marked `public: true`
-// -- /analyze, /define, and the session writes -- is behind the shared secret and the
+// -- /analyze, /define, /subtitles/words and the session writes -- is behind the shared secret and the
 // per-IP rate limiter. The shared page, its sources and its script are public by
 // definition: the link is the only credential (docs/idea-brief.md §5). The
 // page's own writes are public too, and those marked `pageWrite` share the
@@ -263,6 +264,7 @@ const ROUTES: RouteDefinition[] = [
   ...changesRoutes,
   ...autofillRoutes,
   ...assetRoutes,
+  ...subtitleRoutes,
 ];
 
 export default {

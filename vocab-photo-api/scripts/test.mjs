@@ -86,6 +86,8 @@ const worker = spawn(
     "--var", "MW_API_KEY:test-key",
     "--var", `ANTHROPIC_API_URL:${aiStub.url}`,
     "--var", "ANTHROPIC_API_KEY:test-key",
+    // The stub's slow reply (6 s) must outlast this, so a test can see the 225 s abort.
+    "--var", "SUBTITLE_AI_TIMEOUT_MS:3000",
     // GET /__scheduled runs the cron handler (the daily clean-up).
     "--test-scheduled",
     "--show-interactive-dev-session=false",
