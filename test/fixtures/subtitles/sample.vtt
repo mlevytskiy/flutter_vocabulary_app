@@ -1,0 +1,19 @@
+WEBVTT
+Kind: captions
+Language: en
+
+NOTE This note is not dialogue.
+
+STYLE
+::cue { color: yellow }
+
+intro
+00:00:01.000 --> 00:00:03.500 align:start position:10%
+<v Mary>I was reluctant to leave,</v>
+<c.yellow>but the tide was coming in.</c>
+
+00:04.000 --> 00:06.000
+(THUNDER RUMBLING)
+
+00:00:06.500 --> 00:00:09.000
+&gt;&gt; Grab the rope &amp; hold on!

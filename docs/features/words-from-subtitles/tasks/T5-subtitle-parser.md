@@ -7,7 +7,7 @@ acs: ["AC-08", "AC-10"]
 files_hint: ["lib/core/services/subtitle_parser.dart", "test/subtitle_parser_test.dart", "test/fixtures/subtitles/"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Strip SRT and VTT files to dialogue lines in pure Dart
