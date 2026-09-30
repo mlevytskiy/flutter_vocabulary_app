@@ -423,7 +423,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
             )
           : null,
       appBar: AppBar(
-        title: const Text('Words Table'),
+        title: const Text('Words'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           Padding(
