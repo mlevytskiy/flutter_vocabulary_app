@@ -27,6 +27,11 @@ Committed approach: everything happens in dialogs over the main screen. A new it
 - Decision (owner, ux-flows 2026-09-30): no import screen — an import dialog, a loading dialog and the results dialog, all over the main screen. To try again, the learner opens the import dialog from the speed dial again.
 - Decision (owner, ux-flows 2026-09-30): Settings keeps the default purpose, level and maximum plus a "remember my last choices" switch, on by default. With it on, the import dialog opens with the purpose, level and maximum used last time; with it off, it always opens with the defaults. The file itself is never remembered.
 - Decision (owner, critic resolution 2026-09-30): one new app package for opening files from the phone is approved (CLAUDE.md rule 5); which one is chosen in `design`.
+- Decision (owner, design 2026-09-30): Settings lets the learner choose which AI model picks the subtitle words — Sonnet 5 (the default, the same model as the photo import), Sonnet 5.5, Haiku 4.5 or Opus 5.5 — so the owner can compare them after release. The choice applies to subtitle imports only (AC-21).
+- Decision (owner, design 2026-09-30): the subtitle results dialog shows one small line with the model, the time taken and the approximate cost of the import, so models can be compared; this replaces the "drops the photo-only timing line" part of the AC-20 decision (AC-20, AC-21).
+- Decision (owner, design 2026-09-30): an import may take longer than a minute; the 100-word time target is removed from §6 and only measured per model. The 20-word target stays.
+- Decision (owner, design 2026-09-30): besides the per-address allowance, all subtitle imports together are capped at 20 per UTC day, so a leaked app secret used from many addresses still has a daily ceiling (§6, AC-14).
+- Decision (owner, design 2026-09-30): the app reads the subtitle file and sends only its dialogue lines to the service, so the service's shape check covers a bounded list of short lines, not the subtitle format itself (§6.1).
 
 ## 2. Goals
 
@@ -183,17 +188,23 @@ Committed approach: everything happens in dialogs over the main screen. A new it
 ### AC-20 (US-04, US-06) — happy
 **Given** a valid English subtitle file in which no word qualifies, because every word is at or below the chosen level or already in the current session
 **When** the learner imports it
-**Then** the results dialog opens without the photo timing line and says "No new words above your level in these subtitles.", and Done leaves the current session unchanged
+**Then** the results dialog opens without the photo timing line (showing only the model, time and cost line of AC-21) and says "No new words above your level in these subtitles.", and Done leaves the current session unchanged
+
+### AC-21 (US-02) — happy
+**Given** a learner who chose Haiku 4.5 as the subtitle model in Settings
+**When** the learner runs a subtitle import and later a photo import
+**Then** the subtitle words are picked by Haiku 4.5 and the results dialog shows a line naming Haiku 4.5 with the time taken and the approximate cost of the import; the photo import still uses its usual model; a model that is not on the offered list is refused by the service
 
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
 |---|---|---|
-| Time to results dialog, feature-length film (≤ 2 h of subtitles), maximum 20 | p95 ≤ 30 s | on the phone, from tapping start in the import dialog to the dialog opening, over 5 test films |
-| Time to results dialog, feature-length film, maximum 100 | p95 ≤ 60 s | same, over 5 test films |
+| Time to results dialog, feature-length film (≤ 2 h of subtitles), maximum 20 | p95 ≤ 30 s with the default model (Sonnet 5) | on the phone, from tapping start in the import dialog to the dialog opening, over 5 test films |
+| Time to results dialog, feature-length film, maximum 100 | no hard target (owner decision 2026-09-30); measured per model and shown in the results dialog (AC-21) | same 5 test films, once per offered model |
 | Largest subtitle file accepted | exactly 1 MB (a 2-hour film is typically 50–150 KB) | a 1 MB test file imports; a 1 MB + 1 byte file gets the AC-11 message naming 1 MB |
 | Complete-or-nothing results | 0 partial lists shown | device pass: 5 test films at maximum 100, each dialog shows the full list or the AC-12 message |
 | Import allowance per app address | ≤ 10 subtitle imports per 10 minutes | the 11th import in 10 minutes gets the AC-14 message |
+| Import allowance across all addresses | ≤ 20 subtitle imports per UTC day (owner decision 2026-09-30) | the 21st import of a UTC day, from any address, gets the AC-14 message |
 | Word maximum respected | 100% of imports propose ≤ the maximum | automated check on the proposed list before the dialog opens |
 
 ## 6.1 Security / privacy
@@ -202,7 +213,7 @@ Committed approach: everything happens in dialogs over the main screen. A new it
 - **Personal data touched:** none new. The default and last-used import purpose, English level and word maximum, and the remember switch, are stored on the device as preferences only.
 - **AuthZ/AuthN impact:** the word picking from subtitles accepts only requests from the learner's app, checked the same way as the photo word picking. Nothing on the shared page can reach it.
 - **Abuse cases:**
-  - Free AI through a leaked app secret (the sharpest vector — the secret ships inside the app): the service accepts only subtitle-shaped text up to the size limit, applies the per-address import allowance (AC-14), and returns only picked words, so it cannot be used as a general AI.
+  - Free AI through a leaked app secret (the sharpest vector — the secret ships inside the app): the service accepts only a bounded list of short dialogue lines (the app strips the file first), only the models on the offered list, applies the per-address import allowance and the daily cap across all addresses (AC-14), and returns only picked words, so it cannot be used as a general AI.
   - Instructions hidden in the subtitle text ("ignore the above…"): the text is treated only as film dialogue; the reply is a word list and nothing else.
   - Very large or repeated uploads to run up cost: refused above the size limit (AC-11) and over the allowance (AC-14).
   - Swearing on a shared page the partner opens: slang and swearing may be proposed (owner decision), but the learner removes them in the results dialog before anything reaches the session.
