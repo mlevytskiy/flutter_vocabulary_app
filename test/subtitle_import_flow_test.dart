@@ -230,7 +230,7 @@ void main() {
     expect(added, isEmpty);
   });
 
-  testWidgets('the speed dial offers From subtitles next to Take Photo', (tester) async {
+  testWidgets('the speed dial offers From subtitles next to Get words from photo', (tester) async {
     var tapped = false;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
@@ -243,7 +243,7 @@ void main() {
     ));
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
-    expect(find.text('Take Photo'), findsOneWidget);
+    expect(find.text('Get words from photo'), findsOneWidget);
     await tester.tap(find.text('From subtitles'));
     await tester.pumpAndSettle();
     expect(tapped, isTrue);

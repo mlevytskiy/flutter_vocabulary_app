@@ -36,7 +36,7 @@ class WordInputSpeedDial extends StatelessWidget {
       children: [
         SpeedDialChild(
           child: const Icon(Icons.camera_alt),
-          label: 'Take Photo',
+          label: 'Get words from photo',
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
           onTap: onTakePhoto,

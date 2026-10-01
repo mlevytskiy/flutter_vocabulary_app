@@ -372,7 +372,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final showDefinition = detailMode != WordDetailMode.translation;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Words Table'),
+        title: const Text('Words'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           Padding(
