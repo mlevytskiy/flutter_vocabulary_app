@@ -7,7 +7,7 @@ acs: ["AC-09"]
 files_hint: ["pubspec.yaml", "pubspec.lock", "lib/main.dart", "docs/architecture.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Turn on the Android Photo Picker for gallery picks
@@ -26,10 +26,10 @@ status: "todo"
 
 **Done when:** `image_picker_android` and `image_picker_platform_interface` are direct dependencies in caret ranges matching the lockfile, `main.dart` sets `useAndroidPhotoPicker = true` on Android only, the Android manifest gains no permission, and `flutter analyze` (including `depend_on_referenced_packages`) is clean.
 
-- [ ] `flutter pub get` succeeds and `pubspec.lock` shows both packages as `direct main` at the versions already resolved
-- [ ] `flutter analyze` is clean, with no `depend_on_referenced_packages` warning
-- [ ] `git diff android/app/src/main/AndroidManifest.xml ios/Runner/Info.plist` is empty
-- [ ] lint clean (`flutter analyze`)
+- [x] `flutter pub get` succeeds and `pubspec.lock` shows both packages as `direct main` at the versions already resolved
+- [x] `flutter analyze` is clean, with no `depend_on_referenced_packages` warning
+- [x] `git diff android/app/src/main/AndroidManifest.xml ios/Runner/Info.plist` is empty
+- [x] lint clean (`flutter analyze`)
 
 ## Notes
 

@@ -112,7 +112,10 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
    exactly: `go_router`, `go_router_builder`, `flutter_riverpod`, `riverpod_annotation`,
    `riverpod_generator`, `build_runner`, `shared_preferences`, `path_provider`,
    `isar_community`, `isar_community_flutter_libs`, `isar_community_generator` (task-03, D8),
-   `flutter_tts` (task-04).
+   `flutter_tts` (task-04), and `image_picker_android` + `image_picker_platform_interface`
+   (photo-from-gallery, [ADR-0001](features/photo-from-gallery/adr/0001-turn-on-the-android-photo-picker-for-gallery-picks.md):
+   already transitive through `image_picker`, made direct only so `main.dart` can set
+   `useAndroidPhotoPicker = true`).
 
    **Why the Isar packages are pinned to `3.3.0-dev.1`, exactly.** Every isar_community release
    from `3.3.0-dev.2` up is built against `build ^3/^4` and `source_gen ^4`, while this project's
