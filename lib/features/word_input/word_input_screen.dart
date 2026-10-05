@@ -38,6 +38,11 @@ import 'word_input_notifier.dart';
 /// cap the Worker keeps the first 20 in reading order (D2 in docs/roadmap.md).
 const int _photoWordCap = 20;
 
+/// A gallery photo the picker or the scaler could not use
+/// (photo-from-gallery AC-07, AC-08).
+const String _galleryPhotoUnusable =
+    'The photo from the gallery could not be used. Try another one.';
+
 /// One photo word as a word row (definition-mode T9). The photo analysis's
 /// context description is the row's definition in every mode -- the mode only
 /// decides what is shown -- and it no longer stands in for a missing
@@ -1053,10 +1058,39 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       case ImageSource.camera:
         await _takePhotoFromCamera();
       case ImageSource.gallery:
-        // photo-from-gallery T5: pick one photo from the gallery. Until then
-        // choosing Gallery does nothing.
-        return;
+        await _pickPhotoFromGallery();
     }
+  }
+
+  /// Gallery: the phone's own picker, one photo, no metadata, so iOS never
+  /// asks for library access (photo-from-gallery sad §4, AC-06, AC-07, AC-09).
+  Future<void> _pickPhotoFromGallery() async {
+    final picker = ref.read(imagePickerProvider);
+    XFile? picked;
+    try {
+      picked = await picker.pickImage(
+        source: ImageSource.gallery,
+        requestFullMetadata: false,
+      );
+    } catch (e) {
+      // For example an online-only photo that fails to download.
+      debugPrint('VOCAB: gallery pick failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(_galleryPhotoUnusable)),
+        );
+      }
+      return;
+    }
+    if (picked == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No photo was picked')),
+        );
+      }
+      return;
+    }
+    await _processPickedPhoto(picked, source: ImageSource.gallery);
   }
 
   Future<void> _takePhotoFromCamera() async {
@@ -1088,7 +1122,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     await _processPickedPhoto(picked);
   }
 
-  Future<void> _processPickedPhoto(XFile picked) async {
+  /// [source] only picks the text when the photo cannot be read: the gallery
+  /// text for a gallery photo, "Error analyzing photo" for a camera one.
+  Future<void> _processPickedPhoto(XFile picked,
+      {ImageSource source = ImageSource.camera}) async {
     setState(() {
       _isAnalyzingPhoto = true;
     });
@@ -1148,7 +1185,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       debugPrint('VOCAB: processing failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error analyzing photo: $e')),
+          SnackBar(
+              content: Text(source == ImageSource.gallery
+                  ? _galleryPhotoUnusable
+                  : 'Error analyzing photo: $e')),
         );
       }
     } finally {

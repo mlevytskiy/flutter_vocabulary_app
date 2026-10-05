@@ -3,7 +3,8 @@
 // and the kept-photo store faked (sad §6 flow 1).
 //
 // T4: the one-import-at-a-time guard, the source choice, Camera, and a closed
-// choice. T5 adds the Gallery cases to this file, reusing the same harness.
+// choice. T5: the Gallery cases (pick, nothing picked, unusable photo, kept
+// or dropped source photo) and the camera scaler text, on the same harness.
 import 'dart:async';
 import 'dart:io';
 
@@ -118,6 +119,8 @@ VocabAnalysisResult result(List<String> words) => VocabAnalysisResult(
     );
 
 const stillAnalysing = 'The current photo is still being analysed';
+const galleryUnusable =
+    'The photo from the gallery could not be used. Try another one.';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -212,6 +215,35 @@ void main() {
   }
 
   final sourceChoice = find.byType(SimpleDialog);
+  final resultsDialog = find.byType(AlertDialog);
+
+  SessionSnapshot snapshot() {
+    final s = container.read(wordInputNotifierProvider).value!;
+    return SessionSnapshot(
+      [for (final p in s.words) p.word],
+      [for (final p in s.words) p.sourceId],
+      [for (final p in s.sources) p.id],
+    );
+  }
+
+  /// Gallery, then the Worker answers with [words] and the results dialog
+  /// opens.
+  Future<void> pickFromGalleryAndAnswer(
+      WidgetTester tester, List<String> words) async {
+    picker.next = XFile('page.jpg');
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+    expect(worker.limits, [20]);
+    worker.pending!.complete(result(words));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(resultsDialog, findsOneWidget);
+  }
+
+  Future<void> settleDialog(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+  }
 
   testWidgets('a tap opens the source choice and nothing else (AC-01)',
       (tester) async {
@@ -292,4 +324,213 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await unmount(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // ---- T5: Gallery ----
+
+  testWidgets(
+      'a gallery photo reaches analyzePhoto(limit: 20) and Done keeps its words '
+      'with the photo as their source, as for the camera (AC-03, AC-04)',
+      (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    picker.next = XFile('page.jpg');
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+
+    expect(sourceChoice, findsNothing);
+    expect(picker.sources, [ImageSource.gallery]);
+    expect(scaler.paths.first, 'page.jpg');
+    expect(worker.limits, [20]);
+    expect(find.text('Analyzing photo...'), findsOneWidget);
+
+    worker.pending!.complete(result(['reluctant', 'candid']));
+    await settleDialog(tester);
+    expect(find.text('Analyzing photo...'), findsNothing);
+    expect(resultsDialog, findsOneWidget);
+    expect(
+        find.descendant(of: resultsDialog, matching: find.text('reluctant')),
+        findsOneWidget);
+
+    await tester.tap(find.text('Done'));
+    await settleDialog(tester);
+
+    final after = snapshot();
+    expect(after.sources, [...before.sources, 'photo-1']);
+    expect(after.words, containsAll(['reluctant', 'candid']));
+    for (final w in ['reluctant', 'candid']) {
+      expect(after.sourceIds[after.words.indexOf(w)], 'photo-1',
+          reason: '$w points at the gallery photo');
+    }
+    expect(photos.kept, 1);
+    expect(photos.deleted, isEmpty);
+    expect(find.byType(SnackBar), findsNothing);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('the gallery pick asks for no metadata (AC-09)', (tester) async {
+    await pumpScreen(tester);
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+
+    expect(picker.calls, [
+      {'source': ImageSource.gallery, 'requestFullMetadata': false},
+    ]);
+    worker.pending!.completeError(VocabPhotoException('offline'));
+    await settleDialog(tester);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'removing every word from a gallery photo keeps no source photo (AC-11)',
+      (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    await pickFromGalleryAndAnswer(tester, ['reluctant']);
+
+    await tester.tap(find.descendant(
+        of: resultsDialog, matching: find.byTooltip('Skip this word')));
+    await tester.pump();
+    await tester.tap(find.text('Done'));
+    await settleDialog(tester);
+
+    expect(resultsDialog, findsNothing);
+    expect(photos.deleted.map((p) => p.id), ['photo-1']);
+    expect(snapshot(), before);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'cancelling the results dialog of a gallery photo keeps no source photo '
+      '(AC-11)', (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    await pickFromGalleryAndAnswer(tester, ['reluctant']);
+
+    // Tap outside the dialog, on the barrier.
+    await tester.tapAt(const Offset(10, 10));
+    await settleDialog(tester);
+
+    expect(resultsDialog, findsNothing);
+    expect(photos.deleted.map((p) => p.id), ['photo-1']);
+    expect(snapshot(), before);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'nothing picked says "No photo was picked", never the camera, and '
+      'changes nothing (AC-06)', (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    picker.next = null;
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+
+    expect(picker.sources, [ImageSource.gallery]);
+    expect(find.text('No photo was picked'), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(SnackBar),
+            matching:
+                find.textContaining(RegExp('camera|taken', caseSensitive: false))),
+        findsNothing);
+    expect(worker.limits, isEmpty);
+    expect(photos.kept, 0);
+    expect(snapshot(), before);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'a throwing gallery picker shows the gallery text, adds nothing and '
+      'keeps no photo (AC-07)', (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    picker.error = PlatformException(code: 'invalid_image');
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+
+    expect(find.text(galleryUnusable), findsOneWidget);
+    expect(find.textContaining('camera'), findsNothing);
+    expect(worker.limits, isEmpty);
+    expect(photos.kept, 0);
+    expect(snapshot(), before);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'a gallery photo the scaler cannot read shows the gallery text, adds '
+      'nothing and keeps no photo (AC-07, AC-08)', (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    scaler.error = Exception('cannot decode');
+    picker.next = XFile('tall.png');
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+
+    expect(scaler.paths, ['tall.png']);
+    expect(find.text(galleryUnusable), findsOneWidget);
+    expect(find.textContaining('Error analyzing photo'), findsNothing);
+    expect(find.text('Analyzing photo...'), findsNothing);
+    expect(worker.limits, isEmpty);
+    expect(photos.kept, 0);
+    expect(snapshot(), before);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'a Worker failure on a gallery photo keeps its own message and deletes '
+      'the kept copy (sad §4)', (tester) async {
+    await pumpScreen(tester);
+    final before = snapshot();
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Gallery');
+
+    worker.pending!.completeError(VocabPhotoException('No connection'));
+    await settleDialog(tester);
+
+    expect(find.text('No connection'), findsOneWidget);
+    expect(find.text(galleryUnusable), findsNothing);
+    expect(photos.deleted.map((p) => p.id), ['photo-1']);
+    expect(snapshot(), before);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'a camera photo the scaler cannot read still says "Error analyzing '
+      'photo" (camera texts unchanged)', (tester) async {
+    await pumpScreen(tester);
+    scaler.error = Exception('cannot decode');
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Camera');
+
+    expect(find.text('Error analyzing photo: Exception: cannot decode'),
+        findsOneWidget);
+    expect(find.text(galleryUnusable), findsNothing);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+}
+
+/// What a test compares before and after an import: the session's words, the
+/// source each row points at, and the session's source photos.
+class SessionSnapshot {
+  SessionSnapshot(this.words, this.sourceIds, this.sources);
+  final List<String> words;
+  final List<String?> sourceIds;
+  final List<String> sources;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SessionSnapshot &&
+      _eq(words, other.words) &&
+      _eq(sourceIds, other.sourceIds) &&
+      _eq(sources, other.sources);
+
+  @override
+  int get hashCode => Object.hashAll([...words, ...sourceIds, ...sources]);
+
+  @override
+  String toString() => 'words=$words sourceIds=$sourceIds sources=$sources';
+
+  static bool _eq(List<Object?> a, List<Object?> b) =>
+      a.length == b.length &&
+      [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
 }
