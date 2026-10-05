@@ -39,6 +39,25 @@ final photoScalerProvider = Provider<PhotoScaler>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PhotoScalerRef = ProviderRef<PhotoScaler>;
+String _$imagePickerHash() => r'7740c09b2d6b395ce466f1b72b93b31db7bfd740';
+
+/// Camera and gallery picks for the photo chain (photo-from-gallery T2);
+/// a provider so widget tests can swap in a fake picker.
+///
+/// Copied from [imagePicker].
+@ProviderFor(imagePicker)
+final imagePickerProvider = AutoDisposeProvider<ImagePicker>.internal(
+  imagePicker,
+  name: r'imagePickerProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$imagePickerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ImagePickerRef = AutoDisposeProviderRef<ImagePicker>;
 String _$sessionStoreHash() => r'80c414f1ec22b592d6f68442e3112d05972f08a4';
 
 /// See also [sessionStore].

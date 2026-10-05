@@ -23,7 +23,8 @@ lib/
     vocab_api_config.dart       the Worker URL + secret as constants — kept, gitignored, as today
     azure_config.dart           pre-existing, untouched by this plan
   core/
-    providers.dart (+.g)        providers for services: photoScaler, vocabPhotoService, sessionStore,
+    providers.dart (+.g)        providers for services: photoScaler, imagePicker (camera/gallery
+                                picks, photo-from-gallery), vocabPhotoService, sessionStore,
                                 googleTranslateService, pronunciationService, sessionPublishService,
                                 sessionById, dictionaryService (definition-mode),
                                 sourcePhotoStore, photoUploadService (keepAlive, so uploads outlive

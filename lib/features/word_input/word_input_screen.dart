@@ -19,7 +19,6 @@ import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
-import '../../core/services/photo_scaler.dart';
 import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
@@ -201,7 +200,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (_isRecoveringLostPhoto || _isAnalyzingPhoto) return true;
     _isRecoveringLostPhoto = true;
     try {
-      final LostDataResponse response = await ImagePicker().retrieveLostData();
+      final LostDataResponse response = await ref.read(imagePickerProvider).retrieveLostData();
       if (response.isEmpty) return false;
       if (response.exception != null) {
         if (mounted) {
@@ -1038,7 +1037,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   }
 
   Future<void> _takePhotoForVocabulary() async {
-    final picker = ImagePicker();
+    final picker = ref.read(imagePickerProvider);
     XFile? picked;
     try {
       picked = await picker.pickImage(source: ImageSource.camera);
@@ -1078,7 +1077,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     var keptHandedOver = false;
     try {
       final compressStopwatch = Stopwatch()..start();
-      final bytes = await PhotoScaler.instance.resizeFileToMinSide(
+      final bytes = await ref.read(photoScalerProvider).resizeFileToMinSide(
         picked.path,
         minSide: 640,
         quality: 85,
@@ -1148,7 +1147,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final takenAt = DateTime.now();
     final store = ref.read(sourcePhotoStoreProvider);
     try {
-      final bytes = await PhotoScaler.instance.keptCopy(path);
+      final bytes = await ref.read(photoScalerProvider).keptCopy(path);
       return await store.keep(bytes, takenAt: takenAt);
     } catch (e) {
       debugPrint('VOCAB: kept photo copy failed: $e');

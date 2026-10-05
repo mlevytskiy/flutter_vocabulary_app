@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -22,6 +23,11 @@ VocabPhotoService vocabPhotoService(Ref ref) => VocabPhotoService();
 
 @Riverpod(keepAlive: true)
 PhotoScaler photoScaler(Ref ref) => PhotoScaler.instance; // singleton stays for now; provider is the door
+
+/// Camera and gallery picks for the photo chain (photo-from-gallery T2);
+/// a provider so widget tests can swap in a fake picker.
+@riverpod
+ImagePicker imagePicker(Ref ref) => ImagePicker();
 
 @Riverpod(keepAlive: true)
 Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();

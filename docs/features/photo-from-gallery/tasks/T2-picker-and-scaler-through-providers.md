@@ -7,7 +7,7 @@ acs: ["AC-02"]
 files_hint: ["lib/core/providers.dart", "lib/core/providers.g.dart", "lib/features/word_input/word_input_screen.dart", "docs/architecture.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Read the image picker and the photo scaler through providers in the photo chain
@@ -26,13 +26,20 @@ status: "todo"
 
 **Done when:** `imagePickerProvider` exists in `lib/core/providers.dart`; `word_input_screen.dart` no longer calls `ImagePicker()` or `PhotoScaler.instance` (it reads `imagePickerProvider` and `photoScalerProvider`); `build_runner`, `flutter analyze` and the existing `flutter test` suite pass with camera behaviour unchanged.
 
-- [ ] `dart run build_runner build --delete-conflicting-outputs` regenerates `providers.g.dart`
-- [ ] `grep -n "ImagePicker()\|PhotoScaler.instance" lib/features/word_input/word_input_screen.dart` finds nothing
-- [ ] `flutter test` passes (no behaviour change)
-- [ ] `flutter analyze` is clean
-- [ ] lint clean (`flutter analyze`)
+- [x] `dart run build_runner build --delete-conflicting-outputs` regenerates `providers.g.dart`
+- [x] `grep -n "ImagePicker()\|PhotoScaler.instance" lib/features/word_input/word_input_screen.dart` finds nothing
+- [x] `flutter test` passes (no behaviour change)
+- [x] `flutter analyze` is clean
+- [x] lint clean (`flutter analyze`)
 
 ## Notes
 
 - This task is a pure refactor and lands before any behaviour change, so T4 and T5 can be test-first against fakes.
 - It shares `word_input_screen.dart` with T4 and T5, so `implement` serializes them.
+
+## Implementation record
+
+- `imagePickerProvider` is plain `@riverpod` (auto-dispose) as written; `ImagePicker` holds no state, so a fresh instance per `ref.read` is harmless.
+- The now-unused `photo_scaler.dart` import was dropped from `word_input_screen.dart`.
+- New test `test/photo_providers_test.dart`: default picker, fake-picker override, and `photoScalerProvider` still returning the shared scaler.
+- The `static final PhotoScaler instance` grep hit is pre-existing (the provider still hands out that singleton; `main.dart` still calls `PhotoScaler.instance.start()`).
