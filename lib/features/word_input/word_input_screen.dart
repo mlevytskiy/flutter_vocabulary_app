@@ -24,6 +24,7 @@ import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
 import 'subtitle_import_flow.dart';
+import 'widgets/photo_source_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
@@ -1036,7 +1037,29 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
   }
 
+  /// "Get words from photo": one photo import at a time, then the
+  /// Camera/Gallery choice (photo-from-gallery sad §4, AC-01, AC-05, AC-10).
   Future<void> _takePhotoForVocabulary() async {
+    if (_isAnalyzingPhoto) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('The current photo is still being analysed')),
+      );
+      return;
+    }
+    final source = await showPhotoSourceDialog(context);
+    if (source == null || !mounted) return;
+    switch (source) {
+      case ImageSource.camera:
+        await _takePhotoFromCamera();
+      case ImageSource.gallery:
+        // photo-from-gallery T5: pick one photo from the gallery. Until then
+        // choosing Gallery does nothing.
+        return;
+    }
+  }
+
+  Future<void> _takePhotoFromCamera() async {
     final picker = ref.read(imagePickerProvider);
     XFile? picked;
     try {

@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-05", "AC-10"]
 files_hint: ["lib/features/word_input/word_input_screen.dart", "test/photo_import_flow_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Open the source choice from Get words from photo, behind the one-import-at-a-time guard
@@ -26,14 +26,20 @@ status: "todo"
 
 **Done when:** Tapping "Get words from photo" while `_isAnalyzingPhoto` is set shows "The current photo is still being analysed" and opens nothing; otherwise it opens the source choice, Camera runs today's camera path unchanged, and a closed choice does nothing; covered by widget tests in `test/photo_import_flow_test.dart` that pump `WordInputScreen` with fake `imagePickerProvider` / `photoScalerProvider` / `vocabPhotoServiceProvider`.
 
-- [ ] Widget test: with the fake Worker call held open (an import still analysing), tapping "Get words from photo" again opens no dialog, shows the message, and the fake picker is not called (AC-10)
-- [ ] Widget test: a tap opens the source choice and nothing else (AC-01)
-- [ ] Widget test: closing the choice shows no snackbar, does not call the picker, and leaves the session unchanged (AC-05)
-- [ ] Widget test: Camera calls `pickImage(source: ImageSource.camera)`, and a returned file reaches `analyzePhoto(limit: 20)` as before (AC-02)
-- [ ] `flutter analyze` is clean
-- [ ] lint clean (`flutter analyze`)
+- [x] Widget test: with the fake Worker call held open (an import still analysing), tapping "Get words from photo" again opens no dialog, shows the message, and the fake picker is not called (AC-10)
+- [x] Widget test: a tap opens the source choice and nothing else (AC-01)
+- [x] Widget test: closing the choice shows no snackbar, does not call the picker, and leaves the session unchanged (AC-05)
+- [x] Widget test: Camera calls `pickImage(source: ImageSource.camera)`, and a returned file reaches `analyzePhoto(limit: 20)` as before (AC-02)
+- [x] `flutter analyze` is clean
+- [x] lint clean (`flutter analyze`)
 
 ## Notes
 
 - The guard is the existing widget-`State` flag (CLAUDE.md rule 2). Don't move it into a notifier.
 - The source choice adds exactly 1 tap before the camera (spec §6). Don't add a confirmation or a remembered default (spec §3).
+
+## Implementation notes (T4)
+
+- `_takePhotoForVocabulary` is now the entry point (guard → `showPhotoSourceDialog`). The old camera body moved unchanged into `_takePhotoFromCamera`.
+- Gallery is a marked no-op (`// photo-from-gallery T5`) until T5.
+- `test/photo_import_flow_test.dart` opens one Isar store in `setUpAll` and shares it across tests (`SessionStore.open` reuses the `vocab` instance), and the tests never write to it. It fakes `sourcePhotoStoreProvider` so no file I/O runs in fake async, and it mocks the `flutter_tts` channel because the screen stops speech on dispose. T5 adds its Gallery cases to the same harness.
