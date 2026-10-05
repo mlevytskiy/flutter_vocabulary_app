@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-08", "AC-09", "AC-12", "AC-13"]
 files_hint: ["docs/features/photo-from-gallery/_audit/device-pass.md"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "blocked"
 ---
 
 # T6 — Run the device pass for the spec §6 targets on one iPhone and one Android phone
@@ -30,5 +30,6 @@ status: "todo"
 
 ## Notes
 
+- **Blocked (implement, 2026-10-06):** needs the owner's iPhone and Android phone, the deployed Worker and real Anthropic spend. The results sheet is ready at `_audit/device-pass.md`; analyze, the full test suite and both debug builds pass, and no permission was added.
 - It needs physical devices and real Anthropic spend, so `implement` will mark it blocked and leave the sheet ready, as words-from-subtitles T13 did.
 - The 10-image set: a JPEG page photo, a PNG screenshot, a HEIC photo, a 1080×20000 screenshot, a ≥48 MP original, a photo stored only online, a non-image-looking meme, and 3 page photos (spec §6).
