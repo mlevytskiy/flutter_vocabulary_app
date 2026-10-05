@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-05"]
 files_hint: ["lib/features/word_input/widgets/photo_source_dialog.dart", "test/photo_source_dialog_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Add the Camera/Gallery source choice dialog
@@ -25,13 +25,18 @@ status: "todo"
 
 **Done when:** `showPhotoSourceDialog(context)` in `lib/features/word_input/widgets/photo_source_dialog.dart` shows exactly two choices, Camera and Gallery, returns `ImageSource.camera` / `ImageSource.gallery` for them and `null` when the dialog is closed by tapping outside or going back; covered by `test/photo_source_dialog_test.dart`.
 
-- [ ] A widget test confirms the dialog shows exactly the two labels Camera and Gallery
-- [ ] Widget tests: tapping Camera returns `ImageSource.camera`, and tapping Gallery returns `ImageSource.gallery`
-- [ ] Widget tests: tapping the barrier returns `null`, and a back pop returns `null` (AC-05)
-- [ ] `flutter analyze` is clean
-- [ ] lint clean (`flutter analyze`)
+- [x] A widget test confirms the dialog shows exactly the two labels Camera and Gallery
+- [x] Widget tests: tapping Camera returns `ImageSource.camera`, and tapping Gallery returns `ImageSource.gallery`
+- [x] Widget tests: tapping the barrier returns `null`, and a back pop returns `null` (AC-05)
+- [x] `flutter analyze` is clean
+- [x] lint clean (`flutter analyze`)
 
 ## Notes
 
 - No `screens.md` exists for this XS feature, so this dialog is the whole screen contract (sad §4).
 - It doesn't depend on the other tasks, so it can start in parallel with T1 and T2.
+
+## Implementation notes
+
+- Built as `SimpleDialog` (title "Get words from photo") with two `ListTile` entries (leading `Icons.camera_alt` / `Icons.photo_library`), closed with `Navigator.pop(dialogContext, source)` like the Words screen's share sheet. Default dialog theme, no new colours or styles. The title text was not fixed by the spec; it reuses the speed-dial label so the dialog says what it is for.
+- Tests: `test/photo_source_dialog_test.dart` (5 widget tests: two choices, Camera, Gallery, barrier tap → null, back pop → null).
