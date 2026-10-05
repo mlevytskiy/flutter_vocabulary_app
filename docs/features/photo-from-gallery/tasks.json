@@ -1,0 +1,118 @@
+{
+  "slug": "photo-from-gallery",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Turn on the Android Photo Picker for gallery picks",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-09"
+      ],
+      "dod": "`image_picker_android` and `image_picker_platform_interface` are direct dependencies in caret ranges matching the lockfile, `main.dart` sets `useAndroidPhotoPicker = true` on Android only, the Android manifest gains no permission, and `flutter analyze` (including `depend_on_referenced_packages`) is clean.",
+      "files_hint": [
+        "pubspec.yaml",
+        "pubspec.lock",
+        "lib/main.dart",
+        "docs/architecture.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Read the image picker and the photo scaler through providers in the photo chain",
+      "layer": "wiring",
+      "deps": [],
+      "acs": [
+        "AC-02"
+      ],
+      "dod": "`imagePickerProvider` exists in `lib/core/providers.dart`; `word_input_screen.dart` no longer calls `ImagePicker()` or `PhotoScaler.instance` (it reads `imagePickerProvider` and `photoScalerProvider`); `build_runner`, `flutter analyze` and the existing `flutter test` suite pass with camera behaviour unchanged.",
+      "files_hint": [
+        "lib/core/providers.dart",
+        "lib/core/providers.g.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "docs/architecture.md"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the Camera/Gallery source choice dialog",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-05"
+      ],
+      "dod": "`showPhotoSourceDialog(context)` in `lib/features/word_input/widgets/photo_source_dialog.dart` shows exactly two choices, Camera and Gallery, returns `ImageSource.camera` / `ImageSource.gallery` for them and `null` when the dialog is closed by tapping outside or going back; covered by `test/photo_source_dialog_test.dart`.",
+      "files_hint": [
+        "lib/features/word_input/widgets/photo_source_dialog.dart",
+        "test/photo_source_dialog_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Open the source choice from Get words from photo, behind the one-import-at-a-time guard",
+      "layer": "ui",
+      "deps": [
+        "T2",
+        "T3"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-05",
+        "AC-10"
+      ],
+      "dod": "Tapping \"Get words from photo\" while `_isAnalyzingPhoto` is set shows \"The current photo is still being analysed\" and opens nothing; otherwise it opens the source choice, Camera runs today's camera path unchanged, and a closed choice does nothing; covered by widget tests in `test/photo_import_flow_test.dart` that pump `WordInputScreen` with fake `imagePickerProvider` / `photoScalerProvider` / `vocabPhotoServiceProvider`.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "test/photo_import_flow_test.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Pick one photo from the gallery and run it through the shared photo chain with gallery failure texts",
+      "layer": "app",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-04",
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-09",
+        "AC-11",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "Gallery calls `pickImage(source: ImageSource.gallery, requestFullMetadata: false)` and feeds the file to `_processPickedPhoto(file, source: gallery)`; a picked photo reaches the results dialog and, with a kept word, becomes the session's source photo exactly like a camera photo; nothing picked shows \"No photo was picked\"; a throwing picker or scaler shows \"The photo from the gallery could not be used. Try another one.\" and keeps no photo; camera texts are unchanged; all covered by widget tests in `test/photo_import_flow_test.dart`.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "test/photo_import_flow_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Run the device pass for the spec §6 targets on one iPhone and one Android phone",
+      "layer": "tests",
+      "deps": [
+        "T1",
+        "T5"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-08",
+        "AC-09",
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "`_audit/device-pass.md` records, on one iPhone and one Android phone, exactly 1 extra tap to the camera, the gallery and camera median times to the results dialog (5 runs each), the 10-image robustness set with each outcome (results dialog or plain message within 60 s, 0 crashes, 0 freezes), 0 new permission prompts from a fresh install, the original photo unchanged, the Android picker look (Photo Picker or fallback), and a gallery photo published and seen on the shared page with Include photos on.",
+      "files_hint": [
+        "docs/features/photo-from-gallery/_audit/device-pass.md"
+      ]
+    }
+  ]
+}
