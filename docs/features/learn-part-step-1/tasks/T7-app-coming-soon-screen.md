@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-05b"]
 files_hint: ["lib/router/routes.dart", "lib/router/routes.g.dart", "lib/features/learn/coming_soon_screen.dart", "lib/features/learn/learn_screen.dart", "test/learn_screen_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Add the app's coming-soon screen and make Start open it

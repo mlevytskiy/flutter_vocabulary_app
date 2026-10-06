@@ -21,6 +21,12 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
             GoRouteData.$route(
               path: 'learn',
               factory: _$LearnRoute._fromState,
+              routes: [
+                GoRouteData.$route(
+                  path: 'soon',
+                  factory: _$ComingSoonRoute._fromState,
+                ),
+              ],
             ),
           ],
         ),
@@ -99,6 +105,35 @@ mixin _$LearnRoute on GoRouteData {
         '/table/learn',
         queryParams: {
           if (_self.sessionId != null) 'session-id': _self.sessionId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$ComingSoonRoute on GoRouteData {
+  static ComingSoonRoute _fromState(GoRouterState state) => ComingSoonRoute(
+        exercise: state.uri.queryParameters['exercise']!,
+      );
+
+  ComingSoonRoute get _self => this as ComingSoonRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn/soon',
+        queryParams: {
+          'exercise': _self.exercise,
         },
       );
 

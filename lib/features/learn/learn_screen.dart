@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
+import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'exercises.dart';
 
@@ -74,8 +75,13 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: ElevatedButton(
-              // T7 makes this open the coming-soon screen.
-              onPressed: canStart ? () {} : null,
+              onPressed: canStart
+                  ? () => ComingSoonRoute(
+                        exercise: exercises
+                            .firstWhere((e) => _ticked.contains(e.id))
+                            .id,
+                      ).push<void>(context)
+                  : null,
               child: const Text('Start'),
             ),
           ),

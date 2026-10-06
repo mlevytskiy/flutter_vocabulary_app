@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/history/history_screen.dart';
+import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
@@ -14,7 +15,12 @@ part 'routes.g.dart';
   routes: [
     TypedGoRoute<WordsTableRoute>(
       path: 'table',
-      routes: [TypedGoRoute<LearnRoute>(path: 'learn')],
+      routes: [
+        TypedGoRoute<LearnRoute>(
+          path: 'learn',
+          routes: [TypedGoRoute<ComingSoonRoute>(path: 'soon')],
+        ),
+      ],
     ),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
@@ -51,6 +57,18 @@ class LearnRoute extends GoRouteData with _$LearnRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       LearnScreen(sessionId: sessionId);
+}
+
+/// The app's placeholder for an exercise that is not built yet (learn-part-step-1),
+/// pushed from Start. Carries the exercise id, never the object (rule 1).
+class ComingSoonRoute extends GoRouteData with _$ComingSoonRoute {
+  const ComingSoonRoute({required this.exercise});
+
+  final String exercise;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      ComingSoonScreen(exerciseId: exercise);
 }
 
 class HistoryRoute extends GoRouteData with _$HistoryRoute {
