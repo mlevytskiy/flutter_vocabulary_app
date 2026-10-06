@@ -1,6 +1,9 @@
 # Device pass — photo-from-gallery (T6)
 
-> **Status: not run yet.** Fill this in on one iPhone (iOS 15+) and one Android phone (the app's
+> **Status: done (2026-10-06).** The owner ran the pass on both phones and reported every target met;
+> the per-run cells below were not filled in.
+>
+> Original instructions: Fill this in on one iPhone (iOS 15+) and one Android phone (the app's
 > current minimum SDK or newer), against the deployed Worker, with a build from `db8f964` or later.
 > Every recognition run costs one real AI request.
 > Targets: [spec §6](../spec.md) and §7, [sad §10 QG-1 to QG-4](../sad.md), [sad §11](../sad.md).
