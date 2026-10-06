@@ -17,7 +17,7 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session.dart';
-import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -98,19 +98,19 @@ class FakeVocabPhotoService extends VocabPhotoService {
 /// fake-async zone. Records what it was asked to keep and delete.
 class FakeSourcePhotoStore extends SourcePhotoStore {
   int kept = 0;
-  final deleted = <SourcePhoto>[];
+  final deleted = <SessionSource>[];
 
   @override
-  Future<SourcePhoto?> keep(Uint8List bytes, {DateTime? takenAt}) async {
+  Future<SessionSource?> keep(Uint8List bytes, {DateTime? takenAt}) async {
     kept++;
-    return SourcePhoto()
+    return SessionSource()
       ..id = 'photo-$kept'
       ..fileName = 'photo-$kept.jpg'
       ..takenAt = takenAt ?? DateTime(2026);
   }
 
   @override
-  Future<void> delete(SourcePhoto photo) async => deleted.add(photo);
+  Future<void> delete(SessionSource photo) async => deleted.add(photo);
 }
 
 VocabAnalysisResult result(List<String> words) => VocabAnalysisResult(

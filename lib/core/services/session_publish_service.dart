@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
-import '../models/source_photo.dart';
+import '../models/session_source.dart';
 import '../models/word_pair.dart';
 import '../providers.dart' show WordDetailMode;
 
@@ -29,11 +29,11 @@ class PublishedSession {
 
   /// The photos the request declared, in pager order: their bytes still have
   /// to be uploaded (ADR-0006).
-  final List<SourcePhoto> declaredSources;
+  final List<SessionSource> declaredSources;
 
   /// Linked photos past the first 10 taken, which the page will not show
   /// (spec OQ-3). Their rows are published unlinked.
-  final List<SourcePhoto> leftOutSources;
+  final List<SessionSource> leftOutSources;
 
   PublishedSession({
     required this.id,
@@ -77,7 +77,7 @@ class SessionPublishService {
   Future<PublishedSession> publish(
     List<WordPair> pairs, {
     WordDetailMode detail = WordDetailMode.translation,
-    List<SourcePhoto> sources = const [],
+    List<SessionSource> sources = const [],
     String? publishedId,
     String? editToken,
   }) async {

@@ -39,7 +39,7 @@ lib/
                                 identity and timestamps (task-03); its sources (photos taken, in
                                 order) and the publishedId + editToken a republish overwrites
                                 (good-looking-web, ADR-0008)
-                                source_photo.dart (+.g) — Isar @embedded reference to a kept photo:
+                                session_source.dart (+.g) — Isar @embedded reference to a kept photo:
                                 id (the declared source id), fileName, takenAt (good-looking-web)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:

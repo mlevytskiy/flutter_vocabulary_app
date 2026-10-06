@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:isar_community/isar.dart';
 
-import 'source_photo.dart';
+import 'session_source.dart';
 import 'word_pair.dart';
 
 part 'session.g.dart';
@@ -34,7 +34,7 @@ class Session {
   /// Photos taken in this session, in the order they were taken. A row
   /// recognised from one points at it through `WordPair.sourceId`; a session
   /// from before good-looking-web has none (AC-26).
-  List<SourcePhoto> sources = [];
+  List<SessionSource> sources = [];
 
   /// The shared page this session was last published to, and the token that
   /// lets a republish overwrite it (ADR-0008). Null until the first publish.
@@ -66,9 +66,9 @@ class Session {
             .toList() ??
         <WordPair>[]
     ..sources = (json['sources'] as List<dynamic>?)
-            ?.map((s) => SourcePhoto.fromJson(s as Map<String, dynamic>))
+            ?.map((s) => SessionSource.fromJson(s as Map<String, dynamic>))
             .toList() ??
-        <SourcePhoto>[]
+        <SessionSource>[]
     ..publishedId = json['publishedId'] as String?
     ..editToken = json['editToken'] as String?;
 

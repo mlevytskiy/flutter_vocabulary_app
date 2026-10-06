@@ -7,7 +7,7 @@ acs: ["AC-13b", "AC-15"]
 files_hint: ["lib/core/models/source_photo.dart", "lib/core/models/session_source.dart", "lib/core/models/session.dart", "lib/core/models/word_pair.dart", "lib/core/providers.dart", "lib/core/services/source_photo_store.dart", "lib/core/services/photo_upload_service.dart", "lib/core/services/session_publish_service.dart", "lib/features/word_input/word_input_notifier.dart", "lib/features/word_input/word_input_screen.dart", "lib/features/words_table/photo_viewer.dart", "lib/features/words_table/words_table_screen.dart", "test/source_photo_test.dart", "test/words_table_test.dart", "test/photo_upload_service_test.dart", "test/session_publish_service_test.dart", "test/photo_import_flow_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Generalise SourcePhoto into SessionSource with a kind, name and link

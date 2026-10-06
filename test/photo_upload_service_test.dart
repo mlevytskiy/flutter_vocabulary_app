@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/photo_upload_service.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
@@ -28,7 +28,7 @@ void main() {
 
   tearDown(() => tmp.delete(recursive: true));
 
-  Future<SourcePhoto> kept(List<int> bytes) async =>
+  Future<SessionSource> kept(List<int> bytes) async =>
       (await store.keep(Uint8List.fromList(bytes)))!;
 
   PhotoUploadService uploader(http.Client client) => PhotoUploadService(

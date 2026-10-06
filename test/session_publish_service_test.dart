@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
@@ -183,7 +183,7 @@ void main() {
   });
   // good-looking-web T18 (ADR-0006, spec AC-24, AC-25, OQ-3).
   group('source photos', () {
-    SourcePhoto photo(String id, int minute) => SourcePhoto()
+    SessionSource photo(String id, int minute) => SessionSource()
       ..id = id
       ..fileName = '$id.jpg'
       ..takenAt = DateTime.utc(2026, 9, 28, 10, minute);

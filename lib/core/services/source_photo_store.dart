@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../models/source_photo.dart';
+import '../models/session_source.dart';
 
 /// Keeps the 1600 px copy of every photo the learner takes, as a file in the
 /// app documents dir under `source_photos/` (good-looking-web sad §5, "kept
@@ -26,17 +26,17 @@ class SourcePhotoStore {
     return Directory('$parent/$_folder');
   }
 
-  Future<File> fileFor(SourcePhoto photo) async =>
+  Future<File> fileFor(SessionSource photo) async =>
       File('${(await _dir()).path}/${photo.fileName}');
 
   /// Writes [bytes] (a JPEG) under a fresh UUID and returns the reference, or
   /// null if the file could not be written.
-  Future<SourcePhoto?> keep(Uint8List bytes, {DateTime? takenAt}) async {
+  Future<SessionSource?> keep(Uint8List bytes, {DateTime? takenAt}) async {
     try {
       final dir = await _dir();
       await dir.create(recursive: true);
       final id = _uuidV4();
-      final photo = SourcePhoto()
+      final photo = SessionSource()
         ..id = id
         ..fileName = '$id.jpg'
         ..takenAt = takenAt ?? DateTime.now();
@@ -49,7 +49,7 @@ class SourcePhotoStore {
   }
 
   /// The kept bytes, or null when the file is gone.
-  Future<Uint8List?> read(SourcePhoto photo) async {
+  Future<Uint8List?> read(SessionSource photo) async {
     try {
       final file = await fileFor(photo);
       if (!await file.exists()) return null;
@@ -59,7 +59,7 @@ class SourcePhotoStore {
     }
   }
 
-  Future<void> delete(SourcePhoto photo) async {
+  Future<void> delete(SessionSource photo) async {
     try {
       final file = await fileFor(photo);
       if (await file.exists()) await file.delete();

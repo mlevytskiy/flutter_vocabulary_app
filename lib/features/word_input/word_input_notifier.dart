@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/models/session.dart';
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
@@ -212,7 +212,7 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// Records a photo just kept for this session (good-looking-web T17). The
   /// screen calls it before adding the rows recognised from it, so the rows
   /// never point at a photo the session does not list.
-  void addSource(SourcePhoto photo) {
+  void addSource(SessionSource photo) {
     if (!state.hasValue) return;
     final session = state.value!;
     session.sources.add(photo);

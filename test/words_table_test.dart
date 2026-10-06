@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session.dart';
-import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
@@ -99,7 +99,7 @@ void main() {
   // good-looking-web T19: the "include photos (N)" switch above the table, and
   // the sheet's warning: the 30-day photo note and the republish warning
   // (AC-23, AC-24, ADR-0008).
-  SourcePhoto photo(String id, int minute) => SourcePhoto()
+  SessionSource photo(String id, int minute) => SessionSource()
     ..id = id
     ..fileName = '$id.jpg'
     ..takenAt = DateTime(2026, 9, 20, 10, minute);
@@ -285,15 +285,15 @@ void main() {
 
 class _FakePublisher extends SessionPublishService {
   /// The photos the last publish was asked to include.
-  List<SourcePhoto>? sentSources;
+  List<SessionSource>? sentSources;
 
   /// What the fake answers as left out (spec OQ-3).
-  List<SourcePhoto> leftOut = const [];
+  List<SessionSource> leftOut = const [];
 
   @override
   Future<PublishedSession> publish(List<WordPair> pairs,
       {WordDetailMode detail = WordDetailMode.translation,
-      List<SourcePhoto> sources = const [],
+      List<SessionSource> sources = const [],
       String? publishedId,
       String? editToken}) async {
     sentSources = sources;

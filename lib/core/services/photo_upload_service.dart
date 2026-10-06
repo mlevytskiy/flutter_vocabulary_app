@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
-import '../models/source_photo.dart';
+import '../models/session_source.dart';
 import 'source_photo_store.dart';
 
 /// Uploads the bytes of the photos a publish declared, each to its declared
@@ -42,7 +42,7 @@ class PhotoUploadService {
 
   /// Starts uploading [photos] to the session published as [publishedId]. A
   /// photo already uploading to that session is not started twice.
-  void enqueue(String publishedId, List<SourcePhoto> photos) {
+  void enqueue(String publishedId, List<SessionSource> photos) {
     for (final photo in photos) {
       final key = '$publishedId/${photo.id}';
       if (_running.containsKey(key)) continue;
@@ -61,7 +61,7 @@ class PhotoUploadService {
     }
   }
 
-  Future<void> _upload(String publishedId, SourcePhoto photo) async {
+  Future<void> _upload(String publishedId, SessionSource photo) async {
     try {
       final bytes = await _store.read(photo);
       if (bytes == null) {

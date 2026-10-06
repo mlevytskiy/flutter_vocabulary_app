@@ -14,7 +14,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/models/definition_result.dart';
 import '../../core/models/session.dart';
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
@@ -1133,7 +1133,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     // The kept copy, started once the /analyze copy is done so it runs while
     // the request is out. Null when it could not be made: the words still
     // arrive, only without a photo (good-looking-web T17).
-    Future<SourcePhoto?>? kept;
+    Future<SessionSource?>? kept;
     var keptHandedOver = false;
     try {
       final compressStopwatch = Stopwatch()..start();
@@ -1206,7 +1206,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
   }
 
-  Future<SourcePhoto?> _keepSourcePhoto(String path) async {
+  Future<SessionSource?> _keepSourcePhoto(String path) async {
     final takenAt = DateTime.now();
     final store = ref.read(sourcePhotoStoreProvider);
     try {
@@ -1238,7 +1238,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         },
       );
 
-  void _addWordsFromPhoto(List<VocabWord> words, {SourcePhoto? source}) {
+  void _addWordsFromPhoto(List<VocabWord> words, {SessionSource? source}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {

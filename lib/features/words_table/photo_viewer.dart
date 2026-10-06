@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/providers.dart';
 
 /// The words table's photo dialog: the same full-screen viewer the shared
 /// page opens on a phone (good-looking-web SCR-06) — ‹, "n of m", ›, ×, a
 /// swipe between photos, pinch zoom up to 4× and a double tap for 2.5×.
-Future<void> showPhotoViewer(BuildContext context, List<SourcePhoto> photos,
+Future<void> showPhotoViewer(BuildContext context, List<SessionSource> photos,
     {int initialIndex = 0}) {
   return showGeneralDialog<void>(
     context: context,
@@ -24,7 +24,7 @@ Future<void> showPhotoViewer(BuildContext context, List<SourcePhoto> photos,
 class PhotoViewer extends ConsumerStatefulWidget {
   const PhotoViewer({super.key, required this.photos, this.initialIndex = 0});
 
-  final List<SourcePhoto> photos;
+  final List<SessionSource> photos;
   final int initialIndex;
 
   @override

@@ -8,7 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/session.dart';
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
@@ -172,9 +172,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   /// The photos a link would carry: "include photos (N)" counts only photos
   /// with a linked row that will be published; with none the switch is not
   /// shown (AC-23).
-  List<SourcePhoto> _linkedPhotos(Session? session, List<WordPair> wordPairs) {
+  List<SessionSource> _linkedPhotos(Session? session, List<WordPair> wordPairs) {
     final linkedIds = {for (final pair in wordPairs) pair.sourceId};
-    return (session?.sources ?? const <SourcePhoto>[])
+    return (session?.sources ?? const <SessionSource>[])
         .where((photo) => linkedIds.contains(photo.id))
         .toList();
   }
@@ -509,7 +509,7 @@ enum _ShareChoice { file, link }
 class _PhotoStack extends ConsumerStatefulWidget {
   const _PhotoStack({required this.photos});
 
-  final List<SourcePhoto> photos;
+  final List<SessionSource> photos;
 
   @override
   ConsumerState<_PhotoStack> createState() => _PhotoStackState();
