@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-11", "AC-11b", "AC-12"]
 files_hint: ["lib/features/words_table/widgets/learn_share_bar.dart", "test/learn_share_bar_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Add LearnShareBar that fits Learn and Share by measuring the space
