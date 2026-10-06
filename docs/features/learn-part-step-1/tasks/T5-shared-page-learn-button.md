@@ -7,7 +7,7 @@ acs: ["AC-08", "AC-10"]
 files_hint: ["vocab-photo-api/src/session/page.ts", "vocab-photo-api/src/session/client/page.js", "vocab-photo-api/src/session/style.ts", "vocab-photo-api/test/page.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Add Learn to the shared page with a fresh check before opening

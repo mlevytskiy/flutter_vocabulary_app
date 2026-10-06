@@ -203,6 +203,8 @@ export const STYLE = `
     .table-scroll { flex: 0 1 auto; min-height: 0; overflow: auto; border-radius: 6px; }
     table { width: max-content; }
     .photos { display: none; }
+    /* Download, Learn and the photo button wrap on a 320 px phone instead of overflowing. */
+    .actions { flex-wrap: wrap; row-gap: 8px; }
     /* At the right edge of the actions row, clear of the rotated stack's corners. */
     .js .photo-button { display: block; margin: 0 8px 0 auto; }
     /* One line: the short meta sits right after "Vocabulary" and never wraps. */

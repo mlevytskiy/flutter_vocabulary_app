@@ -164,7 +164,7 @@ test("declared photos render in order, a pending one as a placeholder; one photo
   const single = (await page(one.id)).html;
   assert.match(single, /class="photo-button" aria-label="Show the source photo"/);
   // The phone's photo button sits beside the download link.
-  assert.match(single, /<p class="actions"><a class="btn"[^>]*>Download for AnkiDroid<\/a><button type="button" class="photo-button"/);
+  assert.match(single, /<p class="actions"><a class="btn"[^>]*>Download for AnkiDroid<\/a><a class="btn learn"[^>]*>Learn<\/a><button type="button" class="photo-button"/);
 });
 
 // The title row carries the phone's short meta line; the long one stays for the wide layout.
@@ -322,4 +322,23 @@ test("a set name with markup renders as text (sad §8)", async () => {
 
   assert.match(html, /<p class="set-name">&lt;img src=x onerror=alert\(1\)&gt; &amp; &quot;q&quot;<\/p>/);
   assert.doesNotMatch(html, /<img src=x/);
+});
+
+test("the actions row has Learn right of Download, linking to the session's learn page (AC-08)", async () => {
+  const { id } = await publish({ entries: [{ word: "cat", translation: "кіт" }] });
+  const { html } = await page(id);
+  const actions = html.match(/<p class="actions">(.*?)<\/p>/s)[1];
+  const download = actions.indexOf(`<a class="btn" href="/s/${id}/words.txt" download>Download for AnkiDroid</a>`);
+  const learn = actions.indexOf(`<a class="btn learn" href="/s/${id}/learn">Learn</a>`);
+  assert.ok(download >= 0, "Download link present");
+  assert.ok(learn > download, "Learn comes after Download");
+});
+
+test("the page script decides Learn from a fresh check and says 'No words to learn' (AC-10)", async () => {
+  const { id } = await publish();
+  const { html } = await page(id);
+  const src = html.match(/<script type="module" src="(\/assets\/page-[0-9a-f]{12}\.js)"><\/script>/)[1];
+  const js = await (await get(src)).text();
+  assert.match(js, /No words to learn/);
+  assert.match(js, /a\.btn\.learn/);
 });

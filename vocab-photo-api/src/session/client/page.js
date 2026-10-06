@@ -1742,12 +1742,56 @@ function unsavedCells() {
   return cells;
 }
 
+/**
+ * The shared page's Learn link (AC-08, AC-10). Before opening the learn page it
+ * asks the change feed for what was saved since the last poll (the polling can
+ * be 5 s behind, or paused), and counts the words to learn among the saved rows
+ * only: a word and a translation or definition, as the Worker's rule says. None:
+ * a toast and no navigation. Else the learn page opens in this tab on a phone, or
+ * in a tab opened empty during the click on the wide layout (a tab opened after
+ * waiting for a request is blocked). No answer: the rows held here decide.
+ * Without this script the link is a plain link and the Worker decides.
+ * @param {MouseEvent} event
+ */
+async function learnClicked(event) {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  const link = /** @type {HTMLAnchorElement} */ (event.currentTarget);
+  event.preventDefault();
+  const tab = WIDE.matches ? window.open("", "_blank") : null;
+  if (tab) tab.opener = null;
+  const feed = await changes();
+  if (feed) applyFeed(feed);
+  if (state.stale || state.gone) {
+    tab?.close();
+    return;
+  }
+  if (!hasWordToLearn()) {
+    tab?.close();
+    toast("No words to learn", NOTICE_MS);
+    return;
+  }
+  if (tab) tab.location.href = link.href;
+  else window.location.assign(link.href);
+}
+
+/** Is any saved row a word to learn? Unsaved text and rows being deleted do not count. */
+function hasWordToLearn() {
+  for (const row of state.rows.values()) {
+    if (row.phase !== "live" || row.pendingDelete) continue;
+    const filled = (/** @type {Field} */ field) => row.cells[field].saved.trim() !== "";
+    if (filled("word") && (filled("translation") || filled("definition"))) return true;
+  }
+  return false;
+}
+
 if (main) {
   if (tbody) {
     for (const tr of tbody.querySelectorAll("tr[data-row]")) adoptRow(/** @type {HTMLTableRowElement} */ (tr));
     wireTable(tbody);
     const add = main.querySelector(".add-row .add");
     if (blankRow && add) add.addEventListener("click", () => addBlankRow(tbody, blankRow));
+
+    main.querySelector("a.btn.learn")?.addEventListener("click", (event) => void learnClicked(/** @type {MouseEvent} */ (event)));
 
     // The photo pager (wide) and the photo dialog (phone), when there are photos.
     const photos = /** @type {HTMLElement | null} */ (main.querySelector("aside.photos"));
