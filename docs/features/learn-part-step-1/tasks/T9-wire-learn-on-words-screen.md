@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-13"]
 files_hint: ["lib/features/words_table/words_table_screen.dart", "test/words_table_learn_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Put Learn on the Words screen: SnackBar when empty, otherwise open the learn page

@@ -16,6 +16,7 @@ import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
 import 'photo_viewer.dart';
+import 'widgets/learn_share_bar.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
   const WordsTableScreen({super.key, this.sessionId});
@@ -94,6 +95,17 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         );
       }
     }
+  }
+
+  /// Learn (learn-part-step-1): like Share, nothing to do without a filled row.
+  void _learn(List<WordPair> wordPairs) {
+    if (wordPairs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No words to learn')),
+      );
+      return;
+    }
+    LearnRoute(sessionId: widget.sessionId).push(context);
   }
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)
@@ -424,30 +436,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
               child: const Icon(Icons.edit),
             )
           : null,
-      appBar: AppBar(
-        title: const Text('Words'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton.icon(
-              onPressed:
-                  _isPublishing ? null : () => _showShareOptions(wordPairs),
-              icon: _isPublishing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.share),
-              label: const Text('Share'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-        ],
+      appBar: LearnShareBar(
+        title: 'Words',
+        onLearn: () => _learn(wordPairs),
+        onShare: _isPublishing ? null : () => _showShareOptions(wordPairs),
+        isSharing: _isPublishing,
       ),
       body: wordPairs.isEmpty
           ? const Center(
