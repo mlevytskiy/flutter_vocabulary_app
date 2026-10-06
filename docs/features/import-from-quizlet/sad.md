@@ -211,31 +211,103 @@ C4Container
 
 ## 6. Runtime view
 
-<!-- 🎯 Why: the RUNTIME FLOW of 1–2 critical scenarios — who talks to whom, when, in what order.
-     Without §6, §5 is just boxes with no life.
-     📋 Write: a Mermaid sequenceDiagram. Participants are names from §5 (don't invent new ones).
-     Messages are semantic («saves a draft»), NO HTTP verbs / paths / status codes — endpoint-level
-     sequences arrive at the `api` stage.
-     📌 e.g. «author → web: composes draft → web → content API: save». Seed the primary flow(s) here;
-     the `sequences` stage then covers every §5 AC (no cap). Never N/A for M+; XS/S keeps ≥1 happy-path flow. -->
+Two flows are seeded here, one per strategic risk; the `sequences` stage adds the rest (every spec §5 AC as a flow or a branch). Participants are the §5 containers; inside the app, the flow, the progress dialog with its web view and the pure parser are shown separately because the risk lives between them.
 
-**Critical flow 1: <flow name>**
+**Critical flow 1: import a set from its link** (AC-02, AC-03, AC-05, AC-07, AC-07b, AC-11, AC-16 — ADR-0002, ADR-0003, ADR-0004)
 
 ```mermaid
 sequenceDiagram
-    actor Actor
-    participant Web
-    participant Service
-    participant Store
-    Actor->>Web: <action>
-    Web->>Service: <call>
-    Service->>Store: <write>
-    Store-->>Service: ok
-    Service-->>Web: result
-    Web-->>Actor: confirmation
+    actor Learner as learner
+    participant Flow as Vocabulary app: import flow
+    participant Progress as Vocabulary app: progress dialog and web view
+    participant Parser as Vocabulary app: link, parser and cards
+    participant Quizlet as Quizlet
+    participant GT as Google Translate endpoint
+    participant Device as Device store
+    Learner->>Flow: pastes text holding a set link, Start
+    Flow->>Parser: find the set link
+    alt no Quizlet set link
+        Parser-->>Flow: none
+        Flow-->>Learner: link dialog asks for a set link, text kept
+    else set id and plain link found
+        Flow->>Progress: open the set page, remember the session it started in
+        Progress->>Quizlet: load the set page
+        Note over Progress,Quizlet: every top-level navigation is checked, only Quizlet pages of this set are allowed
+        Quizlet-->>Progress: page finished loading, 30 s clock starts
+        loop about once a second until cards or the clock runs out
+            Progress->>Quizlet: run the reader script
+            Quizlet-->>Progress: raw page material
+            Progress->>Parser: parse it
+            alt Quizlet's own robot check on screen
+                Parser-->>Progress: robot check
+                Progress-->>Learner: preview full size, clock paused
+                Learner->>Quizlet: passes the check
+            else set of a different id, or nothing yet
+                Parser-->>Progress: not this set yet
+            else cards of the pasted set
+                Parser-->>Progress: name, stated count, cards in order
+            end
+        end
+        alt cards found
+            Progress-->>Flow: the set
+            Flow->>Parser: cards and session words to proposed words
+            Parser-->>Flow: proposed words, skipped count, read X of Y
+            par at most 6 at a time
+                Flow->>GT: translate each term
+                GT-->>Flow: translation or nothing
+            end
+            alt session changed meanwhile
+                Flow-->>Learner: nothing, words dropped
+            else same session
+                Flow-->>Learner: results dialog with the set name and lines
+                Learner->>Flow: removes some, Done
+                Flow->>Device: append kept words with the set source id, add or update the set source
+            end
+        else no connection, load error or 30 s without cards
+            Progress-->>Flow: failed
+            Flow-->>Learner: the cards of this set could not be read, try again
+        else Cancel or Back
+            Progress-->>Flow: cancelled
+            Flow-->>Learner: back on the main screen, no message
+        end
+    end
 ```
 
-**Critical flow 2: <e.g. async event propagation>** — <if applicable, otherwise N/A>.
+**Critical flow 2: publish a session with a set source** (AC-12, AC-13, AC-13b, AC-15 — ADR-0005, ADR-0006)
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Device as Device store
+    participant Api as vocab-photo-api Worker
+    participant D1 as Sessions database
+    actor Partner as partner
+    participant Page as Shared page
+    Learner->>App: Share, publish as link
+    App->>Device: reads rows and the ordered source list
+    App-->>Learner: share sheet with Include sources N, sources without a remaining row not counted
+    alt Include sources on
+        App->>Api: publish rows with source ids and the sources in order, photos and sets with kind
+        Api->>Api: check each set link is a plain Quizlet set address and each name is within the limit
+        alt a set source fails the check
+            Api-->>App: refused with the reason
+            App-->>Learner: publish failed message
+        else all valid
+            Api->>D1: store rows and source slots, sets arrived at once, photos pending
+            Api-->>App: link
+        end
+    else Include sources off
+        App->>Api: publish rows only, no source ids, no sources
+        Api->>D1: store rows
+        Api-->>App: link
+    end
+    Partner->>Page: opens the link, moves the pager to the set
+    Page->>Api: loads the session
+    Api->>D1: rows and arrived source slots
+    Api-->>Page: set name, plain link, its rows
+    Page-->>Partner: set name as text, link, position, its rows highlighted
+```
 
 ## 7. Deployment view
 
