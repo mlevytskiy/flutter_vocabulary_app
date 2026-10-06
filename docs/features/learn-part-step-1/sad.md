@@ -178,3 +178,155 @@ C4Container
 ```
 
 There are three containers, one for each declared surface. The **Vocabulary app** on the phone reads the session from the on-device **Session store** and draws the learn page from its own copy of the exercise list. The **web pages in the browser** (the shared page's Learn, the web learn page and the coming-soon page) are fetched from the **Worker**. The Worker loads the published session's saved rows from **D1** and renders each page from `exercises.json`. Neither store gets a new field, and the publish between app and Worker is unchanged.
+
+## 6. Runtime view
+
+Two seed flows, one per side, with the empty and dead-link branches inline. The `sequences` stage then covers every §5 AC.
+
+**Critical flow 1: learn page in the app (US-01, US-02, US-03)**
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Session store
+    Learner->>App: taps Learn on a session's Words screen
+    App->>Store: reads the session's word rows (current session or History id)
+    Store-->>App: word rows
+    alt no word to learn
+        App-->>Learner: SnackBar "No words to learn", Words screen stays
+    else at least one word to learn
+        App-->>Learner: learn page with the word count, eleven exercises, nothing ticked, Start unavailable
+        Learner->>App: ticks Mnemonic story
+        App-->>Learner: Start available, hint hidden
+        Learner->>App: presses Start
+        App-->>Learner: coming-soon screen for Mnemonic story, pushed on top
+        Learner->>App: Back to exercises or back arrow
+        App-->>Learner: learn page again, Mnemonic story still ticked
+    end
+```
+
+**Critical flow 2: learn page on the web (US-04)**
+
+```mermaid
+sequenceDiagram
+    actor Partner as partner
+    participant Browser as Shared page and web learn page
+    participant Worker as vocab-photo-api Worker
+    participant D1 as Published sessions
+    Partner->>Browser: presses Learn on the shared page
+    alt the saved rows page.js holds have no word to learn
+        Browser-->>Partner: toast "No words to learn", no navigation
+    else at least one word to learn
+        Browser->>Worker: loads the learn page, same tab in the phone layout, new tab in the wide layout
+        Worker->>D1: loads the session and its saved rows
+        D1-->>Worker: session or nothing
+        alt session expired or unknown
+            Worker-->>Browser: 404 "This word list is gone."
+        else saved rows hold no word to learn any more
+            Worker-->>Browser: "No words to learn" with a link to the shared page
+        else
+            Worker-->>Browser: learn page with the word count, eleven exercises, nothing ticked
+            Partner->>Browser: ticks Mnemonic story
+            Browser-->>Partner: Start available, the address gains the pick
+            Partner->>Browser: presses Start
+            Browser->>Worker: loads the coming-soon page for mnemonic-story with the pick
+            Worker-->>Browser: coming-soon page
+            Partner->>Browser: Back to exercises or the browser's back button
+            Browser->>Worker: loads the learn page with the pick
+            Worker-->>Browser: learn page with Mnemonic story ticked
+        end
+    end
+```
+
+## 7. Deployment view
+
+<!-- N/A: reuses existing deployment units, no infra change -->
+
+No new deployment unit, binding, secret, cron or migration. The Worker's new routes and assets ship with the usual `wrangler deploy`, and the app's screens with the usual store build. Either can go first. The shared page's Learn depends only on the Worker, and the app's learn page only on the app. Once the Worker is deployed, every live published session shows Learn without a republish, which the spec accepts (§6.1).
+
+## 8. Crosscutting concepts
+
+The repo's defaults are inherited. The rows below only say how each one applies here.
+
+| Concept | Convention | Where defined |
+|---|---|---|
+| Navigation (app) | `LearnRoute` and `ComingSoonRoute` are typed routes nested under `table`, opened with `push` and left with `pop`. The SnackBar is not a route | CLAUDE.md rule 1; architecture.md §2 rule 1 |
+| State (app) | Ticks are in the learn page's widget `State`. The session comes from the existing `wordInputNotifierProvider` / `sessionByIdProvider`. No new provider, nothing persisted | architecture.md §2 rule 2; sad §4 |
+| Empty and error answers | App: `SnackBar` "No words to learn" (as "No words to share"). Shared page: the existing `.toasts` toast. Learn link with no word to learn: the page's own "No words to learn" plus a link to `/s/:id`. Dead session, unknown or unavailable exercise: the existing 404 gone page, same body | spec AC-03, AC-08b, AC-09, AC-10; `renderNotFoundPage` |
+| Web security | Routes are `public: true` and read-only. The CSP comes from the unchanged `pageHeaders()`. Every value from storage goes through `escapeHtml`. Reads are not rate-limited (same as the shared page) | `src/routing.ts`; `src/session/assets.ts`; spec §6.1 |
+| Caching | HTML pages are `no-store` (`htmlResponse`). `learn.js` is served at a hashed, one-year immutable URL, like `page.js` | `src/http.ts`; `src/session/assets.ts` |
+| IDs | Exercise ids are stable kebab-case strings from `exercises.json` and appear in links. Session ids keep `ID_PATTERN` | ADR-0003; `src/session/types.ts` |
+| Rules shared by app and Worker | "Word to learn" is `isFilled` in Dart and `isWordToLearn` in TypeScript, with the same trim rule. The exercise list is pinned by the parity test | sad §2; ADR-0003 |
+| Accessibility | Icon-only Learn and Share carry a `Tooltip` (long press names them). Every top-bar button is ≥ 48 × 48 dp. Web tick boxes are real `<input type="checkbox">` with a `<label>`. Coming-soon ones are `disabled`. The hint sits in an `aria-live` region | spec AC-11b, §6; sad §4 |
+| Internationalisation | N/A: the UI is English, as elsewhere. The exercise names are the spec's labels | — |
+| Logging / observability | No new log events. The Worker's existing observability covers the new routes | `wrangler.jsonc` `observability` |
+
+## 9. Architecture decisions
+
+| # | Title | Status | Section |
+|---|---|---|---|
+| 0001 | Change the app, the Worker and the shared page as three surfaces | Accepted | §4 |
+| 0002 | Render the web learn page on the Worker and keep ticks in its link | Accepted | §4 |
+| 0003 | Keep the exercise list as JSON in the Worker and test the app's copy against it | Accepted | §4 |
+
+ADR files live under `docs/features/learn-part-step-1/adr/NNNN-<title>.md`.
+
+## 10. Quality requirements
+
+**QG-1. One plan, two pages**
+- **When:** the app and the Worker are built from the same commit and both learn pages are opened for a session.
+- **Then:** 11 of 11 exercises match in name, stage, order and state.
+- **How verify:** `test/learn_exercises_test.dart` compares the Dart list with `vocab-photo-api/src/learn/exercises.json` entry by entry. `vocab-photo-api/test/learn.test.mjs` checks that the rendered learn page lists `exercises.json` in order with its states. At release, both pages are compared by eye (spec §6: "a check at release comparing both pages, plus a test that compares the app's and the web page's exercise lists").
+
+**QG-2. Quick to open**
+- **When:** the learner taps Learn on a Words screen with words to learn, or a partner opens the web learn page on a phone.
+- **Then:** app: ≤ 300 ms from tapping Learn to the page shown. Web: ≤ 1.5 s to the page shown on a phone over 4G, and no sideways scrolling at 320 px viewport width.
+- **How verify:** app: a stopwatch / frame timeline on the owner's phone, 5 runs, at release. Web: 5 loads in a phone browser at release, plus browser device emulation at 320 px at release.
+
+**QG-3. The Words top bar stays usable on a narrow phone**
+- **When:** the Words screen is shown at 360 dp / 100 %, 320 dp / 100 % and 320 dp / 130 % text size.
+- **Then:** the layout is chosen by measuring the space actually available, not by fixed width thresholds. At 360 dp and 100 % text size, labels are shown (normal or smaller padding). At 320 dp, at 100 % and at 130 %, there is no cut-off and no overflow in whichever layout is chosen. Each top-bar button is ≥ 48 × 48 dp, also in the compact and icon-only layouts. Where everything fits with today's padding, Share looks exactly as it does today (AC-12).
+- **How verify:** widget tests at 360 dp/100 %, 320 dp/100 % and 320 dp/130 % (layout chosen, no `RenderFlex` overflow, title "Words" whole, each button's size ≥ 48 × 48 dp at 320 dp), plus a device or emulator pass at release.
+
+**QG-4. A dead link opens nothing**
+- **When:** a learn link or a coming-soon link names an expired or unknown session, or an exercise that is unknown or not available.
+- **Then:** the answer is the shared page's 404 "This word list is gone." page with the same body, and nothing reveals whether the session ever existed (AC-09).
+- **How verify:** `learn.test.mjs` requests each case and compares status and body with `GET /s/<unknown id>`.
+
+## 11. Risks and technical debt
+
+| Risk / debt | Severity | Mitigation | Owner |
+|---|---|---|---|
+| The shared page's `.actions` row (Download for AnkiDroid, Learn, the phone layout's photo button) may wrap or crowd on a 320 px phone. The spec pins 320 px only for the learn page | Medium | The `screens` stage draws the row at 320 px in the phone layout. Checked in the release 320 px emulation pass | Maksym |
+| An older app from the store can show an exercise as coming soon after the Worker has switched it on (ADR-0003) | Low | Switch an exercise on in one change for both lists (the parity test enforces it), and release the app before deploying the Worker when it matters | Maksym |
+| `page.js` hears about other people's edits by polling, so its view of saved rows can lag, and Learn may open onto a session that has just lost its last word to learn | Low | The Worker re-checks on every load and shows "No words to learn" with a link back (AC-08b) | Maksym |
+| Measuring the top bar depends on text metrics that differ by device font | Low | Widget tests at the three spec sizes, a device pass at release, and icon-only as the last-resort layout | Maksym |
+| Repo texts this design outdates: `docs/architecture.md` §1/§3 (no `features/learn/`, no learn routes, no `src/learn/`), CLAUDE.md rule 5 (`Exercise` approved) and rule 3 (the two approved visible changes), `vocab-photo-api/README.md` (the new public routes) | Low | Update them with the code in the implementing tasks | Maksym |
+| Product: roadmap step 8 ("mark one memorized") overlaps the planned "Remember or not" exercise (spec §8) | Low | Untouched by this feature. The owner decides before `sdd:specify` of "Remember or not" | Maksym |
+
+**Accepted debt (acceptable in v1, plan to fix later):**
+- Start on the web needs JavaScript, like editing on the shared page.
+- Start opens the coming-soon screen for the first ticked exercise in plan order. A real sequence of several exercises is designed when a second exercise becomes available.
+- Exercise ids are frozen from now on. Renaming one later needs a mapping once progress is stored.
+- No learning progress is stored anywhere (spec §3). The progress feature will add its own storage keyed by exercise id.
+
+## 12. Glossary
+
+| Term | Meaning |
+|---|---|
+| learner | The phone owner who collects words into sessions; opens the app's learn page from a Words screen (repo-root CONTEXT) |
+| partner | A person holding a session's shared link, with no app and no account; opens the web learn page (repo-root CONTEXT) |
+| session | A set of words collected together on the learner's device; the learn page practises one session's words (repo-root CONTEXT) |
+| shared page | The public web page of a published session; it now carries a Learn button (repo-root CONTEXT) |
+| word row | One line of a session: an English word with its details (repo-root CONTEXT) |
+| exercise | One kind of activity for practising a session's words; listed on the learn page, available or coming soon (feature CONTEXT) |
+| learn page | The app screen and the matching web page where exercises are ticked and Start is pressed (feature CONTEXT) |
+| stage | One of the three groups of exercises, shown as "Step 1", "Step 2", "Step 3"; not a roadmap step (feature CONTEXT) |
+| available exercise | An exercise that can be ticked and started; only Mnemonic story in this feature (feature CONTEXT) |
+| coming soon | The state of an exercise that cannot be ticked yet, and the screen Start opens while the picked exercise is not built (feature CONTEXT) |
+| word to learn | A word row with an English word plus a translation or a definition; on the web, only saved rows count (feature CONTEXT; `isFilled` / `isWordToLearn`) |
+| mnemonic story | The exercise that links a session's words into one story, one frame per word; built in a later feature (feature CONTEXT) |
+| exercise list | The eleven `{id, name, stage, available}` entries in plan order: `exercises.json` in the Worker and its Dart copy in the app (ADR-0003). *Not yet in CONTEXT, so flagged for `/sdd:glossary`* |
+| pick | One ticked exercise carried in the web learn page's address (`?pick=<exercise id>`), so the browser's back button returns with ticks kept (ADR-0002). *Not yet in CONTEXT, so flagged for `/sdd:glossary`* |
+| normal / compact / icon-only bar | The three layouts of the Words top bar, chosen by measuring the space available (AC-11, AC-11b, AC-12) |
