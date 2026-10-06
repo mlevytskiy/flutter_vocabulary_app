@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/history/history_screen.dart';
+import '../features/learn/learn_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
 import '../features/words_table/words_table_screen.dart';
@@ -11,7 +12,10 @@ part 'routes.g.dart';
 @TypedGoRoute<WordInputRoute>(
   path: '/',
   routes: [
-    TypedGoRoute<WordsTableRoute>(path: 'table'),
+    TypedGoRoute<WordsTableRoute>(
+      path: 'table',
+      routes: [TypedGoRoute<LearnRoute>(path: 'learn')],
+    ),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
   ],
@@ -34,6 +38,19 @@ class WordsTableRoute extends GoRouteData with _$WordsTableRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       WordsTableScreen(sessionId: sessionId);
+}
+
+/// The learn page (learn-part-step-1), opened from the Words screen. Carries
+/// the same optional [sessionId] as [WordsTableRoute]: none for the current
+/// session, an id for a History row, read-only either way (AC-13).
+class LearnRoute extends GoRouteData with _$LearnRoute {
+  const LearnRoute({this.sessionId});
+
+  final String? sessionId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      LearnScreen(sessionId: sessionId);
 }
 
 class HistoryRoute extends GoRouteData with _$HistoryRoute {

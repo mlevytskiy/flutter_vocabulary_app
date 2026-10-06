@@ -10,7 +10,7 @@
 | T3 | [Serve the web learn page, the no-words page and the coming-soon page from the Worker](./T3-worker-learn-routes.md) | ports | Maksym | M | T1 | done |
 | T4 | [Add learn.js: Start, the hint, the pick in the address and Back to exercises](./T4-worker-learn-script.md) | ui | Maksym | M | T3 | done |
 | T5 | [Add Learn to the shared page with a fresh check before opening](./T5-shared-page-learn-button.md) | ui | Maksym | M | T3 | done |
-| T6 | [Add the app's learn page and LearnRoute](./T6-app-learn-screen.md) | ui | Maksym | M | T2 | todo |
+| T6 | [Add the app's learn page and LearnRoute](./T6-app-learn-screen.md) | ui | Maksym | M | T2 | done |
 | T7 | [Add the app's coming-soon screen and make Start open it](./T7-app-coming-soon-screen.md) | ui | Maksym | S | T6 | todo |
 | T8 | [Add LearnShareBar that fits Learn and Share by measuring the space](./T8-learn-share-bar.md) | ui | Maksym | M | — | todo |
 | T9 | [Put Learn on the Words screen: SnackBar when empty, otherwise open the learn page](./T9-wire-learn-on-words-screen.md) | wiring | Maksym | S | T6, T8 | todo |
