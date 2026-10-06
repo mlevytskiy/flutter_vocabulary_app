@@ -1,0 +1,13 @@
+[
+  { "id": "mnemonic-story", "name": "Mnemonic story", "stage": 1, "available": true },
+  { "id": "match-synonyms", "name": "Match synonyms", "stage": 1, "available": false },
+  { "id": "match-antonyms", "name": "Match antonyms", "stage": 1, "available": false },
+  { "id": "match-definitions", "name": "Match word and definition", "stage": 1, "available": false },
+  { "id": "pick-the-answer", "name": "Pick the right answer", "stage": 2, "available": false },
+  { "id": "fill-the-gaps", "name": "Fill the gaps", "stage": 2, "available": false },
+  { "id": "remember-or-not", "name": "Remember or not", "stage": 2, "available": false },
+  { "id": "own-sentences", "name": "Make your own sentences", "stage": 3, "available": false },
+  { "id": "translate-sentences", "name": "Translate sentences", "stage": 3, "available": false },
+  { "id": "own-sentences-spoken", "name": "Make your own sentences (speak)", "stage": 3, "available": false },
+  { "id": "translate-sentences-spoken", "name": "Translate sentences (speak)", "stage": 3, "available": false }
+]

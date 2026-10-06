@@ -7,7 +7,7 @@ acs: ["AC-04", "AC-08b"]
 files_hint: ["vocab-photo-api/src/learn/exercises.json", "vocab-photo-api/src/learn/exercises.ts", "vocab-photo-api/test/learn-exercises.test.mjs"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Add the exercise list and the word-to-learn rule to the Worker
