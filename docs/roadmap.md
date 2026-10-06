@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-27"
+updated_at: "2026-10-06"
 ---
 
 # Roadmap — flutter_vocabulary_app
@@ -39,6 +39,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 17 | Words from a film: open a subtitle file, choose purpose / English level / word maximum (defaults in Settings), review the proposed words in the photo results dialog, add them to the current session. Search by film name is a later step | `idea-brief.md` §7 Recommendation → [spec](features/words-from-subtitles/spec.md) | S | spec'd |
 | 18 | Words from a photo already on the phone: "Get words from photo" offers Camera or Gallery; a gallery photo then goes the camera photo's way | owner request 2026-10-06 → [spec](features/photo-from-gallery/spec.md) | XS | spec'd |
 | 19 | Words from a Quizlet set: "Import from Quizlet" replaces Screenshot in the red + menu; paste a set link, review the cards in the results dialog, add them; the set (name + link) shows in the shared page's source pager like a photo | owner request 2026-10-06 → [spec](features/import-from-quizlet/spec.md) | M | done 2026-10-06 |
+| 20 | Learning part, step 1: a Learn button on the Words screen and on the shared page opens a learn page listing the exercises in three stages; only Mnemonic story can be ticked, and Start opens a coming-soon screen | owner request 2026-10-06 → [spec](features/learn-part-step-1/spec.md) | S | spec'd |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker
@@ -58,7 +59,6 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 
 ## Out of scope
 
-- Own learning / spaced-repetition engine — learning is outsourced to AnkiDroid.
 - Languages other than English↔Ukrainian — closed deliberately; a later migration is the accepted cost.
 - Session → app sync-back — corrections on the shared page do not flow into the app; the file download is the only return path.
 - Reverso as an information source — the free tier does not work.
@@ -78,7 +78,7 @@ sheet already work (`lib/screens/words_table_screen.dart:56`); they are not step
 
 ## Decisions so far
 
-- Learning stays in AnkiDroid; the app collects and exports, it does not teach → [`docs/idea-brief.md`](./idea-brief.md)
+- ~~Learning stays in AnkiDroid; the app collects and exports, it does not teach~~ → [`docs/idea-brief.md`](./idea-brief.md). **Superseded 2026-10-06:** the app gets its own learning part (exercises on a learn page, in the app and on the shared page); AnkiDroid stays the export target → [`features/learn-part-step-1/spec.md`](features/learn-part-step-1/spec.md)
 - English↔Ukrainian only in the first version; a later language migration is the accepted cost → [`docs/idea-brief.md`](./idea-brief.md)
 - A link is the only credential on the shared page — no accounts, no permissions → [`docs/idea-brief.md`](./idea-brief.md)
 - The shared session is designed source-agnostic from the start, so a future capture source is an addition rather than a rewrite → [`docs/idea-brief.md`](./idea-brief.md)

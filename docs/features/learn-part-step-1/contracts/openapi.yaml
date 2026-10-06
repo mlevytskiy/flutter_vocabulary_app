@@ -1,0 +1,324 @@
+# learn-part-step-1 — the Worker's web learn page, coming-soon page and learn script.
+# DERIVED, not hand-written:
+#   fields + constraints  ← existing schema (no data-model.md — legal fast-lane skip, no schema
+#                           change): migrations/0001_sessions.sql `rows`, src/session/types.ts
+#                           ID_PATTERN; exercise ids/states ← ADR-0003 (exercises.json)
+#   responses             ← sad.md §6 S-03 / S-04 alt-branches, ADR-0002 decision outcome
+#   endpoints + shape     ← spec.md §4 US-04, §5 AC-04…AC-10; sad.md §4 / §5
+# Wire conventions are the Worker's own, not the SDD defaults (carried over from the owner's
+# words-from-subtitles api-stage decision, 2026-09-30). All three routes are public pages:
+# no auth, unversioned paths, HTML bodies. The only JSON errors are the router's own
+# `{error}` answers. See api-sync-report.md "Deviations".
+openapi: 3.1.0
+
+info:
+  title: vocab-photo-api — learn pages
+  version: 0.1.0
+  description: |
+    The app has no place where a session's words are practised. This step builds the way in
+    before any exercise exists behind it. Anyone holding a shared link can open the session's
+    web learn page, from the shared page's Learn button or from the learn page's own link.
+    The page shows the count of words to learn in the session's saved rows and the whole
+    plan of eleven exercises in three stages. Only Mnemonic story can be ticked. Start opens
+    an honest coming-soon page with a way back. Nothing is stored. Ticks live only in the
+    page's own address (`?pick=`, ADR-0002), so the browser's back button returns ticked and
+    a new visit from Learn starts unticked. A link is the only credential: a dead session, an
+    unknown exercise or an exercise that is not available gets exactly the shared page's
+    404 "gone" answer (AC-09). Every route here only reads.
+
+servers:
+  - url: https://vocab-photo-api.<account>.workers.dev
+    description: Production (the real host is in lib/config/vocab_api_config.dart, gitignored)
+  - url: http://localhost:8787
+    description: Local (`wrangler dev`)
+
+# The Worker has no bearer auth. Its non-public routes use the `x-app-secret` header; every
+# route in this contract is `public: true` in the route table (src/routing.ts), the same as
+# GET /s/{id}. Reads are not rate-limited (spec §6.1).
+security: []
+
+tags:
+  - name: learn
+    description: Web learn page and coming-soon page (src/learn/)
+
+paths:
+  /s/{id}/learn:
+    get:
+      summary: Web learn page of a published session
+      description: |
+        Loads the session and its saved rows from D1 and counts the words to learn
+        (`isWordToLearn`, the same trim rule as the app's `WordPair.isFilled`: a non-empty
+        word plus a non-empty translation or definition, live rows only). Renders the
+        exercise list from `exercises.json` in plan order.
+
+        Order of checks (sad §6 S-04): session live? → any word to learn? → render.
+
+        `pick` pre-ticks an exercise only when it names an exercise that exists and is
+        available. Anything else in `pick` (an unknown id, a coming-soon id, a repeat, an
+        empty value) is ignored silently, never an error (ADR-0002, AC-06). The Learn button
+        on the shared page links here with no `pick` (AC-05b).
+
+        Headers on every HTML answer: `content-type: text/html; charset=utf-8`,
+        `cache-control: no-store` and the unchanged `pageHeaders()` CSP (`script-src 'self'`,
+        `form-action 'none'`, `frame-ancestors 'none'`).
+      operationId: getLearnPage
+      tags: [learn]
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - $ref: "#/components/parameters/Pick"
+      responses:
+        "200":
+          description: |
+            One of two pages, both for a live session:
+            - **Learn page** (at least one word to learn; AC-04, AC-08, AC-08b): the word
+              count ("12 words"), "Step 1" / "Step 2" / "Step 3" with the eleven exercises,
+              ten greyed "Coming soon", the exercises named in a valid `pick` ticked (none
+              without `pick`), Start unavailable plus "Pick at least one exercise" while
+              nothing is ticked, and a script tag loading `/assets/learn-{hash}.js`.
+              No sideways scrolling at a 320 px viewport.
+            - **No-words page** (no word to learn in the saved rows; AC-08b, AC-10): "No words
+              to learn" and a link to `/s/{id}`. It is a 200 because the session is live and
+              nothing failed; only a dead link is a 404.
+          headers:
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+            Content-Security-Policy: { $ref: "#/components/headers/PageCsp" }
+          content:
+            text/html:
+              schema: { $ref: "#/components/schemas/HtmlPage" }
+              examples:
+                learnPage:
+                  summary: Learn page, Mnemonic story ticked (GET /s/<id>/learn?pick=mnemonic-story)
+                  value: |
+                    <!doctype html><html lang="en"><head><title>Learn</title>…</head><body><main>
+                    <h1>Learn</h1><p class="count">12 words</p>
+                    <h2>Step 1</h2>
+                    <label><input type="checkbox" name="pick" value="mnemonic-story" checked> Mnemonic story</label>
+                    <label class="soon"><input type="checkbox" disabled> Match synonyms <span>Coming soon</span></label>
+                    …
+                    <a class="btn start" href="/s/<id>/learn/mnemonic-story?pick=mnemonic-story">Start</a>
+                    <p class="hint" hidden>Pick at least one exercise</p>
+                    </main><script src="/assets/learn-<hash>.js"></script></body></html>
+                noWordsPage:
+                  summary: Live session whose saved rows hold no word to learn
+                  value: |
+                    <!doctype html><html lang="en"><head><title>No words to learn</title>…</head><body><main>
+                    <h1>No words to learn</h1>
+                    <p><a href="/s/<id>">Back to the word list</a></p>
+                    </main></body></html>
+        "404":
+          $ref: "#/components/responses/GonePage"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /s/{id}/learn/{exercise}:
+    get:
+      summary: Coming-soon page for a picked exercise
+      description: |
+        What Start opens (AC-05). Start links to the first ticked exercise in plan order and
+        carries the ticks along as `pick`, so "Back to exercises" can return to
+        `/s/{id}/learn?pick=…` (or `history.back()` when the previous entry is this session's
+        learn page — ADR-0002) and the learn page comes back ticked.
+
+        Order of checks (sad §6 S-04, ADR-0002): session live? → `exercise` known and
+        available? → render. Any "no" is the same 404 gone page.
+      operationId: getComingSoonPage
+      tags: [learn]
+      parameters:
+        - $ref: "#/components/parameters/SessionId"
+        - in: path
+          name: exercise
+          required: true
+          description: |
+            An exercise id from `exercises.json` (ADR-0003). Only an available exercise
+            answers 200 — in this step that is `mnemonic-story` alone. A coming-soon id or a
+            string outside the list is a 404. A value the route pattern does not accept
+            (empty, a slash) never reaches the handler and gets the router's JSON 404.
+          schema: { $ref: "#/components/schemas/ExerciseId" }
+          example: mnemonic-story
+        - $ref: "#/components/parameters/Pick"
+      responses:
+        "200":
+          description: |
+            Coming-soon page (AC-05): the heading is the exercise's name ("Mnemonic story"),
+            "Coming soon — this exercise is not ready yet." and a "Back to exercises" link to
+            `/s/{id}/learn` carrying the same valid `pick` values. No word count.
+            Also returned, provisionally, for a live session whose saved rows hold no word to
+            learn any more (OQ-1 in api-sync-report.md).
+          # unresolved — that no-words case (rows deleted on the shared page between the
+          # learn page and Start) is not drawn in sad §6 S-04, and ADR-0002 names only the
+          # 404 cases. OQ-1, owner `sequences`, due before the contract is finalized.
+          headers:
+            Cache-Control: { $ref: "#/components/headers/NoStore" }
+            Content-Security-Policy: { $ref: "#/components/headers/PageCsp" }
+          content:
+            text/html:
+              schema: { $ref: "#/components/schemas/HtmlPage" }
+              example: |
+                <!doctype html><html lang="en"><head><title>Mnemonic story</title>…</head><body><main>
+                <h1>Mnemonic story</h1>
+                <p>Coming soon — this exercise is not ready yet.</p>
+                <a class="btn back" href="/s/<id>/learn?pick=mnemonic-story">Back to exercises</a>
+                </main><script src="/assets/learn-<hash>.js"></script></body></html>
+        "404":
+          $ref: "#/components/responses/GonePage"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /assets/learn-{hash}.js:
+    get:
+      summary: The learn pages' script
+      description: |
+        `learn.js` (src/learn/client/), served by `src/session/assets.ts` beside
+        `page-<hash>.js` and loaded under `script-src 'self'`. It enables Start and hides the
+        hint while something is ticked (AC-07), mirrors every tick into the address with
+        `history.replaceState` (`?pick=`, AC-05), and drives "Back to exercises". Only the
+        current hash answers; an old hash is a plain-text 404, as for `page-<hash>.js`.
+      operationId: getLearnScript
+      tags: [learn]
+      parameters:
+        - in: path
+          name: hash
+          required: true
+          description: First 12 hex digits of the script's content hash.
+          schema: { type: string, pattern: "^[0-9a-f]{12}$" }
+          example: 0123456789ab
+      responses:
+        "200":
+          description: The script, cached for a year (the hash changes with the content).
+          headers:
+            Cache-Control:
+              schema: { type: string, const: "public, max-age=31536000, immutable" }
+          content:
+            text/javascript:
+              schema: { type: string }
+              example: "// learn.js — ticks → Start, hint and ?pick= …"
+        "404":
+          description: Not the current hash (a page rendered before a deploy).
+          content:
+            text/plain:
+              schema: { type: string, const: "Not found" }
+              example: Not found
+
+components:
+  parameters:
+    SessionId:
+      in: path
+      name: id
+      required: true
+      description: |
+        The published session's link id (existing schema — `sessions.id`; route pattern
+        `ID_PATTERN` in src/session/types.ts). An id that does not match the pattern never
+        reaches the handler and gets the router's JSON 404, exactly as for GET /s/{id}.
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9-]{1,64}$"
+      example: 00000000-0000-4000-8000-000000000000
+
+    Pick:
+      in: query
+      name: pick
+      required: false
+      description: |
+        Ticked exercises, one `pick` per tick, written by learn.js (ADR-0002). Only values
+        that are known and available are honoured; everything else is ignored, never
+        rejected. In this step the only value that ticks anything is `mnemonic-story`.
+      style: form
+      explode: true
+      schema:
+        type: array
+        items: { type: string }
+      example: [mnemonic-story]
+
+  headers:
+    NoStore:
+      description: Every HTML answer (`htmlResponse`).
+      schema: { type: string, const: no-store }
+    PageCsp:
+      description: |
+        The unchanged `pageHeaders()` policy: `default-src 'none'; script-src 'self';
+        style-src <hash of the one inline style>; img-src 'self'; connect-src 'self'
+        https://translate.googleapis.com; base-uri 'none'; form-action 'none';
+        frame-ancestors 'none'`.
+      schema: { type: string }
+
+  responses:
+    GonePage:
+      description: |
+        The shared page's "This word list is gone" page (`renderNotFoundPage`), the same
+        status, headers and body as GET /s/{unknown id} (AC-09). Returned for an expired or
+        unknown session and, on the coming-soon route, for an exercise that is unknown or not
+        available. Nothing in it reveals whether the session ever existed.
+      headers:
+        Cache-Control: { $ref: "#/components/headers/NoStore" }
+        Content-Security-Policy: { $ref: "#/components/headers/PageCsp" }
+      content:
+        text/html:
+          schema: { $ref: "#/components/schemas/HtmlPage" }
+          example: |
+            <!doctype html><html lang="en"><head><title>This word list is gone</title>…</head><body><main>
+            <div class="gone"><h1>This word list is gone</h1>
+            <p>Shared lists stay up for 30 days. This one has expired, or the link is not quite right.</p></div>
+            </main></body></html>
+    MethodNotAllowed:
+      description: Existing router answer (src/index.ts) for any method other than GET on a page path.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/RouterError" }
+          example: { error: Method not allowed }
+
+  schemas:
+    HtmlPage:
+      type: string
+      description: A complete server-rendered HTML document; every value from storage goes through `escapeHtml`.
+
+    # The router's existing error body (src/index.ts). No new error codes in this feature.
+    RouterError:
+      type: object
+      required: [error]
+      additionalProperties: false
+      properties:
+        error: { type: string }
+
+    ExerciseId:
+      type: string
+      description: Stable kebab-case exercise id, frozen from this feature on (ADR-0003, sad §11).
+      enum:
+        - mnemonic-story
+        - match-synonyms
+        - match-antonyms
+        - match-definitions
+        - pick-the-answer
+        - fill-the-gaps
+        - remember-or-not
+        - own-sentences
+        - translate-sentences
+        - own-sentences-spoken
+        - translate-sentences-spoken
+
+    # The shape of one entry of vocab-photo-api/src/learn/exercises.json (ADR-0003). Not on the
+    # wire as JSON — it is rendered into the pages — but it is the shape the app's Dart copy
+    # (lib/features/learn/exercises.dart) is tested against, so it is pinned here.
+    Exercise:
+      type: object
+      required: [id, name, stage, available]
+      additionalProperties: false
+      properties:
+        id: { $ref: "#/components/schemas/ExerciseId" }
+        name:
+          type: string
+          description: The spec's AC-04 label, verbatim (e.g. "Mnemonic story").
+        stage:
+          type: integer
+          enum: [1, 2, 3]
+          description: Shown as "Step 1", "Step 2", "Step 3".
+        available:
+          type: boolean
+          description: Only `mnemonic-story` is true in this step.
+      example: { id: mnemonic-story, name: Mnemonic story, stage: 1, available: true }
+
+    ExerciseList:
+      type: array
+      description: The whole of exercises.json; array order is plan order.
+      minItems: 11
+      maxItems: 11
+      items: { $ref: "#/components/schemas/Exercise" }

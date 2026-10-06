@@ -1,0 +1,216 @@
+{
+  "slug": "learn-part-step-1",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add the exercise list and the word-to-learn rule to the Worker",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-08b"
+      ],
+      "dod": "`exercises.json` holds the eleven `{id, name, stage, available}` entries in AC-04 order with only `mnemonic-story` available, `exercises.ts` exposes them typed plus `isWordToLearn(row)` with the same trim rule as `WordPair.isFilled`, and `node --test` covers order, ids, the single available entry and the word-to-learn rule.",
+      "files_hint": [
+        "vocab-photo-api/src/learn/exercises.json",
+        "vocab-photo-api/src/learn/exercises.ts",
+        "vocab-photo-api/test/learn-exercises.test.mjs"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add the Exercise type and its const list to the app, pinned to the Worker's JSON",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-04"
+      ],
+      "dod": "`lib/features/learn/exercises.dart` defines `Exercise` (id, name, stage, available) and the const list of eleven, and `test/learn_exercises_test.dart` reads `vocab-photo-api/src/learn/exercises.json` from disk and passes only when all 11 entries match in id, name, stage, order and availability.",
+      "files_hint": [
+        "lib/features/learn/exercises.dart",
+        "test/learn_exercises_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Serve the web learn page, the no-words page and the coming-soon page from the Worker",
+      "layer": "ports",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-06",
+        "AC-08",
+        "AC-08b",
+        "AC-09"
+      ],
+      "dod": "`GET /s/:id/learn` and `GET /s/:id/learn/:exercise` are registered `public: true` and answer as `getLearnPage` / `getComingSoonPage` in openapi.yaml: 200 learn page with the word count and eleven exercises (ticked only for a valid `pick`), 200 no-words page with a link to `/s/:id`, 200 coming-soon page for `mnemonic-story`, and the byte-identical 404 gone page for a dead session or an unknown/unavailable exercise; covered by `test/learn.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/learn/page.ts",
+        "vocab-photo-api/src/learn/routes.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/src/session/style.ts",
+        "vocab-photo-api/test/learn.test.mjs"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add learn.js: Start, the hint, the pick in the address and Back to exercises",
+      "layer": "ui",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-05b",
+        "AC-07"
+      ],
+      "dod": "`/assets/learn-<hash>.js` is served with the same immutable caching as `page-<hash>.js` and loaded by both learn pages under the unchanged CSP; ticking Mnemonic story enables Start (its `href` → `/s/:id/learn/mnemonic-story?pick=mnemonic-story`), hides the hint and rewrites the address with `?pick=` via `replaceState`, unticking reverses all three, and `npm run typecheck` checks `learn.js`; serving and the script tag are covered by `test/learn.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/learn/client/learn.js",
+        "vocab-photo-api/src/learn/client/learn.d.ts",
+        "vocab-photo-api/src/session/assets.ts",
+        "vocab-photo-api/src/learn/page.ts",
+        "vocab-photo-api/tsconfig.client.json",
+        "vocab-photo-api/test/learn.test.mjs"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Add Learn to the shared page with a fresh check before opening",
+      "layer": "ui",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10"
+      ],
+      "dod": "The shared page's `.actions` row shows `<a class=\"btn learn\" href=\"/s/:id/learn\">Learn</a>` right of \"Download for AnkiDroid\" (covered by `test/page.test.mjs`), and a press in `page.js` first fetches `GET /s/:id/changes`, then shows the toast \"No words to learn\" without navigating when the fresh saved rows hold none, otherwise opens `/s/:id/learn` in the same tab below 900 px and in a tab opened empty during the click at 900 px and wider, falling back to the held rows when the fetch fails.",
+      "files_hint": [
+        "vocab-photo-api/src/session/page.ts",
+        "vocab-photo-api/src/session/client/page.js",
+        "vocab-photo-api/src/session/style.ts",
+        "vocab-photo-api/test/page.test.mjs"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Add the app's learn page and LearnRoute",
+      "layer": "ui",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-06",
+        "AC-07",
+        "AC-13"
+      ],
+      "dod": "`LearnRoute` (path `learn` under `table`, optional `sessionId`) builds `LearnScreen`, which shows \"Learn\", the session's word-to-learn count (\"1 word\" / \"<n> words\"), Step 1–3 with eleven tiles in plan order, only Mnemonic story tickable, ten greyed with \"Coming soon\", Start disabled with \"Pick at least one exercise\" until something is ticked; `test/learn_screen_test.dart` covers these states and a History `sessionId` showing that session's count without changing the current session.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/router/routes.g.dart",
+        "lib/features/learn/learn_screen.dart",
+        "test/learn_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add the app's coming-soon screen and make Start open it",
+      "layer": "ui",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-05b"
+      ],
+      "dod": "`ComingSoonRoute` (path `soon` under `learn`, exercise id) builds `ComingSoonScreen` with the exercise's name, \"Coming soon — this exercise is not ready yet.\" and \"Back to exercises\" (pop); Start pushes it for the first ticked exercise in plan order; a widget test shows that Back to exercises and the back arrow both return with Mnemonic story still ticked, and that a new push of `LearnRoute` starts unticked.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/router/routes.g.dart",
+        "lib/features/learn/coming_soon_screen.dart",
+        "lib/features/learn/learn_screen.dart",
+        "test/learn_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Add LearnShareBar that fits Learn and Share by measuring the space",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-11",
+        "AC-11b",
+        "AC-12"
+      ],
+      "dod": "`LearnShareBar` measures the available width at the current text scale and picks normal (Share exactly as today, Learn matching), compact (smaller padding, labels kept) or icon-only (`Tooltip` \"Learn\"/\"Share\"), with no fixed width breakpoints; widget tests at 360 dp/100 %, 320 dp/100 % and 320 dp/130 % show labels at 360 dp, no `RenderFlex` overflow, the title \"Words\" whole and each button ≥ 48 × 48 dp.",
+      "files_hint": [
+        "lib/features/words_table/widgets/learn_share_bar.dart",
+        "test/learn_share_bar_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Put Learn on the Words screen: SnackBar when empty, otherwise open the learn page",
+      "layer": "wiring",
+      "deps": [
+        "T6",
+        "T8"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-13"
+      ],
+      "dod": "The Words screen's `AppBar` uses `LearnShareBar`; Learn shows the `SnackBar` \"No words to learn\" when no row `isFilled` and otherwise pushes `LearnRoute(sessionId: <this screen's sessionId>)`; a widget test covers the empty SnackBar, opening from the current session and from a History session (its count, current session unchanged) and the back arrow returning to the same Words screen.",
+      "files_hint": [
+        "lib/features/words_table/words_table_screen.dart",
+        "test/words_table_learn_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Update the repo docs this design outdates",
+      "layer": "docs",
+      "deps": [
+        "T4",
+        "T5",
+        "T7",
+        "T9"
+      ],
+      "acs": [],
+      "dod": "`docs/architecture.md` lists `lib/features/learn/`, `LearnRoute`/`ComingSoonRoute` and `vocab-photo-api/src/learn/`; CLAUDE.md rule 5 names `Exercise` as approved and rule 3 names the two approved visible changes; `vocab-photo-api/README.md` documents `GET /s/:id/learn`, `GET /s/:id/learn/:exercise` and `/assets/learn-<hash>.js`; the feature CONTEXT.md defines \"exercise list\" and \"pick\".",
+      "files_hint": [
+        "docs/architecture.md",
+        "CLAUDE.md",
+        "vocab-photo-api/README.md",
+        "docs/features/learn-part-step-1/CONTEXT.md"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Deploy the Worker and run the release checks on device and in the browser",
+      "layer": "tests",
+      "deps": [
+        "T10"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-11",
+        "AC-11b",
+        "AC-12"
+      ],
+      "dod": "After `wrangler deploy`, the release checks from spec §6 / sad §10 are run and recorded in this task file with pass/fail per row: app learn page ≤ 300 ms (5 runs), web learn page ≤ 1.5 s on a phone over 4G (5 loads), no sideways scroll at 320 px (learn page and the shared page's `.actions` row), the top bar on a device/emulator at 360 dp/100 % and 320 dp/100 %/130 %, and both learn pages compared by eye for 11/11 exercises.",
+      "files_hint": [
+        "docs/features/learn-part-step-1/tasks/T11-release-pass.md"
+      ]
+    }
+  ]
+}
