@@ -20,8 +20,10 @@ import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
+import 'quizlet_import_flow.dart';
 import 'subtitle_import_flow.dart';
 import 'widgets/photo_source_dialog.dart';
+import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
@@ -61,7 +63,11 @@ WordPair wordPairFromPhoto(VocabWord w, {String? sourceId}) {
 }
 
 class WordInputScreen extends ConsumerStatefulWidget {
-  const WordInputScreen({super.key});
+  const WordInputScreen({super.key, this.quizletDriverFactory});
+
+  /// Stands in for the Quizlet web view in tests; null in the app.
+  @visibleForTesting
+  final QuizletPageDriverFactory? quizletDriverFactory;
 
   @override
   ConsumerState<WordInputScreen> createState() => _WordInputScreenState();
@@ -1200,7 +1206,29 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         },
       );
 
-  void _addWordsFromPhoto(List<VocabWord> words, {SessionSource? source}) {
+  /// import-from-quizlet: the "Import from Quizlet" speed-dial item. On Done
+  /// the set joins the session's sources first (or renames the one already
+  /// there for this set), then the kept words are appended in set order,
+  /// each pointing at it (AC-03, AC-13b).
+  Future<void> _importFromQuizlet() => runQuizletImport(
+        context: context,
+        ref: ref,
+        currentSessionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.sessionId,
+        sessionWords: () => [
+          for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+            if (pair.word.trim().isNotEmpty) pair.word.trim(),
+        ],
+        addWords: (words, set) {
+          if (!mounted) return;
+          final sourceId = ref
+              .read(wordInputNotifierProvider.notifier)
+              .upsertSetSource(set.id, set.name, set.url);
+          _addWordsFromPhoto(words, sourceId: sourceId);
+        },
+        driverFactory: widget.quizletDriverFactory,
+      );
+
+  void _addWordsFromPhoto(List<VocabWord> words, {SessionSource? source, String? sourceId}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {
@@ -1209,7 +1237,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     setState(() {
       for (final w in words) {
-        final pair = wordPairFromPhoto(w, sourceId: source?.id);
+        final pair = wordPairFromPhoto(w, sourceId: source?.id ?? sourceId);
         if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
           // The row already holds the texts, so the controller listeners see
           // no change; the single _pushRow below persists everything.
@@ -1628,6 +1656,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       floatingActionButton: WordInputSpeedDial(
         onTakePhoto: _takePhotoForVocabulary,
         onFromSubtitles: _importFromSubtitles,
+        onImportFromQuizlet: _importFromQuizlet,
       ),
     );
   }

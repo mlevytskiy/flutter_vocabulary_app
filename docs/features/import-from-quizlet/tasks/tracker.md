@@ -17,7 +17,7 @@
 | [T10](T10-quizlet-progress-dialog.md) | Build the progress dialog that loads and reads the set in a web view | ui | Maksym | L | T6, T7 | done |
 | [T11](T11-results-dialog-set-mode.md) | Show the set name, "Read X of Y", skipped cards and "No new words" in the results dialog | ui | Maksym | S | — | done |
 | [T12](T12-quizlet-import-flow.md) | Run a Quizlet import from link to kept words, with translation and the late-result rule | app | Maksym | M | T8, T9, T10, T11 | done |
-| [T13](T13-wire-import-from-quizlet.md) | Add "Import from Quizlet" to the red + menu and keep the set as the words' source | wiring | Maksym | S | T4, T5, T12 | todo |
+| [T13](T13-wire-import-from-quizlet.md) | Add "Import from Quizlet" to the red + menu and keep the set as the words' source | wiring | Maksym | S | T4, T5, T12 | done |
 | [T14](T14-include-sources-switch-and-publish.md) | Publish photos and sets behind one "Include sources (N)" switch | app | Maksym | M | T4, T2 | todo |
 | [T15](T15-imported-words-are-ordinary.md) | Prove words from a set behave like typed words in the table, History and export | tests | Maksym | S | T13 | todo |
 | [T16](T16-docs-and-worker-deploy.md) | Update the architecture docs and deploy the Worker with the migration | docs | Maksym | S | T3, T14, T15 | todo |

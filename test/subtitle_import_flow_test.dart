@@ -237,6 +237,7 @@ void main() {
         floatingActionButton: WordInputSpeedDial(
           onTakePhoto: () {},
           onFromSubtitles: () => tapped = true,
+          onImportFromQuizlet: () {},
         ),
       ),
     ));

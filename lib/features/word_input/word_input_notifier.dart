@@ -220,6 +220,34 @@ class WordInputNotifier extends _$WordInputNotifier {
     _scheduleSave();
   }
 
+  /// Adds the Quizlet set the kept words came from (import-from-quizlet
+  /// ADR-0005) and returns its source id, `quizlet-<setId>`. A set the
+  /// session already lists keeps its place and takes the newer [name] and
+  /// [url] ("one set, one source", AC-13b); a new one goes after the
+  /// existing sources. The screen calls it before adding the rows, so the
+  /// rows never point at a source the session does not list.
+  String upsertSetSource(String setId, String name, String url) {
+    final id = 'quizlet-$setId';
+    if (!state.hasValue) return id;
+    final session = state.value!;
+    final existing = session.sources.where((s) => s.id == id).firstOrNull;
+    if (existing != null) {
+      existing
+        ..name = name
+        ..url = url;
+    } else {
+      session.sources.add(SessionSource()
+        ..id = id
+        ..takenAt = DateTime.now()
+        ..kind = SourceKind.set
+        ..name = name
+        ..url = url);
+    }
+    state = AsyncData(session);
+    _scheduleSave();
+    return id;
+  }
+
   /// Records that a shared link now exists for the current session (task-05),
   /// and the published id and edit token a republish sends back (ADR-0008).
   /// Not a content change: the timestamps are left alone so publishing does

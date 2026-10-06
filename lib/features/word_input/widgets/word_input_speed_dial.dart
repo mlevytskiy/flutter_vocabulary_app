@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
-/// The word-input screen's floating speed-dial FAB: take a photo or import
-/// words from subtitles (words-from-subtitles). Settings
+/// The word-input screen's floating speed-dial FAB: take a photo, import
+/// words from subtitles (words-from-subtitles) or from a Quizlet set
+/// (import-from-quizlet, in Screenshot's old place and colour). Settings
 /// is not here -- it has its own bottom-left button on the screen (task-13),
 /// so this dial carries the capture actions only.
 class WordInputSpeedDial extends StatelessWidget {
   final VoidCallback onTakePhoto;
   final VoidCallback onFromSubtitles;
+  final VoidCallback onImportFromQuizlet;
 
   const WordInputSpeedDial({
     super.key,
     required this.onTakePhoto,
     required this.onFromSubtitles,
+    required this.onImportFromQuizlet,
   });
 
   @override
@@ -45,6 +48,13 @@ class WordInputSpeedDial extends StatelessWidget {
           backgroundColor: Colors.orange,
           foregroundColor: Colors.white,
           onTap: onFromSubtitles,
+        ),
+        SpeedDialChild(
+          child: const Icon(Icons.style),
+          label: 'Import from Quizlet',
+          backgroundColor: Colors.green,
+          foregroundColor: Colors.white,
+          onTap: onImportFromQuizlet,
         ),
       ],
     );
