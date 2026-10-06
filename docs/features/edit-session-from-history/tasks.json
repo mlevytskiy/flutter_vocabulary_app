@@ -1,0 +1,59 @@
+{
+  "slug": "edit-session-from-history",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Store the pick record beside the current-session pointer",
+      "layer": "infra",
+      "deps": [],
+      "acs": ["AC-09"],
+      "dod": "session_store_test: after setSwitched(A, t) switchedAt(A) returns t, switchedAt(B) returns null, and the record survives reopening the store",
+      "files_hint": ["lib/core/services/session_store.dart", "test/session_store_test.dart"]
+    },
+    {
+      "id": "T2",
+      "title": "Add WordInputNotifier.switchTo",
+      "layer": "app",
+      "deps": ["T1"],
+      "acs": ["AC-03", "AC-07", "AC-08"],
+      "dod": "word_input_notifier_test: switchTo makes the picked session current with edit times untouched, saves a pending edit of the left session, drops an empty one, clears the restore offer, and on a missing id returns false with nothing changed",
+      "files_hint": ["lib/features/word_input/word_input_notifier.dart", "test/word_input_notifier_test.dart"]
+    },
+    {
+      "id": "T3",
+      "title": "Let the launch rule honour a recent pick",
+      "layer": "app",
+      "deps": ["T1"],
+      "acs": ["AC-09"],
+      "dod": "word_input_launch_rule_test: a week-old session picked 2 minutes ago reopens with no restore offer on two relaunches in a row; picked 6 minutes ago it gets a new session plus the offer; a pick record for another id is ignored",
+      "files_hint": ["lib/features/word_input/word_input_notifier.dart", "test/word_input_launch_rule_test.dart"]
+    },
+    {
+      "id": "T4",
+      "title": "Add the red Edit button and question to the History words screen",
+      "layer": "ui",
+      "deps": ["T2"],
+      "acs": ["AC-01", "AC-02", "AC-03", "AC-04", "AC-06", "AC-08"],
+      "dod": "words_table_test: the button shows only for a non-current History session; No keeps everything; Yes lands on the main screen with the picked words; a missing session shows the error snackbar and stays",
+      "files_hint": ["lib/features/words_table/words_table_screen.dart", "test/words_table_test.dart"]
+    },
+    {
+      "id": "T5",
+      "title": "Drop late lookup results and hide the restore snackbar after a switch",
+      "layer": "ui",
+      "deps": ["T2"],
+      "acs": ["AC-07b", "AC-09"],
+      "dod": "switch_session_test: a translation, a definition and a photo result that return after switchTo leave the picked session unchanged, and a visible restore snackbar is gone after the switch",
+      "files_hint": ["lib/features/word_input/word_input_screen.dart", "test/switch_session_test.dart"]
+    },
+    {
+      "id": "T6",
+      "title": "Verify the whole switch on the device and update the docs",
+      "layer": "docs",
+      "deps": ["T3", "T4", "T5"],
+      "acs": ["AC-05", "AC-07", "AC-10"],
+      "dod": "device checklist in T6 passes (switch within the save delay loses nothing, shared page unchanged until re-share, no Edit action on the shared page, before/after screenshots show 0 differing areas, switch <= 1 s); architecture.md and roadmap.md list the feature",
+      "files_hint": ["docs/architecture.md", "docs/roadmap.md", "docs/tasks/active/edit-session-from-history/"]
+    }
+  ]
+}

@@ -1,12 +1,13 @@
 ---
 status: Living
-updated_at: "2026-09-27"
+updated_at: "2026-09-29"
 ---
 
 # Domain Context — flutter_vocabulary_app
 
 ## Glossary
 
+- current session — the one session the main screen is editing; there is exactly one at a time, and History marks it "current". NOT a published session (sharing a session does not make it current).
 - learner — the phone owner who collects words into sessions and exports them. NOT partner (the partner only opens a shared link).
 - partner — a person who opens a session's shared link; they have no app and no account. NOT learner (the partner never collects words on a device).
 - session — a set of words collected together and stored on the learner's device. NOT a login session (the app has no accounts).

@@ -1,0 +1,48 @@
+---
+id: T6
+title: "Verify the whole switch on the device and update the docs"
+layer: "docs"
+deps: ["T3", "T4", "T5"]
+acs: ["AC-05", "AC-07", "AC-10"]
+files_hint: ["docs/architecture.md", "docs/roadmap.md", "docs/tasks/active/edit-session-from-history/"]
+owner: "Maksym"
+estimate: "S"
+status: "in_progress"
+---
+
+# T6 — Verify the whole switch on the device and update the docs
+
+## Why
+
+Covers the ACs that need the real app and the shared page — [spec AC-05, AC-07, AC-10](../../../features/edit-session-from-history/spec.md) — and the [spec §6 NFR](../../../features/edit-session-from-history/spec.md) / [sad §10](../../../features/edit-session-from-history/sad.md) checks.
+
+## What
+
+Device pass (release build), then docs:
+1. Type a word and switch within half a second → both sessions correct in History (AC-07).
+2. Share session A, open its page on another device, switch to A and edit → page unchanged; share again → same link updated after the existing warning (AC-10).
+3. The shared page offers no way to make a session current (AC-05).
+4. Before/after screenshots of History, words screen and main screen → 0 differing areas outside the new button and question.
+5. Yes → main screen with ≤100 words in ≤ 1 s.
+5b. Start a photo lookup, switch to a past session from History before the results dialog appears →
+    no dialog and no words land in the picked session (AC-07b; not automatable, see T5 notes).
+6. `docs/architecture.md` (§1 notifier/store lines) and `docs/roadmap.md` (a step row for this feature) updated.
+
+## Definition of Done
+
+- [ ] All six checklist items ticked in this file with the date.
+- [x] `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test` and the `CLAUDE.md` greps are clean. (2026-09-29: 165 tests pass; analyze shows only the 9 pre-existing infos; greps show only `PhotoScaler.instance`.)
+
+## Notes
+
+Needs the owner's phone; not automatable.
+
+## Checklist
+
+- [ ] 1. Type a word, switch within half a second → both sessions correct in History (AC-07) — device
+- [ ] 2. Shared session A: switch to A and edit → page unchanged; share again → same link, after the warning (AC-10) — device
+- [ ] 3. The shared page offers no way to make a session current (AC-05) — device
+- [ ] 4. Before/after screenshots: 0 differing areas outside the new button and question — device
+- [ ] 5. Yes → main screen with ≤100 words in ≤ 1 s — device
+- [ ] 5b. Photo lookup, then switch before its dialog → nothing lands in the picked session (AC-07b) — device
+- [x] 6. `docs/architecture.md` §1/§3 and `docs/roadmap.md` step 16 updated — 2026-09-29

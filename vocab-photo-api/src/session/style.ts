@@ -5,7 +5,8 @@
  *
  * Two layouts on one DOM, switched by the media query alone (AC-36): wide --
  * the table beside a sticky photo area; phone -- the table scrolls both ways
- * inside `.table-scroll` and the page never scrolls sideways (AC-03).
+ * inside `.table-scroll`, which fills the screen's leftover height, so the
+ * page itself never scrolls, sideways (AC-03) or down.
  *
  * Provisional values (spec OQ-5, for the owner to confirm): the breakpoint is
  * 900px (a media query cannot read a custom property, so it is written out
@@ -170,8 +171,14 @@ export const STYLE = `
   }
   @media (max-width: 899.98px) {
     :root { --w-word: 6.5rem; --w-translation: 6.5rem; --w-definition: min(18rem, 75vw); }
-    main { padding: 12px; }
-    .table-scroll { overflow: auto; max-height: 100vh; max-height: 100dvh; border-radius: 6px; }
+    /* One scroll on a phone: the page is exactly one screen tall, so the title
+       and the actions sit above the table and "+ Add a word" and the credit
+       stay visible below it. The table box takes what height is left and
+       scrolls inside itself; a short table keeps its own height. Everything
+       else keeps its content height (a flex item's min-height is auto). */
+    main { padding: 12px; display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
+    .layout, .table-area { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .table-scroll { flex: 0 1 auto; min-height: 0; overflow: auto; border-radius: 6px; }
     table { width: max-content; }
     .photos { display: none; }
     /* At the right edge of the actions row, clear of the rotated stack's corners. */

@@ -12,6 +12,7 @@ import '../../core/models/source_photo.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
+import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
 import 'photo_viewer.dart';
@@ -233,6 +234,40 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         : ref.read(sessionByIdProvider(sessionId)).valueOrNull;
   }
 
+  /// Asks before making this History session the current one
+  /// (edit-session-from-history, AC-02..AC-04, AC-08). Yes replaces the whole
+  /// stack with the main screen, so Back leaves the app.
+  Future<void> _confirmEdit(String sessionId) async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: const Text('Do you want to edit this list of words?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    final switched =
+        await ref.read(wordInputNotifierProvider.notifier).switchTo(sessionId);
+    if (!mounted) return;
+    if (switched) {
+      const WordInputRoute().go(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("This session can't be opened for editing")),
+      );
+    }
+  }
+
   /// Keeps the published id and edit token so the next publish overwrites the
   /// same link (ADR-0008). `markShared` also flags the current session; a
   /// History row is written to the store without restamping anything.
@@ -370,7 +405,23 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
+    // edit-session-from-history AC-06: no Edit button for the session the main
+    // screen is already editing.
+    final currentId = ref.exists(wordInputNotifierProvider)
+        ? ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId
+        : null;
+    final canEdit = sessionId != null && sessionId != currentId;
     return Scaffold(
+      floatingActionButton: canEdit
+          ? FloatingActionButton(
+              onPressed: () => _confirmEdit(sessionId),
+              tooltip: 'Edit',
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: const CircleBorder(),
+              child: const Icon(Icons.edit),
+            )
+          : null,
       appBar: AppBar(
         title: const Text('Words'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,

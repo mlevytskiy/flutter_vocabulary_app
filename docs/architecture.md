@@ -45,7 +45,9 @@ lib/
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
     services/                   photo_scaler.dart, vocab_photo_service.dart,
-                                session_store.dart (persistence: Isar + the current-session pointer)
+                                session_store.dart (persistence: Isar + the current-session pointer,
+                                and beside it the History pick record — session id + time,
+                                edit-session-from-history ADR-0002)
                                 google_translate_service.dart + translate_response_parser.dart
                                 (translate_a/single with dt=t,bd,at + the part-of-speech rule)
                                 pronunciation_service.dart (task-04)
@@ -64,6 +66,8 @@ lib/
     word_input/
       word_input_screen.dart          the screen: composes widgets below, owns controllers/focus as today
       word_input_notifier.dart (+.g)  AsyncNotifier<Session> + the launch rule + debounced save()
+                                      + switchTo(id): makes a History session current without
+                                      stamping it (edit-session-from-history)
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
@@ -77,7 +81,10 @@ lib/
                                       Share → bottom sheet: file (TSV) or link (publish, task-05);
                                       the "Include photos (N)" switch with stacked thumbnails sits
                                       above the table; the sheet warns about public photos and that
-                                      a republish replaces the partner's edits (good-looking-web)
+                                      a republish replaces the partner's edits (good-looking-web);
+                                      a History session that is not current gets a red Edit FAB →
+                                      "Do you want to edit…?" → switchTo + WordInputRoute().go
+                                      (edit-session-from-history)
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
                                       a row opens WordsTableScreen for that sessionId
@@ -165,7 +172,7 @@ flowchart LR
 
 - `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced
   save. Its `build()` runs the **launch rule**: reuse the current session if this device touched
-  it under 5 minutes ago (or if it never got a word), otherwise start a fresh one and hand the
+  it under 5 minutes ago — counting a pick from History as a touch (or if it never got a word), otherwise start a fresh one and hand the
   screen a `restorableSessionId` so it can offer the previous session back through a 7-second
   RESTORE snackbar. `SessionStore` never throws: a bad read answers `null`/`[]`.
 - The screen keeps its controllers and per-row flags; on every change it calls the notifier

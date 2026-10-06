@@ -47,6 +47,10 @@ class WordInputNotifier extends _$WordInputNotifier {
     Session? prev;
     final pointer = await store.currentSessionId();
     if (pointer != null) prev = await store.byId(pointer);
+    // A History pick (edit-session-from-history, ADR-0002) only counts for the
+    // session the pointer names, never for the newest-session fallback.
+    final pickedAt =
+        prev == null ? null : await store.switchedAt(prev.sessionId);
     prev ??= await store.newest();
     // Isar hands back embedded lists as fixed-length; the screen grows this one
     // (its trailing blank row), so give it a growable copy.
@@ -66,9 +70,11 @@ class WordInputNotifier extends _$WordInputNotifier {
       return prev;
     }
 
-    // Case 3 — still warm: carry on in it, extras and all. No snackbar.
-    if (DateTime.now().difference(prev.lastLocalModifiedAt) <
-        kSessionIdleWindow) {
+    // Case 3 — still warm: carry on in it, extras and all. No snackbar. A
+    // recent pick from History keeps it warm too.
+    var touched = prev.lastLocalModifiedAt;
+    if (pickedAt != null && pickedAt.isAfter(touched)) touched = pickedAt;
+    if (DateTime.now().difference(touched) < kSessionIdleWindow) {
       await store.setCurrentSessionId(prev.sessionId);
       return prev;
     }
@@ -113,6 +119,37 @@ class WordInputNotifier extends _$WordInputNotifier {
     await store.setCurrentSessionId(prev.sessionId);
     await store.put(prev);
     state = AsyncData(prev);
+  }
+
+  /// Makes a session picked on the History words screen the current one
+  /// (edit-session-from-history, ADR-0001). The left session is saved first so
+  /// a word typed within the save delay is kept, and dropped if it never got a
+  /// word. The pick is recorded beside the pointer; the picked session's edit
+  /// times are left alone (ADR-0002). Returns false, touching nothing, when
+  /// the picked session is not in the store.
+  Future<bool> switchTo(String sessionId) async {
+    final store = await ref.read(sessionStoreProvider.future);
+    final picked = await store.byId(sessionId);
+    if (picked == null) return false;
+    picked.words = picked.words.toList(); // growable, see build()
+    picked.sources = picked.sources.toList();
+
+    await flush();
+    final current = state.valueOrNull;
+    if (current != null &&
+        current.sessionId != sessionId &&
+        current.isEmpty) {
+      await store.delete(current.sessionId);
+    }
+
+    _saveTimer?.cancel();
+    _saveTimer = null;
+    _dirty = false;
+    await store.setCurrentSessionId(picked.sessionId);
+    await store.setSwitched(picked.sessionId, DateTime.now());
+    restorableSessionId = null;
+    state = AsyncData(picked);
+    return true;
   }
 
   void setPairs(List<WordPair> pairs) {
