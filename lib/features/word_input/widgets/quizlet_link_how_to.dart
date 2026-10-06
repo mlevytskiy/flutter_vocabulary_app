@@ -16,7 +16,7 @@ class QuizletLinkHowTo extends StatefulWidget {
 
   /// The sketch's height; kept small so the link field stays in sight with
   /// the keyboard up.
-  static const double height = 110;
+  static const double height = 130;
 
   /// How long one pass through the four steps takes.
   static const Duration period = Duration(milliseconds: 7000);

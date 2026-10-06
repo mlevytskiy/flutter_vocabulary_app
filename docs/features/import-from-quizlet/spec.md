@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Final
 owner: "Maksym (learner, app owner)"
 reviewers: ["Tech Lead", "Security Lead"]
 updated_at: "2026-10-06"
@@ -33,6 +33,7 @@ Committed approach: a new "Import from Quizlet" item takes the Screenshot item's
 - Decision (second owner review, 2026-10-06): the import machine-translates nothing. Each card's back side goes into the field it fits: a back whose letters are at least half Cyrillic is a Ukrainian translation and goes into the translation; any other back (an English explanation) goes into the definition. The example sentence, when the card has one, goes into the definition. Every field the card does not fill stays empty (AC-02, AC-09, AC-17).
 - Decision (second owner review, 2026-10-06): "From subtitles" keeps the captions icon; the icon picker in Settings is removed (AC-01).
 - Decision (second owner review, 2026-10-06): the link field is styled like the Word and Translation fields (outline border, light resting label); the how-to animation is lower and the dialog's paddings tighter, and the dialog keeps the field in sight when the keyboard leaves little room (AC-01).
+- Decision (owner, 2026-10-06): colours in the red + menu swapped: "Get words from photo" is green and "Import from Quizlet" is blue (AC-01).
 - Decision (second owner review, 2026-10-06): the Settings button moves with the + button: both rise above a SnackBar together.
 - Decision (owner review, 2026-10-06): the "Get words from photo" dialog says "Photos" instead of "Gallery" and shows Camera and Photos as two bordered cards side by side, each an icon above its name (photo-from-gallery AC-01).
 - Decision (owner, critic resolution 2026-10-06): the set source — a Quizlet set kept as its name and link, on word rows, on the session and in the published session — is a new domain model approved under CLAUDE.md rule 5.
@@ -94,7 +95,7 @@ Committed approach: a new "Import from Quizlet" item takes the Screenshot item's
 ### AC-01 (US-01) — happy
 **Given** a learner on the main screen
 **When** the learner opens the red + menu
-**Then** it shows "Get words from photo", "From subtitles" in dark grey with the captions icon, and "Import from Quizlet" in green with a white Quizlet-like "Q" where Screenshot used to be, and no Screenshot item; choosing "Import from Quizlet" opens a dialog asking for a Quizlet set link, with a short animation above the field showing how to get the link in Quizlet (open the set, tap Share, tap Copy link, paste it below) that plays three times and stops once the field has text
+**Then** it shows "Get words from photo", "From subtitles" in dark grey with the captions icon, and "Import from Quizlet" in blue with a white Quizlet-like "Q" where Screenshot used to be, and no Screenshot item; choosing "Import from Quizlet" opens a dialog asking for a Quizlet set link, with a short animation above the field showing how to get the link in Quizlet (open the set, tap Share, tap Copy link, paste it below) that plays three times and stops once the field has text
 
 ### AC-02 (US-01, US-02) — happy
 **Given** a learner in the Quizlet dialog has pasted text holding a link to a public set of 40 cards — the bare link, with or without its web prefix, with a language part, with the sharing extras Quizlet adds at the end, a link to one of the set's study modes, or the link inside Quizlet's own share text ("Check out this set: …")

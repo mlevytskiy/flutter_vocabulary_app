@@ -7,7 +7,7 @@ acs: ["AC-13", "AC-14", "AC-15"]
 files_hint: ["docs/architecture.md", "vocab-photo-api/README.md"]
 owner: "Maksym"
 estimate: "S"
-status: "in_progress"
+status: "done"
 ---
 
 # T16 — Update the architecture docs and deploy the Worker with the migration

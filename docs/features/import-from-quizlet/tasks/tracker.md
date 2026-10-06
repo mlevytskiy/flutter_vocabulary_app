@@ -20,11 +20,11 @@
 | [T13](T13-wire-import-from-quizlet.md) | Add "Import from Quizlet" to the red + menu and keep the set as the words' source | wiring | Maksym | S | T4, T5, T12 | done |
 | [T14](T14-include-sources-switch-and-publish.md) | Publish photos and sets behind one "Include sources (N)" switch (switch part superseded by T18) | app | Maksym | M | T4, T2 | done |
 | [T15](T15-imported-words-are-ordinary.md) | Prove words from a set behave like typed words in the table, History and export | tests | Maksym | S | T13 | done |
-| [T16](T16-docs-and-worker-deploy.md) | Update the architecture docs and deploy the Worker with the migration | docs | Maksym | S | T3, T14, T15 | in_progress |
-| [T17](T17-device-pass.md) | Run the device pass for the spec §6 targets on real Quizlet sets | tests | Maksym | M | T16, T18, T19 | todo |
+| [T16](T16-docs-and-worker-deploy.md) | Update the architecture docs and deploy the Worker with the migration | docs | Maksym | S | T3, T14, T15 | done |
+| [T17](T17-device-pass.md) | Run the device pass for the spec §6 targets on real Quizlet sets | tests | Maksym | M | T16, T18, T19 | done |
 | [T18](T18-owner-review-changes.md) | Apply the owner review: Include photos, + menu icons, link how-to, cards pager, photo source cards | ui | Maksym | M | T13, T14 | done |
 | [T19](T19-second-owner-review.md) | Apply the second owner review: link field style, back side to the right field, captions icon, Settings button with the SnackBar | ui | Maksym | S | T18 | done |
 
 **Total:** 19 tasks, ~14 person-days (S ≈ ½ day, M and L ≈ 1 day each).
 
-**T16 note:** docs are done; the remote migration and Worker deploy wait for the owner (checklist "Deploying import-from-quizlet" in `vocab-photo-api/README.md`).
+**Status:** all tasks done; the feature is marked done by the owner (2026-10-06).

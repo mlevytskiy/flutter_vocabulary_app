@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-05", "AC-07", "AC-11", "AC-13", "AC-14"]
 files_hint: ["docs/features/import-from-quizlet/_audit/device-pass.md"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T17 — Run the device pass for the spec §6 targets on real Quizlet sets

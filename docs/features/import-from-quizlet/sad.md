@@ -125,7 +125,7 @@ C4Context
 - **Into the session** — the results dialog and `wordPairFromPhoto(w, sourceId:)` are reused unchanged, so a non-empty back side marks the definition filled (AC-17); Done adds the kept words and, only if at least one was kept, adds or updates the set source (AC-03, AC-04, AC-04b); the late-result rule is the subtitle import's `startedIn` check (AC-16).
 - **Screenshot removal** — the green item becomes "Import from Quizlet"; `_takeScreenshot`, the `Screenshot` wrapper and the `screenshot` package go (spec §1).
 - **Owner review (2026-10-06)** — the progress dialog shows a `PageView` of cards over the web view instead of the web view itself: the web view stays in the tree at the same size under an opaque pager (so the page loads and lays out as before), skeleton cards and title for at least 1 s (`quizletSkeletonFor`), then the read cards, scrolled first to last in 2 s (`quizletCardsScrollFor`) while the translations run; the dialog closes once both are done. Only the robot check uncovers the web view, at full size. The link dialog gains a hand-drawn how-to animation (`quizlet_link_how_to.dart`, plain widgets, plays three times, stops once the field has text). The + menu: "From subtitles" dark grey with an icon picked in Settings (`subtitlesIconProvider`, a persisted display preference like the word detail mode), "Import from Quizlet" with a painted white "Q" (`quizlet_logo_icon.dart`). The Words screen keeps "Include photos (N)"; set sources are always sent. No new package, no new domain model.
-- **Second owner review (2026-10-06)** — no machine translation (see Translation above); "From subtitles" fixed to `Icons.closed_caption` and the Settings picker with `subtitlesIconProvider` removed; the link field styled like the Word field, the how-to sketch lowered to 110 px, the dialog's insets and paddings tightened and its content scrolled from the bottom (`reverse: true`) so the field stays in sight with the keyboard up; the Settings button moved from a `Positioned` in the body into the Scaffold's floating-button slot next to the speed dial (a centred row as wide as the screen less 16 px margins), so the Scaffold lifts both above a SnackBar.
+- **Second owner review (2026-10-06)** — no machine translation (see Translation above); "From subtitles" fixed to `Icons.closed_caption` and the Settings picker with `subtitlesIconProvider` removed; the link field styled like the Word field, the how-to sketch lowered to 130 px, the dialog's insets and paddings tightened and its content scrolled from the bottom (`reverse: true`) so the field stays in sight with the keyboard up; the Settings button moved from a `Positioned` in the body into the Scaffold's floating-button slot next to the speed dial (a centred row as wide as the screen less 16 px margins), so the Scaffold lifts both above a SnackBar.
 
 Each tactical decision in later sections should trace to one of these seeds. Tactical decisions that *contradict* a strategic choice are red flags — surface them in §11.
 
@@ -160,7 +160,7 @@ lib/ (Flutter app)
     │   ├── word_input_screen.dart          − Screenshot wrapper and _takeScreenshot; + onImportFromQuizlet;
     │   │                                   adds or updates the set source on Done
     │   └── widgets/
-    │       ├── word_input_speed_dial.dart  Screenshot item → "Import from Quizlet", same green, white "Q";
+    │       ├── word_input_speed_dial.dart  Screenshot item → "Import from Quizlet", blue (photo green), white "Q";
     │       │                               "From subtitles" dark grey with the Settings icon (AC-01)
     │       ├── quizlet_logo_icon.dart      NEW: the painted Quizlet-like "Q"
     │       ├── quizlet_link_dialog.dart    NEW: how-to animation, paste field, Start, refusal text (AC-01, AC-06)
@@ -326,7 +326,7 @@ sequenceDiagram
 
     Note over L,UI: Precondition: main screen (SCR-01) with the current session
     L->>UI: opens the red + menu
-    UI-->>L: Get words from photo, From subtitles, Import from Quizlet in green where Screenshot was, no Screenshot item (AC-01)
+    UI-->>L: Get words from photo, From subtitles, Import from Quizlet in blue where Screenshot was, no Screenshot item (AC-01)
     L->>UI: chooses Import from Quizlet
     UI-->>L: link dialog (SCR-02) asking for a Quizlet set link
     L->>UI: pastes text and taps Start

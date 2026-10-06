@@ -92,7 +92,7 @@ void main() {
           ),
         ));
 
-    testWidgets('"Import from Quizlet" sits in green where Screenshot was',
+    testWidgets('"Import from Quizlet" sits in blue where Screenshot was',
         (tester) async {
       await pumpDial(tester, () {});
       await tester.pumpAndSettle();
@@ -100,7 +100,8 @@ void main() {
           tester.widget<SpeedDial>(find.byType(SpeedDial)).children;
       expect(children.map((c) => c.label),
           ['Get words from photo', 'From subtitles', 'Import from Quizlet']);
-      expect(children.last.backgroundColor, Colors.green);
+      expect(children.last.backgroundColor, Colors.blue);
+      expect(children.first.backgroundColor, Colors.green);
       expect(children.last.foregroundColor, Colors.white);
       // A white Quizlet-like "Q", not a Material icon.
       expect(children.last.child, isA<QuizletLogoIcon>());
