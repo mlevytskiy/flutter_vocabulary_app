@@ -20,7 +20,9 @@
 | [T13](T13-wire-import-from-quizlet.md) | Add "Import from Quizlet" to the red + menu and keep the set as the words' source | wiring | Maksym | S | T4, T5, T12 | done |
 | [T14](T14-include-sources-switch-and-publish.md) | Publish photos and sets behind one "Include sources (N)" switch | app | Maksym | M | T4, T2 | done |
 | [T15](T15-imported-words-are-ordinary.md) | Prove words from a set behave like typed words in the table, History and export | tests | Maksym | S | T13 | done |
-| [T16](T16-docs-and-worker-deploy.md) | Update the architecture docs and deploy the Worker with the migration | docs | Maksym | S | T3, T14, T15 | todo |
+| [T16](T16-docs-and-worker-deploy.md) | Update the architecture docs and deploy the Worker with the migration | docs | Maksym | S | T3, T14, T15 | in_progress |
 | [T17](T17-device-pass.md) | Run the device pass for the spec §6 targets on real Quizlet sets | tests | Maksym | M | T16 | todo |
 
 **Total:** 17 tasks, ~12.5 person-days (S ≈ ½ day, M and L ≈ 1 day each).
+
+**T16 note:** docs are done; the remote migration and Worker deploy wait for the owner (checklist "Deploying import-from-quizlet" in `vocab-photo-api/README.md`).

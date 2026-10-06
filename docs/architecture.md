@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-09-28"
+updated_at: "2026-10-06"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -39,8 +39,11 @@ lib/
                                 identity and timestamps (task-03); its sources (photos taken, in
                                 order) and the publishedId + editToken a republish overwrites
                                 (good-looking-web, ADR-0008)
-                                session_source.dart (+.g) — Isar @embedded reference to a kept photo:
-                                id (the declared source id), fileName, takenAt (good-looking-web)
+                                session_source.dart (+.g) — Isar @embedded SessionSource: where words came from.
+                                SourceKind { photo, set } (photo first, so older records read as
+                                photos); id (the declared source id), fileName, takenAt, and for a
+                                set its name + plain url. Stored name stays SourcePhoto
+                                (good-looking-web; import-from-quizlet, ADR-0005)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
@@ -51,32 +54,54 @@ lib/
                                 pronunciation_service.dart (task-04)
                                 session_publish_service.dart (task-05: POST /sessions → public link;
                                 sends the word detail mode + definitions, definition-mode; with
-                                "include photos" on, declares up to 10 photos and each row's
-                                sourceId; republishes with the stored token, good-looking-web)
+                                "include sources" on, declares every source that has a linked
+                                row (photos and sets, no cap; each with its kind, a set with name +
+                                url) and each row's sourceId; republishes with the stored token,
+                                good-looking-web)
                                 dictionary_service.dart (definition-mode: POST /define on the Worker)
                                 source_photo_store.dart (the kept 1600 px photo files under
                                 source_photos/ in the documents dir; never throws, good-looking-web)
                                 photo_upload_service.dart (background POST /sessions/<id>/sources/
                                 <sourceId> after a publish, retried with growing pauses; the link
                                 dialog never waits for it, good-looking-web)
+                                quizlet_link.dart (import-from-quizlet: pure rules — find a set link
+                                in pasted text, the plain https://quizlet.com/<id>/<name>/ form the
+                                Worker accepts, which web view navigations may be followed)
+                                quizlet_page_script.dart (the thin JavaScript the web view runs on
+                                a set page; returns raw JSON, no interpretation)
+                                quizlet_set_parser.dart (parseQuizletPage: raw JSON → set found /
+                                robot check / nothing yet; never throws)
+                                quizlet_cards.dart (cards → proposed words: cleaning, the 500
+                                character cut, duplicates, skipped cards, the numbers the results
+                                dialog names)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
       word_input_screen.dart          the screen: composes widgets below, owns controllers/focus as today
+      quizlet_read_controller.dart    waits for and decides a read: 30 s limit per phase, clock paused
+                                      during a robot check; outcomes succeeded / failed / cancelled
+      quizlet_import_flow.dart        runQuizletImport: link dialog → progress dialog (reads, then
+                                      translates 6 terms at a time, Cancel still works) → results
+                                      dialog → addWords on Done; a result for another session is dropped
       word_input_notifier.dart (+.g)  AsyncNotifier<Session> + the launch rule + debounced save()
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
         translation_dots_button.dart    _buildTranslationDotsButton (popup_menu_2 stays)
-        vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog)
+        vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog) and
+                                        showQuizletResultDialog (set name, "Read X of Y", skipped
+                                        cards, "No new words in this set.")
+        quizlet_link_dialog.dart        showQuizletLinkDialog: paste text, refuses text without a set link
+        quizlet_progress_dialog.dart    showQuizletProgressDialog: small live web view of the set page
+                                        (webview_flutter), grows while Quizlet's robot check shows
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays)
     words_table/
       words_table_screen.dart         reads words from the notifier (no sessionId) or from
                                       sessionByIdProvider (a History row), read-only either way;
                                       Share → bottom sheet: file (TSV) or link (publish, task-05);
-                                      the "Include photos (N)" switch with stacked thumbnails sits
-                                      above the table; the sheet warns about public photos and that
+                                      the "Include sources (N)" switch (photos and Quizlet sets
+                                      together) with stacked thumbnails sits above the table; the sheet warns about public photos and that
                                       a republish replaces the partner's edits (good-looking-web)
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
@@ -180,6 +205,35 @@ flowchart LR
   block too, and the screen keeps it per row in `_translationOptions` so the dots popup reuses it
   without a second call — see `docs/lightning_icon_rules.md`. Retrofit/Dio were the parked
   design's answer here; `docs/retrofit-translation-prompt.md` is the prompt to redo it that way.
+
+### Import from Quizlet (import-from-quizlet)
+
+The red + menu's "Import from Quizlet" (it took the old Screenshot item's place; the `screenshot`
+package is gone) runs `runQuizletImport` in `quizlet_import_flow.dart`:
+
+1. `showQuizletLinkDialog` finds a set link in the pasted text and reduces it to the plain
+   `https://quizlet.com/<id>/<name>/` (`quizlet_link.dart`).
+2. `showQuizletProgressDialog` opens that page in a `webview_flutter` view (JavaScript on, no
+   JavaScript channel, top-level navigation only to that set's Quizlet pages). On every tick
+   `QuizletReadController` runs `quizlet_page_script.dart` and hands the raw JSON to
+   `parseQuizletPage`; the first read with cards of the pasted set ends the wait. No cards within
+   30 s (the clock stops while a robot check is on screen) is one failure message; Cancel/Back is
+   silent.
+3. Still inside the progress dialog, `quizlet_cards.dart` turns the cards into proposed words (term
+   as the word, the back side + example as the definition, at most 500 characters per field,
+   duplicates and words already in the session left out) and the terms are translated through
+   `googleTranslateServiceProvider`, 6 at a time. A failed translation leaves the cell empty, so the
+   lightning looks like a typed word's.
+4. `showQuizletResultDialog` shows the set name and the cards. Done with at least one kept word
+   adds them to the session via `addWords`, linked to a new `SessionSource(kind: set, name, url)`;
+   a result for a session other than the current one at Start is dropped.
+
+Sources and publishing: a session's `sources` hold photos and sets in one list. The old cap of 10
+photos is gone; publishing declares every source that has a linked row, bounded only by the Worker's
+500 entries and 256 KB. One "Include sources (N)" switch publishes or hides photos and sets
+together; only photos are uploaded afterwards (`photo_upload_service.dart` skips sets, which have no
+bytes). The Worker side is in `vocab-photo-api/README.md`; the design is in
+`docs/features/import-from-quizlet/sad.md`.
 
 ## 4. Checklist for any change
 

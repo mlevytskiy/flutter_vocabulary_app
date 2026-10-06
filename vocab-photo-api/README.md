@@ -220,12 +220,24 @@ document without `detail` reads as `translation`. Rows where every field is blan
 Caps: 256 KB body (`413` over it), 500 entries, 500 characters per field — a too-long
 definition is a `400` whose message names the word.
 
-**Photos (good-looking-web, ADR-0006).** `sources` declares up to 10 photos: an id the app
+**Photos (good-looking-web, ADR-0006).** `sources` declares photos: an id the app
 chose (1–64 letters, digits or dashes) and a distinct `order`, the pager's order. A
 recognised row names its photo in `sourceId`, which must be one of the declared ids (`400`
 otherwise); a typed row has none. Each declared photo is stored as a *pending* slot until
 its bytes are uploaded. With "include photos" off the app sends neither field, and no photo
 path of the session answers anything but the gone page.
+
+**Set sources (import-from-quizlet, ADR-0005, ADR-0006).** A source is a photo or a Quizlet
+set, told apart by `kind` (`"photo"` | `"set"`; a source without `kind` is a photo, so older apps
+publish unchanged). A set also carries `name` (1–500 characters) and `url`, the plain
+`https://quizlet.com/<id>/<name>/` link, and nothing else: `{ "id", "order", "kind": "set",
+"name", "url" }`. A set has no bytes, so it is *arrived* from the moment it is published and the
+page shows it as one more page of the source pager with its name and link; only photos get an
+upload. A wrong `kind`, a photo with a `name`/`url`, or a set without a valid `name`/`url` is a
+`400` with `"code": "invalid_source"`. There is **no cap on the number of sources**: a source is
+declared only with a linked row, so the bound is the 500 entries and the 256 KB body. Stored by
+migration `0003_set_sources` (`kind`, `name`, `url` on `sources`; existing rows become
+`photo`).
 
 **Republish (ADR-0008).** Every publish answers with an `editToken`; the Worker keeps only
 its SHA-256. Sending `publishedId` with that token overwrites the same link: the rows and
@@ -602,6 +614,30 @@ to KV before the release import into D1 on first open.
    `SESSIONS` entry from `kv_namespaces`, the KV import (`importLegacySession` in
    `src/session/store.ts`) and `SESSIONS` in `src/env.ts`, and deploy.
    Put a reminder in the calendar on release day.
+
+### Deploying import-from-quizlet (checklist, owner)
+
+Release order (sad §7), each step backward compatible: **D1 → Worker → app build**. An older app
+keeps publishing photos as before (a source without `kind` is a photo). The reverse order fails:
+an old Worker refuses the `kind` field. Needs the owner's Cloudflare login; run from
+`vocab-photo-api/`.
+
+1. **D1 migration first.** Applies `0003_set_sources` (rebuilds `sources`, existing rows become
+   `kind = 'photo'`):
+
+   ```bash
+   npx wrangler d1 migrations apply DB --remote
+   npx wrangler d1 migrations list DB --remote      # → "No migrations to apply!"
+   ```
+
+2. **Worker.** `npm test && npm run typecheck && npm run deploy`.
+3. **Publish check from the current store build** (the build *before* the Quizlet release, which
+   sends photos without `kind`): publish a session with photos, upload them, open the link and
+   check the photos show. Also open a link published before this deploy: it must render as before.
+4. **Only now** release the app build with the Quizlet import and "Include sources".
+
+Revert the migration by hand with `migrations/down/0003_set_sources.sql` (newest first, before
+`0002`).
 
 ### Deploying words-from-subtitles (checklist)
 
