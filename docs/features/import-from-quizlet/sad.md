@@ -376,22 +376,25 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 
 ## 11. Risks and technical debt
 
-<!-- 🎯 Why: ⭐ collects EVERYTHING that can break — not only the technical. Without §11 risks get
-     discussed at standups and lost; debt lives only in the head of whoever accepted it.
-     📋 Write: a risk/debt table — severity — mitigation — owner. Accepted debt in its own block.
-     📌 The first risk is often a product risk, not a technical one. That's normal. -->
-
 <!-- Severity literals: Low / Medium / High for regular risks; "Open question" for rows created by
      a Save-as-OQ resolution during the Socratic walk (see references/socratic.md). -->
 
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| <e.g. Worker lag may reach hours during a downstream outage> | Medium | <alert >10 min, on-call playbook, retry backoff> | <DevOps> |
-| <e.g. No event-schema versioning in v1> | Medium | <ADR-NNNN planned for v2, tolerate unknown fields> | <Backend> |
-| Open architectural decision: <decision-headline> | Open question | Resolve before <stage trigger or YYYY-MM-DD>; <inline rationale from the Save-as-OQ> | <owner> |
+| Quizlet changes its set page (embedded data or term list) and the parser stops finding cards, or finds only part | High | Embedded data first, visible list as fallback (ADR-0003); a total miss ends as AC-07, a partial read shows "Read X of Y" (AC-08), never a silent short set; `QUIZLET:` logs name the stage that failed; the fix is "save a new fixture, fix the Dart parser" with no Worker change | Maksym |
+| Quizlet's terms of use or bot protection forbid or block reading set pages in the app (spec §8 OQ-1, due "before `sdd:design`") — **accepted by the owner at design, 2026-10-06**: personal study, reading public pages as a person in a browser would | Medium | A block ends as AC-07 and nothing else breaks; no server ever contacts Quizlet (sad §3), no login is held. Spec OQ-1's checkbox is the owner's to close in `spec.md` | Maksym |
+| A new kind of Quizlet robot check is not recognised, so the 30 s clock is not paused and the preview stays small | Medium | Fails safe: the clock runs out and AC-07 shows; the markers live in one place in the parser and are extended from the device-pass logs | Maksym |
+| Regression in the finished photo path from generalising `SourcePhoto` into `SessionSource` with a `kind` (ADR-0005) | Medium | Stored Isar name kept with `@Name('SourcePhoto')`; a test that a session saved before the change reads back with its photos as `kind == photo`; every photo-only use checks `kind`; the existing photo tests run unchanged apart from the rename | Maksym |
+| The free translation endpoint throttles a large import (up to 500 terms, 6 at a time) | Low | A term that fails arrives with an empty translation and the translation lightning, as a typed word; the import itself does not fail | Maksym |
+| The "plain Quizlet set address" rule lives twice — Dart link parser and the Worker's format check — and drifts | Low | The same table of link shapes (spec AC-02, AC-06, AC-13) is used as test cases on both sides | Maksym |
+| A new app build publishes to a Worker without migration `0003` and is refused | Low | Release order in §7: migration, Worker, then app | Maksym |
+| CLAUDE.md rule 3 and `docs/architecture.md` rules 4 and 6 still list `screenshot` and not `webview_flutter` until updated (sad §2 overrides) | Low | One task removes the Screenshot item, its code and the package and updates both texts in the same change | Maksym |
+| Adverts and third-party scripts run inside the preview | Low | Accepted: they cannot navigate the page away from Quizlet or open windows (ADR-0004), and no `JavaScriptChannel` exposes the app (§8) | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
-- <e.g. the entity is immutable / unversioned — OK for v1, may need audit versioning in v2>
+- No automated test runs against the live Quizlet page; the parser is tested on saved fixtures and the live behaviour in the device pass (§10).
+- Robot-check recognition is marker-based and will need occasional updates.
+- App diagnostics are `debugPrint` lines read during the device pass, not collected anywhere.
 
 ## 12. Glossary
 
