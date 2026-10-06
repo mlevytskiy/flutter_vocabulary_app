@@ -5,6 +5,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../../core/services/quizlet_link.dart';
 import '../../../core/services/quizlet_page_script.dart';
+import '../../../core/services/quizlet_set_parser.dart';
 import '../quizlet_read_controller.dart';
 
 /// Builds the page driver for a set link; tests pass a fake.
@@ -15,11 +16,14 @@ typedef QuizletPageDriverFactory = QuizletPageDriver Function(
 /// page in a small live preview, shows the set's name once known, grows the
 /// preview to full size while Quizlet's robot check is on screen, and
 /// resolves with the parsed set, a failure (AC-07) or a cancel (Cancel/Back,
-/// AC-07b).
+/// AC-07b). When [afterRead] is given, the dialog stays open while it runs
+/// on the read set (the translations, sad §6 F3) and Cancel/Back still end it
+/// as a cancel.
 Future<QuizletReadOutcome> showQuizletProgressDialog(
   BuildContext context,
   QuizletSetLink link, {
   QuizletPageDriverFactory? driverFactory,
+  Future<void> Function(QuizletSet set)? afterRead,
 }) async {
   final outcome = await showDialog<QuizletReadOutcome>(
     context: context,
@@ -28,6 +32,7 @@ Future<QuizletReadOutcome> showQuizletProgressDialog(
       link: link,
       driverFactory:
           driverFactory ?? ((link) => WebViewQuizletPageDriver(link.setId)),
+      afterRead: afterRead,
     ),
   );
   return outcome ?? const QuizletReadCancelled();
@@ -35,10 +40,11 @@ Future<QuizletReadOutcome> showQuizletProgressDialog(
 
 class _QuizletProgressDialog extends StatefulWidget {
   const _QuizletProgressDialog(
-      {required this.link, required this.driverFactory});
+      {required this.link, required this.driverFactory, this.afterRead});
 
   final QuizletSetLink link;
   final QuizletPageDriverFactory driverFactory;
+  final Future<void> Function(QuizletSet set)? afterRead;
 
   @override
   State<_QuizletProgressDialog> createState() => _QuizletProgressDialogState();
@@ -54,17 +60,44 @@ class _QuizletProgressDialogState extends State<_QuizletProgressDialog> {
   // reloaded when the preview changes size.
   late final Widget _preview = _driver.buildView();
 
+  // Set once the dialog has been popped, so a late afterRead does not pop
+  // what is below it.
+  bool _closed = false;
+
   @override
   void initState() {
     super.initState();
     _controller = QuizletReadController(
       link: widget.link,
       driver: _driver,
-      onDone: (outcome) {
-        if (mounted) Navigator.of(context).pop(outcome);
-      },
+      onDone: _readDone,
     )..addListener(_changed);
     _controller.start();
+  }
+
+  Future<void> _readDone(QuizletReadOutcome outcome) async {
+    final afterRead = widget.afterRead;
+    if (outcome is QuizletReadSucceeded && afterRead != null) {
+      await afterRead(outcome.set);
+    }
+    _close(outcome);
+  }
+
+  void _close(QuizletReadOutcome outcome) {
+    if (_closed || !mounted) return;
+    _closed = true;
+    Navigator.of(context).pop(outcome);
+  }
+
+  /// Cancel or Back: while reading the controller decides; once the set is
+  /// read (afterRead running) the dialog ends as a cancel itself (AC-07b).
+  void _cancel() {
+    if (_controller.outcome is QuizletReadSucceeded) {
+      debugPrint('QUIZLET: cancelled');
+      _close(const QuizletReadCancelled());
+    } else {
+      _controller.cancel();
+    }
   }
 
   void _changed() {
@@ -90,7 +123,7 @@ class _QuizletProgressDialogState extends State<_QuizletProgressDialog> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _controller.cancel();
+        if (!didPop) _cancel();
       },
       child: AlertDialog(
         insetPadding: robotCheck
@@ -129,7 +162,7 @@ class _QuizletProgressDialogState extends State<_QuizletProgressDialog> {
         ),
         actions: [
           TextButton(
-            onPressed: _controller.cancel,
+            onPressed: _cancel,
             child: const Text('Cancel'),
           ),
         ],

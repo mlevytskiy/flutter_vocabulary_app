@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/quizlet_link.dart';
 
-/// What the learner reads in the Quizlet link dialog (spec AC-06).
+/// What the learner reads during a Quizlet import (spec AC-06, AC-07).
 abstract final class QuizletImportMessages {
   static const pasteSetLink = 'Paste a link to a Quizlet set.';
+
+  /// Every read failure (AC-07): no connection, no load, no cards in time.
+  static const readFailed =
+      "The cards of this set couldn't be read. Try again.";
 }
 
 /// The Quizlet link dialog (import-from-quizlet SCR-02, sad §6 F1): a field
