@@ -29,7 +29,7 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 
 Security review is N/A by the spec (§6.1: no new data, no new permission, no new way to change a session), so there is no Security Lead sign-off row.
 
-<!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
+**Critic resolutions (2026-10-06):** no overrides. The four findings were resolved by amendment. Learn on the shared page fetches fresh changes before deciding, so AC-10 holds (§4, §6, §11). Size S is kept, with the reason given (§2). The CLAUDE.md rule-5 override is listed in §2. `learn.d.ts` and the `tsconfig.client.json` include are in §5.
 
 ## 2. Constraints
 
@@ -45,13 +45,14 @@ Security review is N/A by the spec (§6.1: no new data, no new permission, no ne
 
 **Organisational.**
 - One owner (Maksym) builds, reviews and deploys. There is no deadline. The Worker is deployed by hand (`wrangler deploy`), and the app ships through the usual store build.
-- Size S (`.size`), route quick (`.route`).
+- Size S (`.size`), route quick (`.route`). Kept at S on purpose after the critic pass (owner, 2026-10-06), although the feature adds two feature folders (`lib/features/learn/`, `vocab-photo-api/src/learn/`) and two public routes. The folders only place the code by the repo's conventions and are not a new subsystem. The routes only read and return HTML, with no JSON and no write, and there is no migration. That still fits 2–5 PRs and about a week.
 
 **Conventions.**
 - [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2. Navigation goes only through typed routes, and dialogs/SnackBars are not routes. Services come from providers in `lib/core/providers.dart`. Screen data lives in a `@riverpod` notifier, and transient UI state stays in widget `State`. A feature is a folder under `lib/features/`, and features don't import each other's screens. One file ≈ one thing.
 - Spec-approved overrides, which this feature carries out:
   - CLAUDE.md rule 3 / architecture.md rule 4 ("do not change how anything looks") gives way for exactly two visible changes: the Words top bar gains Learn, with the compact and icon-only layouts on narrow phones (AC-01, AC-11, AC-11b, AC-12); and the shared page gains one Learn button (spec §3 Non-goals).
   - The roadmap's "Own learning … outsourced to AnkiDroid" line was removed by the spec (2026-10-06).
+  - CLAUDE.md rule 5 ("no new domain models — ask first"): the one new type `Exercise` (id, name, stage, available), approved by the owner on 2026-10-06 during this design ([ADR-0003](adr/0003-keep-the-exercise-list-as-json-in-the-worker-and-test-the-app-copy-against-it.md)). The text update is tracked in §11.
 - The app/Worker precedent for "two implementations, one shape" is `anki_export.dart` + `vocab-photo-api/README.md` § "AnkiDroid file format": both sides are tested against one written shape.
 
 **Regulatory / external.**
@@ -107,7 +108,7 @@ The context shows two people and two of our own systems, with no external system
 
 - **Mobile UI architecture: unchanged.** The app stays a Flutter phone app, and the existing stack excludes any alternative. The learn page and the coming-soon screen are two full screens (ux-flows platform decision), declared as typed routes nested under `table` in `lib/router/routes.dart` and opened with `push`, so the back arrow returns to the Words screen and then to the learn page (CLAUDE.md rule 1). Ticks live in the learn page's widget `State` (architecture.md rule 2: transient UI state). The coming-soon screen is pushed on top, so the ticks survive the round trip (AC-05). A fresh push from Learn is a fresh `State` with nothing ticked (AC-05b). No provider and no notifier holds ticks, and nothing is stored.
 - **Which session the app's learn page reads.** The route carries the same optional `sessionId` as `WordsTableRoute`: none for the current session (`wordInputNotifierProvider`), an id for a History row (`sessionByIdProvider`, read-only). The count is the `isFilled` rows, the same rule the Words screen and Share use. A History session is only read, never made current (AC-13).
-- **No words to learn.** The app's Learn checks the same filled rows the Words screen already holds and answers `No words to learn` in a `SnackBar` when there are none, as Share does (AC-03). On the shared page, `page.js` checks the rows it holds as saved when Learn is pressed and shows the same text in the page's existing toast (AC-10). Otherwise it lets the plain link open, in the same tab in the phone layout and in a new tab in the wide layout (`WIDE`, 900 px; AC-08). The Worker checks again on every learn-page load and shows "No words to learn" with a link to the shared page when the saved rows hold none (AC-08b). This also catches a row someone else deleted after `page.js` last heard about it.
+- **No words to learn.** The app's Learn checks the same filled rows the Words screen already holds and answers `No words to learn` in a `SnackBar` when there are none, as Share does (AC-03). On the shared page, pressing Learn makes `page.js` first fetch the changes since its last seen revision, through the same `GET /s/:id/changes` it already polls (good-looking-web ADR-0005). It does this because its polling runs only every 5 s and stops after 5 idle minutes, so its own rows can be stale. It then decides from the fresh saved rows. With no word to learn, it shows the same text in the page's existing toast and does not navigate (AC-10). Otherwise it opens `/s/:id/learn`, in the same tab in the phone layout and in a new tab in the wide layout (`WIDE`, 900 px; AC-08). In the wide layout, the tab is opened empty during the click itself, because browsers block a tab opened after waiting for a request. It then either receives the address or is closed again and the toast is shown. If the fetch fails (no connection), `page.js` falls back to the rows it holds. The Worker checks again on every learn-page load and shows "No words to learn" with a link to the shared page when the saved rows hold none (AC-08b). It is also what a learn link opened directly, or the link without JavaScript, gets.
 - **The narrow Words top bar is fitted by measuring.** A small widget in `lib/features/words_table/widgets/` measures the available width at the phone's text scale and picks one of three layouts: normal (today's Share, untouched, with Learn matching it; AC-12), compact (smaller padding, labels kept; AC-11) or icon-only (labels dropped, `Tooltip` names "Learn" and "Share" on long press; AC-11b). Each button stays at least 48 × 48 dp. It does not use fixed width breakpoints (spec §6).
 - **Persistence: none.** No Isar field, no D1 column, no migration, no new preference (spec §3 Non-goals "Learning progress").
 
@@ -137,13 +138,16 @@ vocab-photo-api/src/
 │   ├── exercises.ts                      typed view of the JSON + isWordToLearn(row) (= the app's isFilled)
 │   ├── page.ts                           renderLearnPage / renderNoWordsPage / renderComingSoonPage (escaped HTML)
 │   ├── routes.ts                         GET /s/:id/learn, GET /s/:id/learn/:exercise (public, read-only)
-│   └── client/learn.js                   ticks → Start + hint + ?pick= in the address; "Back to exercises"
+│   └── client/
+│       ├── learn.js                      ticks → Start + hint + ?pick= in the address; "Back to exercises"
+│       └── learn.d.ts                    the Text-module import's type, like session/client/page.d.ts
 └── session/
     ├── page.ts                           + <a class="btn learn" href="/s/:id/learn">Learn</a> after Download
-    ├── client/page.js                    + Learn click: no saved word to learn → toast; wide layout → new tab
+    ├── client/page.js                    + Learn click: fresh changes fetch, then toast or open (new tab in the wide layout)
     ├── assets.ts                         + serves /assets/learn-<hash>.js beside page-<hash>.js
     └── style.ts                          + the learn pages' rules (one stylesheet, one CSP hash)
 
+vocab-photo-api/tsconfig.client.json     + include src/learn/client/*.js, so npm run typecheck checks learn.js
 test/learn_exercises_test.dart            Dart list == vocab-photo-api/src/learn/exercises.json
 vocab-photo-api/test/learn.test.mjs       routes, pick handling, no-words, gone answers
 ```
@@ -215,7 +219,11 @@ sequenceDiagram
     participant Worker as vocab-photo-api Worker
     participant D1 as Published sessions
     Partner->>Browser: presses Learn on the shared page
-    alt the saved rows page.js holds have no word to learn
+    Browser->>Worker: fetches the changes since its last seen revision
+    Worker->>D1: reads the changed rows
+    D1-->>Worker: changes
+    Worker-->>Browser: changes, applied to the rows page.js holds
+    alt the fresh saved rows hold no word to learn
         Browser-->>Partner: toast "No words to learn", no navigation
     else at least one word to learn
         Browser->>Worker: loads the learn page, same tab in the phone layout, new tab in the wide layout
@@ -300,7 +308,7 @@ ADR files live under `docs/features/learn-part-step-1/adr/NNNN-<title>.md`.
 |---|---|---|---|
 | The shared page's `.actions` row (Download for AnkiDroid, Learn, the phone layout's photo button) may wrap or crowd on a 320 px phone. The spec pins 320 px only for the learn page | Medium | The `screens` stage draws the row at 320 px in the phone layout. Checked in the release 320 px emulation pass | Maksym |
 | An older app from the store can show an exercise as coming soon after the Worker has switched it on (ADR-0003) | Low | Switch an exercise on in one change for both lists (the parity test enforces it), and release the app before deploying the Worker when it matters | Maksym |
-| `page.js` hears about other people's edits by polling, so its view of saved rows can lag, and Learn may open onto a session that has just lost its last word to learn | Low | The Worker re-checks on every load and shows "No words to learn" with a link back (AC-08b) | Maksym |
+| Learn's fresh changes fetch can fail (no connection), so `page.js` falls back to its own possibly stale rows and may open the learn page for a session that has just lost its last word to learn. In the wide layout, the case with no word to learn briefly opens and closes an empty tab | Low | The Worker re-checks on every load and shows "No words to learn" with a link back (AC-08b) | Maksym |
 | Measuring the top bar depends on text metrics that differ by device font | Low | Widget tests at the three spec sizes, a device pass at release, and icon-only as the last-resort layout | Maksym |
 | Repo texts this design outdates: `docs/architecture.md` §1/§3 (no `features/learn/`, no learn routes, no `src/learn/`), CLAUDE.md rule 5 (`Exercise` approved) and rule 3 (the two approved visible changes), `vocab-photo-api/README.md` (the new public routes) | Low | Update them with the code in the implementing tasks | Maksym |
 | Product: roadmap step 8 ("mark one memorized") overlaps the planned "Remember or not" exercise (spec §8) | Low | Untouched by this feature. The owner decides before `sdd:specify` of "Remember or not" | Maksym |
