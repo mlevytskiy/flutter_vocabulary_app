@@ -398,13 +398,23 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 
 ## 12. Glossary
 
-<!-- 🎯 Why: ⭐ the DOMAIN GLOSSARY that ends arguments a year later («checkpoint — weekly or
-     biweekly? quarter — calendar or fiscal?»).
-     📋 Write: a term / meaning table. Business + technical terms mixed.
-     📌 e.g. «Lesson | a unit inside a course made of blocks (text, video)». -->
+Terms from [feature CONTEXT](./CONTEXT.md) (canonical), [good-looking-web CONTEXT](../good-looking-web/CONTEXT.md) and the root [CONTEXT](../../../CONTEXT.md), plus terms this SAD introduces (marked *new* — candidates for `/sdd:glossary import-from-quizlet`).
 
 | Term | Meaning |
 |---|---|
-| <e.g. domain object A> | <its meaning in this domain> |
-| <e.g. domain object B> | <its meaning> |
-| <e.g. domain invariant name> | <the rule, in plain language> |
+| learner | The app's user: collects words into sessions and publishes them. |
+| partner | Anyone holding a shared link; reads and edits the shared page. |
+| Quizlet set | A named list of cards on Quizlet, opened by its link; only read, never changed. NOT a session. |
+| card | One entry of a Quizlet set: term, back side, optional example sentence; becomes a word row only when kept. NOT a word row. |
+| source photo | A photo a session's rows were recognised from (good-looking-web). |
+| set source | A Quizlet set, kept as its name and plain link, that at least one word row of the session came from. NOT any set the learner opened. |
+| source | A source photo or a set source; in code, `SessionSource` with a `kind` (ADR-0005). NOT where a translation or definition came from. |
+| plain link *(new)* | A set's address as `https://quizlet.com/<id>/<slug>/` — no language part, no sharing extras; the only form stored and published (AC-13). |
+| stated count *(new)* | The number of cards the set's page says it has; compared with the cards found for "Read X of Y" (AC-08). |
+| robot check *(new)* | Quizlet's own "I'm not a robot" page on quizlet.com; while it shows, the preview is full size and the 30 s clock is paused (AC-05). One served from elsewhere is never opened. |
+| reader script *(new)* | The short script the app runs on the set page to return its raw material — embedded data or term list, name, set id, stated count (ADR-0003). |
+| Include sources | The share-sheet switch (was "Include photos") that publishes or hides all sources together (AC-12, AC-15). |
+| One set, one source | Domain invariant: re-importing the same Quizlet set, from any link shape or after a rename, reuses its set source (AC-13b). |
+| A set is read whole or the gap is named | Domain invariant: fewer cards than stated always shows "Read X of Y" (AC-08). |
+| Every imported word is a publishable word | Domain invariant: line breaks become "; ", text over 500 characters is cut with "…" (AC-09). |
+| No word enters a session twice through an import | Domain invariant: equal words (case, outer spaces, one closing ".", "!", "?") are skipped (AC-10). |
