@@ -32,7 +32,7 @@ function publicUrl(url: URL, sessionId: string): string {
 
 /**
  * POST /sessions -- secret-gated.
- * `{ detail?, entries: [{word, translation, definition?, sourceId?}], sources?: [{id, order}],
+ * `{ detail?, entries: [{word, translation, definition?, sourceId?}], sources?: [{id, order, kind?, name?, url?}],
  *    publishedId?, editToken? }` -> `{ id, url, expiresAt, editToken }`.
  * With a `publishedId` and the `editToken` it was published with, the same
  * link is overwritten (ADR-0008); an expired id or a wrong token publishes a
@@ -60,7 +60,7 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
   const record = body as Record<string, unknown>;
   const sources = parseSources(record.sources);
   if (!sources.ok) {
-    return jsonResponse({ error: sources.error }, 400);
+    return jsonResponse(sources.code ? { error: sources.error, code: sources.code } : { error: sources.error }, 400);
   }
   const parsed = parseEntries(record.entries, new Set(sources.sources.map((source) => source.id)));
   if (!parsed.ok) {
@@ -101,7 +101,7 @@ async function handleUploadSource({ request, env, url, params }: RouteContext): 
   if (!session) {
     return jsonResponse({ error: "Session not found" }, 404);
   }
-  if (!session.sources.some((source) => source.id === params.sourceId)) {
+  if (!session.sources.some((source) => source.id === params.sourceId && source.kind === "photo")) {
     return jsonResponse({ error: "This session declared no source with that id" }, 404);
   }
 

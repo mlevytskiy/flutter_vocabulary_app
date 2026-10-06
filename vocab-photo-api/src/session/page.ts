@@ -128,7 +128,8 @@ function renderHeader(field: Field, collapsed: boolean): string {
  * the dialog's strip from the pager's slides when it opens.
  */
 function renderPhotos(session: StoredSession): string {
-  const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
+  // A set is not a photo; T3 renders it as a page of the pager.
+  const slots = session.sources.filter((slot) => slot.kind === "photo").sort((a, b) => a.ord - b.ord);
   if (slots.length === 0) return "";
   const total = slots.length;
   const slide = (slot: StoredSource, i: number): string => {
@@ -156,7 +157,8 @@ ${slots.map(slide).join("\n")}
  * stacked thumbnails that open the photo dialog. Nothing without slots.
  */
 function renderPhotoButton(session: StoredSession): string {
-  const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
+  // A set is not a photo; T3 renders it as a page of the pager.
+  const slots = session.sources.filter((slot) => slot.kind === "photo").sort((a, b) => a.ord - b.ord);
   if (slots.length === 0) return "";
   const total = slots.length;
   const thumbs = slots

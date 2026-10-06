@@ -51,17 +51,21 @@ test("a publish body over 256 KB is refused as too large", async () => {
   assert.match(await errorOf(over), /too large/);
 });
 
-test("a publish declares 10 photos; the 11th is refused", async () => {
-  const ten = Array.from({ length: 10 }, (_, order) => ({ id: randomUUID(), order }));
-  const { id } = await publish({ sources: ten, entries: [{ word: "apple", translation: "яблуко", sourceId: ten[9].id }] });
-  assert.equal(d1(`SELECT count(*) AS n FROM sources WHERE session_id = ${sql(id)}`)[0].n, 10);
+// AC-13b / ADR-0006: there is no source cap; the bound is the 500 rows and 256 KB.
+test("a publish declares more than 10 sources and keeps them all", async () => {
+  const many = Array.from({ length: 25 }, (_, order) => ({ id: randomUUID(), order }));
+  const { id } = await publish({ sources: many, entries: [{ word: "apple", translation: "яблуко", sourceId: many[24].id }] });
+  assert.equal(d1(`SELECT count(*) AS n FROM sources WHERE session_id = ${sql(id)}`)[0].n, 25);
+});
 
-  const eleven = await publishRaw({
-    sources: [...ten, { id: randomUUID(), order: 10 }],
-    entries: [{ word: "apple", translation: "яблуко" }],
-  });
-  assert.equal(eleven.status, 400);
-  assert.match(await errorOf(eleven), /at most 10 sources/);
+test("a set name of 500 characters is kept and 501 is refused as invalid_source", async () => {
+  const url = "https://quizlet.com/987534268/job-interview-flash-cards/";
+  const entries = [{ word: "apple", translation: "яблуко" }];
+  const fits = await publishRaw({ sources: [{ id: randomUUID(), order: 0, kind: "set", name: "n".repeat(500), url }], entries });
+  assert.equal(fits.status, 200);
+  const over = await publishRaw({ sources: [{ id: randomUUID(), order: 0, kind: "set", name: "n".repeat(501), url }], entries });
+  assert.equal(over.status, 400);
+  assert.equal((await over.json()).code, "invalid_source");
 });
 
 test("a page-added row holds 500 characters in its first cell; 501 is refused as field_too_long", async () => {

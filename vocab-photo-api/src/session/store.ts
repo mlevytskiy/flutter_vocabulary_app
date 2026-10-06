@@ -27,6 +27,9 @@ const INSERT_ROW = `INSERT INTO rows (session_id, id, position, source_id, word,
 const INSERT_ROW_IF_ABSENT = `INSERT OR IGNORE INTO rows (session_id, id, position, word, translation, definition)
   VALUES (?1, ?2, ?3, ?4, ?5, ?6)`;
 const INSERT_PENDING_SOURCE = `INSERT INTO sources (session_id, id, ord) VALUES (?1, ?2, ?3)`;
+// A set has no bytes: it is arrived at the publish revision (ADR-0006, sad §6 F4).
+const INSERT_SET_SOURCE = `INSERT INTO sources (session_id, id, ord, kind, name, url, status, arrived_rev)
+  VALUES (?1, ?2, ?3, 'set', ?4, ?5, 'arrived', (SELECT rev FROM sessions WHERE id = ?1))`;
 
 function isExpired(expiresAt: string, now = Date.now()): boolean {
   return Date.parse(expiresAt) < now;
@@ -75,7 +78,11 @@ function insertContent(env: Env, sessionId: string, input: PublishInput): D1Prep
         entry.definition ?? ""
       )
     ),
-    ...input.sources.map((source) => env.DB.prepare(INSERT_PENDING_SOURCE).bind(sessionId, source.id, source.order)),
+    ...input.sources.map((source) =>
+      source.kind === "set"
+        ? env.DB.prepare(INSERT_SET_SOURCE).bind(sessionId, source.id, source.order, source.name, source.url)
+        : env.DB.prepare(INSERT_PENDING_SOURCE).bind(sessionId, source.id, source.order)
+    ),
   ];
 }
 
@@ -194,6 +201,9 @@ interface RowRecord {
 interface SourceRecord {
   id: string;
   ord: number;
+  kind: "photo" | "set";
+  name: string | null;
+  url: string | null;
   media_type: string | null;
   bytes: number | null;
   status: "pending" | "arrived";
@@ -211,7 +221,7 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
        FROM rows WHERE session_id = ?1 AND deleted_at_rev IS NULL ORDER BY position`
     ).bind(sessionId),
     env.DB.prepare(
-      `SELECT id, ord, media_type, bytes, status, arrived_rev FROM sources WHERE session_id = ?1 ORDER BY ord`
+      `SELECT id, ord, kind, name, url, media_type, bytes, status, arrived_rev FROM sources WHERE session_id = ?1 ORDER BY ord`
     ).bind(sessionId),
   ]);
   const session = (sessions.results as SessionRecord[])[0];
@@ -240,6 +250,9 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
       (source): StoredSource => ({
         id: source.id,
         ord: source.ord,
+        kind: source.kind,
+        name: source.name,
+        url: source.url,
         mediaType: source.media_type,
         bytes: source.bytes,
         status: source.status,
@@ -273,11 +286,12 @@ async function importLegacySession(env: Env, sessionId: string): Promise<boolean
         entry.definition ?? ""
       )
     ),
-    ...doc.sources.map((source, ord) =>
+    ...doc.sources.flatMap((source, ord) =>
+      source.kind !== "photo" ? [] : [
       env.DB.prepare(
         `INSERT OR IGNORE INTO sources (session_id, id, ord, media_type, bytes, status, arrived_rev)
          VALUES (?1, ?2, ?3, ?4, ?5, 'arrived', 0)`
-      ).bind(sessionId, source.id, ord, source.mediaType, source.bytes)
+      ).bind(sessionId, source.id, ord, source.mediaType, source.bytes)]
     ),
   ]);
   return true;
@@ -301,7 +315,7 @@ export async function storeDeclaredPhoto(
   mediaType: string
 ): Promise<PhotoUpload> {
   if (!env.SOURCES) throw new Error("SOURCES binding is not configured");
-  const slot = session.sources.find((source) => source.id === sourceId);
+  const slot = session.sources.find((source) => source.id === sourceId && source.kind === "photo");
   if (!slot) return "not_declared";
   if (slot.status === "arrived") return "already_arrived";
 
@@ -328,7 +342,7 @@ export async function storeDeclaredPhoto(
 export async function getSourceObject(env: Env, sessionId: string, sourceId: string): Promise<R2ObjectBody | null> {
   if (!env.SOURCES) return null;
   const session = await loadSession(env, sessionId);
-  const slot = session?.sources.find((source) => source.id === sourceId);
+  const slot = session?.sources.find((source) => source.id === sourceId && source.kind === "photo");
   if (!slot || slot.status !== "arrived") return null;
   return env.SOURCES.get(r2Key(sessionId, sourceId));
 }
