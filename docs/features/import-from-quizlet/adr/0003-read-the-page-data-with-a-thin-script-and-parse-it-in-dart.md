@@ -15,7 +15,7 @@ ticket: "import-from-quizlet"
 
 ## Context
 
-A Quizlet set page carries its cards twice: as the visible list of terms and as the embedded data the page renders itself from (which usually holds every card even when only part is on screen). Quizlet can change either at any time, and reading the set whole — or naming the gap — is the feature's first quality goal (AC-08, spec §6 "100% of the set's cards for sets of up to 500 cards"). The reading code must be fixable fast when Quizlet changes, and testable without a phone.
+A Quizlet set page carries its cards twice: as the visible list of terms and as the embedded data the page renders itself from (which usually holds every card even when only part is on screen). Quizlet can change either at any time, and reading the set whole — or naming the gap — is the feature's first quality goal (AC-08, spec §6 "100% of the set's cards for sets of up to 500 cards"). The reading code must be fixable fast when Quizlet changes, and testable without a phone. Calling Quizlet's unpublished JSON API is out of scope: spec §1 commits to reading the set's name and cards from the page itself.
 
 ## Decision drivers
 
@@ -26,13 +26,12 @@ A Quizlet set page carries its cards twice: as the visible list of terms and as 
 
 ## Considered options
 
-1. **Thin script + parsing in Dart** — a short script (an asset file) returns raw material: the page's embedded data as text, else the visible term list's text, plus the set's name, its id as the page states it and the "Terms in this set (N)" count; Dart finds the cards, checks the set id and cleans the text.
+1. **Thin script + parsing in Dart** — a short script (a Dart string constant in `quizlet_page_script.dart`, no `assets:` section needed) returns raw material: the page's embedded data as text, else the visible term list's text, plus the set's name, its id as the page states it and the "Terms in this set (N)" count; Dart finds the cards, checks the set id and cleans the text.
 2. **All parsing in a script on the page** — the script returns finished `{term, back, example}` cards.
-3. **Quizlet's internal JSON API from the page** — the script fetches Quizlet's unpublished card API page by page with the cookies that passed the robot check.
 
 ## Decision outcome
 
-**Chosen:** Option 1. The part that breaks when Quizlet changes is the parsing, and in Dart it is unit-tested against fixtures saved from real set pages; a layout change means "save a new fixture, fix the parser". Embedded data is preferred because it holds every card; the visible list is the fallback. Option 2 puts the fragile logic where it cannot be tested without a device. Option 3 stops being "reading the page" (spec §1), raises the terms-of-use risk of OQ-1 and depends on an unpublished API.
+**Chosen:** Option 1. The part that breaks when Quizlet changes is the parsing, and in Dart it is unit-tested against fixtures saved from real set pages; a layout change means "save a new fixture, fix the parser". Embedded data is preferred because it holds every card; the visible list is the fallback. Option 2 puts the fragile logic where it cannot be tested without a device.
 
 ## Consequences
 

@@ -29,7 +29,7 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 | Tech Lead (Maksym) | SAD approval | Yes |
 | Security Lead (Maksym) | Security review of the in-app third-party page and the new published field (spec §6.1 "Security review: Required") | Yes |
 
-<!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
+**Critic resolutions (2026-10-06):** no overrides — the five findings were resolved by amendment: the reader script is a Dart constant (ADR-0003 aligned with §5); the first load is bounded by the same 30 s (§4, §6); spec OQ-1 is closed as an accepted risk (§2, §11, spec §8); ADR-0003 no longer lists the out-of-scope internal-API option; the §11 repo-text row names every text this design outdates.
 
 ## 2. Constraints
 
@@ -50,11 +50,11 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 
 **Conventions.**
 - [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2: typed routes only (dialogs are not routes); services via providers in `lib/core/providers.dart`; screen data in a `@riverpod` notifier; controllers, focus and loading flags — and here the web-view controller — in widget `State`; files of about one thing each.
-- Overrides approved in the spec (§1 decisions), carried out as part of this feature's tasks: CLAUDE.md rule 3 and architecture.md rule 4 stop listing `screenshot`, which is removed with the Screenshot item; rule 5 / architecture.md rule 6 gain the one web-view package; the set source is an approved new domain model; the 10-source limit of good-looking-web is lifted (its OQ-3 closed). Tracked in §11 until the rule texts are updated.
+- Overrides approved in the spec (§1 decisions), carried out as part of this feature's tasks: CLAUDE.md rule 3 and architecture.md rule 4 stop listing `screenshot`, which is removed with the Screenshot item; rule 5 / architecture.md rule 6 gain the one web-view package; the set source is an approved new domain model (with `source_photo.dart` generalised to `session_source.dart`, sad §5); the 10-source limit of good-looking-web is lifted (its OQ-3 closed); "Include photos" becomes "Include sources". `docs/architecture.md` §1/§3 describe the old shapes and are updated with the code. Tracked in §11 until the texts are updated.
 - Verification per [`docs/tasks/README.md`](../../tasks/README.md): `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test`, the CLAUDE.md greps, and `npm test` + `npm run typecheck` in `vocab-photo-api/`.
 
 **Regulatory / external.**
-- Quizlet's terms of use and bot protection: whether reading a public set's page inside the app is allowed is open (spec §8 OQ-1; default: proceed for personal use and accept that Quizlet may block it) — tracked in §11.
+- Quizlet's terms of use and bot protection (spec §8 OQ-1): accepted by the owner at design, 2026-10-06 — proceed for personal study and accept that Quizlet may block it; tracked as a risk in §11.
 - A set's name and plain link become public for 30 days only when "Include sources" is on (spec §6.1); the sharing extras of the pasted link, which may point back to the learner's Quizlet account, are never stored or published.
 - No new device permissions (spec §6): the web view needs only network access, which the app already has.
 
@@ -119,7 +119,7 @@ C4Context
 **Tactical decisions that follow (inline, no ADR):**
 
 - **Link parsing (AC-02, AC-06)** — a pure Dart function finds the first Quizlet set link in the pasted text (bare, with or without `https://` / `www.`, with a language part, with sharing extras, a study-mode link, or inside Quizlet's share text) and yields the set id and the plain address `https://quizlet.com/<id>/<slug>/` (AC-13). Text without one is refused in the link dialog and kept. The same set-id rule is used by the navigation check (ADR-0004).
-- **Waiting, the robot check and the 30 s (AC-05, AC-07)** — the 30 s clock starts at the first "page finished loading"; about once a second the reader asks the page for cards or for signs of a robot check. A robot check is recognised by known markers of Quizlet's challenge page on quizlet.com (title, challenge elements); while one is on screen the clock is paused and the preview is full size, and it shrinks back when the check is gone. No connection, a load error or the clock running out ends the import with the AC-07 message. An unrecognised new kind of check simply runs the clock out — the safe side (§11).
+- **Waiting, the robot check and the 30 s (AC-05, AC-07)** — the same 30 s also bound the first load: if the page has not finished loading 30 s after Start (paused while Quizlet's robot check is on screen), the import ends with the AC-07 message, so a load that hangs without an error cannot wait forever (critic resolution, 2026-10-06). After the first "page finished loading" the 30 s clock starts again for the cards; about once a second the reader asks the page for cards or for signs of a robot check. A robot check is recognised by known markers of Quizlet's challenge page on quizlet.com (title, challenge elements); while one is on screen the clock is paused and the preview is full size, and it shrinks back when the check is gone. No connection, a load error or the clock running out ends the import with the AC-07 message. An unrecognised new kind of check simply runs the clock out — the safe side (§11).
 - **Translation (AC-02, AC-17)** — every kept-able term goes through `GoogleTranslateService.translateWord`, as a typed word does, at most 6 requests at a time, before the results dialog opens; a term that fails to translate arrives with an empty translation and shows the translation lightning, like a typed word. The p95 ≤ 10 s target (100 cards) includes this step.
 - **Card → proposed word (AC-09, AC-10, AC-04b, AC-08)** — a pure Dart step: drop cards with no text term; turn line breaks into "; "; cut term and back side to 500 characters with "…" last; definition = back side, plus a new line and the example when present; drop terms equal to a session word or an earlier card (ignoring case, outer spaces and one closing ".", "!" or "?"); count skipped cards for their own line; compare cards found (before skipping) with the page's stated count for "Read X of Y".
 - **Into the session** — the results dialog and `wordPairFromPhoto(w, sourceId:)` are reused unchanged, so a non-empty back side marks the definition filled (AC-17); Done adds the kept words and, only if at least one was kept, adds or updates the set source (AC-03, AC-04, AC-04b); the late-result rule is the subtitle import's `startedIn` check (AC-16).
@@ -231,9 +231,9 @@ sequenceDiagram
         Flow-->>Learner: link dialog asks for a set link, text kept
     else set id and plain link found
         Flow->>Progress: open the set page, remember the session it started in
-        Progress->>Quizlet: load the set page
+        Progress->>Quizlet: load the set page, 30 s load limit starts
         Note over Progress,Quizlet: every top-level navigation is checked, only Quizlet pages of this set are allowed
-        Quizlet-->>Progress: page finished loading, 30 s clock starts
+        Quizlet-->>Progress: page finished loading, 30 s clock for cards starts
         loop about once a second until cards or the clock runs out
             Progress->>Quizlet: run the reader script
             Quizlet-->>Progress: raw page material
@@ -263,7 +263,7 @@ sequenceDiagram
                 Learner->>Flow: removes some, Done
                 Flow->>Device: append kept words with the set source id, add or update the set source
             end
-        else no connection, load error or 30 s without cards
+        else no connection, load error, no load within 30 s, or 30 s without cards
             Progress-->>Flow: failed
             Flow-->>Learner: the cards of this set could not be read, try again
         else Cancel or Back
@@ -388,7 +388,7 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 | The free translation endpoint throttles a large import (up to 500 terms, 6 at a time) | Low | A term that fails arrives with an empty translation and the translation lightning, as a typed word; the import itself does not fail | Maksym |
 | The "plain Quizlet set address" rule lives twice — Dart link parser and the Worker's format check — and drifts | Low | The same table of link shapes (spec AC-02, AC-06, AC-13) is used as test cases on both sides | Maksym |
 | A new app build publishes to a Worker without migration `0003` and is refused | Low | Release order in §7: migration, Worker, then app | Maksym |
-| CLAUDE.md rule 3 and `docs/architecture.md` rules 4 and 6 still list `screenshot` and not `webview_flutter` until updated (sad §2 overrides) | Low | One task removes the Screenshot item, its code and the package and updates both texts in the same change | Maksym |
+| Repo texts lag behind this design until updated: CLAUDE.md rule 3 and `docs/architecture.md` rules 4 and 6 (`screenshot` out, `webview_flutter` in), and `docs/architecture.md` §1/§3 (`source_photo.dart` → `session_source.dart` and the new set-source model, "declares up to 10 photos" → no source cap, "Include photos (N)" → "Include sources (N)", the new `quizlet_*` files and flow) | Low | The tasks that make each change update the matching text in the same commit: the Screenshot-removal task for the rules, the model rename task and the publish/share-sheet tasks for architecture.md | Maksym |
 | Adverts and third-party scripts run inside the preview | Low | Accepted: they cannot navigate the page away from Quizlet or open windows (ADR-0004), and no `JavaScriptChannel` exposes the app (§8) | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**

@@ -212,4 +212,4 @@ Committed approach: a new "Import from Quizlet" item takes the Screenshot item's
 
 ## 8. Open questions
 
-- [ ] OQ-1: Do Quizlet's terms of use allow reading a public set's page inside the app for the learner's own study? Default now: proceed for personal use and accept that Quizlet may block it. — owner: Maksym, due: before `sdd:design`
+- [x] OQ-1: Do Quizlet's terms of use allow reading a public set's page inside the app for the learner's own study? Resolved (owner, design 2026-10-06): accepted risk — proceed for personal study and accept that Quizlet may block it; a block ends as AC-07 (sad §11). — owner: Maksym, due: before `sdd:design`
