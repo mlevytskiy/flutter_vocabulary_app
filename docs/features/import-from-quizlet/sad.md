@@ -129,49 +129,84 @@ Each tactical decision in later sections should trace to one of these seeds. Tac
 
 ## 5. Building block view
 
-<!-- 🎯 Why: INTERNAL DECOMPOSITION — modules, containers, datastores. The static topology: who
-     may talk to whom. Without §5, §6 (the flows) has no vocabulary of participants.
-     📋 Write: 1 ¶ on the style (layered / hexagonal / clean / event-driven) + a folder tree + a
-     C4Container block.
-     📌 Draw ONE Container per declared `target_surface` (frontmatter): a fullstack
-     [backend-service, web-frontend] = a backend-API container + a web/SPA container; a
-     [backend-service, mobile-app] = the API + the mobile app. The Container(web, …) line below is
-     just one surface's container — swap/add per what was declared in §4. → _shared/surfaces.md
-     📌 e.g. «web app, content API, media worker, datastore, object store, CDN». -->
-
-<One paragraph: layered / hexagonal / clean / event-driven, and why.>
+The feature extends the two existing codebases in their own styles; no new module. The app keeps its feature-folder layout (CLAUDE.md, [`docs/architecture.md`](../../architecture.md)), mirroring the subtitle import: **pure logic in `core/services/`** (like `subtitle_parser.dart`) so it is unit-tested without a device, the **flow in `features/word_input/`** (like `subtitle_import_flow.dart`), **dialogs in `features/word_input/widgets/`**, and the web-view controller in the progress dialog's `State` (CLAUDE.md rule 2). No new provider is needed: the pure functions are called directly, and translation goes through the existing `googleTranslateServiceProvider`. The Worker keeps its flat layout (`index.ts` routing → `session/` handlers → `store.ts`); the shared page is its third container, extended in `page.ts` and `client/page.js`.
 
 **Internal decomposition:**
 
 ```
-<e.g. modules/<feature>/>
-├── domain/       <entities + sentinel errors>
-├── app/          <use cases / services>
-├── infra/        <repository + integration impl>
-├── ports/        <handlers, DTOs, error mapping>
-└── wiring        <self-wiring entry point>
+lib/ (Flutter app)
+├── core/models/
+│   ├── session_source.dart     was source_photo.dart: the embedded source gains kind (photo | set) and
+│   │                           optional setId, name, url; class SessionSource, stored Isar name kept
+│   │                           as "SourcePhoto" so existing sessions read unchanged; no kind = photo (ADR-0005)
+│   └── session.dart            sources: List<SessionSource> — one ordered list of photos and sets
+├── core/services/
+│   ├── quizlet_link.dart       NEW, pure: pasted text → set id + plain link (AC-02, AC-06, AC-13);
+│   │                           is-this-navigation-allowed for the web view (ADR-0004)
+│   ├── quizlet_page_script.dart NEW: the thin reader script as a Dart string constant (ADR-0003)
+│   ├── quizlet_set_parser.dart NEW, pure: raw page material → set (id, name, stated count, cards in
+│   │                           order) | robot check | nothing yet (ADR-0003)
+│   ├── quizlet_cards.dart      NEW, pure: cards + session words → proposed VocabWords, skipped count,
+│   │                           "Read X of Y" (AC-04b, AC-08, AC-09, AC-10)
+│   ├── session_publish_service.dart  sources carry kind; set sources with name + url; no 10-source cap
+│   ├── photo_upload_service.dart     uploads only kind == photo
+│   └── source_photo_store.dart       unchanged contract; called only for photo sources
+└── features/
+    ├── word_input/
+    │   ├── quizlet_import_flow.dart        NEW: link dialog → progress dialog → translate → results
+    │   │                                   dialog → add words + set source; late-result rule (AC-16)
+    │   ├── word_input_screen.dart          − Screenshot wrapper and _takeScreenshot; + onImportFromQuizlet;
+    │   │                                   adds or updates the set source on Done
+    │   └── widgets/
+    │       ├── word_input_speed_dial.dart  Screenshot item → "Import from Quizlet", same green (AC-01)
+    │       ├── quizlet_link_dialog.dart    NEW: paste field, Start, refusal text (AC-06)
+    │       ├── quizlet_progress_dialog.dart NEW: WebViewController + NavigationDelegate in State,
+    │       │                               the 30 s clock, small / full-size preview, Cancel (AC-05, AC-07, AC-07b)
+    │       └── vocab_result_dialog.dart    + set name title, "Read X of Y" and skipped lines (AC-04b, AC-08)
+    └── words_table/
+        └── words_table_screen.dart         "Include photos (N)" → "Include sources (N)"; set
+                                            sources with no remaining row not counted (AC-15)
+
+vocab-photo-api/
+├── migrations/0003_set_sources.sql   sources: + kind (default 'photo'), name, url (written at data-model)
+└── src/session/
+    ├── types.ts      + SetSource {kind: "set", id, name, url}; DeclaredSource gets kind; MAX_SOURCES removed;
+    │                 set-link format check (plain quizlet.com set address)
+    ├── handlers.ts   publish stores set slots as arrived; upload route refuses non-photo slots
+    ├── store.ts      reads / writes kind, name, url; photo-only queries filter kind
+    ├── page.ts       set page in the pager / sources dialog: name as text, plain link (new tab)
+    └── client/page.js pager and dialog treat a set slot like a photo slot without an image
 ```
 
-**C4 Container (L2):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. ONE Container per declared target_surface (frontmatter); the web container below is one example surface. -->
+**C4 Container (L2):**
 
 ```mermaid
 C4Container
-    title <feature> — Containers
+    title import-from-quizlet — Containers
 
-    Person(actor, "<Actor>")
+    Person(learner, "learner")
+    Person(partner, "partner")
 
-    Container_Boundary(app, "<Our system>") {
-        Container(web, "<Web/UI>", "<technology>", "<purpose>")
-        Container(api, "<API/handler>", "<technology>", "<purpose>")
-        ContainerDb(db, "<Datastore>", "<technology>", "<purpose>")
+    Container_Boundary(system, "Vocabulary app + vocab-photo-api") {
+        Container(app, "Vocabulary app", "Flutter, Riverpod, Isar, webview_flutter", "Link dialog, progress dialog with the in-app set page, reader and parser, results dialog; keeps set sources; publishes them")
+        ContainerDb(device, "Device store", "Isar vocab", "Sessions with one ordered source list: photos and sets; rows linked by sourceId")
+        Container(api, "vocab-photo-api Worker", "TypeScript on Cloudflare Workers", "Accepts set sources at publish with a format check; stores and serves them; never contacts Quizlet")
+        ContainerDb(d1, "Sessions database", "Cloudflare D1", "Sessions, rows, source slots with kind, name and url")
+        Container(page, "Shared page", "Server-rendered HTML + plain JavaScript in the browser", "Source pager and phone sources dialog with set pages; highlighted rows")
     }
 
-    System_Ext(ext, "<External>", "<purpose>")
+    System_Ext(quizlet, "Quizlet", "Public set pages, its own robot check")
+    System_Ext(gt, "Google Translate endpoint", "Translations")
 
-    Rel(actor, web, "<interaction>", "<protocol>")
-    Rel(web, api, "<calls>")
-    Rel(api, db, "<reads/writes>", "<driver>")
-    Rel(api, ext, "<emits>", "<protocol>")
+    Rel(learner, app, "Pastes a set link, passes the robot check, keeps words, publishes", "touch")
+    Rel(app, quizlet, "Opens the set page in the web view and reads it", "HTTPS")
+    Rel(app, gt, "Translates each term", "HTTPS")
+    Rel(app, device, "Reads and writes sessions and sources")
+    Rel(app, api, "Publishes rows and sources with kind", "JSON/HTTPS, shared secret")
+    Rel(api, d1, "Stores source slots, reads them for the page", "D1 binding")
+    Rel(partner, page, "Moves the pager, opens a set link", "HTTPS")
+    Rel(page, api, "Loads the page and polls changes", "HTTPS")
+    Rel(partner, quizlet, "Opens the set in a new tab", "HTTPS")
 ```
 
 ## 6. Runtime view
