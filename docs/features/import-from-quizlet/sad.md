@@ -344,17 +344,16 @@ Everything inherits the repo's conventions (CLAUDE.md, [`docs/architecture.md`](
 
 ## 9. Architecture decisions
 
-<!-- 🎯 Why: the REVERSE INDEX onto the adr/ folder. `ls adr/` gives the files; §9 gives the
-     semantics — why they exist, which SAD section they attach to, what status.
-     📋 Write: a 4-column table, one row per ADR. Mixed status is fine.
-     📌 e.g. «0001 | Store content as a table of typed blocks | Accepted | §4». -->
-
 | # | Title | Status | Section |
 |---|---|---|---|
-| <NNNN> | <imperative — e.g. "Use a sliding-window counter for rate limiting"> | Accepted | §<N> |
-| <NNNN> | <imperative — e.g. "Co-locate the worker in the API process"> | Accepted | §<N> |
+| 0001 | Change the app, the Worker and the shared page as three surfaces | Accepted | §4 |
+| 0002 | Show the set page with webview_flutter | Accepted | §4 |
+| 0003 | Read the page data with a thin script and parse it in Dart | Accepted | §4 |
+| 0004 | Allow only Quizlet pages of the pasted set in the web view | Accepted | §4, §8 |
+| 0005 | Keep photos and sets in one source list with a kind | Accepted | §4, §5 |
+| 0006 | Publish set sources in the sources list with a kind | Accepted | §4, §5 |
 
-ADR files live under `docs/features/<slug>/adr/NNNN-<title>.md`.
+ADR files live under `docs/features/import-from-quizlet/adr/NNNN-<title>.md`. Earlier decisions this feature extends: good-looking-web ADR-0006 (declared sources — now with a `kind`, and without the 10-source cap) and ADR-0002 (the shared page's UI architecture, unchanged).
 
 ## 10. Quality requirements
 
