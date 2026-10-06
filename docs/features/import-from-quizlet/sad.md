@@ -357,29 +357,22 @@ ADR files live under `docs/features/import-from-quizlet/adr/NNNN-<title>.md`. Ea
 
 ## 10. Quality requirements
 
-<!-- 🎯 Why: the QUALITY TREE — take a goal from §1 and break it into concrete leaves: tests,
-     metrics, configs, drills. ⭐ Without §10, §1 is a manifesto. With §10 each declaration maps
-     to something PROVABLE.
-     📋 Write: per §1 goal — When / Then / How-verify. Numbers from spec §6 NFR VERBATIM (don't
-     round ≤250ms to ≤300ms — that's a critic F6 hit).
-     📌 e.g. «p95 ≤ 500 ms on a block update, verified by a 100 req/s load test». -->
+Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR verbatim. Anything that needs the live Quizlet page is verified in a device pass on the owner's phones (a dedicated task, as photo-from-gallery T6); everything that is pure logic is covered by `flutter test` and the Worker's `npm test`.
 
-Each top-3 goal from §1 expanded into a full scenario:
+**QG-1. A set is read whole, or the gap is named**
+- **When:** the learner imports a public set by its link.
+- **Then:** time from starting the import to the results dialog, public 100-card set, Wi-Fi, no robot check, translations included: p95 ≤ 10 s; cards found: 100% of the set's cards for sets of up to 500 cards; when fewer are found than the page states, "Read X of Y" is shown (AC-08).
+- **How verify:** on the phone, 5 runs on each of 3 sets; device pass: sets of 10, 50, 200 and 500 cards — no "Read X of Y" line appears; `flutter test` of `quizlet_set_parser` against fixtures saved from real set pages (every card in set order, the stated count, examples, image-only cards, the visible-list fallback when the embedded data is missing) and of `quizlet_cards` for the "Read X of Y" and skipped-cards lines.
 
-**QG-1. <quality attribute>**
-- **When:** <trigger condition>
-- **Then:** <expected behaviour with numbers from spec §6 NFR>
-- **How verify:** <test / chaos drill / load test / metric>
+**QG-2. The third-party page is contained**
+- **When:** the page loads, shows Quizlet's robot check, shows no cards, or tries to go elsewhere.
+- **Then:** wait for cards after the page has loaded: 30 s, then the AC-07 message; paused while Quizlet's robot check is on screen; new device permissions: 0; a top-level page that is not Quizlet's own, or another set's page, is never opened, and words come only from the pasted set (AC-11).
+- **How verify:** device pass — a set link whose page shows no cards ends with the AC-07 message 30 ± 2 s after loading; fresh install on iPhone and Android: no new permission prompt; tapping an advert or an outside link in the full-size preview opens nothing; `flutter test` of the navigation check (other hosts, `http:`, `intent:` / store schemes, another set id, a language part and a study-mode path of the same set) and of the set-id lock in the parser.
 
-**QG-2. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
-
-**QG-3. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-3. Imported words are ordinary, publishable words**
+- **When:** cards with long, multi-line or missing text are imported, kept, and the session is published with and without sources.
+- **Then:** field length ≤ 500 characters per word and per definition, the "…" included (AC-09); sources per published session: no limit (owner decision 2026-10-06) — every source photo and set source with a remaining word row is published; with "Include sources" off nothing reveals the set (AC-12); an imported word shows no lightning on a filled definition (AC-17).
+- **How verify:** automated check on the proposed words before the results dialog opens (`flutter test` of `quizlet_cards` with long and multi-line terms and backs); Worker `node --test`: publish test with 12 photos and 3 sets — the pager shows all 15; a set source with a non-Quizlet or query-bearing link is refused with `invalid_source`; a publish with sources off has no source on the page; widget test: a word added from a card with a back has `definitionMarkedFilled` and no definition lightning, one without a back shows it.
 
 ## 11. Risks and technical debt
 
