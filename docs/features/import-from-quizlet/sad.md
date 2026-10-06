@@ -329,21 +329,18 @@ No new deployment unit. The existing `vocab-photo-api` Worker gains D1 migration
 
 ## 8. Crosscutting concepts
 
-<!-- 🎯 Why: CROSS-CUTTING PATTERNS spanning several modules: logging, errors, authorization, ID
-     strategy, events, caching. ⭐ The second-densest section. A pattern inside one module is NOT
-     here; a project-wide convention belongs in the convention file.
-     📋 Write: a table — concept / convention / where defined. One row per concept.
-     📌 e.g. «sortable time-based IDs generated in the app layer» as a default from the convention file. -->
+Everything inherits the repo's conventions (CLAUDE.md, [`docs/architecture.md`](../../architecture.md), the Worker's `routing.ts` / `http.ts`, good-looking-web sad §8) except the rows marked **new**, which the in-app third-party page requires (spec §6.1).
 
 | Concept | Convention | Where defined |
 |---|---|---|
-| Logging | <e.g. structured, fields `module=<name>`> | <convention file §X or here> |
-| Authentication | <e.g. token-based via middleware> | <convention file §X> |
-| Error handling | <e.g. domain sentinel → ports error mapping → JSON> | <convention file §X> |
-| ID strategy | <e.g. sortable time-based ID in the app layer> | <convention file §X> |
-| Internationalisation | <e.g. N/A, single language> | — |
-| Observability | <e.g. tracing on the request boundary> | — |
-| Events | <module-specific patterns, if any> | <here> |
+| App state + DI | Inherited. The `WebViewController`, its `NavigationDelegate`, the 30 s clock and the preview size live in the progress dialog's `State`; dialogs are not routes; no new provider — pure functions are called directly, translation through `googleTranslateServiceProvider`. | CLAUDE.md rule 2 |
+| Web view boundary (**new**) | Top-level navigation only to `https://quizlet.com` and subdomains, never to another set; no new windows; read results only for the pasted set id (ADR-0004). JavaScript is enabled (Quizlet needs it), but **no `JavaScriptChannel` is registered** — the page cannot call into the app; the app only pulls results with `runJavaScriptReturningResult`. The system web-view cookie store keeps Quizlet's cookies so a passed robot check is remembered; it belongs to this app only, holds no Quizlet login, and the learner is never asked to log in. | ADR-0002, ADR-0004; here |
+| Untrusted page text (**new**) | Everything read from the page is plain text: checked for the pasted set id, cleaned in `quizlet_cards` (line breaks → "; ", cut to 500 characters with "…" last) before the results dialog, shown only through `Text` widgets, never as markup or a link in the app. | ADR-0003; here |
+| Error handling | App: message constants in the `SubtitleImportMessages` style — "paste a link to a Quizlet set" (AC-06, in the link dialog), "the cards of this set couldn't be read, try again" (AC-07, snack bar on the main screen); Cancel/Back shows nothing (AC-07b). Worker: `jsonResponse({ error, code: "invalid_source" }, status)` for a set source failing the format check; status fixed at `api`. | `subtitle_import_flow.dart`; `src/http.ts` |
+| ID strategy | Set source id `quizlet-<setId>` — stable per Quizlet set (AC-13b) and inside the Worker's `ID_PATTERN` `[A-Za-z0-9-]{1,64}`; photo ids stay app-generated UUIDs (good-looking-web ADR-0006). | ADR-0005 |
+| Output escaping on the page | Set name rendered with `escapeHtml` server-side and `textContent` in `client/page.js`; the link `href` is only the checked plain set address, opened with `target="_blank" rel="noopener noreferrer"`; the page's Content-Security-Policy is unchanged (an outbound link needs no new source). | `src/session/page.ts`; good-looking-web sad §8 |
+| Logging | App `debugPrint` with the `QUIZLET:` prefix, no card text, set name or link extras; Worker structured lines with codes only (§7). | §7 |
+| Internationalisation | Interface text stays English, as today; card text is data. | — |
 
 ## 9. Architecture decisions
 
