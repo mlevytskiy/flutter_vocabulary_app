@@ -14,7 +14,6 @@ dependencies:
   popup_menu_2: ^0.1.7
   share_plus: ^7.2.1
   flutter_speed_dial: ^7.0.0
-  screenshot: ^3.0.0
   image_picker: ^1.1.2
   # Direct only to set useAndroidPhotoPicker in main.dart (photo-from-gallery ADR-0001).
   image_picker_android: ^0.8.13

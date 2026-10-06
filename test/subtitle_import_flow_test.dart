@@ -236,7 +236,6 @@ void main() {
       home: Scaffold(
         floatingActionButton: WordInputSpeedDial(
           onTakePhoto: () {},
-          onScreenshot: () {},
           onFromSubtitles: () => tapped = true,
         ),
       ),
@@ -244,6 +243,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.add));
     await tester.pumpAndSettle();
     expect(find.text('Get words from photo'), findsOneWidget);
+    expect(find.text('Screenshot'), findsNothing);
     await tester.tap(find.text('From subtitles'));
     await tester.pumpAndSettle();
     expect(tapped, isTrue);

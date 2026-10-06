@@ -9,7 +9,7 @@
 | [T2](T2-worker-accept-set-sources.md) | Accept, store and load set sources in the Worker publish path | ports | Maksym | M | T1 | done |
 | [T3](T3-shared-page-set-source-page.md) | Show a set source as a page of the source pager and the phone sources dialog | ui | Maksym | M | T2 | done |
 | [T4](T4-generalise-source-photo-to-session-source.md) | Generalise SourcePhoto into SessionSource with a kind, name and link | domain | Maksym | M | — | done |
-| [T5](T5-remove-screenshot.md) | Remove the Screenshot item, its capture code and the screenshot package | wiring | Maksym | S | — | todo |
+| [T5](T5-remove-screenshot.md) | Remove the Screenshot item, its capture code and the screenshot package | wiring | Maksym | S | — | done |
 | [T6](T6-quizlet-link-rules.md) | Find a Quizlet set link in pasted text and decide which navigations the web view may follow | domain | Maksym | S | — | todo |
 | [T7](T7-quizlet-page-reader-and-parser.md) | Write the reader script and parse raw set-page material into a set | domain | Maksym | M | T6 | todo |
 | [T8](T8-cards-to-proposed-words.md) | Turn cards into proposed words with the text rules, repeats and counts | domain | Maksym | S | — | todo |

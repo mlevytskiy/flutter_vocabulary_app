@@ -7,10 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopupMenuController.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../core/models/definition_result.dart';
 import '../../core/models/session.dart';
@@ -124,7 +121,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // The definition dots' popup controllers, per row -- kept exactly like
   // _popupControllers (same pruning), for the same package reasons.
   final Map<int, CustomPopupMenuController> _definitionPopupControllers = {};
-  final ScreenshotController _screenshotController = ScreenshotController();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
 
@@ -1008,40 +1004,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     const WordsTableRoute().go(context);
   }
 
-  Future<void> _takeScreenshot() async {
-    try {
-      final image = await _screenshotController.capture();
-      if (image == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to capture screenshot')),
-          );
-        }
-        return;
-      }
-
-      // Save to temporary file and share
-      final directory = await getTemporaryDirectory();
-      final now = DateTime.now();
-      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final filePath = '${directory.path}/vocabulary_screenshot_$dateStr.png';
-
-      final file = File(filePath);
-      await file.writeAsBytes(image);
-
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Vocabulary Screenshot',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error taking screenshot: $e')),
-        );
-      }
-    }
-  }
-
   /// "Get words from photo": one photo import at a time, then the
   /// Camera/Gallery choice (photo-from-gallery sad §4, AC-01, AC-05, AC-10).
   Future<void> _takePhotoForVocabulary() async {
@@ -1597,30 +1559,26 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           : null,
       body: Stack(
         children: [
-          Screenshot(
-            controller: _screenshotController,
-            child: isDragMode
-                ? ReorderableListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: _wordPairs.length,
-                    onReorder: _reorderItems,
-                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true, detailMode: detailMode),
-                    proxyDecorator: (child, index, animation) {
-                      return Material(
-                        color: Colors.transparent,
-                        child: child,
-                      );
-                    },
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: _wordPairs.length,
-                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
-                  ),
-          ),
+          isDragMode
+            ? ReorderableListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _wordPairs.length,
+                onReorder: _reorderItems,
+                itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true, detailMode: detailMode),
+                proxyDecorator: (child, index, animation) {
+                  return Material(
+                    color: Colors.transparent,
+                    child: child,
+                  );
+                },
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _wordPairs.length,
+                itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
+              ),
           // The settings entry point: bottom-left, opposite the speed dial's
-          // own bottom-right corner (D9 (c) in docs/roadmap.md). Kept out of
-          // the Screenshot above, so it never appears in a shared screenshot.
+          // own bottom-right corner (D9 (c) in docs/roadmap.md).
           //
           // Mirrors the speed dial's plus button: same elevation, same white
           // glyph on a filled circle, purple instead of red. The plain
@@ -1669,7 +1627,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       ),
       floatingActionButton: WordInputSpeedDial(
         onTakePhoto: _takePhotoForVocabulary,
-        onScreenshot: _takeScreenshot,
         onFromSubtitles: _importFromSubtitles,
       ),
     );

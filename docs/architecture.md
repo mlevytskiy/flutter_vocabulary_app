@@ -104,7 +104,7 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
 3. **Features don't import each other's screens** — they navigate through routes and share data
    through providers in `core/`.
 4. **No UI changes during structural work.** Same packages (`popup_menu_2`, `flutter_speed_dial`,
-   `screenshot`, `translator`, `http`, `share_plus`, `image_picker`), same widget trees, same
+   `translator`, `http`, `share_plus`, `image_picker`), same widget trees, same
    animations. Code is cut and pasted into new files, not rewritten. If a file must change to
    compile in its new home, the change is imports and parameters only.
 5. **Secrets stay where they are** — `lib/config/vocab_api_config.dart`, a gitignored constant.
