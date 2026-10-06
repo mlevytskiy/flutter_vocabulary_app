@@ -7,7 +7,7 @@ acs: ["AC-13", "AC-14"]
 files_hint: ["vocab-photo-api/src/session/page.ts", "vocab-photo-api/src/session/client/page.js", "vocab-photo-api/src/session/style.ts", "vocab-photo-api/test/page.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Show a set source as a page of the source pager and the phone sources dialog

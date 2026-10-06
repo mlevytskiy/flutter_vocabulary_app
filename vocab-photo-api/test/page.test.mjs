@@ -255,3 +255,71 @@ test("a row with an empty word carries the needs-a-word mark (AC-31)", async () 
   assert.match(rows[1], /class="needs-word"/);
   assert.match(html, /not in the download — needs a word/);
 });
+
+// T3 (AC-13, AC-14): a set source is a page of the pager and of the phone's dialog.
+const SET_URL = "https://quizlet.com/987534268/job-interview-flash-cards/";
+
+test("a set source is a pager page with its name and link, counted in 'N of M' and the phone button", async () => {
+  const [first, second, set] = [randomUUID(), randomUUID(), randomUUID()];
+  const { id } = await publish({
+    sources: [
+      { id: first, order: 0 },
+      { id: second, order: 1 },
+      { id: set, order: 2, kind: "set", name: "Job interview", url: SET_URL },
+    ],
+    entries: [
+      { word: "kettle", translation: "чайник", sourceId: first },
+      { word: "hire", translation: "наймати", sourceId: set },
+      { word: "typed", translation: "набрано" },
+    ],
+  });
+  const { html } = await page(id);
+
+  const slides = [...html.matchAll(/<figure class="slide( set-slide)?" data-source="([^"]+)">(.*?)<\/figure>/g)];
+  assert.deepEqual(slides.map((m) => m[2]), [first, second, set]);
+  assert.equal(slides[0][1], undefined);
+  assert.equal(slides[2][1], " set-slide");
+  assert.doesNotMatch(slides[2][3], /<img|class="placeholder"/);
+  assert.match(slides[2][3], /<p class="set-name">Job interview<\/p>/);
+  assert.match(
+    slides[2][3],
+    new RegExp(`<a class="set-link" href="${SET_URL}" target="_blank" rel="noopener noreferrer">${SET_URL}</a>`)
+  );
+  assert.match(slides[2][3], /<figcaption>3 of 3<\/figcaption>/);
+
+  // Only the set's row carries the set's id; the photo's row and the typed row do not.
+  const rows = [...html.matchAll(/<tr data-row="[^"]+"([^>]*)>/g)].map((m) => m[1]);
+  assert.match(rows[1], new RegExp(`data-source="${set}"`));
+  assert.doesNotMatch(rows[2], /data-source/);
+
+  // The phone's button counts the set and shows it as a tile of the stack.
+  assert.match(html, /class="photo-button stack" aria-label="Show the 3 sources"/);
+  assert.equal([...html.matchAll(/class="thumb[ "]/g)].length, 3);
+  assert.match(html, /<span class="thumb set-thumb"><\/span>/);
+});
+
+test("a set-only session still gets the pager, the dialog and a single-source button", async () => {
+  const set = randomUUID();
+  const { id } = await publish({
+    sources: [{ id: set, order: 0, kind: "set", name: "Only set", url: SET_URL }],
+    entries: [{ word: "hire", translation: "наймати", sourceId: set }],
+  });
+  const { html } = await page(id);
+
+  assert.match(html, /<main [^>]*class="[^"]*has-photos/);
+  assert.match(html, /<dialog class="photo-dialog"/);
+  assert.match(html, /class="photo-button" aria-label="Show the source"/);
+  assert.match(html, /<figcaption>1 of 1<\/figcaption>/);
+});
+
+test("a set name with markup renders as text (sad §8)", async () => {
+  const set = randomUUID();
+  const { id } = await publish({
+    sources: [{ id: set, order: 0, kind: "set", name: `<img src=x onerror=alert(1)> & "q"`, url: SET_URL }],
+    entries: [{ word: "hire", translation: "наймати", sourceId: set }],
+  });
+  const { html } = await page(id);
+
+  assert.match(html, /<p class="set-name">&lt;img src=x onerror=alert\(1\)&gt; &amp; &quot;q&quot;<\/p>/);
+  assert.doesNotMatch(html, /<img src=x/);
+});

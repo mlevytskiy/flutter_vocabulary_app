@@ -120,20 +120,25 @@ function renderHeader(field: Field, collapsed: boolean): string {
 }
 
 /**
- * The photo pager (wide layout) and the phone's photo dialog, from the
- * declared slots in order. A slot whose bytes never arrived is an empty
+ * The source pager (wide layout) and the phone's sources dialog, from the
+ * declared slots in order (a photo, or a set source with its name and link). A slot whose bytes never arrived is an empty
  * placeholder in its place. No slots (none declared, or "include photos"
  * off) renders neither (AC-08, AC-24, AC-26). The pager's arrows and the
  * phone's photo dialog (AC-05, AC-07) are wired by the script, which fills
  * the dialog's strip from the pager's slides when it opens.
  */
 function renderPhotos(session: StoredSession): string {
-  // A set is not a photo; T3 renders it as a page of the pager.
-  const slots = session.sources.filter((slot) => slot.kind === "photo").sort((a, b) => a.ord - b.ord);
+  const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
   if (slots.length === 0) return "";
   const total = slots.length;
   const slide = (slot: StoredSource, i: number): string => {
     const position = `${i + 1} of ${total}`;
+    if (slot.kind === "set") {
+      // A set source: its name and its plain link, as text (sad §8), no image.
+      const name = escapeHtml(slot.name ?? "");
+      const link = escapeHtml(slot.url ?? "");
+      return `<figure class="slide set-slide" data-source="${escapeHtml(slot.id)}"><div class="set-card"><p class="set-name">${name}</p><a class="set-link" href="${link}" target="_blank" rel="noopener noreferrer">${link}</a></div><figcaption>${position}</figcaption></figure>`;
+    }
     const picture =
       slot.status === "arrived"
         ? `<img src="${escapeHtml(sourceUrl(session.id, slot.id))}" alt="Source photo ${position}" loading="lazy">`
@@ -157,19 +162,26 @@ ${slots.map(slide).join("\n")}
  * stacked thumbnails that open the photo dialog. Nothing without slots.
  */
 function renderPhotoButton(session: StoredSession): string {
-  // A set is not a photo; T3 renders it as a page of the pager.
-  const slots = session.sources.filter((slot) => slot.kind === "photo").sort((a, b) => a.ord - b.ord);
+  const slots = [...session.sources].sort((a, b) => a.ord - b.ord);
   if (slots.length === 0) return "";
   const total = slots.length;
   const thumbs = slots
     .slice(0, 3)
     .map((slot) =>
-      slot.status === "arrived"
+      slot.kind === "set"
+        ? `<span class="thumb set-thumb"></span>`
+        : slot.status === "arrived"
         ? `<img class="thumb" src="${escapeHtml(sourceUrl(session.id, slot.id))}" alt="" loading="lazy">`
         : `<span class="thumb"></span>`
     )
     .join("");
-  const label = total === 1 ? "Show the source photo" : `Show the ${total} source photos`;
+  const label = slots.some((slot) => slot.kind === "set")
+    ? total === 1
+      ? "Show the source"
+      : `Show the ${total} sources`
+    : total === 1
+      ? "Show the source photo"
+      : `Show the ${total} source photos`;
   return `<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>`;
 }
 

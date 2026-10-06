@@ -1312,7 +1312,7 @@ function openDialog(dialog) {
     ...all.map((slide) => {
       const figure = document.createElement("figure");
       figure.className = "dialog-slide";
-      const picture = slide.querySelector("img, .placeholder");
+      const picture = slide.querySelector("img, .placeholder, .set-card");
       if (picture) {
         const copy = /** @type {HTMLElement} */ (picture.cloneNode(true));
         // Off-screen in the strip, a lazy image would wait for a swipe to load.
@@ -1452,6 +1452,8 @@ function wireDialogGestures(dialog) {
 
   view.addEventListener("pointerdown", (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    // A set page's link is tapped, not swiped: capture would take its click away.
+    if (event.target instanceof Element && event.target.closest("a")) return;
     view.setPointerCapture(event.pointerId);
     gesture.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (gesture.pointers.size === 1) {
