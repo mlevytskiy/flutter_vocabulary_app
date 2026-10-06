@@ -165,19 +165,23 @@ void main() {
       await service.publish(pairs, detail: WordDetailMode.both);
       final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
       expect(body['detail'], 'both');
-      expect(body['entries'][0],
-          {'word': 'claim', 'translation': 'заява', 'definition': 'to ask for'});
+      expect(body['entries'][0], {
+        'word': 'claim',
+        'translation': 'заява',
+        'definition': 'to ask for'
+      });
     });
 
     test('a too-long definition surfaces the Worker message naming the word',
         () async {
       final service = serviceAnswering(400, {
-        'error': 'The definition of "gated" is too long (at most 500 characters)',
+        'error':
+            'The definition of "gated" is too long (at most 500 characters)',
       });
       expect(
         () => service.publish(pairs, detail: WordDetailMode.definition),
-        throwsA(isA<SessionPublishException>().having(
-            (e) => e.message, 'message', contains('"gated"'))),
+        throwsA(isA<SessionPublishException>()
+            .having((e) => e.message, 'message', contains('"gated"'))),
       );
     });
   });
@@ -218,8 +222,8 @@ void main() {
       );
       final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
       expect(body['sources'], [
-        {'id': 'p1', 'order': 0},
-        {'id': 'p2', 'order': 1},
+        {'id': 'p1', 'order': 0, 'kind': 'photo'},
+        {'id': 'p2', 'order': 1, 'kind': 'photo'},
       ]);
       expect(body['entries'], [
         {'word': 'shelf', 'translation': 'полиця', 'sourceId': 'p2'},
@@ -227,29 +231,77 @@ void main() {
         {'word': 'tea', 'translation': 'чай', 'sourceId': 'p1'},
       ]);
       expect(published.declaredSources.map((p) => p.id), ['p1', 'p2']);
-      expect(published.leftOutSources, isEmpty);
     });
 
-    // spec OQ-3
-    test('11 photos: the first 10 taken are declared, the last is left out',
+    // AC-15, ADR-0006: no cap; a set is sent with its kind, name and link
+    test('12 photos and 3 sets are all sent in order, with their kinds',
         () async {
       final service = serviceAnswering(200, answer);
-      final photos = [for (var i = 10; i >= 0; i--) photo('p$i', i)];
+      SessionSource set(String id, int minute) => SessionSource()
+        ..id = 'quizlet-$id'
+        ..kind = SourceKind.set
+        ..name = ' Set $id '.trim()
+        ..url = 'https://quizlet.com/$id/set-$id/'
+        ..takenAt = DateTime.utc(2026, 9, 28, 11, minute);
+      final sources = [
+        for (var i = 11; i >= 0; i--) photo('p$i', i),
+        set('3', 3),
+        set('1', 1),
+        set('2', 2),
+      ];
+      final ids = [
+        for (var i = 0; i < 12; i++) 'p$i',
+        'quizlet-1',
+        'quizlet-2',
+        'quizlet-3',
+      ];
       final published = await service.publish(
         [
-          for (var i = 0; i <= 10; i++)
-            WordPair(word: 'w$i', translation: 't$i', sourceId: 'p$i'),
+          for (final id in ids)
+            WordPair(word: 'w$id', translation: 't', sourceId: id)
         ],
-        sources: photos,
+        sources: sources,
       );
       final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
       expect(body['sources'], [
-        for (var i = 0; i < 10; i++) {'id': 'p$i', 'order': i},
+        for (var i = 0; i < 12; i++) {'id': 'p$i', 'order': i, 'kind': 'photo'},
+        for (var i = 1; i <= 3; i++)
+          {
+            'id': 'quizlet-$i',
+            'order': 11 + i,
+            'kind': 'set',
+            'name': 'Set $i',
+            'url': 'https://quizlet.com/$i/set-$i/',
+          },
       ]);
-      // The left-out photo's row still publishes, linked to nothing.
-      expect(body['entries'].last, {'word': 'w10', 'translation': 't10'});
-      expect(published.declaredSources, hasLength(10));
-      expect(published.leftOutSources.map((p) => p.fileName), ['p10.jpg']);
+      expect(published.declaredSources, hasLength(15));
+    });
+
+    test('a set none of whose words remain is not sent', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish(
+        [WordPair(word: 'shelf', translation: 'полиця', sourceId: 'p1')],
+        sources: [
+          photo('p1', 1),
+          SessionSource()
+            ..id = 'quizlet-9'
+            ..kind = SourceKind.set
+            ..name = 'Gone'
+            ..url = 'https://quizlet.com/9/gone/',
+        ],
+      );
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
+      expect((body['sources'] as List).map((s) => s['id']), ['p1']);
+    });
+
+    test('a photo is sent with no name and no url', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish(
+        [WordPair(word: 'shelf', translation: 'полиця', sourceId: 'p1')],
+        sources: [photo('p1', 1)],
+      );
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
+      expect(body['sources'].single, {'id': 'p1', 'order': 0, 'kind': 'photo'});
     });
   });
 

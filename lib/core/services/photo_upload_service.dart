@@ -41,9 +41,11 @@ class PhotoUploadService {
         _sleep = sleep ?? Future<void>.delayed;
 
   /// Starts uploading [photos] to the session published as [publishedId]. A
-  /// photo already uploading to that session is not started twice.
+  /// photo already uploading to that session is not started twice. A set
+  /// source has no bytes and is skipped (ADR-0006).
   void enqueue(String publishedId, List<SessionSource> photos) {
     for (final photo in photos) {
+      if (photo.kind != SourceKind.photo) continue;
       final key = '$publishedId/${photo.id}';
       if (_running.containsKey(key)) continue;
       // A block, not `=> _running.remove(key)`: that returns this very future,
@@ -88,7 +90,8 @@ class PhotoUploadService {
           return;
         }
       }
-      debugPrint('VOCAB: upload of ${photo.id} gave up after $maxAttempts tries');
+      debugPrint(
+          'VOCAB: upload of ${photo.id} gave up after $maxAttempts tries');
     } catch (e) {
       debugPrint('VOCAB: upload of ${photo.id} failed: $e');
     }

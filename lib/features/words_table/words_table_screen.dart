@@ -33,8 +33,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   /// double tap cannot publish twice; the request itself times out (AC-16).
   bool _isPublishing = false;
 
-  /// The "Include photos (N)" switch above the table; on until switched off.
-  bool _includePhotos = true;
+  /// The "Include sources (N)" switch above the table; on until switched off.
+  bool _includeSources = true;
 
   @override
   void initState() {
@@ -109,19 +109,19 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     final session = _session();
-    final includePhotos =
-        _includePhotos && _linkedPhotos(session, wordPairs).isNotEmpty;
+    final includeSources =
+        _includeSources && _linkedSources(session, wordPairs).isNotEmpty;
     final publishedBefore = session?.publishedId != null;
     // The warning names what sharing again does: replacing the partner's
-    // edits (ADR-0008) and, with photos, putting them on a public page.
-    const photosNote =
-        'Included photos are visible to anyone with the link for 30 days.';
-    final String? warning = switch ((publishedBefore, includePhotos)) {
+    // edits (ADR-0008) and, with sources, putting them on a public page.
+    const sourcesNote =
+        'Included sources are visible to anyone with the link for 30 days.';
+    final String? warning = switch ((publishedBefore, includeSources)) {
       (true, true) => 'This list was shared before. Sharing it again replaces '
-          'the edits made on the shared page. $photosNote',
+          'the edits made on the shared page. $sourcesNote',
       (true, false) => 'This list was shared before. Sharing it again '
           'replaces the edits made on the shared page.',
-      (false, true) => photosNote,
+      (false, true) => sourcesNote,
       (false, false) => null,
     };
     final choice = await showModalBottomSheet<_ShareChoice>(
@@ -165,22 +165,23 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       case _ShareChoice.file:
         await _shareWords(wordPairs);
       case _ShareChoice.link:
-        await _shareLink(wordPairs, includePhotos: includePhotos);
+        await _shareLink(wordPairs, includeSources: includeSources);
     }
   }
 
-  /// The photos a link would carry: "include photos (N)" counts only photos
-  /// with a linked row that will be published; with none the switch is not
-  /// shown (AC-23).
-  List<SessionSource> _linkedPhotos(Session? session, List<WordPair> wordPairs) {
+  /// The sources a link would carry: "include sources (N)" counts only photos
+  /// and sets with a linked row that will be published; with none the switch
+  /// is not shown (AC-15, AC-23).
+  List<SessionSource> _linkedSources(
+      Session? session, List<WordPair> wordPairs) {
     final linkedIds = {for (final pair in wordPairs) pair.sourceId};
     return (session?.sources ?? const <SessionSource>[])
-        .where((photo) => linkedIds.contains(photo.id))
+        .where((source) => linkedIds.contains(source.id))
         .toList();
   }
 
   Future<void> _shareLink(List<WordPair> wordPairs,
-      {required bool includePhotos}) async {
+      {required bool includeSources}) async {
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
     try {
@@ -188,8 +189,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       final published =
           await ref.read(sessionPublishServiceProvider).publish(wordPairs,
               detail: ref.read(wordDetailModeProvider),
-              // Switched off, no photo reaches the page (AC-24).
-              sources: includePhotos ? session?.sources ?? const [] : const [],
+              // Switched off, no source reaches the page (AC-24).
+              sources: includeSources ? session?.sources ?? const [] : const [],
               publishedId: session?.publishedId,
               editToken: session?.editToken);
       // Never awaited: the link dialog does not wait for photos (AC-37).
@@ -271,7 +272,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   Future<void> _showPublishedLinkDialog(PublishedSession published) {
     final expiresAt = published.expiresAt;
-    final leftOut = published.leftOutSources.length;
     final expiry = expiresAt == null
         ? 'The page stays up for 30 days.'
         : 'The page stays up until '
@@ -287,15 +287,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Anyone with this link can read the words. $expiry'),
-            // Past the first 10 taken, photos stay off the page (spec OQ-3).
-            if (leftOut > 0) ...[
-              const SizedBox(height: 12),
-              Text(leftOut == 1
-                  ? '1 photo was left out: a page holds the first '
-                      '${SessionPublishService.maxSources} photos taken.'
-                  : '$leftOut photos were left out: a page holds the first '
-                      '${SessionPublishService.maxSources} photos taken.'),
-            ],
             const SizedBox(height: 12),
             // Tapping the link opens the page in the browser.
             Semantics(
@@ -366,7 +357,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final wordPairs = (session?.words ?? const <WordPair>[])
         .where((pair) => pair.isFilled)
         .toList();
-    final photos = _linkedPhotos(session, wordPairs);
+    final sources = _linkedSources(session, wordPairs);
+    // The thumbnails and the viewer show photos; a set has none.
+    final photos = [
+      for (final source in sources)
+        if (source.kind == SourceKind.photo) source,
+    ];
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
@@ -406,21 +402,23 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (photos.isNotEmpty)
+                if (sources.isNotEmpty)
                   SwitchListTile(
                     // Tapping the stack opens the photos, as on the page.
-                    secondary: Semantics(
-                      button: true,
-                      label: 'Show photos',
-                      child: GestureDetector(
-                        onTap: () => showPhotoViewer(context, photos),
-                        child: _PhotoStack(photos: photos),
-                      ),
-                    ),
-                    title: Text('Include photos (${photos.length})'),
-                    value: _includePhotos,
+                    secondary: photos.isEmpty
+                        ? null
+                        : Semantics(
+                            button: true,
+                            label: 'Show photos',
+                            child: GestureDetector(
+                              onTap: () => showPhotoViewer(context, photos),
+                              child: _PhotoStack(photos: photos),
+                            ),
+                          ),
+                    title: Text('Include sources (${sources.length})'),
+                    value: _includeSources,
                     onChanged: (value) =>
-                        setState(() => _includePhotos = value),
+                        setState(() => _includeSources = value),
                   ),
                 Expanded(
                     child: _table(wordPairs,

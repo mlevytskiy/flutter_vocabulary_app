@@ -37,9 +37,9 @@ void main() {
         sleep: (d) async => sleeps.add(d),
       );
 
-  http.Response ok(http.Request r) => http.Response(
-      jsonEncode({'sourceId': r.url.pathSegments.last}), 200,
-      headers: {'content-type': 'application/json'});
+  http.Response ok(http.Request r) =>
+      http.Response(jsonEncode({'sourceId': r.url.pathSegments.last}), 200,
+          headers: {'content-type': 'application/json'});
 
   test('uploads the kept bytes to the declared id with the shared secret',
       () async {
@@ -59,6 +59,26 @@ void main() {
     expect(request.headers['content-type'], 'image/jpeg');
     expect(request.headers['x-app-secret'], isNotEmpty);
     expect(request.bodyBytes, [1, 2, 3]);
+    expect(service.uploaded, {photo.id});
+  });
+
+  test('a set source is never uploaded', () async {
+    final photo = await kept([1]);
+    final set = SessionSource()
+      ..id = 'quizlet-1'
+      ..kind = SourceKind.set
+      ..name = 'Set'
+      ..url = 'https://quizlet.com/1/set/';
+    final requests = <http.Request>[];
+    final service = uploader(MockClient((r) async {
+      requests.add(r);
+      return ok(r);
+    }));
+
+    service.enqueue('sess-1', [set, photo]);
+    await service.idle;
+
+    expect(requests.map((r) => r.url.pathSegments.last), [photo.id]);
     expect(service.uploaded, {photo.id});
   });
 
