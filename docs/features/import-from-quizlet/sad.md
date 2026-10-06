@@ -309,6 +309,290 @@ sequenceDiagram
     Page-->>Partner: set name as text, link, position, its rows highlighted
 ```
 
+### Flow F1: open the import and paste a set link (US-01, US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user (learner)
+    participant UI as ui (app)
+
+    Note over L,UI: Precondition: main screen (SCR-01) with the current session
+    L->>UI: opens the red + menu
+    UI-->>L: Get words from photo, From subtitles, Import from Quizlet in green where Screenshot was, no Screenshot item (AC-01)
+    L->>UI: chooses Import from Quizlet
+    UI-->>L: link dialog (SCR-02) asking for a Quizlet set link
+    L->>UI: pastes text and taps Start
+    UI->>UI: looks for a set link in the text (bare, with or without the web prefix, a language part, sharing extras, a study-mode link, or inside Quizlet's share text)
+    alt no link to a Quizlet set (another site, a folder or class link, plain words)
+        UI-->>L: the dialog asks for a link to a Quizlet set, the pasted text kept for fixing, import not started (AC-06)
+    else a set link found
+        UI->>UI: keeps the set id and the plain set link, drops the sharing extras
+        UI-->>L: link dialog closes, the import starts (F2)
+    else learner closes the dialog
+        UI-->>L: main screen, session unchanged
+    end
+    Note over L,UI: Postcondition: either no import started, or F2 runs with one set id and its plain link
+```
+
+### Flow F2: read the set in the in-app page (US-01, US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user (learner)
+    participant UI as ui (app)
+    participant WV as ui (in-app page)
+    participant X as external-system (set site)
+
+    Note over L,UI: Precondition: F1 gave one set id and its plain link, the session the import starts in is recorded
+    UI-->>L: progress dialog (SCR-03), Reading the Quizlet set, small live preview, Cancel
+    UI->>WV: opens the pasted set link, the 30 s load limit starts
+    WV->>X: requests the set page
+    opt the page or the learner tries to open another top-level page
+        WV->>UI: asks whether the navigation is allowed
+        alt not the set site, another set of the set site, a new window or a store or app link
+            UI-->>WV: refused, the preview stays on the set (AC-11)
+        else a page of the set site for the same set, such as its robot check or a redirect
+            UI-->>WV: allowed
+        end
+    end
+    alt no connection or the page fails to load
+        WV-->>UI: load error
+        UI-->>L: progress dialog closes, main screen says the cards of this set could not be read and they can try again, session unchanged (AC-07)
+    else no first load within 30 s, robot-check time not counted
+        UI-->>L: same message, session unchanged (AC-07)
+    else page finished loading
+        X-->>WV: set page
+        Note over UI,WV: the 30 s clock for cards starts
+        loop about once a second until cards are found or the clock runs out
+            UI->>WV: runs the reader script
+            WV-->>UI: raw page material
+            UI->>UI: parses it
+            alt the set site's own robot check is on screen
+                UI-->>L: preview grows to full size, clock paused (AC-05)
+                L->>WV: passes the check
+                WV->>X: continues to the set page
+                UI-->>L: preview shrinks back, clock resumes
+            else the set's name is known, cards not yet
+                UI-->>L: shows the set's name in the progress dialog (AC-02)
+            else material of a different set id, or nothing understood yet
+                UI->>UI: keeps waiting, nothing is read from it (AC-11)
+            else cards of the pasted set found
+                UI->>UI: keeps the name, the stated count and the cards in set order, stops polling
+            end
+        end
+        alt cards found
+            UI->>UI: continues with review (F3)
+        else 30 s without cards (private or deleted set, login wall, a check from elsewhere, a page the app no longer understands)
+            UI-->>L: progress dialog closes, the cards of this set could not be read, try again, session unchanged (AC-07)
+        end
+    end
+    opt learner taps Cancel or goes Back at any time before the results dialog
+        L->>UI: Cancel or Back
+        UI->>WV: stops loading and reading
+        UI-->>L: main screen, session unchanged, no message (AC-07b)
+    end
+    Note over L,UI: Postcondition: either the cards of exactly the pasted set are in memory, or the learner is on the main screen with the session unchanged
+```
+
+### Flow F3: review and keep the cards (US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user (learner)
+    participant UI as ui (app)
+    participant DEV as data-store (device)
+    participant TR as external-system (translation)
+
+    Note over L,UI: Precondition: F2 found the cards of the pasted set, the progress dialog is still showing
+    UI->>DEV: reads the current session's words
+    DEV-->>UI: session words
+    UI->>UI: drops cards with no text term, turns line breaks into a semicolon and space, cuts term and back side to 500 characters ending with an ellipsis (AC-09)
+    UI->>UI: drops terms equal to a session word or an earlier card, ignoring case, outer spaces and one closing full stop, exclamation or question mark, keeping the first card's back (AC-10)
+    UI->>UI: definition is the back side plus the example on a new line, empty when the card has no back (AC-09)
+    UI->>UI: counts skipped cards, compares cards found before skipping with the page's stated count (AC-08)
+    loop each proposed term, at most 6 at a time
+        UI->>TR: translates the term as for a typed word
+        alt translated
+            TR-->>UI: translation
+        else no answer or an echo
+            TR-->>UI: nothing
+            UI->>UI: leaves the translation empty, its lightning will show like a typed word
+        end
+    end
+    opt learner taps Cancel or goes Back while translating
+        UI-->>L: main screen, session unchanged, no message (AC-07b)
+    end
+    UI->>DEV: reads the current session id
+    alt the current session is no longer the one the import started in
+        UI-->>L: progress dialog closes, words dropped, neither session changes (AC-16)
+    else same session
+        UI-->>L: progress dialog closes, results dialog (SCR-04) with the set's name, words in set order with translation and definition
+        opt fewer cards found than the page states
+            UI-->>L: line Read X of Y cards (AC-08)
+        end
+        opt cards were skipped on purpose
+            UI-->>L: line N cards skipped, already in the session, repeated or without text (AC-08)
+        end
+        opt no new card is left
+            UI-->>L: No new words in this set, with the skipped line (AC-04b)
+        end
+        L->>UI: removes some words, then Done or closes the dialog
+        UI->>DEV: reads the current session id again
+        alt closed without Done, every word removed, or the session changed meanwhile
+            UI-->>L: main screen, session unchanged, the set is not a source of it (AC-04, AC-04b, AC-16)
+        else Done with at least one word kept
+            UI->>DEV: appends the kept words at the end of the session in set order, each with the set source id and its definition marked filled when not empty
+            UI->>DEV: adds the set source (set id, name, plain link) after the existing sources, or updates the name of the one already there for this set id
+            Note over UI,DEV: persists word rows with sourceId and the session's ordered source list, where a set source is keyed by its set id (AC-03, AC-13b)
+            DEV-->>UI: saved
+            UI-->>L: main screen with the kept words added, the removed ones not added (AC-03)
+        end
+    end
+    Note over L,UI: Postcondition: either the session is unchanged, or it ends with the kept words and has exactly one set source for this set
+```
+
+### Flow F4: publish a session with or without its sources (US-05)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user (learner)
+    participant UI as ui (app)
+    participant DEV as data-store (device)
+    participant SVC as service (server)
+    participant DB as data-store (server)
+
+    Note over L,UI: Precondition: words table (SCR-09) of a session with two source photos and one set source
+    L->>UI: taps Share, chooses link
+    UI->>DEV: reads the rows and the ordered source list
+    DEV-->>UI: rows with source ids, sources
+    UI->>UI: counts the sources that still have a word row, photos and sets alike
+    UI-->>L: share sheet (SCR-05) with Include sources (3), on by default, saying included sources are visible to anyone with the link for 30 days (AC-15)
+    L->>UI: publishes as link
+    alt Include sources on
+        UI->>SVC: rows with their source ids and the counted sources in order, each with its kind, a set with its name and plain link, with the app secret
+        SVC->>SVC: checks each set link is a plain set address of the set site and each name is plain text within the field limit
+        alt a set source fails the check
+            SVC-->>UI: refused, invalid source
+            UI-->>L: the session could not be published, session unchanged
+        else all sources valid
+            SVC->>DB: stores the rows and one source slot per source in order, set slots arrived at once, photo slots pending
+            Note over SVC,DB: persists source slots with kind, name and link beside the photo slots
+            DB-->>SVC: stored
+            SVC-->>UI: link
+            UI-->>L: link dialog opens, photo bytes follow in the background as today
+        end
+    else Include sources off
+        UI->>SVC: rows without source ids and no sources, with the app secret
+        SVC->>DB: stores the rows only
+        Note over SVC,DB: persists rows with no source link
+        DB-->>SVC: stored
+        SVC-->>UI: link
+        UI-->>L: link dialog opens (AC-12)
+    end
+    Note over L,UI: Postcondition: the published session holds every counted source in order, or none at all
+```
+
+### Flow F5: a partner sees which set a word came from (US-04)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as user (partner)
+    participant PG as ui (shared page)
+    participant SVC as service (server)
+    participant DB as data-store (server)
+    participant X as external-system (set site)
+
+    Note over P,PG: Precondition: a session with two source photos and one set source was published with Include sources on (F4)
+    P->>PG: opens the shared link
+    PG->>SVC: asks for the session page
+    SVC->>DB: reads the rows and the arrived source slots in order
+    DB-->>SVC: rows with source ids, two photos and one set
+    SVC-->>PG: table, plus one source page per slot, a set page with its name as text and its plain link
+    alt wide screen
+        PG-->>P: table with the source pager in the right corner (SCR-06)
+        P->>PG: moves the pager to the set source
+        PG-->>P: set name, its link under it, position 3 of 3, the rows imported from that set highlighted and the others not (AC-13)
+    else phone
+        PG-->>P: scrollable table with the stacked-thumbnail sources button (SCR-07)
+        P->>PG: taps the sources button and swipes to the set
+        PG-->>P: sources dialog (SCR-08) page with the set's name and link, alongside the photos (AC-14)
+    end
+    opt partner chooses the set link
+        PG->>X: opens the plain set link in a new tab, without opener or referrer
+        X-->>P: the set on the set site (SCR-10)
+    end
+    Note over P,PG: Postcondition: nothing is written, the shared page is unchanged
+```
+
+### Flow F6: words from a set behave like any other words (US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor L as user (learner)
+    participant UI as ui (app)
+    participant DEV as data-store (device)
+
+    Note over L,UI: Precondition: words from a set were added to the current session (F3)
+    alt words table or a session reopened from History (SCR-09)
+        L->>UI: opens the words table, or a session from History
+        UI->>DEV: reads the session's rows
+        DEV-->>UI: rows, set words with translation, definition and the filled marks
+        UI-->>L: set words shown like other words, the app's translation and the card's back side and example as the definition
+        alt the card had a back side
+            UI-->>L: no lightning on the definition and none on a real translation (AC-17)
+        else the card had no back side
+            UI-->>L: the definition lightning shows as for a typed word (AC-17)
+        end
+    else export to AnkiDroid
+        L->>UI: exports the session
+        UI->>DEV: reads the session's rows
+        DEV-->>UI: rows
+        UI-->>L: file where set words have the same columns as other words, translation and definition in their usual places (AC-17)
+    end
+    Note over L,UI: Postcondition: nothing is written, set words are indistinguishable from other words except for their source
+```
+
+### Coverage: user stories and acceptance criteria → flows
+
+Participants map to the §5 containers: `ui (app)` and `ui (in-app page)` are the Vocabulary app (the in-app page is its web view), `data-store (device)` is the Device store, `service (server)` the vocab-photo-api Worker, `data-store (server)` the Sessions database, `ui (shared page)` the Shared page, `external-system (set site)` Quizlet and `external-system (translation)` the Google Translate endpoint. No participant outside §5 was needed.
+
+| Spec item | Shown by |
+|---|---|
+| US-01 Import a set from its link | F1, F2 (and design flow 1) |
+| US-02 Review the cards before adding | F3 |
+| US-03 Understand what went wrong | F1 (AC-06), F2 (AC-07) |
+| US-04 See which set a word came from | F5 |
+| US-05 Decide what the shared page reveals | F4 |
+| US-06 Quizlet words are ordinary words | F6 |
+| AC-01 menu item where Screenshot was | F1 |
+| AC-02 progress dialog, name, preview, results dialog contents | F2 (dialog, name, preview), F3 (results dialog) |
+| AC-03 Done keeps the kept words in set order with their source | F3, Done branch |
+| AC-04 every word removed, or closed without Done | F3, unchanged branch |
+| AC-04b no new words in this set | F3, opt "no new card" + unchanged branch |
+| AC-05 Quizlet's own robot check | F2, robot-check branch |
+| AC-06 text without a set link | F1, first branch |
+| AC-07 no connection, no load, 30 s without cards | F2, load-error, load-limit and 30 s branches |
+| AC-07b Cancel or Back | F2 opt, F3 opt (during translation) |
+| AC-08 "Read X of Y" and the skipped line | F3, counting step + two opt lines |
+| AC-09 line breaks, length cut, empty back | F3, card-cleaning steps |
+| AC-10 repeats and session words skipped | F3, duplicate step |
+| AC-11 no page outside the set site, no other set | F2, navigation check + different-set-id branch |
+| AC-12 sources off reveals nothing | F4, off branch |
+| AC-13 wide pager set page and link | F5, wide branch + link opt |
+| AC-13b one set, one source | F3, add-or-update step |
+| AC-14 phone sources dialog set page | F5, phone branch |
+| AC-15 "Include sources (N)", default on, 30-day notice, uncounted sets | F4, share sheet steps |
+| AC-16 session changed | F3, both session checks |
+| AC-17 no lightning on filled fields, export like other words | F6 |
+
+**For `data-model`:** the persist notes in F3 and F4 are the only writes — on the device, word rows with `sourceId` and the session's ordered source list keyed by set id for a set source (no new index: the list is embedded in the session); on the server, source slots gain kind, name and link beside the photo slots, read per session as today (no new index expected). **Flags for design:** none — no new participant, no new ADR-worthy decision.
+
 ## 7. Deployment view
 
 No new deployment unit. The existing `vocab-photo-api` Worker gains D1 migration `0003` (`kind`, `name`, `url` on `sources`; existing rows default to `kind = 'photo'`), applied with `wrangler d1 migrations apply --remote`; the shared page's script keeps being served by the Worker. The app ships through the usual store build with `webview_flutter` added and `screenshot` removed; the web view uses the system WebView (Android) / WKWebView (iOS), so nothing new is installed or permitted.
