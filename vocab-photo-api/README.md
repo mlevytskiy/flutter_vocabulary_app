@@ -17,6 +17,9 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
 | `GET /s/<id>` | **public** | the page a person reads |
 | `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
+| `GET /s/<id>/learn` | **public** | the learn page: pick exercises, Start (learn-part-step-1) |
+| `GET /s/<id>/learn/<exercise>` | **public** | the coming-soon page for an exercise that is not built yet |
+| `GET /assets/learn-<hash>.js` | **public** | the learn pages' browser script (versioned, cached a year) |
 | `GET /assets/page-<hash>.js` | **public** | the page's browser script (versioned, cached a year) |
 | `POST /s/<id>/cells` | **public** + page write limit | save one cell with a revision check |
 | `POST /s/<id>/rows` | **public** + page write limit | add a row when its first cell gets text |
@@ -296,6 +299,19 @@ row meanwhile it comes back with their text and a notice. Leaving the page withi
 5 seconds deletes nothing.
 A missing or expired id returns a **`404` HTML page** saying the list is gone — a human is
 reading this URL, not a client.
+
+### `GET /s/<id>/learn` and `GET /s/<id>/learn/<exercise>` — public
+
+Server-rendered HTML from `src/learn/` (learn-part-step-1). The exercise list is
+`src/learn/exercises.json`, the source of truth the app's Dart copy is tested against.
+`/s/<id>/learn` lists the exercises by stage; an unknown or gone id returns the same 404 page as
+the shared page, and a session with no word to learn gets a "no words" page. `?pick=<exercise id>`
+(repeatable) renders those exercises ticked; coming-soon or unknown ids are ignored.
+`/s/<id>/learn/<exercise>` is the coming-soon page for an available exercise that is not built
+yet. Both pages are `no-store` under the shared page's CSP and load `/assets/learn-<hash>.js`
+(from `src/learn/client/learn.js`, one-year immutable cache, only the current hash answers), which
+enables Start and the hint and mirrors ticks into the address with `history.replaceState`. Nothing
+is saved.
 
 ### `POST /define` — secret-gated
 

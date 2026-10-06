@@ -120,6 +120,14 @@ lib/
                                       a History session that is not current gets a red Edit FAB →
                                       "Do you want to edit…?" → switchTo + WordInputRoute().go
                                       (edit-session-from-history)
+    learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
+                                      the Worker side is vocab-photo-api/src/learn/
+      exercises.dart                  Exercise (id, name, stage, available) + the const list of eleven,
+                                      tested against the Worker's exercises.json (ADR-0003)
+      learn_screen.dart               the learn page: ticks live in widget State, nothing is saved;
+                                      reads the current session or a History row (LearnRoute)
+      coming_soon_screen.dart         what Start opens while the picked exercise is not built
+                                      (ComingSoonRoute carries the exercise id)
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
                                       a row opens WordsTableScreen for that sessionId
@@ -188,6 +196,8 @@ flowchart LR
   N -->|put/byId/newest| W[sessionStoreProvider<br/>SessionStore: Isar 'vocab'<br/>+ current_session_id pointer]
   S -->|WordsTableRoute().go| T[WordsTableScreen]
   T -->|ref.watch| N
+  T -->|LearnRoute push| L[LearnScreen]
+  L -->|Start: ComingSoonRoute push| C[ComingSoonScreen]
   S -->|HistoryRoute().go| H[HistoryScreen]
   H -->|watchNonEmpty| W
   H -->|WordsTableRoute sessionId| T

@@ -14,7 +14,7 @@
 | T7 | [Add the app's coming-soon screen and make Start open it](./T7-app-coming-soon-screen.md) | ui | Maksym | S | T6 | done |
 | T8 | [Add LearnShareBar that fits Learn and Share by measuring the space](./T8-learn-share-bar.md) | ui | Maksym | M | — | done |
 | T9 | [Put Learn on the Words screen: SnackBar when empty, otherwise open the learn page](./T9-wire-learn-on-words-screen.md) | wiring | Maksym | S | T6, T8 | done |
-| T10 | [Update the repo docs this design outdates](./T10-docs-and-glossary.md) | docs | Maksym | S | T4, T5, T7, T9 | todo |
+| T10 | [Update the repo docs this design outdates](./T10-docs-and-glossary.md) | docs | Maksym | S | T4, T5, T7, T9 | done |
 | T11 | [Deploy the Worker and run the release checks on device and in the browser](./T11-release-pass.md) | tests | Maksym | S | T10 | todo |
 
 **Total:** 11 tasks, ~8 person-days (S ≈ ½ day, M ≈ 1 day).

@@ -7,7 +7,7 @@ acs: []
 files_hint: ["docs/architecture.md", "CLAUDE.md", "vocab-photo-api/README.md", "docs/features/learn-part-step-1/CONTEXT.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Update the repo docs this design outdates
