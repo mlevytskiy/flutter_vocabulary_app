@@ -14,7 +14,7 @@
 | [T7](T7-quizlet-page-reader-and-parser.md) | Write the reader script and parse raw set-page material into a set | domain | Maksym | M | T6 | done |
 | [T8](T8-cards-to-proposed-words.md) | Turn cards into proposed words with the text rules, repeats and counts | domain | Maksym | S | — | done |
 | [T9](T9-quizlet-link-dialog.md) | Build the Quizlet link dialog that refuses text without a set link | ui | Maksym | S | T6 | done |
-| [T10](T10-quizlet-progress-dialog.md) | Build the progress dialog that loads and reads the set in a web view | ui | Maksym | L | T6, T7 | todo |
+| [T10](T10-quizlet-progress-dialog.md) | Build the progress dialog that loads and reads the set in a web view | ui | Maksym | L | T6, T7 | done |
 | [T11](T11-results-dialog-set-mode.md) | Show the set name, "Read X of Y", skipped cards and "No new words" in the results dialog | ui | Maksym | S | — | todo |
 | [T12](T12-quizlet-import-flow.md) | Run a Quizlet import from link to kept words, with translation and the late-result rule | app | Maksym | M | T8, T9, T10, T11 | todo |
 | [T13](T13-wire-import-from-quizlet.md) | Add "Import from Quizlet" to the red + menu and keep the set as the words' source | wiring | Maksym | S | T4, T5, T12 | todo |

@@ -57,8 +57,11 @@ class QuizletRobotCheck extends QuizletPageRead {
 }
 
 /// No cards yet: still loading, not understood, or a page of another set.
+/// [name] is the set's name when the page of the asked-for set already
+/// states it (shown in the progress dialog, AC-02), otherwise empty.
 class QuizletNothingYet extends QuizletPageRead {
-  const QuizletNothingYet();
+  const QuizletNothingYet({this.name = ''});
+  final String name;
 }
 
 /// Known signs of Quizlet's robot check, matched case-insensitively against
@@ -106,13 +109,12 @@ QuizletPageRead parseQuizletPage(String raw, String setId) {
   if (embedded != null && embedded.ofAnotherSet) {
     return const QuizletNothingYet();
   }
+  final pageName = _cleanName(_str(decoded['name']));
+  final name = pageName.isNotEmpty ? pageName : (embedded?.name ?? '');
   var cards = embedded?.cards ?? const <QuizletCard>[];
   if (cards.isEmpty) cards = _readVisible(decoded['visible']);
-  if (cards.isEmpty) return const QuizletNothingYet();
+  if (cards.isEmpty) return QuizletNothingYet(name: name);
 
-  final name = _cleanName(_str(decoded['name'])).isNotEmpty
-      ? _cleanName(_str(decoded['name']))
-      : (embedded?.name ?? '');
   final stated =
       _countFromHeading(_str(decoded['heading'])) ?? embedded?.statedCount;
   return QuizletSetFound(

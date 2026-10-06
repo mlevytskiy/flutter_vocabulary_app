@@ -109,6 +109,18 @@ void main() {
           isA<QuizletNothingYet>());
     });
 
+    test('nothing yet carries the set name once the page of the set names it',
+        () {
+      final early = jsonEncode(
+          {'setId': owner, 'name': 'Animals | Quizlet', 'robot': 'Animals'});
+      final read = parseQuizletPage(early, owner);
+      expect(read, isA<QuizletNothingYet>());
+      expect((read as QuizletNothingYet).name, 'Animals');
+      final other = parseQuizletPage(
+          jsonEncode({'setId': '111', 'name': 'Other'}), owner);
+      expect((other as QuizletNothingYet).name, '');
+    });
+
     test('garbage never throws', () {
       for (final raw in ['', 'null', '"x"', '[1]', '{', '{"setId":5}']) {
         expect(parseQuizletPage(raw, owner), isA<QuizletNothingYet>(),

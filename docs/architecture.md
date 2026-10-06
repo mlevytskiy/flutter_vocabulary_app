@@ -116,7 +116,10 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
    `flutter_tts` (task-04), and `image_picker_android` + `image_picker_platform_interface`
    (photo-from-gallery, [ADR-0001](features/photo-from-gallery/adr/0001-turn-on-the-android-photo-picker-for-gallery-picks.md):
    already transitive through `image_picker`, made direct only so `main.dart` can set
-   `useAndroidPhotoPicker = true`).
+   `useAndroidPhotoPicker = true`), and `webview_flutter` (import-from-quizlet,
+   [ADR-0002](features/import-from-quizlet/adr/0002-show-the-set-page-with-webview-flutter.md):
+   the Quizlet set page in the progress dialog; JavaScript on, no JavaScript channel, top-level
+   navigation only to the pasted set's Quizlet pages; no new permission).
 
    **Why the Isar packages are pinned to `3.3.0-dev.1`, exactly.** Every isar_community release
    from `3.3.0-dev.2` up is built against `build ^3/^4` and `source_gen ^4`, while this project's
