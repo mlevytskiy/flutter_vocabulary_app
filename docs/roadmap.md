@@ -37,6 +37,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 15 | The shared page becomes a working table: full-width spreadsheet layout (separate phone layout), source photos beside their words, edit / add / delete rows, per-cell and per-column autofill within a per-page allowance — absorbs step 6 | owner report 2026-09-27 → [spec](features/good-looking-web/spec.md) | M | spec'd |
 | 17 | Words from a film: open a subtitle file, choose purpose / English level / word maximum (defaults in Settings), review the proposed words in the photo results dialog, add them to the current session. Search by film name is a later step | `idea-brief.md` §7 Recommendation → [spec](features/words-from-subtitles/spec.md) | S | spec'd |
 | 18 | Words from a photo already on the phone: "Get words from photo" offers Camera or Gallery; a gallery photo then goes the camera photo's way | owner request 2026-10-06 → [spec](features/photo-from-gallery/spec.md) | XS | spec'd |
+| 19 | Words from a Quizlet set: "Import from Quizlet" replaces Screenshot in the red + menu; paste a set link, review the cards in the results dialog, add them; the set (name + link) shows in the shared page's source pager like a photo | owner request 2026-10-06 → [spec](features/import-from-quizlet/spec.md) | M | spec'd |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker
