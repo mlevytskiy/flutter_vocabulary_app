@@ -311,25 +311,21 @@ sequenceDiagram
 
 ## 7. Deployment view
 
-<!-- 🎯 Why: the TOPOLOGY DevOps must know without reading the deploy charts — how many replicas,
-     where the background worker lives, AT WHAT NUMBERS we scale.
-     📋 Write: 2–3 sentences on topology + monitoring + concrete threshold numbers.
-     📌 e.g. «500 authors → partition by quarter» (not «we'll think about scale later»).
-     🎯 N/A allowed for XS/S that reuses an existing deployment unit with no change.
-     Deployment-diagram scaffold → templates/deployment.md. -->
+No new deployment unit. The existing `vocab-photo-api` Worker gains D1 migration `0003` (`kind`, `name`, `url` on `sources`; existing rows default to `kind = 'photo'`), applied with `wrangler d1 migrations apply --remote`; the shared page's script keeps being served by the Worker. The app ships through the usual store build with `webview_flutter` added and `screenshot` removed; the web view uses the system WebView (Android) / WKWebView (iOS), so nothing new is installed or permitted.
 
-<Topology in 2–3 sentences. Where it runs, replicas, scaling thresholds.>
+**Release order (each step backward compatible):**
+1. Apply migration `0003` to D1.
+2. Deploy the Worker — older app builds keep publishing photos as today (a source without `kind` is a photo).
+3. Release the app build with the Quizlet import and "Include sources". (The reverse order fails: an old Worker refuses the `kind` field — ADR-0006.)
 
 **Monitoring:**
-- <Metrics — e.g. `<metric_name>`>
-- <Alerts — e.g. «worker lag > 10 min → page on-call»>
-- <Tracing — e.g. spans on the request boundary>
+- App: `debugPrint` lines with a `QUIZLET:` prefix, as the subtitle import does — cards read N of M, robot check shown, failure reason (no connection / load error / 30 s without cards), navigation blocked with its host only, translation failures counted. No card text, no set name and no pasted link extras in logs; read during the device pass with `flutter logs`.
+- Worker: a structured log line when a publish is refused for a set source (code only, no content), read through Workers observability as today.
+- KPIs: none (spec §7, owner decision). Alerts: none automated (one owner).
 
 **Scaling thresholds:**
-- <e.g. comfortable in one table up to N rows/year>
-- <e.g. partition by quarter above N rows/year>
-
-<!-- For XS/S with no deployment change: <!-- N/A: reuses existing deployment unit, no infra change --> -->
+- Server: set sources are bounded by the existing session limits — a source is declared only with a linked row, so at most 500 per session, inside 256 KB; set slots carry no bytes, so R2 use does not change.
+- Phone: one read pass of up to 500 cards crosses the script→Dart bridge as raw text a few times at most (the reader stops at the first success); translation is up to 500 requests, 6 at a time. Spec §6 targets p95 ≤ 10 s for 100 cards; larger sets are slower but within the "no card limit" decision.
 
 ## 8. Crosscutting concepts
 
