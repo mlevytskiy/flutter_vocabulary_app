@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
+import 'quizlet_logo_icon.dart';
+
 /// The word-input screen's floating speed-dial FAB: take a photo, import
 /// words from subtitles (words-from-subtitles) or from a Quizlet set
 /// (import-from-quizlet, in Screenshot's old place and colour). Settings
@@ -43,14 +45,14 @@ class WordInputSpeedDial extends StatelessWidget {
           onTap: onTakePhoto,
         ),
         SpeedDialChild(
-          child: const Icon(Icons.subtitles),
+          child: const Icon(Icons.closed_caption),
           label: 'From subtitles',
-          backgroundColor: Colors.orange,
+          backgroundColor: Colors.grey[800],
           foregroundColor: Colors.white,
           onTap: onFromSubtitles,
         ),
         SpeedDialChild(
-          child: const Icon(Icons.style),
+          child: const QuizletLogoIcon(),
           label: 'Import from Quizlet',
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,

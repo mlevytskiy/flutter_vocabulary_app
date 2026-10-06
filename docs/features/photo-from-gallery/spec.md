@@ -19,6 +19,7 @@ Why now: photo import is the app's main capture path, and the owner keeps findin
 
 Committed approach: tapping "Get words from photo" shows a small source choice, Camera or Gallery. Both open the phone's own screens: the system camera, or the system photo picker for a single photo. The app draws no capture or picker screen of its own. From the picked photo onward, a successful import is exactly as for a camera shot: recognition of highlighted words with the same word cap, the results dialog, the words added to the current session, and the photo kept as a source photo. Two things are new: failure messages name the gallery when the photo came from it, and only one photo import runs at a time, for Camera and Gallery alike (today a second tap during analysis starts a second import). Comparable products (Google Translate's image mode, Google Lens) offer both sources inside one capture flow but collect no words. The sharpest risk found is a private gallery image being published through the share sheet. It is accepted as the camera's existing risk (§6.1): the Words screen shows the "Include photos (N)" switch with up to three thumbnails (a tap opens all photos), and the share sheet warns that included photos are public for 30 days. Success means a page already in the library becomes session words in one import, while the camera costs exactly one extra tap.
 
+- Decision (owner review, import-from-quizlet, 2026-10-06): the dialog's Gallery choice is labelled "Photos", and Camera and Photos are two bordered cards side by side, each an icon above its name. "Gallery" in this spec means that choice.
 - Research footnote: the comparable products were checked on 2026-10-06. None of the pages verified shows a Camera/Gallery dialog, multi-photo import or a remembered last choice. Translate and Lens put a gallery button on their own camera screen, which this app cannot do on the system camera.
 - Decision override: product and platform names (Apple, Android, Google Translate, Google Lens) stay in §1 — rationale: they name the phones' own screens and the researched comparables, not technology choices for this feature; same precedent as good-looking-web §1.
 
@@ -80,7 +81,7 @@ Committed approach: tapping "Get words from photo" shows a small source choice, 
 
 **Given** a learner is on the word-input screen and no photo import is running
 **When** the learner taps "Get words from photo"
-**Then** a small dialog offers two choices, Camera and Gallery, and nothing else opens until one is chosen
+**Then** a small dialog offers two choices, Camera and Gallery (labelled "Photos" since the owner review of 2026-10-06, shown as two bordered cards side by side, each an icon above its name), and nothing else opens until one is chosen
 
 ### AC-02 (US-01) — happy
 

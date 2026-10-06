@@ -200,8 +200,8 @@ export type ParsedRepublish =
   | { ok: false; error: string };
 
 /**
- * `sources` is optional (older apps and "include sources" off send none, AC-24,
- * AC-26, AC-12). Each source needs an addressable id and a distinct `order`; a
+ * `sources` is optional (older apps, and sessions with no set and "Include
+ * photos" off, send none, AC-24, AC-26, AC-12). Each source needs an addressable id and a distinct `order`; a
  * missing `kind` is a photo, a `set` also needs a `name` and a plain Quizlet
  * `url` (else `invalid_source`). The list comes back sorted by `order`, the
  * pager's order. There is no cap on the number: the bound is the 500 entries

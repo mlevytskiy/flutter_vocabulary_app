@@ -12,6 +12,8 @@ status: "todo"
 
 # T14 — Publish photos and sets behind one "Include sources (N)" switch
 
+> **Superseded in part by [T18](T18-owner-review-changes.md) (owner review 2026-10-06):** the switch is "Include photos (N)" again and covers photos only; set sources are always sent. The payload, the removed cap and the photo-only upload stay as built here.
+
 ## Why
 
 spec AC-12, AC-15, §6 sources per published session; [ADR-0006](../adr/0006-publish-set-sources-in-the-sources-list-with-a-kind.md); [sad §6 F4](../sad.md).

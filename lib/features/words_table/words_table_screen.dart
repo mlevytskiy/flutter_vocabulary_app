@@ -33,8 +33,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   /// double tap cannot publish twice; the request itself times out (AC-16).
   bool _isPublishing = false;
 
-  /// The "Include sources (N)" switch above the table; on until switched off.
-  bool _includeSources = true;
+  /// The "Include photos (N)" switch above the table; on until switched off.
+  /// Sets (import-from-quizlet) are not behind it: they are always sent.
+  bool _includePhotos = true;
 
   @override
   void initState() {
@@ -109,19 +110,19 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     final session = _session();
-    final includeSources =
-        _includeSources && _linkedSources(session, wordPairs).isNotEmpty;
+    final includePhotos = _includePhotos &&
+        _linkedPhotos(_linkedSources(session, wordPairs)).isNotEmpty;
     final publishedBefore = session?.publishedId != null;
     // The warning names what sharing again does: replacing the partner's
-    // edits (ADR-0008) and, with sources, putting them on a public page.
-    const sourcesNote =
-        'Included sources are visible to anyone with the link for 30 days.';
-    final String? warning = switch ((publishedBefore, includeSources)) {
+    // edits (ADR-0008) and, with photos, putting them on a public page.
+    const photosNote =
+        'Included photos are visible to anyone with the link for 30 days.';
+    final String? warning = switch ((publishedBefore, includePhotos)) {
       (true, true) => 'This list was shared before. Sharing it again replaces '
-          'the edits made on the shared page. $sourcesNote',
+          'the edits made on the shared page. $photosNote',
       (true, false) => 'This list was shared before. Sharing it again '
           'replaces the edits made on the shared page.',
-      (false, true) => sourcesNote,
+      (false, true) => photosNote,
       (false, false) => null,
     };
     final choice = await showModalBottomSheet<_ShareChoice>(
@@ -165,13 +166,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       case _ShareChoice.file:
         await _shareWords(wordPairs);
       case _ShareChoice.link:
-        await _shareLink(wordPairs, includeSources: includeSources);
+        await _shareLink(wordPairs, includePhotos: includePhotos);
     }
   }
 
-  /// The sources a link would carry: "include sources (N)" counts only photos
-  /// and sets with a linked row that will be published; with none the switch
-  /// is not shown (AC-15, AC-23).
+  /// The sources a link may carry: photos and sets with a linked row that
+  /// will be published (AC-15, AC-23).
   List<SessionSource> _linkedSources(
       Session? session, List<WordPair> wordPairs) {
     final linkedIds = {for (final pair in wordPairs) pair.sourceId};
@@ -180,8 +180,15 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         .toList();
   }
 
+  /// The photos among [sources]: "Include photos (N)" counts them; with none
+  /// the switch is not shown. Sets are always published (AC-15).
+  List<SessionSource> _linkedPhotos(List<SessionSource> sources) => [
+        for (final source in sources)
+          if (source.kind == SourceKind.photo) source,
+      ];
+
   Future<void> _shareLink(List<WordPair> wordPairs,
-      {required bool includeSources}) async {
+      {required bool includePhotos}) async {
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
     try {
@@ -189,8 +196,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       final published =
           await ref.read(sessionPublishServiceProvider).publish(wordPairs,
               detail: ref.read(wordDetailModeProvider),
-              // Switched off, no source reaches the page (AC-24).
-              sources: includeSources ? session?.sources ?? const [] : const [],
+              // Switched off, no photo reaches the page (AC-24); a set
+              // always does (AC-15).
+              sources: [
+                for (final source in session?.sources ?? const <SessionSource>[])
+                  if (includePhotos || source.kind == SourceKind.set) source,
+              ],
               publishedId: session?.publishedId,
               editToken: session?.editToken);
       // Never awaited: the link dialog does not wait for photos (AC-37).
@@ -357,12 +368,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final wordPairs = (session?.words ?? const <WordPair>[])
         .where((pair) => pair.isFilled)
         .toList();
-    final sources = _linkedSources(session, wordPairs);
-    // The thumbnails and the viewer show photos; a set has none.
-    final photos = [
-      for (final source in sources)
-        if (source.kind == SourceKind.photo) source,
-    ];
+    final photos = _linkedPhotos(_linkedSources(session, wordPairs));
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
@@ -402,23 +408,21 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (sources.isNotEmpty)
+                if (photos.isNotEmpty)
                   SwitchListTile(
                     // Tapping the stack opens the photos, as on the page.
-                    secondary: photos.isEmpty
-                        ? null
-                        : Semantics(
-                            button: true,
-                            label: 'Show photos',
-                            child: GestureDetector(
-                              onTap: () => showPhotoViewer(context, photos),
-                              child: _PhotoStack(photos: photos),
-                            ),
-                          ),
-                    title: Text('Include sources (${sources.length})'),
-                    value: _includeSources,
+                    secondary: Semantics(
+                      button: true,
+                      label: 'Show photos',
+                      child: GestureDetector(
+                        onTap: () => showPhotoViewer(context, photos),
+                        child: _PhotoStack(photos: photos),
+                      ),
+                    ),
+                    title: Text('Include photos (${photos.length})'),
+                    value: _includePhotos,
                     onChanged: (value) =>
-                        setState(() => _includeSources = value),
+                        setState(() => _includePhotos = value),
                   ),
                 Expanded(
                     child: _table(wordPairs,

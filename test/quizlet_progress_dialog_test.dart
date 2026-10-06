@@ -105,6 +105,9 @@ void main() {
     }
   }
 
+  /// The skeleton time and the pager's scroll after a successful read.
+  Future<void> showCards(WidgetTester tester) => wait(tester, 3);
+
   Future<void> settleClosed(WidgetTester tester) async {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -142,6 +145,7 @@ void main() {
     driver.finishLoading();
     driver.reply = () => page(cards: twoCards);
     await wait(tester, 2);
+    await showCards(tester);
     await settleClosed(tester);
 
     expect(find.text('Reading the Quizlet set…'), findsNothing);
@@ -160,6 +164,7 @@ void main() {
     driver.finishLoading();
     driver.reply = () => jsonEncode(page(cards: twoCards));
     await wait(tester, 2);
+    await showCards(tester);
     await settleClosed(tester);
     expect(result, isA<QuizletReadSucceeded>());
   });
@@ -241,6 +246,7 @@ void main() {
 
     driver.reply = () => page(cards: twoCards);
     await wait(tester, 2);
+    await showCards(tester);
     await settleClosed(tester);
     expect(result, isA<QuizletReadSucceeded>());
   });
@@ -280,6 +286,7 @@ void main() {
     expect(result, isNull);
     driver.reply = () => page(cards: twoCards);
     await wait(tester, 2);
+    await showCards(tester);
     await settleClosed(tester);
     expect(result, isA<QuizletReadSucceeded>());
   });
@@ -307,6 +314,103 @@ void main() {
     expect(find.text('Reading the Quizlet set…'), findsNothing);
     expect(result, isA<QuizletReadCancelled>());
     expect(driver.stopped, isTrue);
+  });
+
+  // The cards pager (SCR-03): skeletons for at least a second, then the
+  // set's cards, scrolled first to last in two seconds, then the dialog ends.
+  const skeletonCard = Key('quizlet-card-skeleton');
+  const titleSkeleton = Key('quizlet-set-name-skeleton');
+
+  testWidgets('skeleton cards and a skeleton title cover the page at first',
+      (tester) async {
+    await openDialog(tester);
+    expect(find.byKey(skeletonCard), findsWidgets);
+    expect(find.byKey(titleSkeleton), findsOneWidget);
+    // The page is still there, loading under the cards.
+    expect(find.byKey(const Key('fake-page')), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await settleClosed(tester);
+  });
+
+  testWidgets('a name known early waits for the skeleton second',
+      (tester) async {
+    await openDialog(tester); // 0.3 s
+    driver.reply = () => page(name: 'Animals');
+    driver.finishLoading();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // 0.6 s
+    expect(find.text('Animals'), findsNothing);
+    expect(find.byKey(titleSkeleton), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500)); // 1.1 s
+    expect(find.text('Animals'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await settleClosed(tester);
+  });
+
+  testWidgets(
+      'cards read at once show after one second, then scroll to the last in '
+      'two seconds, then the dialog ends', (tester) async {
+    await openDialog(tester); // 0.3 s
+    driver.reply = () => page(cards: const [
+          ['cat', 'кіт'],
+          ['dog', 'пес'],
+          ['fox', 'лис'],
+        ]);
+    driver.finishLoading();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300)); // 0.6 s
+    expect(result, isNull);
+    expect(find.byKey(skeletonCard), findsWidgets);
+    expect(find.text('cat'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 500)); // 1.1 s
+    await tester.pump();
+    expect(find.byKey(skeletonCard), findsNothing);
+    expect(find.text('cat'), findsOneWidget);
+    expect(find.text('кіт'), findsOneWidget);
+    expect(find.text('Animals'), findsOneWidget);
+    expect(find.text('1 / 3'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 1000)); // mid-scroll
+    expect(result, isNull, reason: 'still scrolling');
+    await tester.pump(const Duration(milliseconds: 1100)); // scroll done
+    expect(find.text('3 / 3'), findsOneWidget);
+    await settleClosed(tester);
+    expect(find.text('Reading the Quizlet set…'), findsNothing);
+    expect(result, isA<QuizletReadSucceeded>());
+  });
+
+  testWidgets('a robot check shows the page instead of the cards (AC-05)',
+      (tester) async {
+    await openDialog(tester);
+    driver.finishLoading();
+    driver.reply = () => page(name: 'Just a moment...', robot: 'captcha');
+    await wait(tester, 2);
+    expect(find.byKey(skeletonCard), findsNothing);
+    expect(find.byKey(const Key('fake-page')), findsOneWidget);
+
+    driver.reply = () => page();
+    await wait(tester, 2);
+    expect(find.byKey(skeletonCard), findsWidgets);
+
+    await tester.tap(find.text('Cancel'));
+    await settleClosed(tester);
+  });
+
+  testWidgets('Cancel while the cards scroll ends as a cancel (AC-07b)',
+      (tester) async {
+    await openDialog(tester);
+    driver.reply = () => page(cards: twoCards);
+    driver.finishLoading();
+    await wait(tester, 1);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('cat'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await settleClosed(tester);
+    await wait(tester, 3);
+    expect(result, isA<QuizletReadCancelled>());
   });
 
   group('allowWebViewNavigation (AC-11, ADR-0004)', () {

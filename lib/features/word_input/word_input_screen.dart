@@ -1212,7 +1212,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// each pointing at it (AC-03, AC-13b).
   Future<void> _importFromQuizlet() => runQuizletImport(
         context: context,
-        ref: ref,
         currentSessionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.sessionId,
         sessionWords: () => [
           for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
@@ -1518,6 +1517,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // notifier, which clears this.
         final restorable = ref.read(wordInputNotifierProvider.notifier).restorableSessionId;
         if (session.words.isNotEmpty) _restoreFromStore(session.words);
+        debugPrint('VOCAB: session ${session.sessionId} on screen, '
+            'RESTORE ${restorable == null ? 'not offered' : 'offered for $restorable'}');
         if (restorable != null) _showRestoreSnackBar();
       });
     });
@@ -1605,33 +1606,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 itemCount: _wordPairs.length,
                 itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
               ),
-          // The settings entry point: bottom-left, opposite the speed dial's
-          // own bottom-right corner (D9 (c) in docs/roadmap.md).
-          //
-          // Mirrors the speed dial's plus button: same elevation, same white
-          // glyph on a filled circle, purple instead of red. The plain
-          // constructor, not `.small`, because `.small` switches the default
-          // shape to a 12px RoundedRectangleBorder and a square button would
-          // not read as the same control.
-          //
-          // The Scaffold lifts the speed dial above the bottom safe area (the
-          // home indicator); this button lives in the body, which extends
-          // under it, so it adds that same inset to stay on the plus button's
-          // line. With the keyboard up the inset is 0, as it is for the dial.
-          Positioned(
-            left: 16.0,
-            bottom: 16.0 + MediaQuery.paddingOf(context).bottom,
-            child: FloatingActionButton(
-              heroTag: null,
-              onPressed: () => const SettingsRoute().push(context),
-              tooltip: 'Settings',
-              elevation: 8.0,
-              shape: const CircleBorder(),
-              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
-              foregroundColor: Colors.white,
-              child: const Icon(Icons.settings),
-            ),
-          ),
           if (_isAnalyzingPhoto)
             Container(
               color: Colors.black45,
@@ -1653,10 +1627,42 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
         ],
       ),
-      floatingActionButton: WordInputSpeedDial(
-        onTakePhoto: _takePhotoForVocabulary,
-        onFromSubtitles: _importFromSubtitles,
-        onImportFromQuizlet: _importFromQuizlet,
+      // The settings entry point sits bottom-left, opposite the speed dial's
+      // own bottom-right corner (D9 (c) in docs/roadmap.md). Both live in the
+      // Scaffold's floating-button slot, so the Scaffold moves them together:
+      // above the bottom safe area (the home indicator), and up above a
+      // SnackBar while one shows. Centred and as wide as the screen less the
+      // 16 px margins, the row puts each button where endFloat / startFloat
+      // would.
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: SizedBox(
+        width: MediaQuery.sizeOf(context).width - 2 * 16.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // Mirrors the speed dial's plus button: same elevation, same white
+            // glyph on a filled circle, purple instead of red. The plain
+            // constructor, not `.small`, because `.small` switches the default
+            // shape to a 12px RoundedRectangleBorder and a square button would
+            // not read as the same control.
+            FloatingActionButton(
+              heroTag: null,
+              onPressed: () => const SettingsRoute().push(context),
+              tooltip: 'Settings',
+              elevation: 8.0,
+              shape: const CircleBorder(),
+              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.settings),
+            ),
+            WordInputSpeedDial(
+              onTakePhoto: _takePhotoForVocabulary,
+              onFromSubtitles: _importFromSubtitles,
+              onImportFromQuizlet: _importFromQuizlet,
+            ),
+          ],
+        ),
       ),
     );
   }

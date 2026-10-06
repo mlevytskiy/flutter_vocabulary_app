@@ -232,7 +232,7 @@ void main() {
       WidgetTester tester, List<String> words) async {
     picker.next = XFile('page.jpg');
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
     expect(worker.limits, [20]);
     worker.pending!.complete(result(words));
     await tester.pump();
@@ -253,7 +253,7 @@ void main() {
     expect(sourceChoice, findsOneWidget);
     expect(find.descendant(of: sourceChoice, matching: find.text('Camera')),
         findsOneWidget);
-    expect(find.descendant(of: sourceChoice, matching: find.text('Gallery')),
+    expect(find.descendant(of: sourceChoice, matching: find.text('Photos')),
         findsOneWidget);
     expect(picker.sources, isEmpty);
     expect(worker.limits, isEmpty);
@@ -335,7 +335,7 @@ void main() {
     final before = snapshot();
     picker.next = XFile('page.jpg');
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
 
     expect(sourceChoice, findsNothing);
     expect(picker.sources, [ImageSource.gallery]);
@@ -370,7 +370,7 @@ void main() {
   testWidgets('the gallery pick asks for no metadata (AC-09)', (tester) async {
     await pumpScreen(tester);
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
 
     expect(picker.calls, [
       {'source': ImageSource.gallery, 'requestFullMetadata': false},
@@ -423,7 +423,7 @@ void main() {
     final before = snapshot();
     picker.next = null;
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
 
     expect(picker.sources, [ImageSource.gallery]);
     expect(find.text('No photo was picked'), findsOneWidget);
@@ -446,7 +446,7 @@ void main() {
     final before = snapshot();
     picker.error = PlatformException(code: 'invalid_image');
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
 
     expect(find.text(galleryUnusable), findsOneWidget);
     expect(find.textContaining('camera'), findsNothing);
@@ -464,7 +464,7 @@ void main() {
     scaler.error = Exception('cannot decode');
     picker.next = XFile('tall.png');
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
 
     expect(scaler.paths, ['tall.png']);
     expect(find.text(galleryUnusable), findsOneWidget);
@@ -482,7 +482,7 @@ void main() {
     await pumpScreen(tester);
     final before = snapshot();
     await tapGetWordsFromPhoto(tester);
-    await choose(tester, 'Gallery');
+    await choose(tester, 'Photos');
 
     worker.pending!.completeError(VocabPhotoException('No connection'));
     await settleDialog(tester);

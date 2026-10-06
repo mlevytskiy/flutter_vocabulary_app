@@ -36,6 +36,8 @@ flowchart LR
     T15["T15 tests: imported words are ordinary"]
     T16["T16 docs: docs and worker deploy"]
     T17["T17 tests: device pass"]
+    T18["T18 ui: owner review changes"]
+    T19["T19 ui: second owner review"]
     T1 --> T2
     T2 --> T3
     T6 --> T7
@@ -56,6 +58,11 @@ flowchart LR
     T14 --> T16
     T15 --> T16
     T16 --> T17
+    T13 --> T18
+    T14 --> T18
+    T18 --> T17
+    T18 --> T19
+    T19 --> T17
 ```
 
 ## Tasks
@@ -80,7 +87,9 @@ See [tracker.md](./tracker.md) for status. Machine contract: [tasks.json](../tas
 | T14 | Publish photos and sets behind one "Include sources (N)" switch | app | T4, T2 | The share sheet reads "Include sources (N)" counting photos and sets that still have a word row, on by default with the … |
 | T15 | Prove words from a set behave like typed words in the table, History and export | tests | T13 | Tests show a word kept from a card with a back has a filled definition and no definition lightning, one without a back … |
 | T16 | Update the architecture docs and deploy the Worker with the migration | docs | T3, T14, T15 | `docs/architecture.md` describes `session_source.dart`, the source cap removal, "Include sources", the `quizlet_*` … |
-| T17 | Run the device pass for the spec §6 targets on real Quizlet sets | tests | T16 | `_audit/device-pass.md` records, on iPhone and Android: p95 time to the results dialog for 3 public 100-card sets (5 … |
+| T17 | Run the device pass for the spec §6 targets on real Quizlet sets | tests | T16, T18 | `_audit/device-pass.md` records, on iPhone and Android: p95 time to the results dialog for 3 public 100-card sets (5 … |
+| T18 | Apply the owner review: Include photos, + menu icons, link how-to, cards pager, photo source cards | ui | T13, T14 | Words screen back to "Include photos (N)" (sets always sent); dark grey "From subtitles" with a Settings icon; white "Q" … |
+| T19 | Apply the second owner review: link field style, back side to the right field, captions icon, Settings button with the SnackBar | ui | T18 | The link field looks like the Word field and stays in sight with the keyboard up; a Ukrainian back fills the translation … |
 
 ## Risks / Hard rules
 

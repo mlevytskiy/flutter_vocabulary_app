@@ -49,12 +49,17 @@ class FakePageDriver implements QuizletPageDriver {
   void stop() {}
 }
 
+/// The import machine-translates nothing: any call is counted.
 class FakeTranslate extends GoogleTranslateService {
+  int calls = 0;
+
   @override
   Future<WordTranslation> translateWord(String word,
-          {required String to, String from = 'en'}) async =>
-      WordTranslation(
-          result: TranslationResult(text: 'т-$word'), best: 'т-$word');
+      {required String to, String from = 'en'}) async {
+    calls++;
+    return WordTranslation(
+        result: TranslationResult(text: 'т-$word'), best: 'т-$word');
+  }
 }
 
 void main() {
@@ -95,9 +100,10 @@ void main() {
     addTearDown(tester.view.reset);
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         const MethodChannel('flutter_tts'), (_) async => null);
+    final translate = FakeTranslate();
     final container = ProviderContainer(overrides: [
       sessionStoreProvider.overrideWith((ref) async => store),
-      googleTranslateServiceProvider.overrideWithValue(FakeTranslate()),
+      googleTranslateServiceProvider.overrideWithValue(translate),
     ]);
     await tester.runAsync(() async {
       await container.read(wordInputNotifierProvider.future);
@@ -111,7 +117,7 @@ void main() {
       'embedded': null,
       'visible': [
         ['cat', 'a small animal'],
-        ['dog', ''],
+        ['dog', 'пес'],
       ],
       'robot': '',
     });
@@ -138,7 +144,10 @@ void main() {
     await tester.enterText(find.byKey(const Key('quizlet-link')),
         'https://quizlet.com/123456/animals/');
     await tester.tap(find.text('Start'));
-    await settle();
+    // The cards' skeleton second and two-second scroll.
+    for (var i = 0; i < 3; i++) {
+      await settle();
+    }
     await tester.tap(find.text('Done'));
     await settle();
 
@@ -166,17 +175,23 @@ void main() {
     final definitionBolt = find.byTooltip('Look up definition');
     final translationBolt = find.byTooltip('AI Translate');
 
-    // A card with a back: its back is the definition, no lightning at all.
+    expect(translate.calls, 0, reason: 'nothing is machine-translated');
+
+    // An English back is the definition: no definition lightning; the
+    // translation is empty, so its lightning shows -- as for a typed word.
     expect(cat.definition, 'a small animal');
+    expect(cat.translation, '');
     await tester.showKeyboard(field('Definition', rowOf('cat')));
     await tester.pump();
     expect(definitionBolt, findsNothing);
-    expect(translationBolt, findsNothing);
+    await tester.showKeyboard(field('Translation', rowOf('cat')));
+    await tester.pump();
+    expect(translationBolt, findsOneWidget);
 
-    // A card without a back: the translation is real, the definition is
-    // empty, so only the definition lightning shows -- as for a typed word.
+    // A Ukrainian back is the translation: no translation lightning; the
+    // definition is empty, so only the definition lightning shows.
     expect(dog.definition, '');
-    expect(dog.translation, 'т-dog');
+    expect(dog.translation, 'пес');
     await tester.showKeyboard(field('Definition', rowOf('dog')));
     await tester.pump();
     expect(definitionBolt, findsOneWidget);
@@ -216,10 +231,9 @@ void main() {
     ));
     await tester.pump();
     expect(find.text('cat'), findsOneWidget);
-    expect(find.text('т-cat'), findsOneWidget);
     expect(find.text('a small animal'), findsOneWidget);
     expect(find.text('dog'), findsOneWidget);
-    expect(find.text('т-dog'), findsOneWidget);
+    expect(find.text('пес'), findsOneWidget);
 
     // History lists the session with its set words counted.
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -234,8 +248,8 @@ void main() {
     expect(
       generateAnkiFile(kept.words, detail: WordDetailMode.both),
       '#separator:tab\n#html:true\n#tags column:4\n'
-      'cat\tт-cat\ta small animal\t\n'
-      'dog\tт-dog\t\t\n',
+      'cat\t\ta small animal\t\n'
+      'dog\tпес\t\t\n',
     );
     await tester.pumpWidget(const SizedBox());
   }, timeout: const Timeout(Duration(seconds: 60)));

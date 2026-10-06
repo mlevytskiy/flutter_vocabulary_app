@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/models/session.dart';
@@ -56,11 +57,16 @@ class WordInputNotifier extends _$WordInputNotifier {
     }
 
     // Case 1 — nothing stored: a new session, one empty row, no snackbar.
-    if (prev == null) return _startNewSession(store);
+    if (prev == null) {
+      debugPrint('VOCAB: launch case 1, nothing stored: new session');
+      return _startNewSession(store);
+    }
 
     // Case 2 — the previous session never got a word: reuse it whatever its
     // age, otherwise every launch-and-do-nothing leaves an empty session behind.
     if (prev.isEmpty) {
+      debugPrint('VOCAB: launch case 2, previous session ${prev.sessionId} '
+          'has no word: reused, no snackbar');
       await store.setCurrentSessionId(prev.sessionId);
       if (prev.words.isEmpty) prev.words = [WordPair()];
       return prev;
@@ -69,12 +75,18 @@ class WordInputNotifier extends _$WordInputNotifier {
     // Case 3 — still warm: carry on in it, extras and all. No snackbar.
     if (DateTime.now().difference(prev.lastLocalModifiedAt) <
         kSessionIdleWindow) {
+      debugPrint('VOCAB: launch case 3, previous session ${prev.sessionId} '
+          'edited ${DateTime.now().difference(prev.lastLocalModifiedAt).inSeconds} s ago: '
+          'carried on, no snackbar');
       await store.setCurrentSessionId(prev.sessionId);
       return prev;
     }
 
     // Case 4 — gone cold: a new session is current immediately, and the screen
     // offers `prev` back for the next 7 seconds.
+    debugPrint('VOCAB: launch case 4, previous session ${prev.sessionId} '
+        'edited ${DateTime.now().difference(prev.lastLocalModifiedAt).inMinutes} min ago: '
+        'new session, RESTORE offered');
     final fresh = await _startNewSession(store);
     restorableSessionId = prev.sessionId;
     return fresh;

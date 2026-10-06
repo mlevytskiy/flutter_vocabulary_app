@@ -54,8 +54,8 @@ lib/
                                 pronunciation_service.dart (task-04)
                                 session_publish_service.dart (task-05: POST /sessions → public link;
                                 sends the word detail mode + definitions, definition-mode; with
-                                "include sources" on, declares every source that has a linked
-                                row (photos and sets, no cap; each with its kind, a set with name +
+                                every set and, with "Include photos" on, every photo that has a
+                                linked row (no cap; each with its kind, a set with name +
                                 url) and each row's sourceId; republishes with the stored token,
                                 good-looking-web)
                                 dictionary_service.dart (definition-mode: POST /define on the Worker)
@@ -71,7 +71,8 @@ lib/
                                 a set page; returns raw JSON, no interpretation)
                                 quizlet_set_parser.dart (parseQuizletPage: raw JSON → set found /
                                 robot check / nothing yet; never throws)
-                                quizlet_cards.dart (cards → proposed words: cleaning, the 500
+                                quizlet_cards.dart (cards → proposed words: a Ukrainian back is
+                                the translation, any other the definition; cleaning, the 500
                                 character cut, duplicates, skipped cards, the numbers the results
                                 dialog names)
     widgets/                    synced_text_field_row.dart — moved, unchanged
@@ -80,8 +81,8 @@ lib/
       word_input_screen.dart          the screen: composes widgets below, owns controllers/focus as today
       quizlet_read_controller.dart    waits for and decides a read: 30 s limit per phase, clock paused
                                       during a robot check; outcomes succeeded / failed / cancelled
-      quizlet_import_flow.dart        runQuizletImport: link dialog → progress dialog (reads, then
-                                      translates 6 terms at a time, Cancel still works) → results
+      quizlet_import_flow.dart        runQuizletImport: link dialog → progress dialog (reads, shows
+                                      the cards, Cancel still works; no machine translation) → results
                                       dialog → addWords on Done; a result for another session is dropped
       word_input_notifier.dart (+.g)  AsyncNotifier<Session> + the launch rule + debounced save()
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
@@ -91,17 +92,25 @@ lib/
         vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog) and
                                         showQuizletResultDialog (set name, "Read X of Y", skipped
                                         cards, "No new words in this set.")
-        quizlet_link_dialog.dart        showQuizletLinkDialog: paste text, refuses text without a set link
-        quizlet_progress_dialog.dart    showQuizletProgressDialog: small live web view of the set page
-                                        (webview_flutter), grows while Quizlet's robot check shows
+        quizlet_link_dialog.dart        showQuizletLinkDialog: how-to animation, paste text, refuses
+                                        text without a set link
+        quizlet_link_how_to.dart        the link dialog's animation (open set, Share, Copy link, paste)
+        quizlet_logo_icon.dart          the + menu's painted white Quizlet-like "Q"
+        photo_source_dialog.dart        showPhotoSourceDialog: Camera / Photos as two side-by-side cards
+        quizlet_progress_dialog.dart    showQuizletProgressDialog: a pager of skeleton cards, then the
+                                        set's cards (scrolled first to last), over a hidden web view
+                                        of the set page (webview_flutter); the page is shown full
+                                        size only while Quizlet's robot check is on screen
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
-        word_input_speed_dial.dart      the FAB (flutter_speed_dial stays)
+        word_input_speed_dial.dart      the FAB (flutter_speed_dial stays); "From subtitles" dark grey
+                                        with the captions icon; it shares the Scaffold's floating-button
+                                        slot with the Settings button, so both rise above a SnackBar
     words_table/
       words_table_screen.dart         reads words from the notifier (no sessionId) or from
                                       sessionByIdProvider (a History row), read-only either way;
                                       Share → bottom sheet: file (TSV) or link (publish, task-05);
-                                      the "Include sources (N)" switch (photos and Quizlet sets
-                                      together) with stacked thumbnails sits above the table; the sheet warns about public photos and that
+                                      the "Include photos (N)" switch (photos only; Quizlet sets
+                                      are always sent) with stacked thumbnails sits above the table; the sheet warns about public photos and that
                                       a republish replaces the partner's edits (good-looking-web)
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
@@ -220,18 +229,18 @@ package is gone) runs `runQuizletImport` in `quizlet_import_flow.dart`:
    30 s (the clock stops while a robot check is on screen) is one failure message; Cancel/Back is
    silent.
 3. Still inside the progress dialog, `quizlet_cards.dart` turns the cards into proposed words (term
-   as the word, the back side + example as the definition, at most 500 characters per field,
-   duplicates and words already in the session left out) and the terms are translated through
-   `googleTranslateServiceProvider`, 6 at a time. A failed translation leaves the cell empty, so the
-   lightning looks like a typed word's.
+   as the word; a back whose letters are at least half Cyrillic as the translation, any other back
+   as the definition; the example in the definition; at most 500 characters per field; duplicates
+   and words already in the session left out). Nothing is machine-translated: a field the card does
+   not fill stays empty, so its lightning looks like a typed word's.
 4. `showQuizletResultDialog` shows the set name and the cards. Done with at least one kept word
    adds them to the session via `addWords`, linked to a new `SessionSource(kind: set, name, url)`;
    a result for a session other than the current one at Start is dropped.
 
 Sources and publishing: a session's `sources` hold photos and sets in one list. The old cap of 10
 photos is gone; publishing declares every source that has a linked row, bounded only by the Worker's
-500 entries and 256 KB. One "Include sources (N)" switch publishes or hides photos and sets
-together; only photos are uploaded afterwards (`photo_upload_service.dart` skips sets, which have no
+500 entries and 256 KB. Sets with a linked row are always published; the "Include photos (N)"
+switch publishes or hides the photos only; only photos are uploaded afterwards (`photo_upload_service.dart` skips sets, which have no
 bytes). The Worker side is in `vocab-photo-api/README.md`; the design is in
 `docs/features/import-from-quizlet/sad.md`.
 

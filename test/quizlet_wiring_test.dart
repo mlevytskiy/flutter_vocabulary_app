@@ -21,6 +21,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
 import 'package:flutter_vocabulary_app/core/services/session_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
+import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_logo_icon.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_input_speed_dial.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
@@ -49,13 +50,17 @@ class FakePageDriver implements QuizletPageDriver {
   void stop() {}
 }
 
-/// Translates every term to "т-<term>" at once.
+/// The import machine-translates nothing: any call is counted.
 class FakeTranslate extends GoogleTranslateService {
+  int calls = 0;
+
   @override
   Future<WordTranslation> translateWord(String word,
-          {required String to, String from = 'en'}) async =>
-      WordTranslation(
-          result: TranslationResult(text: 'т-$word'), best: 'т-$word');
+      {required String to, String from = 'en'}) async {
+    calls++;
+    return WordTranslation(
+        result: TranslationResult(text: 'т-$word'), best: 'т-$word');
+  }
 }
 
 String page(String name, List<List<String>> cards) => jsonEncode({
@@ -97,6 +102,11 @@ void main() {
           ['Get words from photo', 'From subtitles', 'Import from Quizlet']);
       expect(children.last.backgroundColor, Colors.green);
       expect(children.last.foregroundColor, Colors.white);
+      // A white Quizlet-like "Q", not a Material icon.
+      expect(children.last.child, isA<QuizletLogoIcon>());
+      // "From subtitles" is dark grey with the captions icon.
+      expect(children[1].backgroundColor, Colors.grey[800]);
+      expect((children[1].child! as Icon).icon, Icons.closed_caption);
     });
 
     testWidgets('choosing it starts the import', (tester) async {
@@ -187,7 +197,10 @@ void main() {
       await settle(tester);
       await tester.enterText(find.byKey(const Key('quizlet-link')), pasted);
       await tester.tap(find.text('Start'));
-      await settle(tester);
+      // The cards' skeleton second and two-second scroll.
+      for (var i = 0; i < 3; i++) {
+        await settle(tester);
+      }
       await tester.tap(find.text('Done'));
       await settle(tester);
     }
@@ -230,8 +243,9 @@ void main() {
       expect(rows().map((p) => p.word), ['harbour', 'cat', 'dog']);
       expect(rows().map((p) => p.sourceId),
           ['photo-a', 'quizlet-123456', 'quizlet-123456']);
-      expect(rows()[1].translation, 'т-cat');
-      expect(rows()[1].translationMarkedFilled, isTrue);
+      // An English back is the definition; nothing is machine-translated.
+      expect(rows()[1].translation, '');
+      expect(rows()[1].translationMarkedFilled, isFalse);
       expect(rows()[1].definition, 'a small animal');
       expect(rows()[1].definitionMarkedFilled, isTrue);
       expect(rows()[2].definition, '');

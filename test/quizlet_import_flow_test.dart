@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,42 +42,16 @@ class FakePageDriver implements QuizletPageDriver {
   void stop() {}
 }
 
-/// Translations the test answers one by one, counting how many run at once.
+/// The import machine-translates nothing: any call is counted.
 class FakeTranslate extends GoogleTranslateService {
-  final calls = <String>[];
-  final pending = <String, Completer<WordTranslation>>{};
-  int inFlight = 0;
-  int maxInFlight = 0;
+  int calls = 0;
 
   @override
   Future<WordTranslation> translateWord(String word,
       {required String to, String from = 'en'}) async {
-    calls.add('$from>$to:$word');
-    inFlight++;
-    maxInFlight = math.max(maxInFlight, inFlight);
-    final c = Completer<WordTranslation>();
-    pending[word] = c;
-    try {
-      return await c.future;
-    } finally {
-      inFlight--;
-    }
-  }
-
-  void answer(String word, String best) => pending.remove(word)!.complete(
-      WordTranslation(result: TranslationResult(text: best), best: best));
-
-  void fail(String word) =>
-      pending.remove(word)!.completeError(TranslationException('offline'));
-
-  /// Answers every waiting term with "т-<term>" until none is left.
-  Future<void> answerAll(WidgetTester tester) async {
-    while (pending.isNotEmpty) {
-      for (final w in pending.keys.toList()) {
-        answer(w, 'т-$w');
-      }
-      await tester.pump();
-    }
+    calls++;
+    return WordTranslation(
+        result: TranslationResult(text: 'т-$word'), best: 'т-$word');
   }
 }
 
@@ -96,8 +68,9 @@ String page({String name = 'Animals', required List<List<String>> cards}) =>
 const pasted =
     'Check out this set: https://quizlet.com/ua/123456/animals-flash-cards/?x=1';
 
-/// import-from-quizlet T12: one Quizlet import, link to kept words (sad §6
-/// F2, F3); AC-02, AC-03, AC-04, AC-04b, AC-07, AC-07b, AC-16.
+/// import-from-quizlet T12, T19: one Quizlet import, link to kept words (sad
+/// §6 F2, F3); AC-02, AC-03, AC-04, AC-04b, AC-07, AC-07b, AC-16. Each card's
+/// back side goes into the field it fits; nothing is machine-translated.
 void main() {
   late FakePageDriver driver;
   late FakeTranslate translate;
@@ -118,11 +91,10 @@ void main() {
       overrides: [googleTranslateServiceProvider.overrideWithValue(translate)],
       child: MaterialApp(
         home: Scaffold(
-          body: Consumer(
-            builder: (context, ref, _) => TextButton(
+          body: Builder(
+            builder: (context) => TextButton(
               onPressed: () => runQuizletImport(
                 context: context,
-                ref: ref,
                 currentSessionId: () => sessionId,
                 sessionWords: () => session,
                 addWords: (words, set) => added.add((words, set)),
@@ -136,92 +108,74 @@ void main() {
     ));
   }
 
-  Future<void> settle(WidgetTester tester) async {
+  Future<void> pumpBriefly(WidgetTester tester) async {
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  /// Pastes the link, taps Start, lets the page load with [cards].
+  /// Lets dialogs open and close, and the progress dialog's cards have their
+  /// skeleton second and two-second scroll.
+  Future<void> settle(WidgetTester tester) async {
+    await tester.pump();
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+  }
+
+  /// Pastes the link, taps Start, lets the page load with [cards]; returns
+  /// with the progress dialog still showing its cards.
   Future<void> startImport(WidgetTester tester,
       {List<List<String>>? cards}) async {
     await tester.tap(find.text('import'));
     await settle(tester);
     await tester.enterText(find.byKey(const Key('quizlet-link')), pasted);
     await tester.tap(find.text('Start'));
-    await settle(tester);
+    await pumpBriefly(tester);
     expect(find.text('Reading the Quizlet set…'), findsOneWidget);
     if (cards != null) {
       driver.reply = () => page(cards: cards);
       driver.finishLoading();
-      await settle(tester);
+      await pumpBriefly(tester);
     }
   }
 
   const reading = 'Reading the Quizlet set…';
 
   testWidgets(
-      'happy path: the set is read, terms translated en>uk, the results '
-      'dialog shows the set; Done adds the kept words and the set (AC-02, AC-03)',
-      (tester) async {
+      'happy path: an English back is the definition, a Ukrainian back the '
+      'translation, nothing machine-translated; Done adds the kept words and '
+      'the set (AC-02, AC-03)', (tester) async {
     await pumpHost(tester);
     await startImport(tester, cards: [
       ['cat', 'a small animal'],
-      ['dog', 'a loyal animal'],
+      ['dog', 'пес'],
       ['fox', 'a red animal'],
     ]);
-    expect(translate.calls, ['en>uk:cat', 'en>uk:dog', 'en>uk:fox']);
     expect(find.text(reading), findsOneWidget,
-        reason: 'the progress dialog stays while translating');
-
-    await translate.answerAll(tester);
+        reason: 'the progress dialog shows the cards first');
     await settle(tester);
     expect(find.text(reading), findsNothing);
+    expect(translate.calls, 0);
     expect(find.text('Animals'), findsOneWidget);
     expect(find.text('cat'), findsOneWidget);
-    expect(find.text('Translation: т-cat'), findsOneWidget);
     expect(find.text('Definition: a small animal'), findsOneWidget);
+    expect(find.text('Translation: пес'), findsOneWidget);
+    // An empty field has no line in the results dialog.
+    expect(find.textContaining('Translation:'), findsOneWidget);
+    expect(find.textContaining('Definition:'), findsNWidgets(2));
 
-    await tester.tap(find.byTooltip('Skip this word').at(1));
+    await tester.tap(find.byTooltip('Skip this word').at(2));
     await settle(tester);
     await tester.tap(find.text('Done'));
     await settle(tester);
 
     final (words, set) = added.single;
-    expect(words.map((w) => w.word), ['cat', 'fox']);
-    expect(words.map((w) => w.translation), ['т-cat', 'т-fox']);
-    expect(words.map((w) => w.description), ['a small animal', 'a red animal']);
+    expect(words.map((w) => w.word), ['cat', 'dog']);
+    expect(words.map((w) => w.translation ?? ''), ['', 'пес']);
+    expect(words.map((w) => w.description ?? ''), ['a small animal', '']);
     expect(set.id, '123456');
     expect(set.name, 'Animals');
     expect(set.url, 'https://quizlet.com/123456/animals-flash-cards/');
-  });
-
-  testWidgets(
-      'translates at most 6 terms at a time; a failed or echoed term is left '
-      'empty', (tester) async {
-    await pumpHost(tester);
-    await startImport(tester, cards: [
-      for (var i = 0; i < 10; i++) ['w$i', 'b$i'],
-    ]);
-    expect(translate.calls, hasLength(6));
-    expect(translate.maxInFlight, 6);
-
-    translate.fail('w0');
-    translate.answer('w1', 'w1'); // an echo is not a translation
-    await tester.pump();
-    expect(translate.calls, hasLength(8));
-    expect(translate.maxInFlight, 6);
-    await translate.answerAll(tester);
-    await settle(tester);
-    expect(translate.maxInFlight, 6);
-
-    await tester.tap(find.text('Done'));
-    await settle(tester);
-    final words = added.single.$1;
-    expect(words.map((w) => w.word), [for (var i = 0; i < 10; i++) 'w$i']);
-    expect(words[0].translation, '');
-    expect(words[1].translation, '');
-    expect(words[2].translation, 'т-w2');
   });
 
   testWidgets(
@@ -233,7 +187,6 @@ void main() {
       ['cat.', 'x'],
       ['dog', 'y'],
     ]);
-    expect(translate.calls, isEmpty);
     await settle(tester);
     expect(find.text('No new words in this set.'), findsOneWidget);
     await tester.tap(find.text('Done'));
@@ -247,7 +200,6 @@ void main() {
     await startImport(tester, cards: [
       ['cat', 'x'],
     ]);
-    await translate.answerAll(tester);
     await settle(tester);
     await tester.tap(find.byTooltip('Skip this word'));
     await settle(tester);
@@ -262,7 +214,6 @@ void main() {
     await startImport(tester, cards: [
       ['cat', 'x'],
     ]);
-    await translate.answerAll(tester);
     await settle(tester);
     expect(find.text('Done'), findsOneWidget);
     await tester.tapAt(const Offset(5, 5)); // the barrier
@@ -279,7 +230,6 @@ void main() {
       ['cat', 'x'],
     ]);
     sessionId = 'session-B';
-    await translate.answerAll(tester);
     await settle(tester);
     expect(find.text(reading), findsNothing);
     expect(find.text('Done'), findsNothing);
@@ -293,7 +243,6 @@ void main() {
     await startImport(tester, cards: [
       ['cat', 'x'],
     ]);
-    await translate.answerAll(tester);
     await settle(tester);
     sessionId = 'session-B';
     await tester.tap(find.text('Done'));
@@ -312,7 +261,6 @@ void main() {
     expect(find.text(QuizletImportMessages.readFailed), findsOneWidget);
     expect(QuizletImportMessages.readFailed,
         "The cards of this set couldn't be read. Try again.");
-    expect(translate.calls, isEmpty);
     expect(added, isEmpty);
   });
 
@@ -328,26 +276,24 @@ void main() {
   });
 
   testWidgets(
-      'Cancel while translating: back quietly, no further term is '
-      'translated, no results dialog (AC-07b)', (tester) async {
+      'Cancel while the cards show: back quietly, no results dialog (AC-07b)',
+      (tester) async {
     await pumpHost(tester);
     await startImport(tester, cards: [
-      for (var i = 0; i < 10; i++) ['w$i', 'b$i'],
+      ['cat', 'x'],
+      ['dog', 'y'],
     ]);
-    expect(translate.calls, hasLength(6));
+    await tester.pump(const Duration(milliseconds: 800));
     await tester.tap(find.text('Cancel'));
     await settle(tester);
     expect(find.text(reading), findsNothing);
-
-    await translate.answerAll(tester);
-    await settle(tester);
-    expect(translate.calls, hasLength(6), reason: 'translation stopped');
     expect(find.text('Done'), findsNothing);
     expect(find.byType(SnackBar), findsNothing);
     expect(added, isEmpty);
   });
 
-  testWidgets('Back while translating also cancels (AC-07b)', (tester) async {
+  testWidgets('Back while the cards show also cancels (AC-07b)',
+      (tester) async {
     await pumpHost(tester);
     await startImport(tester, cards: [
       ['cat', 'x'],
@@ -356,8 +302,6 @@ void main() {
     await navigator.maybePop();
     await settle(tester);
     expect(find.text(reading), findsNothing);
-    await translate.answerAll(tester);
-    await settle(tester);
     expect(find.text('Done'), findsNothing);
     expect(added, isEmpty);
   });

@@ -5,7 +5,7 @@ import 'package:flutter_vocabulary_app/core/services/quizlet_set_parser.dart';
 void main() {
   group('proposeWords', () {
     test(
-        'turns a card into a word with empty translation and back as definition',
+        'turns a card with an English back into a word with no translation and the back as definition',
         () {
       final r = proposeWords(
         [const QuizletCard(term: 'deadline', back: 'a time limit')],
@@ -14,9 +14,43 @@ void main() {
       );
       expect(r.words, hasLength(1));
       expect(r.words.single.word, 'deadline');
-      expect(r.words.single.translation, '');
+      expect(r.words.single.translation, isNull);
       expect(r.words.single.description, 'a time limit');
       expect(r.skipped, 0);
+    });
+
+    test('a Ukrainian back is the translation; the definition stays empty',
+        () {
+      final r = proposeWords(
+        [const QuizletCard(term: 'deadline', back: 'кінцевий термін')],
+        const [],
+        1,
+      );
+      expect(r.words.single.translation, 'кінцевий термін');
+      expect(r.words.single.description, isNull);
+    });
+
+    test('a Ukrainian back with an example: translation, example as definition',
+        () {
+      final r = proposeWords(
+        [
+          const QuizletCard(
+              term: 'deadline', back: "обов'язковий строк", example: 'Meet it.')
+        ],
+        const [],
+        1,
+      );
+      expect(r.words.single.translation, "обов'язковий строк");
+      expect(r.words.single.description, 'Meet it.');
+    });
+
+    test('backIsTranslation: mostly Cyrillic letters', () {
+      expect(backIsTranslation('кіт'), isTrue);
+      expect(backIsTranslation('кіт (cat)'), isTrue);
+      expect(backIsTranslation('a small animal'), isFalse);
+      expect(backIsTranslation('a small cat, кіт'), isFalse);
+      expect(backIsTranslation('123 !'), isFalse);
+      expect(backIsTranslation(''), isFalse);
     });
 
     test('definition is back, a new line, then the example', () {
@@ -31,7 +65,7 @@ void main() {
     test('card without a back is proposed with an empty definition (AC-09)',
         () {
       final r = proposeWords([const QuizletCard(term: 'a')], const [], null);
-      expect(r.words.single.description, '');
+      expect(r.words.single.description, isNull);
     });
 
     test('image-only card is dropped and counted as skipped (AC-09)', () {

@@ -14,7 +14,8 @@ class QuizletProposal {
     required this.stated,
   });
 
-  /// Proposed words in set order (translation empty, description = definition).
+  /// Proposed words in set order: the back side in the field it fits (see
+  /// [backIsTranslation]), every other field null; description = definition.
   final List<VocabWord> words;
 
   /// Cards skipped on purpose: no text term, already in the session, repeated.
@@ -55,10 +56,18 @@ QuizletProposal proposeWords(
     }
     final back = _oneLine(card.back);
     final example = _oneLine(card.example);
-    final definition = [back, example].where((s) => s.isNotEmpty).join('\n');
-    words.add(
-      VocabWord(word: term, translation: '', description: _cut(definition)),
-    );
+    // No machine translation: a Ukrainian back is the translation, any other
+    // back is the definition; the example always belongs to the definition.
+    final translation = backIsTranslation(back) ? back : '';
+    final definition = [if (translation.isEmpty) back, example]
+        .where((s) => s.isNotEmpty)
+        .join('\n');
+    // An empty field is null, so the results dialog shows no line for it.
+    words.add(VocabWord(
+      word: term,
+      translation: translation.isEmpty ? null : _cut(translation),
+      description: definition.isEmpty ? null : _cut(definition),
+    ));
   }
   return QuizletProposal(
     words: words,
@@ -66,6 +75,21 @@ QuizletProposal proposeWords(
     found: cards.length,
     stated: statedCount,
   );
+}
+
+/// Whether a card's back side is a translation rather than a definition: at
+/// least half of its letters are Cyrillic, as in a Ukrainian translation. An
+/// English explanation (the owner's example set) is a definition.
+bool backIsTranslation(String back) {
+  var letters = 0;
+  var cyrillic = 0;
+  for (final r in back.runes) {
+    final c = String.fromCharCode(r);
+    if (c.toLowerCase() == c.toUpperCase()) continue; // not a letter
+    letters++;
+    if (r >= 0x0400 && r <= 0x052F) cyrillic++;
+  }
+  return letters > 0 && cyrillic * 2 >= letters;
 }
 
 /// Line breaks become "; "; blank lines and outer spaces are dropped.

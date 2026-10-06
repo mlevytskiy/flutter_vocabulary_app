@@ -634,7 +634,7 @@ an old Worker refuses the `kind` field. Needs the owner's Cloudflare login; run 
 3. **Publish check from the current store build** (the build *before* the Quizlet release, which
    sends photos without `kind`): publish a session with photos, upload them, open the link and
    check the photos show. Also open a link published before this deploy: it must render as before.
-4. **Only now** release the app build with the Quizlet import and "Include sources".
+4. **Only now** release the app build with the Quizlet import and set sources.
 
 Revert the migration by hand with `migrations/down/0003_set_sources.sql` (newest first, before
 `0002`).

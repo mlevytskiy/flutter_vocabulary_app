@@ -76,6 +76,28 @@ void main() {
     expect(
         settingsUp.center.dy, moreOrLessEquals(plusUp.center.dy, epsilon: 0.5));
 
+    // A SnackBar lifts both buttons alike: they stay on one line, above it.
+    tester.view.viewInsets = FakeViewPadding.zero;
+    tester.view.padding = const FakeViewPadding(bottom: 102);
+    await tester.pump();
+    ScaffoldMessenger.of(tester.element(find.byType(WordInputScreen)))
+        .showSnackBar(const SnackBar(content: Text('hello')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+    final snack = tester.getRect(find.byType(SnackBar));
+    final settingsSnack = tester.getRect(find.byTooltip('Settings'));
+    final plusSnack = tester.getRect(find.ancestor(
+        of: find.byIcon(Icons.add),
+        matching: find.byType(FloatingActionButton)));
+    expect(settingsSnack.center.dy,
+        moreOrLessEquals(plusSnack.center.dy, epsilon: 0.5));
+    expect(settingsSnack.bottom, lessThanOrEqualTo(snack.top));
+    expect(settingsSnack.left, 16.0);
+    expect(plusSnack.right, moreOrLessEquals(390.0 - 16.0, epsilon: 0.5));
+    ScaffoldMessenger.of(tester.element(find.byType(WordInputScreen)))
+        .removeCurrentSnackBar();
+    await tester.pump(const Duration(seconds: 1));
+
     await tester.pump(const Duration(milliseconds: 1));
     await tester.pumpWidget(const SizedBox());
     container.dispose();

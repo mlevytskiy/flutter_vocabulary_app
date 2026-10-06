@@ -62,9 +62,9 @@ class SessionPublishService {
   /// ADR-0004). Every stored translation and definition is sent whatever the
   /// mode, and the page decides which columns to show (AC-27).
   ///
-  /// [sources] are the session's photos and sets when "include sources" is
-  /// on; empty means off, and then neither `sources` nor any `sourceId` is
-  /// sent (AC-24). Only sources with a linked row are declared, all of them,
+  /// [sources] are the session's sets, always, and its photos when "Include
+  /// photos" is on; empty means none, and then neither `sources` nor any
+  /// `sourceId` is sent (AC-24). Only sources with a linked row are declared, all of them,
   /// by taken time; each goes with its kind, and a set with its name and link
   /// (ADR-0006). [publishedId] and [editToken] ask the Worker to
   /// overwrite the earlier link (ADR-0008).

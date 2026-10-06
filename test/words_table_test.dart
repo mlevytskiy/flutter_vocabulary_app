@@ -135,7 +135,7 @@ void main() {
   }
 
   const photosNote =
-      'Included sources are visible to anyone with the link for 30 days.';
+      'Included photos are visible to anyone with the link for 30 days.';
   const republishNote = 'This list was shared before. Sharing it again '
       'replaces the edits made on the shared page.';
 
@@ -152,7 +152,7 @@ void main() {
   testWidgets('photos with a linked row: the page has the switch on, with N',
       (tester) async {
     await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
-    expect(find.text('Include sources (2)'), findsOneWidget);
+    expect(find.text('Include photos (2)'), findsOneWidget);
     expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
     // Above the table, not in the sheet.
     expect(tester.getTopLeft(find.byType(Switch)).dy,
@@ -162,7 +162,8 @@ void main() {
     expect(find.byType(Switch), findsOneWidget); // only the page's
   });
 
-  // import-from-quizlet T14 (AC-15): photos and sets behind one switch.
+  // import-from-quizlet AC-15: the switch counts photos only; a set with a
+  // linked row is always published, without asking.
   SessionSource set(String id) => SessionSource()
     ..id = 'quizlet-$id'
     ..kind = SourceKind.set
@@ -178,12 +179,12 @@ void main() {
     // quizlet-2 has no word row left: not counted, not published.
     ..sources = [...withPhotos().sources, set('1'), set('2')];
 
-  testWidgets('two photos and a set: "Include sources (3)", all sent',
+  testWidgets('two photos and a set: "Include photos (2)", all sent',
       (tester) async {
     final publisher = _FakePublisher();
     await pumpTable(tester, WordDetailMode.translation,
         publisher: publisher, shown: withPhotosAndSet());
-    expect(find.text('Include sources (3)'), findsOneWidget);
+    expect(find.text('Include photos (2)'), findsOneWidget);
     expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
     await openSheet(tester);
     expect(find.text(photosNote), findsOneWidget);
@@ -192,20 +193,37 @@ void main() {
         ['p1', 'p2', 'p3', 'p4', 'quizlet-1', 'quizlet-2']);
   });
 
-  testWidgets('a set alone still shows the switch', (tester) async {
+  testWidgets('photos off: the sets are still sent', (tester) async {
+    final publisher = _FakePublisher();
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: withPhotosAndSet());
+    await switchPhotosOff(tester);
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(publisher.sentSources!.map((p) => p.id), ['quizlet-1', 'quizlet-2']);
+  });
+
+  testWidgets('a set alone: no switch, no note, the set is sent',
+      (tester) async {
+    final publisher = _FakePublisher();
     final shown = Session.create()
       ..words = [
         WordPair(word: 'tide', translation: 'приплив', sourceId: 'quizlet-1'),
       ]
       ..sources = [set('1')];
-    await pumpTable(tester, WordDetailMode.translation, shown: shown);
-    expect(find.text('Include sources (1)'), findsOneWidget);
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: shown);
+    expect(find.byType(Switch), findsNothing);
+    await openSheet(tester);
+    expect(find.textContaining('30 days'), findsNothing);
+    await tapShareLink(tester);
+    expect(publisher.sentSources!.map((p) => p.id), ['quizlet-1']);
   });
 
   testWidgets('no source photos: no switch and no note', (tester) async {
     await pumpTable(tester, WordDetailMode.translation);
     expect(find.byType(Switch), findsNothing);
-    expect(find.textContaining('Include sources'), findsNothing);
+    expect(find.textContaining('Include photos'), findsNothing);
     await openSheet(tester);
     expect(find.text('Share file'), findsOneWidget);
     expect(find.text('Share link'), findsOneWidget);
