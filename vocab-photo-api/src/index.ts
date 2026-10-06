@@ -9,6 +9,7 @@ import { logEvent } from "./log";
 import { defineRoutes } from "./define";
 import { deleteExpiredSessions } from "./session/cleanup";
 import { assetRoutes } from "./session/assets";
+import { learnRoutes } from "./learn/routes";
 import { subtitleRoutes } from "./subtitles/routes";
 
 export type { Env } from "./env";
@@ -265,6 +266,7 @@ const ROUTES: RouteDefinition[] = [
   ...autofillRoutes,
   ...assetRoutes,
   ...subtitleRoutes,
+  ...learnRoutes,
 ];
 
 export default {

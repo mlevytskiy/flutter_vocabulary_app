@@ -32,6 +32,19 @@ export const STYLE = `
          color: #fff; font-weight: 600; text-decoration: none; }
   .btn:active { background: #1e4fd6; }
   .gone { text-align: center; padding: 48px 0; color: #444; }
+  /* The learn pages (learn-part-step-1): one column, nothing wider than the screen. */
+  .learn { max-width: 40rem; }
+  .learn h2 { font-size: 1.05rem; margin: 20px 0 6px; }
+  .learn .count { color: #666; margin: 0 0 8px; }
+  .exercise { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 10px 0;
+              border-bottom: 1px solid #e6e6e6; overflow-wrap: anywhere; cursor: pointer; }
+  .exercise input { flex: none; width: 20px; height: 20px; margin: 0; }
+  .exercise.soon { color: #888; cursor: default; }
+  .exercise.soon span { font-size: 0.8rem; font-style: italic; }
+  .learn .start { margin: 20px 0 0; }
+  .learn .start[aria-disabled="true"] { background: #b8c4e8; cursor: default; }
+  .learn .hint { margin: 8px 0 0; color: #666; font-size: 0.9rem; }
+  .learn .hint[hidden] { display: none; }
   .credit { color: #666; font-size: 0.8rem; margin: 8px 0 0; }
   .no-definition .credit { display: none; }
 
@@ -228,6 +241,10 @@ export const STYLE = `
     .toast button { color: #1a56d6; }
     @keyframes changed { from { background: #4a3f10; } to { background: transparent; } }
     .gone { color: #ccc; }
+    .learn .count, .learn .hint { color: #9a9a9a; }
+    .exercise { border-color: #2e2e2e; }
+    .exercise.soon { color: #777; }
+    .learn .start[aria-disabled="true"] { background: #2b3550; }
     .pager-nav button { background: #262626; color: #ececec; border-color: #555; }
   }
   @media (prefers-color-scheme: dark) and (min-width: 900px) {

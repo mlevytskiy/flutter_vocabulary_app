@@ -24,7 +24,7 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function shell(title: string, body: string, scriptPath?: string): string {
+export function shell(title: string, body: string, scriptPath?: string): string {
   const script = scriptPath ? `\n<script type="module" src="${escapeHtml(scriptPath)}"></script>` : "";
   return `<!doctype html>
 <html lang="en">
