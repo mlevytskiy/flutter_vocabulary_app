@@ -6,7 +6,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
 | T1 | [Add the exercise list and the word-to-learn rule to the Worker](./T1-worker-exercise-list.md) | domain | Maksym | S | — | done |
-| T2 | [Add the Exercise type and its const list to the app, pinned to the Worker's JSON](./T2-app-exercise-list-parity.md) | domain | Maksym | S | T1 | todo |
+| T2 | [Add the Exercise type and its const list to the app, pinned to the Worker's JSON](./T2-app-exercise-list-parity.md) | domain | Maksym | S | T1 | done |
 | T3 | [Serve the web learn page, the no-words page and the coming-soon page from the Worker](./T3-worker-learn-routes.md) | ports | Maksym | M | T1 | todo |
 | T4 | [Add learn.js: Start, the hint, the pick in the address and Back to exercises](./T4-worker-learn-script.md) | ui | Maksym | M | T3 | todo |
 | T5 | [Add Learn to the shared page with a fresh check before opening](./T5-shared-page-learn-button.md) | ui | Maksym | M | T3 | todo |

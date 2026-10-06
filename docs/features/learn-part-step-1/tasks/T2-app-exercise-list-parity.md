@@ -7,7 +7,7 @@ acs: ["AC-04"]
 files_hint: ["lib/features/learn/exercises.dart", "test/learn_exercises_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Add the Exercise type and its const list to the app, pinned to the Worker's JSON
