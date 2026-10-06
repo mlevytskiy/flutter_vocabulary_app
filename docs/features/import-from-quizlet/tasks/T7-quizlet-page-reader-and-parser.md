@@ -32,3 +32,7 @@ status: "todo"
 ## Notes
 
 - **Owner input needed:** fixtures come from real Quizlet pages, which refuse plain automated reads. Capture them from a desktop browser that has passed the check (run the script in the console, save its output). If they are not available yet, write the parser against clearly marked synthetic fixtures and leave a note — T17 must then confirm on real sets.
+
+## Result note (2026-10-06)
+
+No real captured pages were available, so every fixture in `test/fixtures/quizlet/` is synthetic (see its `README.txt`), and the script's selectors and the embedded-data shape (`studiableItems` / `cardSides` / text media type 1; flat `terms` fallback) are unverified guesses. **T17 must run the script on real sets and a robot-check page, save the output as fixtures and fix script/parser to match.**

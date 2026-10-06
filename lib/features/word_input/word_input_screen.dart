@@ -7,14 +7,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopupMenuController.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../core/models/definition_result.dart';
 import '../../core/models/session.dart';
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
 import '../../core/models/word_pair.dart';
@@ -23,8 +20,10 @@ import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
+import 'quizlet_import_flow.dart';
 import 'subtitle_import_flow.dart';
 import 'widgets/photo_source_dialog.dart';
+import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
@@ -64,7 +63,11 @@ WordPair wordPairFromPhoto(VocabWord w, {String? sourceId}) {
 }
 
 class WordInputScreen extends ConsumerStatefulWidget {
-  const WordInputScreen({super.key});
+  const WordInputScreen({super.key, this.quizletDriverFactory});
+
+  /// Stands in for the Quizlet web view in tests; null in the app.
+  @visibleForTesting
+  final QuizletPageDriverFactory? quizletDriverFactory;
 
   @override
   ConsumerState<WordInputScreen> createState() => _WordInputScreenState();
@@ -124,7 +127,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // The definition dots' popup controllers, per row -- kept exactly like
   // _popupControllers (same pruning), for the same package reasons.
   final Map<int, CustomPopupMenuController> _definitionPopupControllers = {};
-  final ScreenshotController _screenshotController = ScreenshotController();
   bool _isAnalyzingPhoto = false;
   bool _isRecoveringLostPhoto = false;
 
@@ -1030,40 +1032,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     const WordsTableRoute().go(context);
   }
 
-  Future<void> _takeScreenshot() async {
-    try {
-      final image = await _screenshotController.capture();
-      if (image == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to capture screenshot')),
-          );
-        }
-        return;
-      }
-
-      // Save to temporary file and share
-      final directory = await getTemporaryDirectory();
-      final now = DateTime.now();
-      final dateStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final filePath = '${directory.path}/vocabulary_screenshot_$dateStr.png';
-
-      final file = File(filePath);
-      await file.writeAsBytes(image);
-
-      await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'Vocabulary Screenshot',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error taking screenshot: $e')),
-        );
-      }
-    }
-  }
-
   /// "Get words from photo": one photo import at a time, then the
   /// Camera/Gallery choice (photo-from-gallery sad §4, AC-01, AC-05, AC-10).
   Future<void> _takePhotoForVocabulary() async {
@@ -1156,7 +1124,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     // The kept copy, started once the /analyze copy is done so it runs while
     // the request is out. Null when it could not be made: the words still
     // arrive, only without a photo (good-looking-web T17).
-    Future<SourcePhoto?>? kept;
+    Future<SessionSource?>? kept;
     var keptHandedOver = false;
     try {
       final compressStopwatch = Stopwatch()..start();
@@ -1230,7 +1198,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
   }
 
-  Future<SourcePhoto?> _keepSourcePhoto(String path) async {
+  Future<SessionSource?> _keepSourcePhoto(String path) async {
     final takenAt = DateTime.now();
     final store = ref.read(sourcePhotoStoreProvider);
     try {
@@ -1262,7 +1230,28 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         },
       );
 
-  void _addWordsFromPhoto(List<VocabWord> words, {SourcePhoto? source}) {
+  /// import-from-quizlet: the "Import from Quizlet" speed-dial item. On Done
+  /// the set joins the session's sources first (or renames the one already
+  /// there for this set), then the kept words are appended in set order,
+  /// each pointing at it (AC-03, AC-13b).
+  Future<void> _importFromQuizlet() => runQuizletImport(
+        context: context,
+        currentSessionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.sessionId,
+        sessionWords: () => [
+          for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+            if (pair.word.trim().isNotEmpty) pair.word.trim(),
+        ],
+        addWords: (words, set) {
+          if (!mounted) return;
+          final sourceId = ref
+              .read(wordInputNotifierProvider.notifier)
+              .upsertSetSource(set.id, set.name, set.url);
+          _addWordsFromPhoto(words, sourceId: sourceId);
+        },
+        driverFactory: widget.quizletDriverFactory,
+      );
+
+  void _addWordsFromPhoto(List<VocabWord> words, {SessionSource? source, String? sourceId}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {
@@ -1271,7 +1260,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
     setState(() {
       for (final w in words) {
-        final pair = wordPairFromPhoto(w, sourceId: source?.id);
+        final pair = wordPairFromPhoto(w, sourceId: source?.id ?? sourceId);
         if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
           // The row already holds the texts, so the controller listeners see
           // no change; the single _pushRow below persists everything.
@@ -1554,6 +1543,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         // A switch from History cancels the offer (edit-session-from-history).
         if (restorable == null) _dismissRestoreSnackBar();
         if (session.words.isNotEmpty) _restoreFromStore(session.words);
+        debugPrint('VOCAB: session ${session.sessionId} on screen, '
+            'RESTORE ${restorable == null ? 'not offered' : 'offered for $restorable'}');
         if (restorable != null) _showRestoreSnackBar();
       });
     });
@@ -1623,27 +1614,24 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           : null,
       body: Stack(
         children: [
-          Screenshot(
-            controller: _screenshotController,
-            child: isDragMode
-                ? ReorderableListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: _wordPairs.length,
-                    onReorder: _reorderItems,
-                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true, detailMode: detailMode),
-                    proxyDecorator: (child, index, animation) {
-                      return Material(
-                        color: Colors.transparent,
-                        child: child,
-                      );
-                    },
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: _wordPairs.length,
-                    itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
-                  ),
-          ),
+          isDragMode
+            ? ReorderableListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _wordPairs.length,
+                onReorder: _reorderItems,
+                itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true, detailMode: detailMode),
+                proxyDecorator: (child, index, animation) {
+                  return Material(
+                    color: Colors.transparent,
+                    child: child,
+                  );
+                },
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: _wordPairs.length,
+                itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
+              ),
           if (_isAnalyzingPhoto)
             Container(
               color: Colors.black45,
@@ -1671,8 +1659,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // settings button bottom-left and the speed dial bottom-right (D9 (c) in
       // docs/roadmap.md), each 16px from its edge like endFloat's margin. The
       // gap between them is not hit-testable, so rows underneath stay tappable.
-      // Kept out of the Screenshot in the body, so neither appears in a shared
-      // screenshot.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1696,8 +1682,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
             WordInputSpeedDial(
               onTakePhoto: _takePhotoForVocabulary,
-              onScreenshot: _takeScreenshot,
               onFromSubtitles: _importFromSubtitles,
+              onImportFromQuizlet: _importFromQuizlet,
             ),
           ],
         ),

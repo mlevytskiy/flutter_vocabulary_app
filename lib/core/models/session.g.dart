@@ -83,7 +83,7 @@ const SessionSchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'WordPair': WordPairSchema,
-    r'SourcePhoto': SourcePhotoSchema
+    r'SourcePhoto': SessionSourceSchema
   },
   getId: _sessionGetId,
   getLinks: _sessionGetLinks,
@@ -112,10 +112,11 @@ int _sessionEstimateSize(
   bytesCount += 3 + object.sessionId.length * 3;
   bytesCount += 3 + object.sources.length * 3;
   {
-    final offsets = allOffsets[SourcePhoto]!;
+    final offsets = allOffsets[SessionSource]!;
     for (var i = 0; i < object.sources.length; i++) {
       final value = object.sources[i];
-      bytesCount += SourcePhotoSchema.estimateSize(value, offsets, allOffsets);
+      bytesCount +=
+          SessionSourceSchema.estimateSize(value, offsets, allOffsets);
     }
   }
   bytesCount += 3 + object.words.length * 3;
@@ -140,10 +141,10 @@ void _sessionSerialize(
   writer.writeDateTime(offsets[2], object.lastLocalModifiedAt);
   writer.writeString(offsets[3], object.publishedId);
   writer.writeString(offsets[4], object.sessionId);
-  writer.writeObjectList<SourcePhoto>(
+  writer.writeObjectList<SessionSource>(
     offsets[5],
     allOffsets,
-    SourcePhotoSchema.serialize,
+    SessionSourceSchema.serialize,
     object.sources,
   );
   writer.writeDateTime(offsets[6], object.updatedAt);
@@ -168,11 +169,11 @@ Session _sessionDeserialize(
   object.lastLocalModifiedAt = reader.readDateTime(offsets[2]);
   object.publishedId = reader.readStringOrNull(offsets[3]);
   object.sessionId = reader.readString(offsets[4]);
-  object.sources = reader.readObjectList<SourcePhoto>(
+  object.sources = reader.readObjectList<SessionSource>(
         offsets[5],
-        SourcePhotoSchema.deserialize,
+        SessionSourceSchema.deserialize,
         allOffsets,
-        SourcePhoto(),
+        SessionSource(),
       ) ??
       [];
   object.updatedAt = reader.readDateTime(offsets[6]);
@@ -204,11 +205,11 @@ P _sessionDeserializeProp<P>(
     case 4:
       return (reader.readString(offset)) as P;
     case 5:
-      return (reader.readObjectList<SourcePhoto>(
+      return (reader.readObjectList<SessionSource>(
             offset,
-            SourcePhotoSchema.deserialize,
+            SessionSourceSchema.deserialize,
             allOffsets,
-            SourcePhoto(),
+            SessionSource(),
           ) ??
           []) as P;
     case 6:
@@ -1182,7 +1183,7 @@ extension SessionQueryFilter
 extension SessionQueryObject
     on QueryBuilder<Session, Session, QFilterCondition> {
   QueryBuilder<Session, Session, QAfterFilterCondition> sourcesElement(
-      FilterQuery<SourcePhoto> q) {
+      FilterQuery<SessionSource> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'sources');
     });
@@ -1441,7 +1442,8 @@ extension SessionQueryProperty
     });
   }
 
-  QueryBuilder<Session, List<SourcePhoto>, QQueryOperations> sourcesProperty() {
+  QueryBuilder<Session, List<SessionSource>, QQueryOperations>
+      sourcesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sources');
     });

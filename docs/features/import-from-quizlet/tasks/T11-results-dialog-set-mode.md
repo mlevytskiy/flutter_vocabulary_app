@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-04b", "AC-08"]
 files_hint: ["lib/features/word_input/widgets/vocab_result_dialog.dart", "test/vocab_result_dialog_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T11 — Show the set name, "Read X of Y", skipped cards and "No new words" in the results dialog

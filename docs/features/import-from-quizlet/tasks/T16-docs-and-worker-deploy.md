@@ -7,7 +7,7 @@ acs: ["AC-13", "AC-14", "AC-15"]
 files_hint: ["docs/architecture.md", "vocab-photo-api/README.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "in_progress"
 ---
 
 # T16 — Update the architecture docs and deploy the Worker with the migration
@@ -24,10 +24,11 @@ status: "todo"
 
 **Done when:** `docs/architecture.md` describes `session_source.dart`, the source cap removal, "Include sources", the `quizlet_*` files and the flow; the Worker README notes set sources; the migration is applied with `--remote`, then the Worker deployed, in the sad §7 order, and an older app build still publishes photos.
 
-- [ ] docs updated
+- [x] docs updated
 - [ ] remote migration applied and Worker deployed
 - [ ] a publish from an older app build still works
 
 ## Notes
 
 - Deploy needs the owner's Cloudflare credentials — run by the owner.
+- Docs are done (`docs/architecture.md`, `vocab-photo-api/README.md`). The deploy waits for the owner: run the checklist "Deploying import-from-quizlet" in `vocab-photo-api/README.md` from `vocab-photo-api/` — `npx wrangler d1 migrations apply DB --remote`, then `npm test && npm run typecheck && npm run deploy`, then publish photos from the current store build and open the link.

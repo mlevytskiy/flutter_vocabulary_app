@@ -20,7 +20,7 @@ The app keeps a session's source photos in `Session.sources` (`SourcePhoto`: id,
 ## Decision drivers
 
 - Feature CONTEXT: "source — a source photo or a set source"; "a word row has at most one source".
-- AC-13 / AC-15: one ordered list of sources for the pager and one count for "Include sources (N)".
+- AC-13 / AC-15: one ordered list of sources for the pager and one count for "Include sources (N)". (Owner review 2026-10-06: the switch is "Include photos (N)" again and counts photos only; sets are always published. The one list is unaffected.)
 - AC-13b: one set, one source.
 - ADR-0006: the Worker keeps one ordered `sources` list with a `kind`.
 

@@ -7,7 +7,7 @@ acs: ["AC-12", "AC-13", "AC-13b"]
 files_hint: ["vocab-photo-api/src/session/types.ts", "vocab-photo-api/src/session/handlers.ts", "vocab-photo-api/src/session/store.ts", "vocab-photo-api/test/publish.test.mjs", "vocab-photo-api/test/limits.test.mjs", "vocab-photo-api/test/helpers.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Accept, store and load set sources in the Worker publish path

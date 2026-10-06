@@ -124,11 +124,17 @@ export const STYLE = `
   .placeholder { aspect-ratio: 3 / 4; border: 1px dashed #bbb; border-radius: 6px; display: flex;
                  align-items: center; justify-content: center; color: #888; font-size: 0.85rem; }
   .slide figcaption { text-align: center; color: #666; font-size: 0.85rem; margin: 4px 0 0; }
+  /* A set source's page: its name and plain link on the pager's slide, no image. */
+  .set-card { display: flex; flex-direction: column; justify-content: center; gap: 8px; aspect-ratio: 3 / 4;
+              max-height: calc(100vh - 136px); padding: 16px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
+  .set-name { margin: 0; font-size: 1.1rem; font-weight: 600; overflow-wrap: anywhere; }
+  .set-link { color: #2962ff; font-size: 0.9rem; overflow-wrap: anywhere; }
   /* The phone's photo button, beside the download link. */
   .photo-button { display: none; position: relative; flex: none; width: 44px; height: 44px;
                   padding: 0; border: 0; background: none; cursor: pointer; }
   .thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #ccc;
            border: 2px solid #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); }
+  .thumb.set-thumb { background: #e8f0fe; }
   .photo-button.stack .thumb:nth-child(1) { transform: rotate(-7deg); }
   .photo-button.stack .thumb:nth-child(2) { transform: rotate(5deg); }
 
@@ -150,6 +156,9 @@ export const STYLE = `
   .dialog-slide img { display: block; max-width: 100%; max-height: 100%; object-fit: contain;
                       transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
   .dialog-slide .placeholder { width: min(80%, 20rem); color: #aaa; border-color: #555; }
+  .dialog-slide .set-card { width: min(90%, 24rem); aspect-ratio: auto; max-height: 100%; overflow: auto;
+                            background: #1b1b1b; border-color: #555; color: #fff; }
+  .dialog-slide .set-link { color: #8ab4f8; }
   html.dialog-open, html.dialog-open body { overflow: hidden; }
   @media (prefers-reduced-motion: reduce) { .dialog-strip { transition: none; } }
 
@@ -199,6 +208,9 @@ export const STYLE = `
     th, td { border-color: #2e2e2e; }
     .meta, .meta-short, .n, .credit, .slide figcaption, .placeholder { color: #9a9a9a; }
     .slide img, .placeholder { border-color: #333; }
+    .set-card { background: #1c1c1c; border-color: #333; }
+    .set-link { color: #8ab4f8; }
+    .thumb.set-thumb { background: #1c2a44; }
     .thumb { border-color: #1c1c1c; background: #333; }
     .needs-word-mark { color: #e0a040; }
     td[data-state="unsaved"], td[data-state="conflict"] { background: #3a1d1b; }

@@ -12,7 +12,7 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 
 ## 1. Introduction and goals
 
-**Intent.** Let a learner turn a public Quizlet set into reviewed words of the current session from its link, without typing a word (spec §2). The phone opens the set's page in an in-app web view behind a progress dialog with a small live preview, reads the set's name and cards from that page itself — no server step, no AI — and proposes them in the existing results dialog: the card's term as the word, the app's usual translation of the term, the card's back side (and example) as the definition. Kept words join the session linked to a new **set source**; on the shared page a set source is one more page of the existing source pager, showing the set's name and its plain Quizlet link, and one "Include sources" switch publishes or hides photos and sets together. The Screenshot item, its capture code and the `screenshot` package are removed (spec §1 decision).
+**Intent.** Let a learner turn a public Quizlet set into reviewed words of the current session from its link, without typing a word (spec §2). The phone opens the set's page in an in-app web view out of sight behind a progress dialog that shows a pager of the set's cards, reads the set's name and cards from that page itself — no server step, no AI — and proposes them in the existing results dialog: the card's term as the word, the app's usual translation of the term, the card's back side (and example) as the definition. Kept words join the session linked to a new **set source**; on the shared page a set source is one more page of the existing source pager, showing the set's name and its plain Quizlet link, set sources are always published, and the "Include photos" switch publishes or hides the photos only (owner review 2026-10-06). The Screenshot item, its capture code and the `screenshot` package are removed (spec §1 decision).
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
@@ -50,12 +50,12 @@ target_surfaces: [mobile-app, backend-service, web-frontend]  # decided in §4 (
 
 **Conventions.**
 - [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2: typed routes only (dialogs are not routes); services via providers in `lib/core/providers.dart`; screen data in a `@riverpod` notifier; controllers, focus and loading flags — and here the web-view controller — in widget `State`; files of about one thing each.
-- Overrides approved in the spec (§1 decisions), carried out as part of this feature's tasks: CLAUDE.md rule 3 and architecture.md rule 4 stop listing `screenshot`, which is removed with the Screenshot item; rule 5 / architecture.md rule 6 gain the one web-view package; the set source is an approved new domain model (with `source_photo.dart` generalised to `session_source.dart`, sad §5); the 10-source limit of good-looking-web is lifted (its OQ-3 closed); "Include photos" becomes "Include sources". `docs/architecture.md` §1/§3 describe the old shapes and are updated with the code. Tracked in §11 until the texts are updated.
+- Overrides approved in the spec (§1 decisions), carried out as part of this feature's tasks: CLAUDE.md rule 3 and architecture.md rule 4 stop listing `screenshot`, which is removed with the Screenshot item; rule 5 / architecture.md rule 6 gain the one web-view package; the set source is an approved new domain model (with `source_photo.dart` generalised to `session_source.dart`, sad §5); the 10-source limit of good-looking-web is lifted (its OQ-3 closed); "Include photos" stays and covers photos only, set sources are always published (owner review 2026-10-06, which replaced the earlier "Include sources" switch). `docs/architecture.md` §1/§3 describe the old shapes and are updated with the code. Tracked in §11 until the texts are updated.
 - Verification per [`docs/tasks/README.md`](../../tasks/README.md): `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test`, the CLAUDE.md greps, and `npm test` + `npm run typecheck` in `vocab-photo-api/`.
 
 **Regulatory / external.**
 - Quizlet's terms of use and bot protection (spec §8 OQ-1): accepted by the owner at design, 2026-10-06 — proceed for personal study and accept that Quizlet may block it; tracked as a risk in §11.
-- A set's name and plain link become public for 30 days only when "Include sources" is on (spec §6.1); the sharing extras of the pasted link, which may point back to the learner's Quizlet account, are never stored or published.
+- A set's name and plain link become public for 30 days with every shared link of a session that still has a word from the set; they are not behind the "Include photos" switch (owner review 2026-10-06, spec §6.1); the sharing extras of the pasted link, which may point back to the learner's Quizlet account, are never stored or published.
 - No new device permissions (spec §6): the web view needs only network access, which the app already has.
 
 ## 3. Context and scope
@@ -97,7 +97,7 @@ C4Context
 
     Rel(learner, app, "Pastes a set link, keeps words, publishes", "touch")
     Rel(app, quizlet, "Opens and reads a set page in the web view", "HTTPS")
-    Rel(learner, quizlet, "Passes the robot check inside the preview", "touch")
+    Rel(learner, quizlet, "Passes the robot check on the page shown in the progress dialog", "touch")
     Rel(app, gt, "Translates each term", "HTTPS")
     Rel(app, worker, "Publishes the session with set sources", "JSON/HTTPS, shared secret")
     Rel(partner, worker, "Opens the shared page", "HTTPS")
@@ -119,11 +119,13 @@ C4Context
 **Tactical decisions that follow (inline, no ADR):**
 
 - **Link parsing (AC-02, AC-06)** — a pure Dart function finds the first Quizlet set link in the pasted text (bare, with or without `https://` / `www.`, with a language part, with sharing extras, a study-mode link, or inside Quizlet's share text) and yields the set id and the plain address `https://quizlet.com/<id>/<slug>/` (AC-13). Text without one is refused in the link dialog and kept. The same set-id rule is used by the navigation check (ADR-0004).
-- **Waiting, the robot check and the 30 s (AC-05, AC-07)** — the same 30 s also bound the first load: if the page has not finished loading 30 s after Start (paused while Quizlet's robot check is on screen), the import ends with the AC-07 message, so a load that hangs without an error cannot wait forever (critic resolution, 2026-10-06). After the first "page finished loading" the 30 s clock starts again for the cards; about once a second the reader asks the page for cards or for signs of a robot check. A robot check is recognised by known markers of Quizlet's challenge page on quizlet.com (title, challenge elements); while one is on screen the clock is paused and the preview is full size, and it shrinks back when the check is gone. No connection, a load error or the clock running out ends the import with the AC-07 message. An unrecognised new kind of check simply runs the clock out — the safe side (§11).
-- **Translation (AC-02, AC-17)** — every kept-able term goes through `GoogleTranslateService.translateWord`, as a typed word does, at most 6 requests at a time, before the results dialog opens; a term that fails to translate arrives with an empty translation and shows the translation lightning, like a typed word. The p95 ≤ 10 s target (100 cards) includes this step.
+- **Waiting, the robot check and the 30 s (AC-05, AC-07)** — the same 30 s also bound the first load: if the page has not finished loading 30 s after Start (paused while Quizlet's robot check is on screen), the import ends with the AC-07 message, so a load that hangs without an error cannot wait forever (critic resolution, 2026-10-06). After the first "page finished loading" the 30 s clock starts again for the cards; about once a second the reader asks the page for cards or for signs of a robot check. A robot check is recognised by known markers of Quizlet's challenge page on quizlet.com (title, challenge elements); while one is on screen the clock is paused and the page itself is shown at full size in place of the cards pager, and the cards come back when the check is gone. No connection, a load error or the clock running out ends the import with the AC-07 message. An unrecognised new kind of check simply runs the clock out — the safe side (§11).
+- **Translation (AC-02, AC-17)** — *superseded by the second owner review (2026-10-06): nothing is machine-translated; `backIsTranslation` in `quizlet_cards.dart` puts a back whose letters are at least half Cyrillic into the translation and any other back into the definition, the example always into the definition, other fields empty. Google Translate is no longer an actor of this feature; the F3 translation loop below and the "throttles a large import" risk no longer apply.* Was: every kept-able term goes through `GoogleTranslateService.translateWord`, as a typed word does, at most 6 requests at a time, before the results dialog opens; a term that fails to translate arrives with an empty translation and shows the translation lightning, like a typed word. The p95 ≤ 10 s target (100 cards) includes this step.
 - **Card → proposed word (AC-09, AC-10, AC-04b, AC-08)** — a pure Dart step: drop cards with no text term; turn line breaks into "; "; cut term and back side to 500 characters with "…" last; definition = back side, plus a new line and the example when present; drop terms equal to a session word or an earlier card (ignoring case, outer spaces and one closing ".", "!" or "?"); count skipped cards for their own line; compare cards found (before skipping) with the page's stated count for "Read X of Y".
 - **Into the session** — the results dialog and `wordPairFromPhoto(w, sourceId:)` are reused unchanged, so a non-empty back side marks the definition filled (AC-17); Done adds the kept words and, only if at least one was kept, adds or updates the set source (AC-03, AC-04, AC-04b); the late-result rule is the subtitle import's `startedIn` check (AC-16).
 - **Screenshot removal** — the green item becomes "Import from Quizlet"; `_takeScreenshot`, the `Screenshot` wrapper and the `screenshot` package go (spec §1).
+- **Owner review (2026-10-06)** — the progress dialog shows a `PageView` of cards over the web view instead of the web view itself: the web view stays in the tree at the same size under an opaque pager (so the page loads and lays out as before), skeleton cards and title for at least 1 s (`quizletSkeletonFor`), then the read cards, scrolled first to last in 2 s (`quizletCardsScrollFor`) while the translations run; the dialog closes once both are done. Only the robot check uncovers the web view, at full size. The link dialog gains a hand-drawn how-to animation (`quizlet_link_how_to.dart`, plain widgets, plays three times, stops once the field has text). The + menu: "From subtitles" dark grey with an icon picked in Settings (`subtitlesIconProvider`, a persisted display preference like the word detail mode), "Import from Quizlet" with a painted white "Q" (`quizlet_logo_icon.dart`). The Words screen keeps "Include photos (N)"; set sources are always sent. No new package, no new domain model.
+- **Second owner review (2026-10-06)** — no machine translation (see Translation above); "From subtitles" fixed to `Icons.closed_caption` and the Settings picker with `subtitlesIconProvider` removed; the link field styled like the Word field, the how-to sketch lowered to 110 px, the dialog's insets and paddings tightened and its content scrolled from the bottom (`reverse: true`) so the field stays in sight with the keyboard up; the Settings button moved from a `Positioned` in the body into the Scaffold's floating-button slot next to the speed dial (a centred row as wide as the screen less 16 px margins), so the Scaffold lifts both above a SnackBar.
 
 Each tactical decision in later sections should trace to one of these seeds. Tactical decisions that *contradict* a strategic choice are red flags — surface them in §11.
 
@@ -153,19 +155,24 @@ lib/ (Flutter app)
 │   └── source_photo_store.dart       unchanged contract; called only for photo sources
 └── features/
     ├── word_input/
-    │   ├── quizlet_import_flow.dart        NEW: link dialog → progress dialog → translate → results
+    │   ├── quizlet_import_flow.dart        NEW: link dialog → progress dialog → propose words → results
     │   │                                   dialog → add words + set source; late-result rule (AC-16)
     │   ├── word_input_screen.dart          − Screenshot wrapper and _takeScreenshot; + onImportFromQuizlet;
     │   │                                   adds or updates the set source on Done
     │   └── widgets/
-    │       ├── word_input_speed_dial.dart  Screenshot item → "Import from Quizlet", same green (AC-01)
-    │       ├── quizlet_link_dialog.dart    NEW: paste field, Start, refusal text (AC-06)
-    │       ├── quizlet_progress_dialog.dart NEW: WebViewController + NavigationDelegate in State,
-    │       │                               the 30 s clock, small / full-size preview, Cancel (AC-05, AC-07, AC-07b)
+    │       ├── word_input_speed_dial.dart  Screenshot item → "Import from Quizlet", same green, white "Q";
+    │       │                               "From subtitles" dark grey with the Settings icon (AC-01)
+    │       ├── quizlet_logo_icon.dart      NEW: the painted Quizlet-like "Q"
+    │       ├── quizlet_link_dialog.dart    NEW: how-to animation, paste field, Start, refusal text (AC-01, AC-06)
+    │       ├── quizlet_link_how_to.dart    NEW: the animation: open the set, Share, Copy link, paste below
+    │       ├── quizlet_progress_dialog.dart NEW: WebViewController + NavigationDelegate in State, the 30 s
+    │       │                               clock, the cards pager over the hidden page (skeleton ≥ 1 s,
+    │       │                               scroll 2 s), the page full size for the robot check, Cancel
+    │       │                               (AC-02, AC-05, AC-07, AC-07b)
     │       └── vocab_result_dialog.dart    + set name title, "Read X of Y" and skipped lines (AC-04b, AC-08)
     └── words_table/
-        └── words_table_screen.dart         "Include photos (N)" → "Include sources (N)"; set
-                                            sources with no remaining row not counted (AC-15)
+        └── words_table_screen.dart         "Include photos (N)" counts photos only; set sources with a
+                                            remaining row always sent, without a switch (AC-12, AC-15)
 
 vocab-photo-api/
 ├── migrations/0003_set_sources.sql   sources: + kind (default 'photo'), name, url (written at data-model)
@@ -240,7 +247,7 @@ sequenceDiagram
             Progress->>Parser: parse it
             alt Quizlet's own robot check on screen
                 Parser-->>Progress: robot check
-                Progress-->>Learner: preview full size, clock paused
+                Progress-->>Learner: the page full size instead of the cards, clock paused
                 Learner->>Quizlet: passes the check
             else set of a different id, or nothing yet
                 Parser-->>Progress: not this set yet
@@ -286,8 +293,8 @@ sequenceDiagram
     participant Page as Shared page
     Learner->>App: Share, publish as link
     App->>Device: reads rows and the ordered source list
-    App-->>Learner: share sheet with Include sources N, sources without a remaining row not counted
-    alt Include sources on
+    App-->>Learner: share sheet; Include photos N above the table counts photos with a remaining row
+    alt Include photos on
         App->>Api: publish rows with source ids and the sources in order, photos and sets with kind
         Api->>Api: check each set link is a plain Quizlet set address and each name is within the limit
         alt a set source fails the check
@@ -297,9 +304,9 @@ sequenceDiagram
             Api->>D1: store rows and source slots, sets arrived at once, photos pending
             Api-->>App: link
         end
-    else Include sources off
-        App->>Api: publish rows only, no source ids, no sources
-        Api->>D1: store rows
+    else Include photos off
+        App->>Api: publish rows with source ids of set rows only, and the sets in order
+        Api->>D1: store rows and set slots
         Api-->>App: link
     end
     Partner->>Page: opens the link, moves the pager to the set
@@ -346,13 +353,13 @@ sequenceDiagram
     participant X as external-system (set site)
 
     Note over L,UI: Precondition: F1 gave one set id and its plain link, the session the import starts in is recorded
-    UI-->>L: progress dialog (SCR-03), Reading the Quizlet set, small live preview, Cancel
+    UI-->>L: progress dialog (SCR-03), Reading the Quizlet set, skeleton title and skeleton cards over the hidden page (at least 1 s), Cancel
     UI->>WV: opens the pasted set link, the 30 s load limit starts
     WV->>X: requests the set page
     opt the page or the learner tries to open another top-level page
         WV->>UI: asks whether the navigation is allowed
         alt not the set site, another set of the set site, a new window or a store or app link
-            UI-->>WV: refused, the preview stays on the set (AC-11)
+            UI-->>WV: refused, the hidden page stays on the set (AC-11)
         else a page of the set site for the same set, such as its robot check or a redirect
             UI-->>WV: allowed
         end
@@ -370,12 +377,12 @@ sequenceDiagram
             WV-->>UI: raw page material
             UI->>UI: parses it
             alt the set site's own robot check is on screen
-                UI-->>L: preview grows to full size, clock paused (AC-05)
+                UI-->>L: the page itself at full size in place of the cards, clock paused (AC-05)
                 L->>WV: passes the check
                 WV->>X: continues to the set page
-                UI-->>L: preview shrinks back, clock resumes
+                UI-->>L: the cards pager covers the page again, clock resumes
             else the set's name is known, cards not yet
-                UI-->>L: shows the set's name in the progress dialog (AC-02)
+                UI-->>L: shows the set's name in the progress dialog once the skeleton second is over (AC-02)
             else material of a different set id, or nothing understood yet
                 UI->>UI: keeps waiting, nothing is read from it (AC-11)
             else cards of the pasted set found
@@ -383,7 +390,8 @@ sequenceDiagram
             end
         end
         alt cards found
-            UI->>UI: continues with review (F3)
+            UI-->>L: after the skeleton second, the pager shows the cards and scrolls first to last in 2 s (AC-02)
+            UI->>UI: continues with review (F3) meanwhile; the dialog closes when both are done
         else 30 s without cards (private or deleted set, login wall, a check from elsewhere, a page the app no longer understands)
             UI-->>L: progress dialog closes, the cards of this set could not be read, try again, session unchanged (AC-07)
         end
@@ -413,6 +421,7 @@ sequenceDiagram
     UI->>UI: drops terms equal to a session word or an earlier card, ignoring case, outer spaces and one closing full stop, exclamation or question mark, keeping the first card's back (AC-10)
     UI->>UI: definition is the back side plus the example on a new line, empty when the card has no back (AC-09)
     UI->>UI: counts skipped cards, compares cards found before skipping with the page's stated count (AC-08)
+    Note over UI,TR: Superseded (second owner review): no translation step; the back side goes into the translation when Ukrainian, else the definition
     loop each proposed term, at most 6 at a time
         UI->>TR: translates the term as for a typed word
         alt translated
@@ -469,10 +478,10 @@ sequenceDiagram
     L->>UI: taps Share, chooses link
     UI->>DEV: reads the rows and the ordered source list
     DEV-->>UI: rows with source ids, sources
-    UI->>UI: counts the sources that still have a word row, photos and sets alike
-    UI-->>L: share sheet (SCR-05) with Include sources (3), on by default, saying included sources are visible to anyone with the link for 30 days (AC-15)
+    UI->>UI: counts the photos that still have a word row (sets are not counted)
+    UI-->>L: Include photos (2) above the table, on by default; the share sheet says included photos are visible to anyone with the link for 30 days (AC-15)
     L->>UI: publishes as link
-    alt Include sources on
+    alt Include photos on
         UI->>SVC: rows with their source ids and the counted sources in order, each with its kind, a set with its name and plain link, with the app secret
         SVC->>SVC: checks each set link is a plain set address of the set site and each name is plain text within the field limit
         alt a set source fails the check
@@ -485,13 +494,12 @@ sequenceDiagram
             SVC-->>UI: link
             UI-->>L: link dialog opens, photo bytes follow in the background as today
         end
-    else Include sources off
-        UI->>SVC: rows without source ids and no sources, with the app secret
-        SVC->>DB: stores the rows only
-        Note over SVC,DB: persists rows with no source link
+    else Include photos off
+        UI->>SVC: rows with the source ids of set rows only and the set sources, with the app secret
+        SVC->>DB: stores the rows and the set slots, no photo slot
         DB-->>SVC: stored
         SVC-->>UI: link
-        UI-->>L: link dialog opens (AC-12)
+        UI-->>L: link dialog opens; the page shows no photo, the set stays (AC-12)
     end
     Note over L,UI: Postcondition: the published session holds every counted source in order, or none at all
 ```
@@ -507,7 +515,7 @@ sequenceDiagram
     participant DB as data-store (server)
     participant X as external-system (set site)
 
-    Note over P,PG: Precondition: a session with two source photos and one set source was published with Include sources on (F4)
+    Note over P,PG: Precondition: a session with two source photos and one set source was published with Include photos on (F4)
     P->>PG: opens the shared link
     PG->>SVC: asks for the session page
     SVC->>DB: reads the rows and the arrived source slots in order
@@ -571,7 +579,7 @@ Participants map to the §5 containers: `ui (app)` and `ui (in-app page)` are th
 | US-05 Decide what the shared page reveals | F4 |
 | US-06 Quizlet words are ordinary words | F6 |
 | AC-01 menu item where Screenshot was | F1 |
-| AC-02 progress dialog, name, preview, results dialog contents | F2 (dialog, name, preview), F3 (results dialog) |
+| AC-02 progress dialog, name, cards pager, results dialog contents | F2 (dialog, name, skeleton then cards pager), F3 (results dialog) |
 | AC-03 Done keeps the kept words in set order with their source | F3, Done branch |
 | AC-04 every word removed, or closed without Done | F3, unchanged branch |
 | AC-04b no new words in this set | F3, opt "no new card" + unchanged branch |
@@ -587,7 +595,7 @@ Participants map to the §5 containers: `ui (app)` and `ui (in-app page)` are th
 | AC-13 wide pager set page and link | F5, wide branch + link opt |
 | AC-13b one set, one source | F3, add-or-update step |
 | AC-14 phone sources dialog set page | F5, phone branch |
-| AC-15 "Include sources (N)", default on, 30-day notice, uncounted sets | F4, share sheet steps |
+| AC-15 "Include photos (N)" (photos only), default on, 30-day notice, sets always sent | F4, share sheet steps |
 | AC-16 session changed | F3, both session checks |
 | AC-17 no lightning on filled fields, export like other words | F6 |
 
@@ -600,7 +608,7 @@ No new deployment unit. The existing `vocab-photo-api` Worker gains D1 migration
 **Release order (each step backward compatible):**
 1. Apply migration `0003` to D1.
 2. Deploy the Worker — older app builds keep publishing photos as today (a source without `kind` is a photo).
-3. Release the app build with the Quizlet import and "Include sources". (The reverse order fails: an old Worker refuses the `kind` field — ADR-0006.)
+3. Release the app build with the Quizlet import and set sources. (The reverse order fails: an old Worker refuses the `kind` field — ADR-0006.)
 
 **Monitoring:**
 - App: `debugPrint` lines with a `QUIZLET:` prefix, as the subtitle import does — cards read N of M, robot check shown, failure reason (no connection / load error / 30 s without cards), navigation blocked with its host only, translation failures counted. No card text, no set name and no pasted link extras in logs; read during the device pass with `flutter logs`.
@@ -617,7 +625,7 @@ Everything inherits the repo's conventions (CLAUDE.md, [`docs/architecture.md`](
 
 | Concept | Convention | Where defined |
 |---|---|---|
-| App state + DI | Inherited. The `WebViewController`, its `NavigationDelegate`, the 30 s clock and the preview size live in the progress dialog's `State`; dialogs are not routes; no new provider — pure functions are called directly, translation through `googleTranslateServiceProvider`. | CLAUDE.md rule 2 |
+| App state + DI | Inherited. The `WebViewController`, its `NavigationDelegate`, the 30 s clock, the preview size and the cards pager's controller live in the progress dialog's `State`; dialogs are not routes; no new service provider (the owner review adds one display preference, `subtitlesIconProvider`) — pure functions are called directly, translation through `googleTranslateServiceProvider`. | CLAUDE.md rule 2 |
 | Web view boundary (**new**) | Top-level navigation only to `https://quizlet.com` and subdomains, never to another set; no new windows; read results only for the pasted set id (ADR-0004). JavaScript is enabled (Quizlet needs it), but **no `JavaScriptChannel` is registered** — the page cannot call into the app; the app only pulls results with `runJavaScriptReturningResult`. The system web-view cookie store keeps Quizlet's cookies so a passed robot check is remembered; it belongs to this app only, holds no Quizlet login, and the learner is never asked to log in. | ADR-0002, ADR-0004; here |
 | Untrusted page text (**new**) | Everything read from the page is plain text: checked for the pasted set id, cleaned in `quizlet_cards` (line breaks → "; ", cut to 500 characters with "…" last) before the results dialog, shown only through `Text` widgets, never as markup or a link in the app. | ADR-0003; here |
 | Error handling | App: message constants in the `SubtitleImportMessages` style — "paste a link to a Quizlet set" (AC-06, in the link dialog), "the cards of this set couldn't be read, try again" (AC-07, snack bar on the main screen); Cancel/Back shows nothing (AC-07b). Worker: `jsonResponse({ error, code: "invalid_source" }, status)` for a set source failing the format check; status fixed at `api`. | `subtitle_import_flow.dart`; `src/http.ts` |
@@ -667,13 +675,13 @@ Each top-3 goal from §1 expanded into a full scenario. Numbers are spec §6 NFR
 |---|---|---|---|
 | Quizlet changes its set page (embedded data or term list) and the parser stops finding cards, or finds only part | High | Embedded data first, visible list as fallback (ADR-0003); a total miss ends as AC-07, a partial read shows "Read X of Y" (AC-08), never a silent short set; `QUIZLET:` logs name the stage that failed; the fix is "save a new fixture, fix the Dart parser" with no Worker change | Maksym |
 | Quizlet's terms of use or bot protection forbid or block reading set pages in the app (spec §8 OQ-1, due "before `sdd:design`") — **accepted by the owner at design, 2026-10-06**: personal study, reading public pages as a person in a browser would | Medium | A block ends as AC-07 and nothing else breaks; no server ever contacts Quizlet (sad §3), no login is held. Spec OQ-1's checkbox is the owner's to close in `spec.md` | Maksym |
-| A new kind of Quizlet robot check is not recognised, so the 30 s clock is not paused and the preview stays small | Medium | Fails safe: the clock runs out and AC-07 shows; the markers live in one place in the parser and are extended from the device-pass logs | Maksym |
+| A new kind of Quizlet robot check is not recognised, so the 30 s clock is not paused and the page stays hidden under the cards | Medium | Fails safe: the clock runs out and AC-07 shows; the markers live in one place in the parser and are extended from the device-pass logs | Maksym |
 | Regression in the finished photo path from generalising `SourcePhoto` into `SessionSource` with a `kind` (ADR-0005) | Medium | Stored Isar name kept with `@Name('SourcePhoto')`; a test that a session saved before the change reads back with its photos as `kind == photo`; every photo-only use checks `kind`; the existing photo tests run unchanged apart from the rename | Maksym |
 | The free translation endpoint throttles a large import (up to 500 terms, 6 at a time) | Low | A term that fails arrives with an empty translation and the translation lightning, as a typed word; the import itself does not fail | Maksym |
 | The "plain Quizlet set address" rule lives twice — Dart link parser and the Worker's format check — and drifts | Low | The same table of link shapes (spec AC-02, AC-06, AC-13) is used as test cases on both sides | Maksym |
 | A new app build publishes to a Worker without migration `0003` and is refused | Low | Release order in §7: migration, Worker, then app | Maksym |
 | Repo texts lag behind this design until updated: CLAUDE.md rule 3 and `docs/architecture.md` rules 4 and 6 (`screenshot` out, `webview_flutter` in), and `docs/architecture.md` §1/§3 (`source_photo.dart` → `session_source.dart` and the new set-source model, "declares up to 10 photos" → no source cap, "Include photos (N)" → "Include sources (N)", the new `quizlet_*` files and flow) | Low | The tasks that make each change update the matching text in the same commit: the Screenshot-removal task for the rules, the model rename task and the publish/share-sheet tasks for architecture.md | Maksym |
-| Adverts and third-party scripts run inside the preview | Low | Accepted: they cannot navigate the page away from Quizlet or open windows (ADR-0004), and no `JavaScriptChannel` exposes the app (§8) | Maksym |
+| Adverts and third-party scripts run inside the hidden page | Low | Accepted: they cannot navigate the page away from Quizlet or open windows (ADR-0004), and no `JavaScriptChannel` exposes the app (§8) | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
 - No automated test runs against the live Quizlet page; the parser is tested on saved fixtures and the live behaviour in the device pass (§10).
@@ -695,9 +703,9 @@ Terms from [feature CONTEXT](./CONTEXT.md) (canonical), [good-looking-web CONTEX
 | source | A source photo or a set source; in code, `SessionSource` with a `kind` (ADR-0005). NOT where a translation or definition came from. |
 | plain link *(new)* | A set's address as `https://quizlet.com/<id>/<slug>/` — no language part, no sharing extras; the only form stored and published (AC-13). |
 | stated count *(new)* | The number of cards the set's page says it has; compared with the cards found for "Read X of Y" (AC-08). |
-| robot check *(new)* | Quizlet's own "I'm not a robot" page on quizlet.com; while it shows, the preview is full size and the 30 s clock is paused (AC-05). One served from elsewhere is never opened. |
+| robot check *(new)* | Quizlet's own "I'm not a robot" page on quizlet.com; while it shows, the page itself is shown at full size in place of the cards and the 30 s clock is paused (AC-05). One served from elsewhere is never opened. |
 | reader script *(new)* | The short script the app runs on the set page to return its raw material — embedded data or term list, name, set id, stated count (ADR-0003). |
-| Include sources | The share-sheet switch (was "Include photos") that publishes or hides all sources together (AC-12, AC-15). |
+| Include photos | The Words-screen switch that publishes or hides the source photos; set sources are not behind it and are always published (owner review 2026-10-06, which dropped the short-lived "Include sources"; AC-12, AC-15). |
 | One set, one source | Domain invariant: re-importing the same Quizlet set, from any link shape or after a rename, reuses its set source (AC-13b). |
 | A set is read whole or the gap is named | Domain invariant: fewer cards than stated always shows "Read X of Y" (AC-08). |
 | Every imported word is a publishable word | Domain invariant: line breaks become "; ", text over 500 characters is cut with "…" (AC-09). |

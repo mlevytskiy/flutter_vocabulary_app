@@ -1,9 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/models/session.dart';
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
@@ -60,11 +61,16 @@ class WordInputNotifier extends _$WordInputNotifier {
     }
 
     // Case 1 — nothing stored: a new session, one empty row, no snackbar.
-    if (prev == null) return _startNewSession(store);
+    if (prev == null) {
+      debugPrint('VOCAB: launch case 1, nothing stored: new session');
+      return _startNewSession(store);
+    }
 
     // Case 2 — the previous session never got a word: reuse it whatever its
     // age, otherwise every launch-and-do-nothing leaves an empty session behind.
     if (prev.isEmpty) {
+      debugPrint('VOCAB: launch case 2, previous session ${prev.sessionId} '
+          'has no word: reused, no snackbar');
       await store.setCurrentSessionId(prev.sessionId);
       if (prev.words.isEmpty) prev.words = [WordPair()];
       return prev;
@@ -75,12 +81,18 @@ class WordInputNotifier extends _$WordInputNotifier {
     var touched = prev.lastLocalModifiedAt;
     if (pickedAt != null && pickedAt.isAfter(touched)) touched = pickedAt;
     if (DateTime.now().difference(touched) < kSessionIdleWindow) {
+      debugPrint('VOCAB: launch case 3, previous session ${prev.sessionId} '
+          'edited or picked ${DateTime.now().difference(touched).inSeconds} s ago: '
+          'carried on, no snackbar');
       await store.setCurrentSessionId(prev.sessionId);
       return prev;
     }
 
     // Case 4 — gone cold: a new session is current immediately, and the screen
     // offers `prev` back for the next 7 seconds.
+    debugPrint('VOCAB: launch case 4, previous session ${prev.sessionId} '
+        'edited ${DateTime.now().difference(prev.lastLocalModifiedAt).inMinutes} min ago: '
+        'new session, RESTORE offered');
     final fresh = await _startNewSession(store);
     restorableSessionId = prev.sessionId;
     return fresh;
@@ -249,12 +261,40 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// Records a photo just kept for this session (good-looking-web T17). The
   /// screen calls it before adding the rows recognised from it, so the rows
   /// never point at a photo the session does not list.
-  void addSource(SourcePhoto photo) {
+  void addSource(SessionSource photo) {
     if (!state.hasValue) return;
     final session = state.value!;
     session.sources.add(photo);
     state = AsyncData(session);
     _scheduleSave();
+  }
+
+  /// Adds the Quizlet set the kept words came from (import-from-quizlet
+  /// ADR-0005) and returns its source id, `quizlet-<setId>`. A set the
+  /// session already lists keeps its place and takes the newer [name] and
+  /// [url] ("one set, one source", AC-13b); a new one goes after the
+  /// existing sources. The screen calls it before adding the rows, so the
+  /// rows never point at a source the session does not list.
+  String upsertSetSource(String setId, String name, String url) {
+    final id = 'quizlet-$setId';
+    if (!state.hasValue) return id;
+    final session = state.value!;
+    final existing = session.sources.where((s) => s.id == id).firstOrNull;
+    if (existing != null) {
+      existing
+        ..name = name
+        ..url = url;
+    } else {
+      session.sources.add(SessionSource()
+        ..id = id
+        ..takenAt = DateTime.now()
+        ..kind = SourceKind.set
+        ..name = name
+        ..url = url);
+    }
+    state = AsyncData(session);
+    _scheduleSave();
+    return id;
   }
 
   /// Records that a shared link now exists for the current session (task-05),

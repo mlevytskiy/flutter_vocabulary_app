@@ -15,11 +15,14 @@ export interface SessionEntry {
   sourceId?: string;
 }
 
-/** A photo the app declares in its publish request (ADR-0006); its bytes follow under `id`. */
-export interface DeclaredSource {
-  id: string;
-  order: number;
-}
+/**
+ * A source the app declares in its publish request (ADR-0006). A photo's bytes
+ * follow under `id`; a set (import-from-quizlet, ADR-0006) carries its name and
+ * plain link and has no bytes. A missing `kind` is a photo (older apps).
+ */
+export type DeclaredSource =
+  | { kind: "photo"; id: string; order: number }
+  | { kind: "set"; id: string; order: number; name: string; url: string };
 
 /**
  * What the learner's word detail mode showed when the session was published
@@ -42,8 +45,17 @@ export interface PhotoSource {
   addedAt: string;
 }
 
-/** Tagged union -- one member per source kind. Photo is the only kind today. */
-export type SessionSource = PhotoSource;
+/** A Quizlet set the words were imported from: shown as text and a plain link, no bytes. */
+export interface SetSource {
+  kind: "set";
+  id: string;
+  name: string;
+  /** The plain link, `https://quizlet.com/<id>/<slug>/` (see `isPlainQuizletSetUrl`). */
+  url: string;
+}
+
+/** Tagged union -- one member per source kind. */
+export type SessionSource = PhotoSource | SetSource;
 
 export interface SessionDocument {
   id: string;
@@ -73,10 +85,18 @@ export interface StoredRow {
   definitionRev: number;
 }
 
-/** A photo slot (ADR-0006): declared at publish, "arrived" once its bytes are in R2. */
+/**
+ * A source slot (ADR-0006): a photo is declared at publish and "arrived" once
+ * its bytes are in R2; a set is arrived from the publish and has no bytes.
+ */
 export interface StoredSource {
   id: string;
   ord: number;
+  kind: "photo" | "set";
+  /** A set's name; null for a photo. */
+  name: string | null;
+  /** A set's plain link; null for a photo. */
+  url: string | null;
   mediaType: string | null;
   bytes: number | null;
   status: "pending" | "arrived";
@@ -99,7 +119,8 @@ export interface StoredSession {
 
 /**
  * The document shape the page and the AnkiDroid file are rendered from. Only
- * arrived photos are listed: a pending slot has no bytes to show yet.
+ * arrived sources are listed: a pending photo has no bytes to show yet; a set
+ * is arrived from the publish.
  */
 export function toDocument(session: StoredSession): SessionDocument {
   return {
@@ -115,13 +136,17 @@ export function toDocument(session: StoredSession): SessionDocument {
     }),
     sources: session.sources
       .filter((source) => source.status === "arrived")
-      .map((source) => ({
-        kind: "photo",
-        id: source.id,
-        mediaType: source.mediaType ?? "application/octet-stream",
-        bytes: source.bytes ?? 0,
-        addedAt: session.createdAt,
-      })),
+      .map((source): SessionSource =>
+        source.kind === "set"
+          ? { kind: "set", id: source.id, name: source.name ?? "", url: source.url ?? "" }
+          : {
+              kind: "photo",
+              id: source.id,
+              mediaType: source.mediaType ?? "application/octet-stream",
+              bytes: source.bytes ?? 0,
+              addedAt: session.createdAt,
+            }
+      ),
   };
 }
 
@@ -132,12 +157,21 @@ export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 export const MAX_SESSION_JSON_BYTES = 256 * 1024;
 export const MAX_ENTRIES = 500;
 export const MAX_FIELD_CHARS = 500;
-export const MAX_SOURCES = 10;
 
 /** Session, row and photo ids: what the routes can address (`/s/<id>/sources/<sourceId>`). */
 export const ID_PATTERN = "[A-Za-z0-9-]{1,64}";
 const ID_RE = new RegExp(`^${ID_PATTERN}$`);
 
+/**
+ * The only link a set source may carry: a plain Quizlet set address,
+ * `https://quizlet.com/<digits>/<slug>/` -- no language part, no query, no
+ * fragment (AC-13). The Worker never contacts Quizlet; this is a format check.
+ */
+const QUIZLET_SET_URL_RE = /^https:\/\/quizlet\.com\/\d{1,20}\/[\p{L}\p{N}_%.~-]+\/$/u;
+
+export function isPlainQuizletSetUrl(value: unknown): value is string {
+  return typeof value === "string" && value.length <= MAX_FIELD_CHARS && QUIZLET_SET_URL_RE.test(value);
+}
 export function isId(value: unknown): value is string {
   return typeof value === "string" && ID_RE.test(value);
 }
@@ -157,23 +191,26 @@ export function isRev(value: unknown): value is number {
 
 export type ParsedEntries = { ok: true; entries: SessionEntry[] } | { ok: false; error: string };
 export type ParsedDetail = { ok: true; detail: SessionDetail } | { ok: false; error: string };
-export type ParsedSources = { ok: true; sources: DeclaredSource[] } | { ok: false; error: string };
+/** `code` is set when the answer should carry one (`invalid_source`, sad §8). */
+export type ParsedSources =
+  | { ok: true; sources: DeclaredSource[] }
+  | { ok: false; error: string; code?: "invalid_source" };
 export type ParsedRepublish =
   | { ok: true; republish: { publishedId: string; editToken: string } | null }
   | { ok: false; error: string };
 
 /**
- * `sources` is optional (older apps and "include photos" off send none, AC-24,
- * AC-26). Each photo needs an addressable id and a distinct `order`; the list
- * comes back sorted by `order`, the pager's order.
+ * `sources` is optional (older apps, and sessions with no set and "Include
+ * photos" off, send none, AC-24, AC-26, AC-12). Each source needs an addressable id and a distinct `order`; a
+ * missing `kind` is a photo, a `set` also needs a `name` and a plain Quizlet
+ * `url` (else `invalid_source`). The list comes back sorted by `order`, the
+ * pager's order. There is no cap on the number: the bound is the 500 entries
+ * and the 256 KB body (ADR-0006).
  */
 export function parseSources(value: unknown): ParsedSources {
   if (value === undefined || value === null) return { ok: true, sources: [] };
   if (!Array.isArray(value)) {
     return { ok: false, error: "`sources` must be an array of `{id, order}` objects" };
-  }
-  if (value.length > MAX_SOURCES) {
-    return { ok: false, error: `A session holds at most ${MAX_SOURCES} sources` };
   }
   const sources: DeclaredSource[] = [];
   for (const item of value) {
@@ -193,7 +230,33 @@ export function parseSources(value: unknown): ParsedSources {
     if (sources.some((s) => s.order === record.order)) {
       return { ok: false, error: "Each source needs a distinct `order`" };
     }
-    sources.push({ id: record.id, order: record.order });
+    const kind = record.kind ?? "photo";
+    if (kind === "photo") {
+      if (record.name !== undefined || record.url !== undefined) {
+        return { ok: false, error: "A photo source has no `name` or `url`", code: "invalid_source" };
+      }
+      sources.push({ kind: "photo", id: record.id, order: record.order });
+      continue;
+    }
+    if (kind !== "set") {
+      return { ok: false, error: "A source `kind` must be `photo` or `set`", code: "invalid_source" };
+    }
+    const name = typeof record.name === "string" ? record.name.trim() : "";
+    if (name === "" || name.length > MAX_FIELD_CHARS) {
+      return {
+        ok: false,
+        error: `A set source needs a \`name\` of 1-${MAX_FIELD_CHARS} characters`,
+        code: "invalid_source",
+      };
+    }
+    if (!isPlainQuizletSetUrl(record.url)) {
+      return {
+        ok: false,
+        error: "A set source `url` must be a plain Quizlet set link, https://quizlet.com/<id>/<name>/",
+        code: "invalid_source",
+      };
+    }
+    sources.push({ kind: "set", id: record.id, order: record.order, name, url: record.url });
   }
   return { ok: true, sources: sources.sort((a, b) => a.order - b.order) };
 }

@@ -330,7 +330,9 @@
       "title": "Run the device pass for the spec §6 targets on real Quizlet sets",
       "layer": "tests",
       "deps": [
-        "T16"
+        "T16",
+        "T18",
+        "T19"
       ],
       "acs": [
         "AC-02",
@@ -340,9 +342,58 @@
         "AC-13",
         "AC-14"
       ],
-      "dod": "`_audit/device-pass.md` records, on iPhone and Android: p95 time to the results dialog for 3 public 100-card sets (5 runs each, ≤ 10 s), sets of 10/50/200/500 cards read whole with no \"Read X of Y\" line, the 30 ± 2 s AC-07 end on a page with no cards, a robot check passed in the full-size preview, a tapped advert or outside link opening nothing, no new permission prompt on a fresh install, and the set page on the shared page wide and on a phone.",
+      "dod": "`_audit/device-pass.md` records, on iPhone and Android: p95 time to the results dialog for 3 public 100-card sets (5 runs each, ≤ 10 s), sets of 10/50/200/500 cards read whole with no \"Read X of Y\" line, the 30 ± 2 s AC-07 end on a page with no cards, a robot check passed on the page shown full size in place of the cards, the skeleton → cards → scroll sequence and the + menu, link dialog and photo source dialog looks, a tapped advert or outside link opening nothing, no new permission prompt on a fresh install, and the set page on the shared page wide and on a phone.",
       "files_hint": [
         "docs/features/import-from-quizlet/_audit/device-pass.md"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Apply the owner review: Include photos, + menu icons, link how-to, cards pager, photo source cards",
+      "layer": "ui",
+      "deps": [
+        "T13",
+        "T14"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-05",
+        "AC-12",
+        "AC-15"
+      ],
+      "dod": "Words screen back to \"Include photos (N)\" (photos only; sets always sent, no switch for sets); \"From subtitles\" dark grey with an icon picked in Settings; \"Import from Quizlet\" with a white Quizlet-like \"Q\"; the link dialog shows a how-to animation that stops once the field has text; the progress dialog shows skeleton cards and title for at least 1 s, then the set's cards scrolled first to last in 2 s, the web view only for the robot check; the photo source dialog shows Camera and Photos as two side-by-side cards; widget tests cover each and the docs describe them.",
+      "files_hint": [
+        "lib/features/words_table/words_table_screen.dart",
+        "lib/core/providers.dart",
+        "lib/features/settings/settings_screen.dart",
+        "lib/features/word_input/widgets/word_input_speed_dial.dart",
+        "lib/features/word_input/widgets/quizlet_logo_icon.dart",
+        "lib/features/word_input/widgets/quizlet_link_dialog.dart",
+        "lib/features/word_input/widgets/quizlet_link_how_to.dart",
+        "lib/features/word_input/widgets/quizlet_progress_dialog.dart",
+        "lib/features/word_input/widgets/photo_source_dialog.dart"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Apply the second owner review: link field style, back side to the right field, captions icon, Settings button with the SnackBar",
+      "layer": "ui",
+      "deps": [
+        "T18"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-09",
+        "AC-17"
+      ],
+      "dod": "The link field looks like the Word field and stays in sight with the keyboard up; a Ukrainian card back fills the translation, any other back the definition, the example the definition, nothing machine-translated and other fields empty; \"From subtitles\" shows the captions icon and Settings has no icon picker; the Settings and + buttons rise together above a SnackBar; widget tests cover each.",
+      "files_hint": [
+        "lib/features/word_input/widgets/quizlet_link_dialog.dart",
+        "lib/core/services/quizlet_cards.dart",
+        "lib/features/word_input/quizlet_import_flow.dart",
+        "lib/features/word_input/word_input_screen.dart"
       ]
     }
   ]

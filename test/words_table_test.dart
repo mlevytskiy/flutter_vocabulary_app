@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session.dart';
-import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
@@ -91,7 +91,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Share link'));
     // The clipboard write goes through a platform channel: let it answer.
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('Link ready'), findsOneWidget);
@@ -101,7 +102,7 @@ void main() {
   // good-looking-web T19: the "include photos (N)" switch above the table, and
   // the sheet's warning: the 30-day photo note and the republish warning
   // (AC-23, AC-24, ADR-0008).
-  SourcePhoto photo(String id, int minute) => SourcePhoto()
+  SessionSource photo(String id, int minute) => SessionSource()
     ..id = id
     ..fileName = '$id.jpg'
     ..takenAt = DateTime(2026, 9, 20, 10, minute);
@@ -161,6 +162,64 @@ void main() {
     await openSheet(tester);
     expect(find.text('Share file'), findsOneWidget); // file option unchanged
     expect(find.byType(Switch), findsOneWidget); // only the page's
+  });
+
+  // import-from-quizlet AC-15: the switch counts photos only; a set with a
+  // linked row is always published, without asking.
+  SessionSource set(String id) => SessionSource()
+    ..id = 'quizlet-$id'
+    ..kind = SourceKind.set
+    ..name = 'Set $id'
+    ..url = 'https://quizlet.com/$id/set-$id/'
+    ..takenAt = DateTime(2026, 9, 20, 11);
+
+  Session withPhotosAndSet() => withPhotos()
+    ..words = [
+      ...withPhotos().words,
+      WordPair(word: 'tide', translation: 'приплив', sourceId: 'quizlet-1'),
+    ]
+    // quizlet-2 has no word row left: not counted, not published.
+    ..sources = [...withPhotos().sources, set('1'), set('2')];
+
+  testWidgets('two photos and a set: "Include photos (2)", all sent',
+      (tester) async {
+    final publisher = _FakePublisher();
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: withPhotosAndSet());
+    expect(find.text('Include photos (2)'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    await openSheet(tester);
+    expect(find.text(photosNote), findsOneWidget);
+    await tapShareLink(tester);
+    expect(publisher.sentSources!.map((p) => p.id),
+        ['p1', 'p2', 'p3', 'p4', 'quizlet-1', 'quizlet-2']);
+  });
+
+  testWidgets('photos off: the sets are still sent', (tester) async {
+    final publisher = _FakePublisher();
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: withPhotosAndSet());
+    await switchPhotosOff(tester);
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(publisher.sentSources!.map((p) => p.id), ['quizlet-1', 'quizlet-2']);
+  });
+
+  testWidgets('a set alone: no switch, no note, the set is sent',
+      (tester) async {
+    final publisher = _FakePublisher();
+    final shown = Session.create()
+      ..words = [
+        WordPair(word: 'tide', translation: 'приплив', sourceId: 'quizlet-1'),
+      ]
+      ..sources = [set('1')];
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: shown);
+    expect(find.byType(Switch), findsNothing);
+    await openSheet(tester);
+    expect(find.textContaining('30 days'), findsNothing);
+    await tapShareLink(tester);
+    expect(publisher.sentSources!.map((p) => p.id), ['quizlet-1']);
   });
 
   testWidgets('no source photos: no switch and no note', (tester) async {
@@ -268,19 +327,6 @@ void main() {
     final link = find.text('https://example.test/s/id');
     expect(link, findsOneWidget);
     expect(find.ancestor(of: link, matching: find.byType(InkWell)),
-        findsOneWidget);
-  });
-
-  testWidgets('the link dialog names the photos left out (spec OQ-3)',
-      (tester) async {
-    final publisher = _FakePublisher()..leftOut = [photo('p11', 11)];
-    await pumpTable(tester, WordDetailMode.translation,
-        publisher: publisher, shown: withPhotos());
-    await openSheet(tester);
-    await tapShareLink(tester);
-    expect(
-        find.text('1 photo was left out: a page holds the first '
-            '10 photos taken.'),
         findsOneWidget);
   });
 
@@ -449,19 +495,15 @@ class _FakeWordInput extends WordInputNotifier {
 
 class _FakePublisher extends SessionPublishService {
   /// The photos the last publish was asked to include.
-  List<SourcePhoto>? sentSources;
-
-  /// What the fake answers as left out (spec OQ-3).
-  List<SourcePhoto> leftOut = const [];
+  List<SessionSource>? sentSources;
 
   @override
   Future<PublishedSession> publish(List<WordPair> pairs,
       {WordDetailMode detail = WordDetailMode.translation,
-      List<SourcePhoto> sources = const [],
+      List<SessionSource> sources = const [],
       String? publishedId,
       String? editToken}) async {
     sentSources = sources;
-    return PublishedSession(
-        id: 'id', url: 'https://example.test/s/id', leftOutSources: leftOut);
+    return PublishedSession(id: 'id', url: 'https://example.test/s/id');
   }
 }

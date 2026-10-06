@@ -10,7 +10,7 @@ Read `docs/architecture.md` first (short). If you are doing the restructuring, f
 2. Services come from providers in `lib/core/providers.dart`; screen data lives in a `@riverpod`
    notifier; controllers/focus/loading flags stay in widget `State`.
 3. **Do not change how anything looks or animates.** Keep `popup_menu_2`, `flutter_speed_dial`,
-   `screenshot`, `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
+   `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models, no `packages/` folder — ask first.
 6. If a step cannot be done as written, stop and write what you found under that step in

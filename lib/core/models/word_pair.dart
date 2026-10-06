@@ -37,7 +37,7 @@ class WordPair {
 
   bool definitionMarkedFilled;
 
-  /// The `SourcePhoto.id` of the photo this row was recognised from; null for
+  /// The `SessionSource.id` of the photo this row was recognised from; null for
   /// a typed row and for every row saved before good-looking-web (AC-25, AC-26).
   /// Editing the row keeps it; clearing the row drops it.
   String? sourceId;

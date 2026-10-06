@@ -7,7 +7,7 @@ acs: ["AC-04b", "AC-08", "AC-09", "AC-10"]
 files_hint: ["lib/core/services/quizlet_cards.dart", "test/quizlet_cards_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Turn cards into proposed words with the text rules, repeats and counts

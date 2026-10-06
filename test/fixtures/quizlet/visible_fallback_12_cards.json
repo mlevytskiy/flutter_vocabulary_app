@@ -1,0 +1,62 @@
+{
+ "setId": "777222333",
+ "name": "Travel basics",
+ "heading": "Terms in this set (13)",
+ "embedded": "{\"props\": {\"pageProps\": {}}}",
+ "visible": [
+  [
+   "word 1",
+   "meaning 1"
+  ],
+  [
+   "word 2",
+   "meaning 2"
+  ],
+  [
+   "word 3",
+   "meaning 3",
+   "sentence 3"
+  ],
+  [
+   "word 4",
+   "meaning 4"
+  ],
+  [
+   "",
+   "a picture card"
+  ],
+  [
+   "word 5",
+   "meaning 5"
+  ],
+  [
+   "word 6",
+   "meaning 6"
+  ],
+  [
+   "word 7",
+   "meaning 7"
+  ],
+  [
+   "word 8",
+   "meaning 8"
+  ],
+  [
+   "word 9",
+   "meaning 9"
+  ],
+  [
+   "word 10",
+   "meaning 10"
+  ],
+  [
+   "word 11",
+   "meaning 11"
+  ],
+  [
+   "word 12",
+   "meaning 12"
+  ]
+ ],
+ "robot": "Travel basics Flashcards | Quizlet"
+}

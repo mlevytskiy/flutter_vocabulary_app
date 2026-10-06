@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
-import '../models/source_photo.dart';
+import '../models/session_source.dart';
 import 'source_photo_store.dart';
 
 /// Uploads the bytes of the photos a publish declared, each to its declared
@@ -41,9 +41,11 @@ class PhotoUploadService {
         _sleep = sleep ?? Future<void>.delayed;
 
   /// Starts uploading [photos] to the session published as [publishedId]. A
-  /// photo already uploading to that session is not started twice.
-  void enqueue(String publishedId, List<SourcePhoto> photos) {
+  /// photo already uploading to that session is not started twice. A set
+  /// source has no bytes and is skipped (ADR-0006).
+  void enqueue(String publishedId, List<SessionSource> photos) {
     for (final photo in photos) {
+      if (photo.kind != SourceKind.photo) continue;
       final key = '$publishedId/${photo.id}';
       if (_running.containsKey(key)) continue;
       // A block, not `=> _running.remove(key)`: that returns this very future,
@@ -61,7 +63,7 @@ class PhotoUploadService {
     }
   }
 
-  Future<void> _upload(String publishedId, SourcePhoto photo) async {
+  Future<void> _upload(String publishedId, SessionSource photo) async {
     try {
       final bytes = await _store.read(photo);
       if (bytes == null) {
@@ -88,7 +90,8 @@ class PhotoUploadService {
           return;
         }
       }
-      debugPrint('VOCAB: upload of ${photo.id} gave up after $maxAttempts tries');
+      debugPrint(
+          'VOCAB: upload of ${photo.id} gave up after $maxAttempts tries');
     } catch (e) {
       debugPrint('VOCAB: upload of ${photo.id} failed: $e');
     }

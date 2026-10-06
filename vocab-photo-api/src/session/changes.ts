@@ -61,7 +61,7 @@ function readFeed(env: Env, sessionId: string, since: number) {
     ).bind(sessionId, since),
     env.DB.prepare(
       `SELECT id, ord, media_type, arrived_rev FROM sources
-       WHERE session_id = ?1 AND status = 'arrived' AND arrived_rev > ?2
+       WHERE session_id = ?1 AND kind = 'photo' AND status = 'arrived' AND arrived_rev > ?2
        ORDER BY ord`
     ).bind(sessionId, since),
   ]);

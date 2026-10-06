@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/subtitle_import_options.dart';
 import '../../../core/models/vocab_word.dart';
+import '../../../core/services/quizlet_cards.dart';
 
 String _formatDuration(Duration d) {
   final seconds = d.inMilliseconds / 1000;
@@ -61,11 +62,36 @@ Future<List<VocabWord>?> showSubtitleResultDialog(
       emptyMessage: 'No new words above your level in these subtitles.',
     );
 
+/// The skipped-cards line of a Quizlet import (AC-09, AC-10).
+String quizletSkippedLine(int skipped) =>
+    '$skipped ${skipped == 1 ? 'card' : 'cards'} skipped: already in the session, repeated or without text';
+
+/// The same dialog after a Quizlet import: the set's [setName] on top, then
+/// the "Read X of Y cards" line only when fewer cards were found than the set
+/// states (AC-08), the skipped-cards line only when some were skipped, and
+/// "No new words in this set." when nothing is left (AC-04b).
+Future<List<VocabWord>?> showQuizletResultDialog(
+  BuildContext context,
+  QuizletProposal proposal, {
+  required String setName,
+}) =>
+    _showResultDialog(
+      context,
+      proposal.words,
+      headerText: [
+        if (proposal.readLine != null) proposal.readLine!,
+        if (proposal.skipped > 0) quizletSkippedLine(proposal.skipped),
+      ].join('\n'),
+      emptyMessage: 'No new words in this set.',
+      setName: setName,
+    );
+
 Future<List<VocabWord>?> _showResultDialog(
   BuildContext context,
   List<VocabWord> words, {
   required String headerText,
   required String emptyMessage,
+  String? setName,
 }) {
   // Words the user hasn't crossed out; whatever is left here when the
   // dialog is closed gets added to the main screen.
@@ -84,14 +110,20 @@ Future<List<VocabWord>?> _showResultDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    headerText,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
+                  if (setName != null) ...[
+                    Text(setName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: headerText.isEmpty ? 12 : 4),
+                  ],
+                  if (headerText.isNotEmpty) ...[
+                    Text(
+                      headerText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
+                    const SizedBox(height: 12),
+                  ],
                   Flexible(
                     child: remainingWords.isEmpty
                         ? Text(emptyMessage)

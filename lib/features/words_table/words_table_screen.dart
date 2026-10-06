@@ -8,7 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/models/session.dart';
-import '../../core/models/source_photo.dart';
+import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
@@ -35,6 +35,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   bool _isPublishing = false;
 
   /// The "Include photos (N)" switch above the table; on until switched off.
+  /// Sets (import-from-quizlet) are not behind it: they are always sent.
   bool _includePhotos = true;
 
   @override
@@ -110,8 +111,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     final session = _session();
-    final includePhotos =
-        _includePhotos && _linkedPhotos(session, wordPairs).isNotEmpty;
+    final includePhotos = _includePhotos &&
+        _linkedPhotos(_linkedSources(session, wordPairs)).isNotEmpty;
     final publishedBefore = session?.publishedId != null;
     // The warning names what sharing again does: replacing the partner's
     // edits (ADR-0008) and, with photos, putting them on a public page.
@@ -170,15 +171,22 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     }
   }
 
-  /// The photos a link would carry: "include photos (N)" counts only photos
-  /// with a linked row that will be published; with none the switch is not
-  /// shown (AC-23).
-  List<SourcePhoto> _linkedPhotos(Session? session, List<WordPair> wordPairs) {
+  /// The sources a link may carry: photos and sets with a linked row that
+  /// will be published (AC-15, AC-23).
+  List<SessionSource> _linkedSources(
+      Session? session, List<WordPair> wordPairs) {
     final linkedIds = {for (final pair in wordPairs) pair.sourceId};
-    return (session?.sources ?? const <SourcePhoto>[])
-        .where((photo) => linkedIds.contains(photo.id))
+    return (session?.sources ?? const <SessionSource>[])
+        .where((source) => linkedIds.contains(source.id))
         .toList();
   }
+
+  /// The photos among [sources]: "Include photos (N)" counts them; with none
+  /// the switch is not shown. Sets are always published (AC-15).
+  List<SessionSource> _linkedPhotos(List<SessionSource> sources) => [
+        for (final source in sources)
+          if (source.kind == SourceKind.photo) source,
+      ];
 
   Future<void> _shareLink(List<WordPair> wordPairs,
       {required bool includePhotos}) async {
@@ -189,8 +197,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       final published =
           await ref.read(sessionPublishServiceProvider).publish(wordPairs,
               detail: ref.read(wordDetailModeProvider),
-              // Switched off, no photo reaches the page (AC-24).
-              sources: includePhotos ? session?.sources ?? const [] : const [],
+              // Switched off, no photo reaches the page (AC-24); a set
+              // always does (AC-15).
+              sources: [
+                for (final source in session?.sources ?? const <SessionSource>[])
+                  if (includePhotos || source.kind == SourceKind.set) source,
+              ],
               publishedId: session?.publishedId,
               editToken: session?.editToken);
       // Never awaited: the link dialog does not wait for photos (AC-37).
@@ -306,7 +318,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   Future<void> _showPublishedLinkDialog(PublishedSession published) {
     final expiresAt = published.expiresAt;
-    final leftOut = published.leftOutSources.length;
     final expiry = expiresAt == null
         ? 'The page stays up for 30 days.'
         : 'The page stays up until '
@@ -322,15 +333,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Anyone with this link can read the words. $expiry'),
-            // Past the first 10 taken, photos stay off the page (spec OQ-3).
-            if (leftOut > 0) ...[
-              const SizedBox(height: 12),
-              Text(leftOut == 1
-                  ? '1 photo was left out: a page holds the first '
-                      '${SessionPublishService.maxSources} photos taken.'
-                  : '$leftOut photos were left out: a page holds the first '
-                      '${SessionPublishService.maxSources} photos taken.'),
-            ],
             const SizedBox(height: 12),
             // Tapping the link opens the page in the browser.
             Semantics(
@@ -401,7 +403,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final wordPairs = (session?.words ?? const <WordPair>[])
         .where((pair) => pair.isFilled)
         .toList();
-    final photos = _linkedPhotos(session, wordPairs);
+    final photos = _linkedPhotos(_linkedSources(session, wordPairs));
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
@@ -560,7 +562,7 @@ enum _ShareChoice { file, link }
 class _PhotoStack extends ConsumerStatefulWidget {
   const _PhotoStack({required this.photos});
 
-  final List<SourcePhoto> photos;
+  final List<SessionSource> photos;
 
   @override
   ConsumerState<_PhotoStack> createState() => _PhotoStackState();

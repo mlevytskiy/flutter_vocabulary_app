@@ -109,7 +109,7 @@ test("a session published without sources answers gone for any guessed photo pat
   assert.doesNotMatch(await (await get(`/s/${id}`)).text(), /<img/i);
 });
 
-test("a publish rejects a row linked to an undeclared photo and more than 10 photos", async () => {
+test("a publish rejects a row linked to an undeclared photo", async () => {
   const photo = randomUUID();
   const unlinked = await publishRaw({
     sources: [{ id: photo, order: 0 }],
@@ -117,15 +117,7 @@ test("a publish rejects a row linked to an undeclared photo and more than 10 pho
   });
   assert.equal(unlinked.status, 400);
   assert.match((await unlinked.json()).error, /declared source/);
-
-  const eleven = await publishRaw({
-    sources: Array.from({ length: 11 }, (_, order) => ({ id: randomUUID(), order })),
-    entries: [{ word: "apple", translation: "яблуко" }],
-  });
-  assert.equal(eleven.status, 400);
-  assert.match((await eleven.json()).error, /at most 10/);
 });
-
 // ADR-0008: the token overwrites the same link; the Worker keeps only its hash.
 test("a republish with the token keeps the link and expiry and replaces rows and photos", async () => {
   const [oldPhoto, newPhoto] = [randomUUID(), randomUUID()];
@@ -208,4 +200,104 @@ test("an old-shape publish (no sources, no token) still succeeds", async () => {
   assert.deepEqual(Object.keys(body).sort(), ["editToken", "expiresAt", "id", "url"]);
   assert.equal((await get(`/s/${body.id}`)).status, 200);
   assert.deepEqual(slots(body.id), []);
+});
+
+const SET_URL = "https://quizlet.com/987534268/job-interview-flash-cards/";
+
+function slotsFull(id) {
+  return d1(`SELECT id, ord, kind, name, url, status, arrived_rev FROM sources WHERE session_id = ${sql(id)} ORDER BY ord`);
+}
+
+// AC-13, AC-13b: photos and sets share one ordered list; sets are arrived at publish.
+test("a publish with 12 photos and 3 sets stores all 15 in order, sets arrived at once", async () => {
+  const photos = Array.from({ length: 12 }, () => randomUUID());
+  const sets = Array.from({ length: 3 }, () => randomUUID());
+  // Sets interleaved with photos: positions 3, 7 and 14.
+  const sources = [];
+  let p = 0;
+  let s = 0;
+  for (let order = 0; order < 15; order++) {
+    if ([3, 7, 14].includes(order)) {
+      sources.push({ id: sets[s], order, kind: "set", name: `Set ${s++}`, url: SET_URL });
+    } else {
+      sources.push({ id: photos[p++], order });
+    }
+  }
+  const { id } = await publish({
+    sources: sources.slice().reverse(),
+    entries: [{ word: "apple", translation: "яблуко", sourceId: photos[0] }],
+  });
+
+  const stored = slotsFull(id);
+  assert.deepEqual(stored.map((r) => r.id), sources.map((r) => r.id));
+  assert.deepEqual(stored.map((r) => r.kind), sources.map((r) => (r.kind ?? "photo")));
+  for (const row of stored) {
+    if (row.kind === "set") {
+      assert.equal(row.status, "arrived");
+      assert.equal(row.arrived_rev, 0);
+      assert.equal(row.url, SET_URL);
+      assert.match(row.name, /^Set \d$/);
+    } else {
+      assert.equal(row.status, "pending");
+      assert.equal(row.name, null);
+      assert.equal(row.url, null);
+    }
+  }
+
+  // No bytes for a set: upload is "not declared" and nothing is served.
+  assert.equal((await uploadSource(id, sets[0], Buffer.from("x"))).status, 404);
+  assert.equal((await get(`/s/${id}/sources/${sets[0]}`)).status, 404);
+  assert.equal(sessionRecord(id).rev, 0);
+  assert.equal(slotsFull(id).find((r) => r.id === sets[0]).status, "arrived");
+});
+
+test("an older payload without kind still publishes photos, and kind photo is the same", async () => {
+  const [a, b] = [randomUUID(), randomUUID()];
+  const { id } = await publish({
+    sources: [{ id: a, order: 0 }, { id: b, order: 1, kind: "photo" }],
+    entries: [{ word: "apple", translation: "яблуко", sourceId: a }],
+  });
+  assert.deepEqual(slotsFull(id).map((r) => [r.kind, r.status, r.name]), [["photo", "pending", null], ["photo", "pending", null]]);
+  assert.equal((await uploadSource(id, a, Buffer.from("bytes"))).status, 200);
+});
+
+// sad §6 F4, §8: only a plain Quizlet set address is accepted; each failure is invalid_source.
+test("a set source with a bad link, name or kind is refused as invalid_source", async () => {
+  const entries = [{ word: "apple", translation: "яблуко" }];
+  const set = (over) => ({ id: randomUUID(), order: 0, kind: "set", name: "Job interview", url: SET_URL, ...over });
+  const bad = [
+    { url: "https://quizlet.com/987534268/job-interview-flash-cards/?i=xxug6&x=1jqt" },
+    { url: "https://quizlet.com/987534268/job-interview-flash-cards/#cards" },
+    { url: "https://quizlet.com/ar/987534268/job-interview-flash-cards/" },
+    { url: "https://quizlet.com/987534268/job-interview-flash-cards" },
+    { url: "https://quizlet.com/987534268/" },
+    { url: "https://quizlet.com/abc/job-interview-flash-cards/" },
+    { url: "http://quizlet.com/987534268/job-interview-flash-cards/" },
+    { url: "https://www.quizlet.com/987534268/job-interview-flash-cards/" },
+    { url: "https://quizlet.com.evil.example/987534268/job-interview-flash-cards/" },
+    { url: "https://evil.example/987534268/job-interview-flash-cards/" },
+    { url: "https://quizlet.com/987534268/a/b/" },
+    { url: "javascript:alert(1)" },
+    { url: "" },
+    { url: undefined },
+    { url: 42 },
+    { name: "" },
+    { name: "   " },
+    { name: undefined },
+    { name: 7 },
+    { kind: "video" },
+  ];
+  for (const over of bad) {
+    const res = await publishRaw({ sources: [set(over)], entries });
+    assert.equal(res.status, 400, JSON.stringify(over));
+    assert.equal((await res.json()).code, "invalid_source", JSON.stringify(over));
+  }
+  // A photo may not carry a name or link.
+  const photoWithName = await publishRaw({ sources: [{ id: randomUUID(), order: 0, name: "x" }], entries });
+  assert.equal(photoWithName.status, 400);
+
+  // The plain links the app produces are accepted.
+  for (const url of [SET_URL, "https://quizlet.com/1/a/", "https://quizlet.com/123/job-interview-flash-cards-2_b/"]) {
+    assert.equal((await publishRaw({ sources: [set({ url })], entries })).status, 200, url);
+  }
 });

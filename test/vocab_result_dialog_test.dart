@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
+import 'package:flutter_vocabulary_app/core/services/quizlet_cards.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/vocab_result_dialog.dart';
 
 /// words-from-subtitles T9: the results dialog after a photo or a subtitle
@@ -118,6 +119,87 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(result, isEmpty);
+  });
+
+  Future<void> openQuizlet(WidgetTester tester, QuizletProposal p,
+      void Function(List<VocabWord>?) done) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () async => done(await showQuizletResultDialog(context, p,
+              setName: 'Biology unit 3')),
+          child: const Text('open'),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+      'quizlet: set name on top, Read X of Y and skipped lines when they apply (AC-02, AC-08)',
+      (tester) async {
+    await openQuizlet(
+        tester,
+        QuizletProposal(words: words, skipped: 3, found: 90, stated: 120),
+        (_) {});
+    expect(find.text('Biology unit 3'), findsOneWidget);
+    expect(find.textContaining('Read 90 of 120 cards'), findsOneWidget);
+    expect(
+        find.textContaining(
+            '3 cards skipped: already in the session, repeated or without text'),
+        findsOneWidget);
+    expect(find.text('reluctant'), findsOneWidget);
+    expect(find.textContaining('photo'), findsNothing);
+  });
+
+  testWidgets(
+      'quizlet: no Read line when all found, no skipped line when none skipped',
+      (tester) async {
+    await openQuizlet(tester,
+        QuizletProposal(words: words, skipped: 0, found: 2, stated: 2), (_) {});
+    expect(find.text('Biology unit 3'), findsOneWidget);
+    expect(find.textContaining('Read '), findsNothing);
+    expect(find.textContaining('skipped'), findsNothing);
+  });
+
+  testWidgets('quizlet: one skipped card reads in the singular',
+      (tester) async {
+    await openQuizlet(
+        tester,
+        QuizletProposal(words: words, skipped: 1, found: 3, stated: null),
+        (_) {});
+    expect(find.textContaining('1 card skipped'), findsOneWidget);
+    expect(find.textContaining('Read '), findsNothing);
+  });
+
+  testWidgets(
+      'quizlet: an empty list says No new words with the skipped line, Done returns empty (AC-04b)',
+      (tester) async {
+    List<VocabWord>? result;
+    await openQuizlet(
+        tester,
+        const QuizletProposal(words: [], skipped: 5, found: 5, stated: 5),
+        (r) => result = r);
+    expect(find.text('No new words in this set.'), findsOneWidget);
+    expect(find.textContaining('5 cards skipped'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(result, isEmpty);
+  });
+
+  testWidgets('quizlet: removing a word and Done returns the rest',
+      (tester) async {
+    List<VocabWord>? result;
+    await openQuizlet(
+        tester,
+        QuizletProposal(words: words, skipped: 0, found: 2, stated: 2),
+        (r) => result = r);
+    await tester.tap(find.byIcon(Icons.close).first);
+    await tester.pump();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(result!.map((w) => w.word), ['tide']);
   });
 
   test('the cost shows three decimals, and a tiny cost is not shown as zero', () {

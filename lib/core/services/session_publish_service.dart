@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
-import '../models/source_photo.dart';
+import '../models/session_source.dart';
 import '../models/word_pair.dart';
 import '../providers.dart' show WordDetailMode;
 
@@ -27,13 +27,10 @@ class PublishedSession {
   /// (ADR-0008). Null from a Worker that predates republishing.
   final String? editToken;
 
-  /// The photos the request declared, in pager order: their bytes still have
-  /// to be uploaded (ADR-0006).
-  final List<SourcePhoto> declaredSources;
-
-  /// Linked photos past the first 10 taken, which the page will not show
-  /// (spec OQ-3). Their rows are published unlinked.
-  final List<SourcePhoto> leftOutSources;
+  /// The sources the request declared (photos and sets), in pager order:
+  /// the photos' bytes still have to be uploaded, a set needs nothing more
+  /// (ADR-0006).
+  final List<SessionSource> declaredSources;
 
   PublishedSession({
     required this.id,
@@ -41,7 +38,6 @@ class PublishedSession {
     this.expiresAt,
     this.editToken,
     this.declaredSources = const [],
-    this.leftOutSources = const [],
   });
 }
 
@@ -51,9 +47,6 @@ class PublishedSession {
 /// the link next to it.
 class SessionPublishService {
   static const _timeout = Duration(seconds: 20);
-
-  /// The most photos a published session holds (the Worker's `MAX_SOURCES`).
-  static const maxSources = 10;
 
   final http.Client _client;
 
@@ -69,15 +62,16 @@ class SessionPublishService {
   /// ADR-0004). Every stored translation and definition is sent whatever the
   /// mode, and the page decides which columns to show (AC-27).
   ///
-  /// [sources] are the session's photos when "include photos" is on; empty
-  /// means off, and then neither `sources` nor any `sourceId` is sent (AC-24).
-  /// Only photos with a linked row are declared, the first [maxSources] by
-  /// taken time (spec OQ-3). [publishedId] and [editToken] ask the Worker to
+  /// [sources] are the session's sets, always, and its photos when "Include
+  /// photos" is on; empty means none, and then neither `sources` nor any
+  /// `sourceId` is sent (AC-24). Only sources with a linked row are declared, all of them,
+  /// by taken time; each goes with its kind, and a set with its name and link
+  /// (ADR-0006). [publishedId] and [editToken] ask the Worker to
   /// overwrite the earlier link (ADR-0008).
   Future<PublishedSession> publish(
     List<WordPair> pairs, {
     WordDetailMode detail = WordDetailMode.translation,
-    List<SourcePhoto> sources = const [],
+    List<SessionSource> sources = const [],
     String? publishedId,
     String? editToken,
   }) async {
@@ -87,15 +81,24 @@ class SessionPublishService {
       );
     }
 
-    final kept = [for (final pair in pairs) if (!pair.isEmpty) pair];
+    final kept = [
+      for (final pair in pairs)
+        if (!pair.isEmpty) pair
+    ];
     final linkedIds = {for (final pair in kept) pair.sourceId};
     final linked = [
-      for (final photo in sources)
-        if (linkedIds.contains(photo.id)) photo,
-    ]..sort((a, b) => a.takenAt.compareTo(b.takenAt));
-    final declared = linked.take(maxSources).toList();
-    final leftOut = linked.skip(maxSources).toList();
-    final declaredIds = {for (final photo in declared) photo.id};
+      for (final source in sources)
+        if (linkedIds.contains(source.id)) source,
+    ];
+    // List.sort is not stable: the position breaks ties between equal times.
+    final declared = [
+      for (final (_, source) in ([...linked.indexed]..sort((a, b) {
+          final byTime = a.$2.takenAt.compareTo(b.$2.takenAt);
+          return byTime != 0 ? byTime : a.$1.compareTo(b.$1);
+        })))
+        source,
+    ];
+    final declaredIds = {for (final source in declared) source.id};
 
     final entries = [
       for (final pair in kept)
@@ -127,7 +130,15 @@ class SessionPublishService {
               if (declared.isNotEmpty)
                 'sources': [
                   for (var i = 0; i < declared.length; i++)
-                    {'id': declared[i].id, 'order': i},
+                    {
+                      'id': declared[i].id,
+                      'order': i,
+                      'kind': declared[i].kind.name,
+                      if (declared[i].kind == SourceKind.set) ...{
+                        'name': declared[i].name,
+                        'url': declared[i].url,
+                      },
+                    },
                 ],
               if (publishedId != null && editToken != null) ...{
                 'publishedId': publishedId,
@@ -146,7 +157,8 @@ class SessionPublishService {
 
     Map<String, dynamic> decoded;
     try {
-      decoded = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      decoded =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } catch (_) {
       throw SessionPublishException(
         'Unexpected response (status ${response.statusCode})',
@@ -171,7 +183,6 @@ class SessionPublishService {
       expiresAt: expiresAt != null ? DateTime.tryParse(expiresAt) : null,
       editToken: decoded['editToken'] as String?,
       declaredSources: declared,
-      leftOutSources: leftOut,
     );
   }
 }

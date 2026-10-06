@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-06", "AC-11", "AC-13"]
 files_hint: ["lib/core/services/quizlet_link.dart", "test/quizlet_link_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Find a Quizlet set link in pasted text and decide which navigations the web view may follow

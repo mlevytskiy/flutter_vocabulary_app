@@ -7,7 +7,7 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session.dart';
-import 'package:flutter_vocabulary_app/core/models/source_photo.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -31,11 +31,68 @@ void main() {
     }
   });
 
-  SourcePhoto photo(String id, {String? fileName, DateTime? takenAt}) =>
-      SourcePhoto()
+  SessionSource photo(String id, {String? fileName, DateTime? takenAt}) =>
+      SessionSource()
         ..id = id
         ..fileName = fileName ?? '$id.jpg'
         ..takenAt = takenAt ?? DateTime.utc(2026, 9, 28, 10, 30);
+
+  group('SessionSource kind, name, url', () {
+    // AC-13b, AC-15: sources of both kinds live in one list.
+    test('JSON without kind reads as a photo; round trip keeps a set', () {
+      final legacy = SessionSource.fromJson({
+        'id': 'a1',
+        'fileName': 'a1.jpg',
+        'takenAt': '2026-09-28T10:00:00.000Z',
+      });
+      expect(legacy.kind, SourceKind.photo);
+      expect(legacy.name, isNull);
+      expect(legacy.url, isNull);
+      expect(legacy.toJson()['kind'], 'photo');
+
+      final set = SessionSource()
+        ..id = 's1'
+        ..kind = SourceKind.set
+        ..name = 'Biology'
+        ..url = 'https://quizlet.com/123/biology/';
+      final back = SessionSource.fromJson(set.toJson());
+      expect(back.kind, SourceKind.set);
+      expect(back.name, 'Biology');
+      expect(back.url, 'https://quizlet.com/123/biology/');
+      final c = set.copy();
+      expect([c.kind, c.name, c.url],
+          [SourceKind.set, 'Biology', 'https://quizlet.com/123/biology/']);
+      expect(SourceKind.values.first, SourceKind.photo);
+    });
+
+    test('Isar keeps kind, name and url; photos read back as photos',
+        () async {
+      SharedPreferences.setMockInitialValues({});
+      final dir = Directory.systemTemp.createTempSync('session_source_kind');
+      final store = await SessionStore.open(directory: dir.path);
+      try {
+        final session = Session.create()
+          ..sources = [
+            photo('p1'),
+            SessionSource()
+              ..id = 's1'
+              ..kind = SourceKind.set
+              ..name = 'Biology'
+              ..url = 'https://quizlet.com/123/biology/',
+          ];
+        await store.put(session);
+        final back = (await store.byId(session.sessionId))!;
+        expect(back.sources.map((s) => s.kind).toList(),
+            [SourceKind.photo, SourceKind.set]);
+        expect(back.sources[0].name, isNull);
+        expect(back.sources[1].name, 'Biology');
+        expect(back.sources[1].url, 'https://quizlet.com/123/biology/');
+      } finally {
+        await store.close();
+        dir.deleteSync(recursive: true);
+      }
+    });
+  });
 
   group('JSON', () {
     // AC-26

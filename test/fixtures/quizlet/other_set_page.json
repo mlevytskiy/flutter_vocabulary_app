@@ -1,0 +1,8 @@
+{
+ "setId": "111",
+ "name": "Other set",
+ "heading": "Terms in this set (5)",
+ "embedded": "{\"props\": {\"pageProps\": {\"set\": {\"id\": 111, \"title\": \"Other set\", \"numTerms\": 5}, \"studiableData\": {\"studiableItems\": [{\"id\": 1, \"cardSides\": [{\"sideId\": 0, \"label\": \"word\", \"media\": [{\"type\": 1, \"plainText\": \"term 1\"}]}, {\"sideId\": 1, \"label\": \"definition\", \"media\": [{\"type\": 1, \"plainText\": \"back 1\"}]}, {\"sideId\": 2, \"label\": \"example\", \"media\": []}]}, {\"id\": 1, \"cardSides\": [{\"sideId\": 0, \"label\": \"word\", \"media\": [{\"type\": 1, \"plainText\": \"term 2\"}]}, {\"sideId\": 1, \"label\": \"definition\", \"media\": [{\"type\": 1, \"plainText\": \"back 2\"}]}, {\"sideId\": 2, \"label\": \"example\", \"media\": []}]}, {\"id\": 1, \"cardSides\": [{\"sideId\": 0, \"label\": \"word\", \"media\": [{\"type\": 1, \"plainText\": \"term 3\"}]}, {\"sideId\": 1, \"label\": \"definition\", \"media\": [{\"type\": 1, \"plainText\": \"back 3\"}]}, {\"sideId\": 2, \"label\": \"example\", \"media\": []}]}, {\"id\": 1, \"cardSides\": [{\"sideId\": 0, \"label\": \"word\", \"media\": [{\"type\": 1, \"plainText\": \"term 4\"}]}, {\"sideId\": 1, \"label\": \"definition\", \"media\": [{\"type\": 1, \"plainText\": \"back 4\"}]}, {\"sideId\": 2, \"label\": \"example\", \"media\": []}]}, {\"id\": 1, \"cardSides\": [{\"sideId\": 0, \"label\": \"word\", \"media\": [{\"type\": 1, \"plainText\": \"term 5\"}]}, {\"sideId\": 1, \"label\": \"definition\", \"media\": [{\"type\": 1, \"plainText\": \"back 5\"}]}, {\"sideId\": 2, \"label\": \"example\", \"media\": [{\"type\": 1, \"plainText\": \"example 5\"}]}]}]}}}, \"page\": \"/[setId]\"}",
+ "visible": null,
+ "robot": "Job interview flashcards | Quizlet"
+}

@@ -28,15 +28,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('shows exactly the two choices Camera and Gallery', (tester) async {
+  testWidgets('shows exactly the two choices Camera and Photos, as side-by-side cards', (tester) async {
     await openDialog(tester);
 
     expect(find.byType(Dialog), findsOneWidget);
     expect(find.text('Camera'), findsOneWidget);
-    expect(find.text('Gallery'), findsOneWidget);
+    expect(find.text('Photos'), findsOneWidget);
     expect(find.byIcon(Icons.camera_alt), findsOneWidget);
     expect(find.byIcon(Icons.photo_library), findsOneWidget);
-    expect(find.descendant(of: find.byType(Dialog), matching: find.byType(ListTile)), findsNWidgets(2));
+    final cards = find.descendant(of: find.byType(Dialog), matching: find.byType(Card));
+    expect(cards, findsNWidgets(2));
+    // Side by side, each with its icon above its name.
+    expect(tester.getTopLeft(cards.at(0)).dy, tester.getTopLeft(cards.at(1)).dy);
+    expect(tester.getTopLeft(cards.at(0)).dx, lessThan(tester.getTopLeft(cards.at(1)).dx));
+    expect(tester.getCenter(find.byIcon(Icons.camera_alt)).dy,
+        lessThan(tester.getCenter(find.text('Camera')).dy));
   });
 
   testWidgets('tapping Camera returns ImageSource.camera', (tester) async {
@@ -49,9 +55,9 @@ void main() {
     expect(find.byType(Dialog), findsNothing);
   });
 
-  testWidgets('tapping Gallery returns ImageSource.gallery', (tester) async {
+  testWidgets('tapping Photos returns ImageSource.gallery', (tester) async {
     await openDialog(tester);
-    await tester.tap(find.text('Gallery'));
+    await tester.tap(find.text('Photos'));
     await tester.pumpAndSettle();
 
     expect(closed, isTrue);
