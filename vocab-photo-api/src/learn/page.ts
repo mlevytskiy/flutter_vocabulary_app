@@ -5,7 +5,7 @@ import { EXERCISES, type Exercise } from "./exercises";
  * Server-rendered learn pages (ADR-0002): the learn page, the no-words page and the
  * coming-soon page, inside the shared page's `shell()` and stylesheet. Every stored
  * value goes through `escapeHtml`. The ticks travel in the address as `pick`
- * (already filtered to available exercises by the route); `learn.js` (T4) keeps
+ * (already filtered to available exercises by the route); `learn.js` keeps
  * Start's link and the hint in step with them once it loads.
  */
 
@@ -27,7 +27,7 @@ function renderExercise(exercise: Exercise, ticked: boolean): string {
 }
 
 /** `picks`: the valid, available exercise ids the address asked for. */
-export function renderLearnPage(sessionId: string, wordCount: number, picks: readonly string[]): string {
+export function renderLearnPage(sessionId: string, wordCount: number, picks: readonly string[], scriptPath: string): string {
   const words = `${wordCount} ${wordCount === 1 ? "word" : "words"}`;
   const sections = ([1, 2, 3] as const)
     .map((stage) => {
@@ -49,7 +49,7 @@ ${sections}
 <p>${start}</p>
 ${hint}
 </main>`;
-  return shell("Learn", body);
+  return shell("Learn", body, scriptPath);
 }
 
 export function renderNoWordsPage(sessionId: string): string {
@@ -62,7 +62,7 @@ export function renderNoWordsPage(sessionId: string): string {
   );
 }
 
-export function renderComingSoonPage(sessionId: string, exercise: Exercise, picks: readonly string[]): string {
+export function renderComingSoonPage(sessionId: string, exercise: Exercise, picks: readonly string[], scriptPath: string): string {
   const back = `${sessionPath(sessionId)}/learn${pickQuery(picks)}`;
   return shell(
     exercise.name,
@@ -70,6 +70,7 @@ export function renderComingSoonPage(sessionId: string, exercise: Exercise, pick
 <h1>${escapeHtml(exercise.name)}</h1>
 <p>Coming soon — this exercise is not ready yet.</p>
 <p><a class="btn back" href="${escapeHtml(back)}">Back to exercises</a></p>
-</main>`
+</main>`,
+    scriptPath
   );
 }

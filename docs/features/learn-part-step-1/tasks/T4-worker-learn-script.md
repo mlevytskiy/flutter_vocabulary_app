@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-05b", "AC-07"]
 files_hint: ["vocab-photo-api/src/learn/client/learn.js", "vocab-photo-api/src/learn/client/learn.d.ts", "vocab-photo-api/src/session/assets.ts", "vocab-photo-api/src/learn/page.ts", "vocab-photo-api/tsconfig.client.json", "vocab-photo-api/test/learn.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Add learn.js: Start, the hint, the pick in the address and Back to exercises

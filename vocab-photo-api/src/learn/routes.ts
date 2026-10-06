@@ -1,6 +1,6 @@
 import { htmlResponse } from "../http";
 import type { RouteContext, RouteDefinition } from "../routing";
-import { pageHeaders } from "../session/assets";
+import { pageAssets, pageHeaders } from "../session/assets";
 import { renderNotFoundPage } from "../session/page";
 import { loadSession } from "../session/store";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
@@ -22,10 +22,11 @@ async function handleLearnPage({ env, url, params }: RouteContext): Promise<Resp
   const session = await loadSession(env, params.id);
   if (!session) return gonePage();
   const wordCount = session.rows.filter(isWordToLearn).length;
+  const { learnScriptPath } = await pageAssets();
   const html =
     wordCount === 0
       ? renderNoWordsPage(session.id)
-      : renderLearnPage(session.id, wordCount, validPicks(url));
+      : renderLearnPage(session.id, wordCount, validPicks(url), learnScriptPath);
   return htmlResponse(html, 200, await pageHeaders());
 }
 
@@ -37,7 +38,8 @@ async function handleComingSoonPage({ env, url, params }: RouteContext): Promise
   if (!exercise) return gonePage();
   // OQ-1 (provisional): a live session whose rows hold no word to learn any more still gets
   // this 200 page, as the contract says; the owner may resolve it the other way.
-  return htmlResponse(renderComingSoonPage(session.id, exercise, validPicks(url)), 200, await pageHeaders());
+  const { learnScriptPath } = await pageAssets();
+  return htmlResponse(renderComingSoonPage(session.id, exercise, validPicks(url), learnScriptPath), 200, await pageHeaders());
 }
 
 export const learnRoutes: RouteDefinition[] = [

@@ -204,3 +204,37 @@ test("the learn pages use the shared stylesheet (one CSP hash) and fit a 320 px 
   assert.equal((html.match(/<style>/g) ?? []).length, 1);
   assert.match(html, /<meta name="viewport"/);
 });
+
+const LEARN_SCRIPT = /<script type="module" src="(\/assets\/learn-[0-9a-f]{12}\.js)"><\/script>/;
+
+test("AC-05, AC-07: both learn pages load the versioned learn script, served immutable; an old hash is 404", async () => {
+  const { id } = await publish({ entries: [{ word: "apple", translation: "яблуко" }] });
+  const { res: learnRes, html: learnHtml } = await learn(id);
+  const { res: soonRes, html: soonHtml } = await (async () => {
+    const res = await get(`/s/${id}/learn/mnemonic-story`);
+    return { res, html: withoutStyle(await res.text()) };
+  })();
+
+  const src = learnHtml.match(LEARN_SCRIPT)?.[1];
+  assert.ok(src, "learn page has the script tag");
+  assert.equal(soonHtml.match(LEARN_SCRIPT)?.[1], src);
+  assert.equal((learnHtml.match(/<script/g) ?? []).length, 1, "no inline script");
+  for (const res of [learnRes, soonRes]) {
+    assert.match(res.headers.get("content-security-policy") ?? "", /script-src 'self'(;|$)/);
+  }
+
+  const js = await get(src);
+  assert.equal(js.status, 200);
+  assert.match(js.headers.get("content-type") ?? "", /^text\/javascript/);
+  assert.equal(js.headers.get("cache-control"), "public, max-age=31536000, immutable");
+  assert.equal(js.headers.get("x-content-type-options"), "nosniff");
+  assert.match(await js.text(), /replaceState/);
+
+  assert.equal((await get("/assets/learn-000000000000.js")).status, 404);
+});
+
+test("the no-words page needs no script", async () => {
+  const { id } = await publish({ entries: [{ word: "blank", translation: "" }] });
+  const { html } = await learn(id);
+  assert.doesNotMatch(html, /<script/);
+});

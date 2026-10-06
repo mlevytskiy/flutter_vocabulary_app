@@ -1,5 +1,6 @@
 import type { RouteContext, RouteDefinition } from "../routing";
 import script from "./client/page.js";
+import learnScript from "../learn/client/learn.js";
 import { STYLE } from "./style";
 
 /**
@@ -12,6 +13,8 @@ import { STYLE } from "./style";
 interface PageAssets {
   /** `/assets/page-<hash>.js`: the hash changes whenever the script does. */
   scriptPath: string;
+  /** `/assets/learn-<hash>.js`: the learn pages' script, hashed the same way. */
+  learnScriptPath: string;
   /** `'sha256-…'`, the CSP source that allows the inline <style>. */
   styleSource: string;
 }
@@ -23,10 +26,11 @@ async function sha256(text: string): Promise<Uint8Array> {
 }
 
 async function computeAssets(): Promise<PageAssets> {
-  const [scriptHash, styleHash] = await Promise.all([sha256(script), sha256(STYLE)]);
-  const hex = Array.from(scriptHash.slice(0, 6), (b) => b.toString(16).padStart(2, "0")).join("");
+  const [scriptHash, learnHash, styleHash] = await Promise.all([sha256(script), sha256(learnScript), sha256(STYLE)]);
+  const hex = (hash: Uint8Array) => Array.from(hash.slice(0, 6), (b) => b.toString(16).padStart(2, "0")).join("");
   return {
-    scriptPath: `/assets/page-${hex}.js`,
+    scriptPath: `/assets/page-${hex(scriptHash)}.js`,
+    learnScriptPath: `/assets/learn-${hex(learnHash)}.js`,
     styleSource: `'sha256-${btoa(String.fromCharCode(...styleHash))}'`,
   };
 }
@@ -62,25 +66,27 @@ export async function pageHeaders(): Promise<Record<string, string>> {
 }
 
 /**
- * GET /assets/page-<hash>.js -- public. Only the current hash answers; an old
- * one (a page rendered before a deploy) is 404 rather than new code under an
- * old immutable URL.
+ * GET /assets/page-<hash>.js and /assets/learn-<hash>.js -- public. Only the
+ * current hash answers; an old one (a page rendered before a deploy) is 404
+ * rather than new code under an old immutable URL.
  */
-async function handleScript({ url }: RouteContext): Promise<Response> {
-  const { scriptPath } = await pageAssets();
-  if (url.pathname !== scriptPath) {
-    return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
-  }
-  return new Response(script, {
-    status: 200,
-    headers: {
-      "content-type": "text/javascript; charset=utf-8",
-      "cache-control": "public, max-age=31536000, immutable",
-      "x-content-type-options": "nosniff",
-    },
-  });
+function scriptHandler(which: "scriptPath" | "learnScriptPath", source: string) {
+  return async ({ url }: RouteContext): Promise<Response> => {
+    if (url.pathname !== (await pageAssets())[which]) {
+      return new Response("Not found", { status: 404, headers: { "content-type": "text/plain; charset=utf-8" } });
+    }
+    return new Response(source, {
+      status: 200,
+      headers: {
+        "content-type": "text/javascript; charset=utf-8",
+        "cache-control": "public, max-age=31536000, immutable",
+        "x-content-type-options": "nosniff",
+      },
+    });
+  };
 }
 
 export const assetRoutes: RouteDefinition[] = [
-  { method: "GET", pattern: /^\/assets\/page-[0-9a-f]{12}\.js$/, public: true, handler: handleScript },
+  { method: "GET", pattern: /^\/assets\/page-[0-9a-f]{12}\.js$/, public: true, handler: scriptHandler("scriptPath", script) },
+  { method: "GET", pattern: /^\/assets\/learn-[0-9a-f]{12}\.js$/, public: true, handler: scriptHandler("learnScriptPath", learnScript) },
 ];
