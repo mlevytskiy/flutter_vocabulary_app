@@ -60,37 +60,49 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 3. Context and scope
 
-<!-- 🎯 Why: draws the SYSTEM BOUNDARY — who talks to it from outside, where the trust zone ends.
-     Without §3, §5 and §8 (authorization) blur — unclear what's «inside» vs «outside».
-     📋 Write: 2–3 sentences of business context + an external-systems table + a C4Context block.
-     📌 «External: none (deliberate, no third-party in v1)» is itself a decision worth stating.
-     Trust boundary — the line past which you don't trust data without checking it.
-     Never N/A — greenfield still draws the planned actors + external systems. -->
+The learner keeps word lists as Quizlet sets and wants them in the app's sessions without retyping. The app opens a set's public page inside itself — where the learner can pass Quizlet's robot check — reads the set's name and cards on the phone, and proposes them as words; the app's usual translation service translates each term. Kept words travel with the session to the shared page, where the partner sees the set as a source with a link back to Quizlet.
 
-<Business context in 2–3 sentences. What the system does for whom.>
-
-<!-- brownfield: <one-line scan summary> (or «N/A — greenfield repo» if no source existed) -->
+<!-- brownfield: Flutter app (feature folders, Riverpod providers, Isar sessions with source photos, typed go_router routes, a subtitle import flow with the late-result rule; no web view) + the vocab-photo-api Worker (D1 sessions/rows/photo slots, R2 photo bytes, server-rendered shared page with one plain-JS file, node --test harness). No architecture-map.md; scanned 2026-10-06. -->
 
 **External systems (in / out):**
 
 | Actor or system | Type | Interaction |
 |---|---|---|
-| <author role> | Person | <what they do> |
-| <external service> | System (internal/external) | <interaction> |
-| <identity provider> | System (external) | <provides auth tokens> |
+| learner | Person | Pastes a Quizlet set link, passes Quizlet's robot check if shown, reviews and keeps words, publishes with or without sources |
+| partner | Person | Opens the shared link; sees a set source's name and link in the source pager; opens the set on Quizlet |
+| Quizlet (quizlet.com) | System (external) | **New.** Serves the set's public page, read inside the app's web view; may show its own robot check; never written to, never logged into |
+| Google Translate endpoint (`translate.googleapis.com/translate_a/single`) | System (external) | Translates each imported term, exactly as for a typed word — unchanged |
+| vocab-photo-api Worker | System (internal) | Accepts set sources in a publish and shows them on the shared page — extended; **never contacts Quizlet** (owner, design 2026-10-06) |
+| AnkiDroid | System (external) | Imports the exported file — unchanged; imported words export like any word |
 
-**C4 Context (L1):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. -->
+**Trust boundary.** Everything that comes out of the Quizlet page — the set's name, the card count, every term, back side and example — is untrusted text produced by a third-party page and its scripts. **Only the app opens, reads and checks the Quizlet page** (owner, design 2026-10-06): it checks the text came from the pasted set, cleans and cuts it to the field limit before the results dialog, and never runs or renders it as markup; the web view is a sandbox the learner looks into and may open only Quizlet's own pages. The Worker never contacts Quizlet; at publish it keeps only a format check on what reaches the public page — a set source's link must be a plain `quizlet.com` set address and its name within the field limit (spec §6.1) — and the shared page shows them only as text and a plain outbound link.
+
+**C4 Context (L1):**
 
 ```mermaid
 C4Context
-    title <feature> — System Context
+    title import-from-quizlet — System Context
 
-    Person(actor, "<Actor role>", "<intent>")
-    System(app, "<Our system>", "<one-sentence description>")
-    System_Ext(ext, "<External system>", "<one-sentence description>")
+    Person(learner, "learner", "Pastes a Quizlet set link, reviews the cards, publishes sessions")
+    Person(partner, "partner", "Opens the shared link; sees which set a word came from")
 
-    Rel(actor, app, "<interaction>", "<protocol>")
-    Rel(app, ext, "<interaction>", "<protocol>")
+    Enterprise_Boundary(ours, "Ours") {
+        System(app, "Vocabulary app", "The only part that opens, reads and checks a Quizlet set page — in its in-app web view")
+        System(worker, "vocab-photo-api Worker", "Stores published sessions with their set sources; serves the shared page; never contacts Quizlet")
+    }
+
+    System_Ext(quizlet, "Quizlet", "Public set pages, its own robot check")
+    System_Ext(gt, "Google Translate endpoint", "Translations of imported terms")
+    System_Ext(anki, "AnkiDroid", "Imports the exported file")
+
+    Rel(learner, app, "Pastes a set link, keeps words, publishes", "touch")
+    Rel(app, quizlet, "Opens and reads a set page in the web view", "HTTPS")
+    Rel(learner, quizlet, "Passes the robot check inside the preview", "touch")
+    Rel(app, gt, "Translates each term", "HTTPS")
+    Rel(app, worker, "Publishes the session with set sources", "JSON/HTTPS, shared secret")
+    Rel(partner, worker, "Opens the shared page", "HTTPS")
+    Rel(partner, quizlet, "Opens the set from its link", "HTTPS, new tab")
+    Rel(learner, anki, "Imports the exported file")
 ```
 
 ## 4. Solution strategy
