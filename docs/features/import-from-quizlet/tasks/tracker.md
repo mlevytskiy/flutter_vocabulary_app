@@ -5,7 +5,7 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
-| [T1](T1-promote-set-sources-migration.md) | Promote the set-sources migration into the Worker | migration | Maksym | S | — | todo |
+| [T1](T1-promote-set-sources-migration.md) | Promote the set-sources migration into the Worker | migration | Maksym | S | — | done |
 | [T2](T2-worker-accept-set-sources.md) | Accept, store and load set sources in the Worker publish path | ports | Maksym | M | T1 | todo |
 | [T3](T3-shared-page-set-source-page.md) | Show a set source as a page of the source pager and the phone sources dialog | ui | Maksym | M | T2 | todo |
 | [T4](T4-generalise-source-photo-to-session-source.md) | Generalise SourcePhoto into SessionSource with a kind, name and link | domain | Maksym | M | — | todo |
