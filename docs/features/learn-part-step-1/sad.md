@@ -247,6 +247,195 @@ sequenceDiagram
     end
 ```
 
+### S-01 Open the learn page in the app (US-01)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant D as <data-store>
+
+    Note over U,UI: Precondition: the learner is on a session's Words screen (SCR-02), opened for the current session or for a History session
+    U->>UI: taps Learn
+    UI->>D: reads the word rows of the session this Words screen shows (current session, or the History session by its id)
+    D-->>UI: word rows
+    UI->>UI: counts the words to learn (an English word plus a translation or a definition)
+    alt no word to learn
+        UI-->>U: short message "No words to learn", Words screen stays, learn page not opened
+    else at least one word to learn
+        UI-->>U: learn page (SCR-03) for this session, with this session's word count
+        U->>UI: taps the back arrow
+        UI-->>U: the same Words screen
+    end
+    Note over UI,D: reads only, persists nothing, the current session is not changed even when the session came from History
+    Note over U,UI: Postcondition: the learn page shows the count of the session it was opened from
+```
+
+### S-02 Pick and start an exercise in the app (US-02, US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+
+    Note over U,UI: Precondition: the learn page (SCR-03) was just opened from Learn
+    UI-->>U: word count, Step 1, Step 2, Step 3 with eleven exercises, nothing ticked, ten greyed "Coming soon", Start unavailable, "Pick at least one exercise"
+    U->>UI: taps a coming-soon exercise, its tick box or its label
+    UI-->>U: nothing changes, it stays unticked
+    U->>UI: presses Start with nothing ticked
+    UI-->>U: nothing happens, the hint stays
+    U->>UI: ticks Mnemonic story
+    UI-->>U: Start available, hint hidden
+    alt the learner unticks Mnemonic story
+        UI-->>U: Start unavailable again, "Pick at least one exercise" shown again
+    else the learner presses Start
+        UI-->>U: coming-soon screen (SCR-04) "Mnemonic story", "Coming soon — this exercise is not ready yet.", "Back to exercises"
+        U->>UI: "Back to exercises" or the back arrow
+        UI-->>U: learn page, Mnemonic story still ticked
+    end
+    U->>UI: leaves the learn page, then taps Learn again on the Words screen
+    UI-->>U: learn page with nothing ticked
+    Note over U,UI: Postcondition: ticks lived only for that visit, nothing was persisted
+```
+
+### S-03 Learn on the shared page (US-04)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant S as <service>
+    participant D as <data-store>
+
+    Note over U,UI: Precondition: a partner has the shared page (SCR-05) of a live published session open, Learn sits right of "Download for AnkiDroid"
+    U->>UI: presses Learn
+    opt wide layout
+        UI->>UI: opens an empty new tab during the click, so the browser does not block it
+    end
+    UI->>S: fetches the changes since the last revision the page has seen
+    S->>D: reads the session's changed rows
+    D-->>S: changes
+    alt changes arrived
+        S-->>UI: changes, applied to the page's saved rows
+    else the fetch fails, no connection
+        UI->>UI: keeps the saved rows it already holds
+    end
+    UI->>UI: counts the words to learn among the saved rows (cells not saved yet do not count)
+    alt no word to learn, even if the learner's app still has words
+        UI-->>U: short message "No words to learn", the empty tab is closed, the learn page does not open
+    else at least one word to learn, phone layout
+        UI-->>U: learn page (SCR-06) at its own link in the same tab, the browser's back button returns to the shared page
+    else at least one word to learn, wide layout
+        UI-->>U: learn page (SCR-06) in the new tab, the shared page and any unsaved cell stay open in theirs
+    end
+    Note over UI,D: reads only, persists nothing
+    Note over U,UI: Postcondition: the learn page opens only for a session whose saved rows hold a word to learn
+```
+
+### S-04 The web learn page at its own link (US-04)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant S as <service>
+    participant D as <data-store>
+
+    Note over U,UI: Precondition: the learn link was opened from Learn or directly, with no pick
+    U->>UI: opens the learn link
+    UI->>S: requests the learn page
+    S->>D: loads the session and its saved rows
+    D-->>S: session or nothing
+    alt link expired or never existed
+        S-->>UI: the shared page's "This word list is gone." answer, the same as for a dead shared link
+        UI-->>U: "This word list is gone." (SCR-08), nothing reveals whether the session existed
+    else live session with no word to learn
+        S-->>UI: "No words to learn" with a link to the shared page
+        UI-->>U: "No words to learn" and the link
+    else live session with at least one word to learn
+        S-->>UI: learn page, word count, eleven exercises in three stages, nothing ticked
+        UI-->>U: the same plan, states and hint as in the app, no sideways scrolling at 320 px
+        U->>UI: ticks Mnemonic story
+        UI->>UI: writes the pick into the page's own address
+        UI-->>U: Start available, hint hidden
+        U->>UI: presses Start
+        UI->>S: requests the coming-soon page for Mnemonic story, with the pick
+        S->>D: loads the session
+        D-->>S: session
+        S-->>UI: coming-soon page (SCR-07)
+        UI-->>U: "Mnemonic story", "Coming soon — this exercise is not ready yet.", "Back to exercises"
+        U->>UI: "Back to exercises" or the browser's back button
+        UI->>S: requests the learn page with the pick
+        S->>D: loads the session and its saved rows
+        D-->>S: session
+        S-->>UI: learn page with Mnemonic story ticked (a pick of a coming-soon or unknown exercise is ignored)
+        UI-->>U: learn page, Mnemonic story still ticked
+    end
+    opt a coming-soon link names an exercise that is unknown or not available
+        S-->>UI: the same "This word list is gone." answer
+    end
+    Note over S,D: reads only, persists nothing
+    Note over U,UI: Postcondition: the web learn page follows the session's saved rows, never the app
+```
+
+### S-05 Fit the Words top bar on a narrow phone (US-05)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+
+    Note over U,UI: Precondition: the Words screen (SCR-02) is about to be shown, at the phone's width and system text size
+    U->>UI: opens the Words screen
+    UI->>UI: measures the space actually available for the back arrow, Learn, "Words" and Share at the current text size
+    alt everything fits with today's padding
+        UI-->>U: normal bar, back arrow, Learn, "Words", Share in this order, Share exactly as today and Learn matching it
+    else fits only with smaller padding
+        UI-->>U: compact bar, smaller padding, both buttons keep icon and label, "Words" whole, nothing cut or overlapping
+    else does not fit even with smaller padding
+        UI-->>U: icon-only bar, Learn and Share show only their icons, "Words" whole
+        U->>UI: long-presses an icon
+        UI-->>U: its name, "Learn" or "Share"
+    end
+    Note over U,UI: Postcondition: each top-bar button is at least 48 x 48 dp in every layout, no fixed width thresholds
+```
+
+### Coverage — user stories and acceptance criteria
+
+| Spec item | Shown by |
+|---|---|
+| US-01 Open the learn page in the app | S-01 (and design seed flow 1) |
+| US-02 See the learning plan and pick exercises | S-02, S-04 (web) |
+| US-03 Start the picked exercises | S-02, S-04 (web) |
+| US-04 Learn from a shared link | S-03, S-04 (and design seed flow 2) |
+| US-05 Keep the Words top bar usable on a narrow phone | S-05 |
+| AC-01 top-bar order, Learn looks like Share | S-05 normal-bar branch. The button's icon and look are a `screens` detail, not a runtime step |
+| AC-02 learn page for that session, back returns | S-01 else branch |
+| AC-03 no word to learn in the app | S-01 alt branch |
+| AC-04 word count, three stages, eleven exercises, nothing ticked | S-02 opening state, S-04 live-session branch |
+| AC-05 Start → coming soon → back with the tick | S-02 Start branch, S-04 Start and back |
+| AC-05b ticks cleared on a new visit | S-02 final steps. On the web, the Learn link carries no pick (S-03, S-04 precondition) |
+| AC-06 coming-soon exercise never ticks | S-02 tap on a coming-soon exercise, S-04 pick of a coming-soon exercise ignored |
+| AC-07 nothing ticked → Start unavailable + hint | S-02 Start with nothing ticked, untick branch |
+| AC-08 shared page Learn → same tab on a phone, new tab on a computer | S-03 phone and wide branches. No sideways scroll at 320 px: S-04 note, measured at release |
+| AC-08b learn link opened directly | S-04 no-word and live-session branches |
+| AC-09 dead link | S-04 dead-link branch, and the unknown or unavailable exercise opt |
+| AC-10 shared page with no saved word to learn | S-03 no-word branch, after the fresh changes fetch |
+| AC-11 compact bar | S-05 smaller-padding branch |
+| AC-11b icon-only bar + long press | S-05 icon-only branch |
+| AC-12 Share unchanged where it fits | S-05 normal-bar branch |
+| AC-13 History session's count, current session untouched | S-01 read by id, note "the current session is not changed" |
+
+**Flags for later stages (no ADR written here):**
+- No flow persists anything, so `data-model` has no index to choose (no new entity, column or migration).
+- S-03 reuses the existing public `GET /s/:id/changes` route (good-looking-web ADR-0005) for the fresh check before Learn. It is not a new route, but the `api` stage should note it as one more caller.
+- All new flows are synchronous (request → answer, or on the device only). No async step, so no idempotency key, retry or dead-letter branch is needed.
+
 ## 7. Deployment view
 
 <!-- N/A: reuses existing deployment units, no infra change -->
