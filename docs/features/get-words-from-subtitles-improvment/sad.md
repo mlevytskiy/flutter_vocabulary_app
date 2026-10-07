@@ -428,13 +428,16 @@ Each top-3 goal from §1 expanded into a full scenario:
 
 ## 12. Glossary
 
-<!-- 🎯 Why: ⭐ the DOMAIN GLOSSARY that ends arguments a year later («checkpoint — weekly or
-     biweekly? quarter — calendar or fiscal?»).
-     📋 Write: a term / meaning table. Business + technical terms mixed.
-     📌 e.g. «Lesson | a unit inside a course made of blocks (text, video)». -->
-
 | Term | Meaning |
 |---|---|
-| <e.g. domain object A> | <its meaning in this domain> |
-| <e.g. domain object B> | <its meaning> |
-| <e.g. domain invariant name> | <the rule, in plain language> |
+| film dialogue | A short exchange from the subtitle file (a joke or another memorable moment), up to 8 lines, picked by the AI in a subtitle import together with the proposed words it holds. The AI may lightly edit it. Stored as `FilmDialogue` in the session (ADR-0003) |
+| dialogue words | The word rows linked to one film dialogue at Done (`FilmDialogue.wordRowIds`): proposed, kept and appearing in its text under the AC-05 rule. Bold wherever they appear; the link only shrinks |
+| dialogue page | One page of the main screen's pager after page 1, and the same page on the shared page: the dialogue with bold words, the word list and the scene picture once drawn |
+| dialogue group | A `WordGroup` with a `dialogueId`: the dialogue words that are words to learn and in no other group yet. Any size |
+| other words | The session's words to learn in no group. One "Other words" group up to 19, else grouped by topic, then an ordinary word group |
+| scene picture | One picture of a film dialogue with invented characters and its lines in speech bubbles, drawn on Start of "Dialogs from movie" by a scene run |
+| scene run | A story run of `kind` `scene`: picture prompt writer then picture maker, no story step; one unit of the story allowance at start and per Draw again (ADR-0004). *New term — add with `/sdd:glossary`* |
+| dialogues setting | The switch "Get dialogues from subtitles" in the main screen's Settings, off by default; affects only new imports |
+| import id | The app-made id of one subtitle import, sent with its appended rows and dialogues so a repeat adds nothing twice (ADR-0005). *New term — add with `/sdd:glossary`* |
+| pending delivery | A dialogue or scene picture of a shared session not yet received by the Worker; marked on the `FilmDialogue` and retried, also after a restart (ADR-0005). *New term — add with `/sdd:glossary`* |
+| matching rule | The AC-05 rule for "a word appears in the text": whole word, any letter case, phrase words in order and next to each other, endings -s/-es/-ed/-ing; the same rule as mnemonic-story's word check |
