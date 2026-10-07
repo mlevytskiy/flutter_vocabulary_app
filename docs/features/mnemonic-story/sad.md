@@ -427,3 +427,27 @@ ADR files live under `docs/features/mnemonic-story/adr/NNNN-<title>.md`.
 - The app learns of progress only by polling while a story-related screen is open. There are no push notifications and no background fetch.
 - Prices are list-price estimates, not invoice copies (spec §3 "Exact billing").
 - The web learn page still leads to coming soon for Mnemonic story (spec §3).
+
+## 12. Glossary
+
+| Term | Meaning |
+|---|---|
+| learner | The phone owner who collects words into sessions; here, the only person who can make mnemonic stories (repo-root CONTEXT) |
+| partner | A person holding a session's shared link, with no app and no account; their web learn page is unchanged (repo-root CONTEXT) |
+| session | A set of words collected together on the learner's device; it now also holds its word groups (repo-root CONTEXT) |
+| word row | One line of a session: an English word with its details; it now carries a stable `rowId` (repo-root CONTEXT; ADR-0003) |
+| learn page | The screen where exercises are ticked and Start is pressed; in the app it now also shows the group pager (learn-part-step-1 CONTEXT) |
+| word to learn | A word row with an English word plus a translation or a definition (learn-part-step-1 CONTEXT) |
+| mnemonic story | One connected story, one "→" step per word, Ukrainian sentences with the English words embedded as written, with one picture (feature CONTEXT) |
+| word group | 7 to 19 words to learn from one session, by topic, with a short name; any size, "All words", in a session of 19 or fewer (feature CONTEXT) |
+| selected group | The one word group chosen on the learn page's pager by tapping its card, remembered per session (feature CONTEXT) |
+| story writer | The AI that writes the mnemonic story from a word group (feature CONTEXT) |
+| picture prompt writer | The AI that turns a mnemonic story into a description for drawing its picture (feature CONTEXT) |
+| picture maker | The AI that draws the picture from the picture prompt writer's description (feature CONTEXT) |
+| story run | One pass of a word group through the three AIs, with each one's result, price and time; kept for comparing AIs (feature CONTEXT) |
+| outdated story | A mnemonic story whose group's words changed after it was made; shown with "Words changed" (feature CONTEXT) |
+| story allowance | At most 20 story runs started per UTC day for the whole app (feature CONTEXT) |
+| AI choice | The three AIs picked in Words settings; each new run uses the choice in force when it starts (feature CONTEXT) |
+| offered AI list | The Worker's `models.json`: every AI that may be chosen, its role, list price, estimate and the defaults (ADR-0004). *Not yet in CONTEXT, so flagged for `/sdd:glossary`* |
+| grouped-words key | What the session's words to learn were (row id + English word) at the last grouping; a different key means grouping runs again (AC-03). *Not yet in CONTEXT, so flagged for `/sdd:glossary`* |
+| story run workflow | The Cloudflare Workflow instance that carries one story run's steps on the Worker (ADR-0002) |
