@@ -12,6 +12,7 @@ import { assetRoutes } from "./session/assets";
 import { learnRoutes } from "./learn/routes";
 import { subtitleRoutes } from "./subtitles/routes";
 import { storyRoutes } from "./story/routes.ts";
+import { deleteOldPictures } from "./story/store.ts";
 
 export type { Env } from "./env";
 export { StoryRunWorkflow } from "./story/workflow.ts";
@@ -316,6 +317,8 @@ export default {
 
   // The daily clean-up, `triggers.crons` in wrangler.jsonc (sad §7).
   async scheduled(_controller: ScheduledController, env: Env): Promise<void> {
-    await deleteExpiredSessions(env);
+    // Both clean-ups run even if one fails; a failure is still reported.
+    const results = await Promise.allSettled([deleteExpiredSessions(env), deleteOldPictures(env)]);
+    for (const result of results) if (result.status === "rejected") throw result.reason;
   },
 };

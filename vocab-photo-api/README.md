@@ -15,6 +15,12 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /subtitles/words` | secret + rate limit + subtitle import allowance | a subtitle file's dialogue lines in, ranked words out (words-from-subtitles) |
 | `POST /sessions` | secret + rate limit | publish (or republish) a word list, get a link |
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
+| `GET /story/models` | secret + rate limit | the offered AIs with prices and the defaults (mnemonic-story) |
+| `POST /story/grouping` | secret + rate limit | split the learner's words into topical groups (mnemonic-story) |
+| `POST /story/runs` | secret + rate limit + story allowance | start a story run: story, picture prompt, picture (mnemonic-story) |
+| `GET /story/runs?ids=<id>,<id>` | secret + rate limit | the steps so far of several runs |
+| `POST /story/runs/redo` | secret + rate limit | redo a failed picture prompt, or Draw again (a unit of the allowance) |
+| `GET /story/runs/<id>/pictures/<attempt>` | secret + rate limit | a run's picture bytes while the Worker still holds them |
 | `GET /s/<id>` | **public** | the page a person reads |
 | `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
 | `GET /s/<id>/learn` | **public** | the learn page: pick exercises, Start (learn-part-step-1) |
@@ -313,6 +319,29 @@ yet. Both pages are `no-store` under the shared page's CSP and load `/assets/lea
 enables Start and the hint and mirrors ticks into the address with `history.replaceState`. Nothing
 is saved.
 
+### Story runs (mnemonic-story) — secret-gated
+
+All under `/story/`, from `src/story/routes.ts`; none is public, and the web pages link to none of
+them. A run is one Cloudflare Workflow instance (`STORY_RUN`, class `StoryRunWorkflow`) whose id is
+the app's run id; its steps and prices are rows in D1 (`story_runs`, `story_run_steps`), its picture
+an R2 object `story-runs/<runId>/<attempt>` in `SOURCES`. Run ids are 1-40 letters, digits, `-` or `_`.
+
+- `POST /story/runs` `{ runId, words: [..], storyModel, promptModel, pictureModel }`. All three AIs
+  must be on the offered list (`GET /story/models`). `200 {"started":true}`; `422 {code:"not_offered", model}`;
+  `429 {code:"day_limit"}` (20 starts a UTC day for the whole app); `400` for a bad body. A repeated
+  run id takes no unit and starts nothing twice.
+- `GET /story/runs?ids=a,b,c` (up to 50) -> `{ runs: [{ runId, words, storyModel, promptModel,
+  pictureModel, createdAt, steps: [{ role, attempt, modelId, outcome, text, missedWords, pictureKey,
+  priceUsd, priceEstimated, ms, startedAt, finishedAt }] }] }`; ids the Worker never counted are left out.
+- `POST /story/runs/redo` `{ runId, step: "prompt" | "picture", pictureModel? }`. Only a counted run whose
+  step failed: `404 unknown_run`, `409 not_failed`, `422 not_offered`, `429 day_limit`. A prompt redo takes
+  no unit; a picture redo ("Draw again") takes one and answers `{ started: true, attempt }`.
+- `GET /story/runs/<runId>/pictures/<attempt>` -> the image bytes, or `404` once collected or older than 7 days.
+
+The routes that need R2 (start, redo, picture) answer `503 {code:"no_storage"}` while `SOURCES` is unbound.
+The daily cron (`0 3 * * *`) also runs `deleteOldPictures`: run pictures older than 7 days are deleted and
+their step keys cleared; run and step rows are kept.
+
 ### `POST /define` — secret-gated
 
 Body: `{ "word": "…" }` (≤ 100 characters). The Worker asks the Merriam-Webster Collegiate
@@ -563,6 +592,9 @@ code: without the binding the photo routes answer `503` and everything else work
    npx wrangler secret put ANTHROPIC_API_KEY
    npx wrangler secret put APP_SHARED_SECRET
    npx wrangler secret put MW_API_KEY        # Merriam-Webster Collegiate key (definition-mode)
+   npx wrangler secret put OPENCODE_ZEN_API_KEY   # story text AIs on OpenCode Zen (mnemonic-story)
+   npx wrangler secret put XAI_API_KEY            # Grok picture maker (mnemonic-story)
+   npx wrangler secret put HIGGSFIELD_API_KEY     # Higgsfield picture maker (mnemonic-story)
    ```
 
 3. Deploy:
@@ -681,6 +713,23 @@ Release order (sad §7): **D1 → Worker → app build**. An older app never cal
    It answers `200` with at most 3 words; `wrangler tail` shows one `subtitle import` line.
 4. **App.** Release the build with the "From subtitles" speed-dial item.
 
+### Deploying mnemonic-story (checklist)
+
+Release order: **D1 -> Worker -> app build**.
+
+1. **D1.** `npx wrangler d1 migrations apply DB --remote` applies `0004_story_runs`.
+2. **Workflow binding.** `wrangler.jsonc` declares `workflows: [{ name: "story-run", binding: "STORY_RUN",
+   class_name: "StoryRunWorkflow" }]`; the class is exported from `src/index.ts`, so `npm run deploy` creates
+   the Workflow. Locally `wrangler dev` runs it. Paid steps never retry.
+3. **Secrets.** `OPENCODE_ZEN_API_KEY`, `XAI_API_KEY` and `HIGGSFIELD_API_KEY` (above); `ANTHROPIC_API_KEY`
+   is reused. `OPENCODE_ZEN_API_URL`, `XAI_API_URL`, `HIGGSFIELD_API_URL`, `STORY_TEXT_TIMEOUT_MS`,
+   `STORY_PICTURE_TIMEOUT_MS` and `STORY_PICTURE_POLL_MS` are for tests only; leave them unset in production.
+   A real key in `.dev.vars` is loaded by `wrangler dev`, but `npm test` overrides every provider URL and key.
+4. **R2.** The story routes need the `SOURCES` bucket (503 without it). The daily cron deletes pictures
+   older than 7 days.
+5. **Check the offered list.** Entries in `src/story/models.json` marked `provisional` (OpenCode Zen, xAI,
+   Higgsfield ids and prices) must be verified against the providers before release.
+
 ### KPIs (spec §7, sad §7)
 
 A weekly manual check; no automated alerts. The D1 counts cover live sessions only (the cron
@@ -742,7 +791,10 @@ test uses the real Merriam-Webster quota, even with a real key in `.dev.vars`. T
 `ANTHROPIC_API_URL` with a fake `ANTHROPIC_API_KEY`): the first dialogue line picks its reply
 (`STUB:empty`, `STUB:no-english`, `STUB:cutoff`, `STUB:malformed`, `STUB:refusal`,
 `STUB:error`, `STUB:slow:<ms>`), and `GET <stub>/__calls` counts the calls.
-`SUBTITLE_AI_TIMEOUT_MS=3000` shortens the 225 s abort for the slow case. Code that only needs
+The story providers are stubs too (`test/zen-stub.mjs`, `test/xai-stub.mjs`,
+`test/higgsfield-stub.mjs`): `scripts/test.mjs` passes their URLs, dummy keys and short limits as
+`--var`, after `--env-file`, so even the real xAI key in `.dev.vars` is never sent to a provider; the
+first test in `story-routes.test.mjs` checks the stubs' `/__calls`. `SUBTITLE_AI_TIMEOUT_MS=3000` shortens the 225 s abort for the slow case. Code that only needs
 `DB.prepare().bind()` and `batch()` (the allowance) is unit-tested against the real
 migrations in `node:sqlite` through `test/sqlite-d1.mjs`, imported straight from `src/*.ts`
 (Node 23 strips the types).

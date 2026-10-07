@@ -13,7 +13,7 @@
 | T6 | [Add the story allowance take and the run store to the Worker](./T6-worker-allowance-and-run-store.md) | infra | Maksym | M | T1 | done |
 | T7 | [Serve the offered AI list and the grouping split from the Worker](./T7-worker-models-and-grouping-routes.md) | ports | Maksym | M | T2, T4 | done |
 | T8 | [Run each story run as a Workflow on the Worker](./T8-worker-story-run-workflow.md) | app | Maksym | L | T3, T4, T5, T6 | done |
-| T9 | [Add the start, status, redo and picture routes and the 7-day picture clean-up](./T9-worker-story-run-routes.md) | ports | Maksym | M | T7, T8 | todo |
+| T9 | [Add the start, status, redo and picture routes and the 7-day picture clean-up](./T9-worker-story-run-routes.md) | ports | Maksym | M | T7, T8 | done |
 | T10 | [Add WordPair.rowId, WordGroup and the StoryRun collection to the app](./T10-app-story-models.md) | domain | Maksym | M | — | todo |
 | T11 | [Add the pure word-grouping rules to the app](./T11-app-word-grouping-rules.md) | domain | Maksym | M | T10 | todo |
 | T12 | [Add the app's story service for the Worker's story routes](./T12-app-story-api-service.md) | infra | Maksym | M | T10, T7, T9 | todo |

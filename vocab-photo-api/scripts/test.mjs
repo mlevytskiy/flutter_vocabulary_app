@@ -5,6 +5,9 @@
 // itself (sad §10). The dictionary is a local stub (`test/mw-stub.mjs`), so no
 // test spends the real Merriam-Webster quota. The AI behind subtitle imports is
 // a local stub too (`test/anthropic-stub.mjs`), so no test spends Anthropic credit.
+// The story run's providers (OpenCode Zen, xAI, Higgsfield) are local stubs as well:
+// `.dev.vars` may hold a real xAI key and `wrangler dev` loads it, so every provider's
+// URL and key are overridden below with `--var` and no test can reach a real provider.
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
@@ -13,6 +16,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { startMwStub } from "../test/mw-stub.mjs";
 import { startAnthropicStub } from "../test/anthropic-stub.mjs";
+import { startZenStub } from "../test/zen-stub.mjs";
+import { startXaiStub } from "../test/xai-stub.mjs";
+import { startHiggsfieldStub } from "../test/higgsfield-stub.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -59,6 +65,9 @@ const baseUrl = `http://127.0.0.1:${port}`;
 const stateDir = mkdtempSync(join(tmpdir(), "vocab-photo-api-test-"));
 const mwStub = await startMwStub();
 const aiStub = await startAnthropicStub();
+const zenStub = await startZenStub();
+const xaiStub = await startXaiStub();
+const higgsfieldStub = await startHiggsfieldStub();
 
 const migrate = spawnSync(
   "npx",
@@ -88,6 +97,16 @@ const worker = spawn(
     "--var", "ANTHROPIC_API_KEY:test-key",
     // The stub's slow reply (6 s) must outlast this, so a test can see the 225 s abort.
     "--var", "SUBTITLE_AI_TIMEOUT_MS:3000",
+    // The story providers: stub URLs, dummy keys (never the real ones from .dev.vars), short limits.
+    "--var", `OPENCODE_ZEN_API_URL:${zenStub.url}`,
+    "--var", "OPENCODE_ZEN_API_KEY:test-key",
+    "--var", `XAI_API_URL:${xaiStub.url}`,
+    "--var", "XAI_API_KEY:test-key",
+    "--var", `HIGGSFIELD_API_URL:${higgsfieldStub.url}`,
+    "--var", "HIGGSFIELD_API_KEY:test-key",
+    "--var", "STORY_TEXT_TIMEOUT_MS:3000",
+    "--var", "STORY_PICTURE_TIMEOUT_MS:3000",
+    "--var", "STORY_PICTURE_POLL_MS:100",
     // GET /__scheduled runs the cron handler (the daily clean-up).
     "--test-scheduled",
     "--show-interactive-dev-session=false",
@@ -110,6 +129,9 @@ function stopWorker() {
   rmSync(stateDir, { recursive: true, force: true });
   mwStub.close();
   aiStub.close();
+  zenStub.close();
+  xaiStub.close();
+  higgsfieldStub.close();
 }
 process.on("SIGINT", () => {
   stopWorker();
@@ -132,6 +154,9 @@ try {
       VOCAB_API_STATE_DIR: stateDir,
       VOCAB_API_MW_STUB_URL: mwStub.url,
       VOCAB_API_AI_STUB_URL: aiStub.url,
+      VOCAB_API_ZEN_STUB_URL: zenStub.url,
+      VOCAB_API_XAI_STUB_URL: xaiStub.url,
+      VOCAB_API_HIGGSFIELD_STUB_URL: higgsfieldStub.url,
     },
   });
   if (code !== 0) console.error("--- wrangler dev output ---\n" + log);

@@ -63,7 +63,7 @@ export async function takeDrawAgain(
   const run = `EXISTS (SELECT 1 FROM story_runs WHERE run_id = ?2)`;
   const step = `EXISTS (SELECT 1 FROM story_run_steps WHERE run_id = ?2 AND role = 'picture' AND attempt = ?3)`;
   const [, taken, , state] = await env.DB.batch([
-    env.DB.prepare(`INSERT OR IGNORE INTO all_story_runs (utc_day, used) SELECT ?1, 0 WHERE ${run}`).bind(day, runId, attempt),
+    env.DB.prepare(`INSERT OR IGNORE INTO all_story_runs (utc_day, used) SELECT ?1, 0 WHERE ${run}`).bind(day, runId),
     env.DB.prepare(
       `UPDATE all_story_runs SET used = used + 1
        WHERE utc_day = ?1 AND used < ${STORY_DAY_LIMIT} AND ${run} AND NOT ${step}`
