@@ -2,6 +2,7 @@ import { MAX_RAW_BYTES, htmlResponse, isAllowedMediaType, jsonResponse } from ".
 import type { RouteContext, RouteDefinition } from "../routing";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
 import { pageAssets, pageHeaders } from "./assets";
+import { parseDialogues } from "./dialogues";
 import { renderNotFoundPage, renderSessionPage } from "./page";
 import {
   createSession,
@@ -33,6 +34,7 @@ function publicUrl(url: URL, sessionId: string): string {
 /**
  * POST /sessions -- secret-gated.
  * `{ detail?, entries: [{word, translation, definition?, sourceId?}], sources?: [{id, order, kind?, name?, url?}],
+ *    dialogues?: [{id, lines, entries: positions in `entries`, importId?, picture?: {mediaType}}],
  *    publishedId?, editToken? }` -> `{ id, url, expiresAt, editToken }`.
  * With a `publishedId` and the `editToken` it was published with, the same
  * link is overwritten (ADR-0008); an expired id or a wrong token publishes a
@@ -66,6 +68,10 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
   if (!parsed.ok) {
     return jsonResponse({ error: parsed.error }, 400);
   }
+  const dialogues = parseDialogues(record.dialogues, parsed.keptIndexes);
+  if (!dialogues.ok) {
+    return jsonResponse({ error: dialogues.error }, 400);
+  }
   const detail = parseDetail(record.detail);
   if (!detail.ok) {
     return jsonResponse({ error: detail.error }, 400);
@@ -75,7 +81,13 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
     return jsonResponse({ error: republish.error }, 400);
   }
 
-  const input = { entries: parsed.entries, sources: sources.sources, detail: detail.detail };
+  const input = {
+    entries: parsed.entries,
+    entryIndexes: parsed.keptIndexes,
+    sources: sources.sources,
+    detail: detail.detail,
+    dialogues: dialogues.dialogues,
+  };
   const published =
     (republish.republish &&
       (await republishSession(env, republish.republish.publishedId, republish.republish.editToken, input))) ||

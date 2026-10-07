@@ -1,4 +1,5 @@
 import type { Env } from "../env";
+import { deleteDialogueStatements, insertDialogueStatements, type DeclaredDialogue } from "./dialogues";
 import {
   SESSION_TTL_SECONDS,
   detailOf,
@@ -49,8 +50,12 @@ async function hashEditToken(token: string): Promise<string> {
 /** What a publish needs besides the session id: the rows and the photos they were recognised from. */
 export interface PublishInput {
   entries: SessionEntry[];
+  /** Where each kept entry stood in the list the app sent; dialogues point at those positions. */
+  entryIndexes?: number[];
   sources: DeclaredSource[];
   detail: SessionDetail;
+  /** Film dialogues, stored with the rows (ADR-0005). Absent from older apps. */
+  dialogues?: DeclaredDialogue[];
 }
 
 /** A published session and the token that lets its publisher republish it. */
@@ -66,11 +71,13 @@ export interface Published {
  * republish then lifts them to the revision that replaced the list.
  */
 function insertContent(env: Env, sessionId: string, input: PublishInput): D1PreparedStatement[] {
+  const rowIds = input.entries.map(() => crypto.randomUUID());
+  const rowIdByEntryIndex = new Map(rowIds.map((rowId, position) => [input.entryIndexes?.[position] ?? position, rowId]));
   return [
     ...input.entries.map((entry, position) =>
       env.DB.prepare(INSERT_ROW).bind(
         sessionId,
-        crypto.randomUUID(),
+        rowIds[position],
         position,
         entry.sourceId ?? null,
         entry.word,
@@ -83,6 +90,7 @@ function insertContent(env: Env, sessionId: string, input: PublishInput): D1Prep
         ? env.DB.prepare(INSERT_SET_SOURCE).bind(sessionId, source.id, source.order, source.name, source.url)
         : env.DB.prepare(INSERT_PENDING_SOURCE).bind(sessionId, source.id, source.order)
     ),
+    ...insertDialogueStatements(env, sessionId, input.dialogues ?? [], rowIdByEntryIndex),
   ];
 }
 
@@ -137,6 +145,7 @@ export async function republishSession(
     ),
     env.DB.prepare(`DELETE FROM rows WHERE session_id = ?1`).bind(publishedId),
     env.DB.prepare(`DELETE FROM sources WHERE session_id = ?1`).bind(publishedId),
+    ...deleteDialogueStatements(env, publishedId),
     ...insertContent(env, publishedId, input),
     env.DB.prepare(
       `UPDATE rows SET word_rev = s.rev, translation_rev = s.rev, definition_rev = s.rev
