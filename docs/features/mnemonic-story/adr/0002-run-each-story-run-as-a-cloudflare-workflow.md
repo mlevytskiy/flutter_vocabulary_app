@@ -32,7 +32,7 @@ A story run is three paid AI calls in a row: the story writer (≤ 90 s), the pi
 
 ## Decision outcome
 
-**Chosen:** Option 1. Workflows gives durable, resumable steps from the platform, so AC-10 holds without our own state machine or de-duplication. The app-generated run id as the instance id makes a repeated start return the same run without taking a second allowance unit. Paid steps run with `retries: { limit: 0 }`: a failed step is recorded as failed, and the learner decides whether to try again (AC-08b, AC-09). "Try again" for the picture prompt and "Draw again" each create a new instance for that one step of the same run, after the Worker checks that the run exists in D1 and that this step failed. Draw again takes one allowance unit, and the prompt redo takes none (AC-19). Run results stay on the Worker until the daily clean-up deletes them after 7 days (sad §1 decision override).
+**Chosen:** Option 1. Workflows gives durable, resumable steps from the platform, so AC-10 holds without our own state machine or de-duplication. The app-generated run id as the instance id makes a repeated start return the same run without taking a second allowance unit. Paid steps run with `retries: { limit: 0 }`: a failed step is recorded as failed, and the learner decides whether to try again (AC-08b, AC-09). "Try again" for the picture prompt and "Draw again" each create a new instance for that one step of the same run, after the Worker checks that the run exists in D1 and that this step failed. Draw again takes one allowance unit, and the prompt redo takes none (AC-19). Run and step rows stay in D1 with no expiry, so a redo of a counted run is accepted at any later time. A picture is deleted from R2 once the app has collected it, or by the daily clean-up after 7 days (sad §1 decision override).
 
 ## Consequences
 
@@ -44,7 +44,7 @@ A story run is three paid AI calls in a row: the story writer (≤ 90 s), the pi
 **Negative**
 - A new binding (`workflows` in `wrangler.jsonc`) and a new platform feature in this repo. Local tests must run the Workflow under `wrangler dev` with stub providers.
 - If the Workflows engine restarts in the middle of an unfinished step, it runs that step again, so a rare double charge is possible (sad §11).
-- The Worker holds run results for up to 7 days, which narrows spec §6.1's "stays on the device" (sad §1 decision override).
+- The Worker keeps run and step rows (story, prompt, AI, price, time) with no expiry, which narrows spec §6.1's "stays on the device" (sad §1 decision override). A picture not collected within 7 days is lost and must be drawn again.
 - The app polls. To stay within the per-address limit of 20 requests per 60 s, it uses one status call for all runs it still follows, every 5 s, and only while the learn page or the story screen is open.
 
 **Neutral**

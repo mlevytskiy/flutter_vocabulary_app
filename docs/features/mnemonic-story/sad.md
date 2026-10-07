@@ -29,7 +29,9 @@ target_surfaces: [mobile-app, backend-service]  # decided in §4 (ADR-0001) — 
 | Security Lead | Required by spec §6.1: a new paid server capability reached with a secret that ships in the app | Yes |
 
 **Decision overrides.**
-- Decision override: story run results are held on the Worker for up to 7 days — rationale: spec §6.1 says stories, pictures and run records stay on the learner's device. To meet AC-10 (a step in progress when the app closes is collected later, not paid again), the Worker must hold each step's result until the app collects it. The device keeps the only lasting copy. The Worker's copy is deleted by the daily clean-up after 7 days ([ADR-0002](adr/0002-run-each-story-run-as-a-cloudflare-workflow.md), §11). Owner, 2026-10-07.
+- Decision override: story run records are also kept on the Worker — rationale: spec §6.1 says stories, pictures and run records stay on the learner's device. Two needs require the Worker to keep its own copy. To meet AC-10 (a step in progress when the app closes is collected later, not paid again), the Worker must hold each step's result until the app collects it. And to accept "Try again" (AC-08b) and "Draw again" (AC-09) at any later time, it must still know the counted run and its story and prompt. So run and step rows in D1 (story text, prompt, AI, price, time, outcome — a few KB per run) are kept with no expiry. A picture in R2 is deleted once the app has collected it, or by the daily clean-up after 7 days. The phone keeps the copy the learner sees ([ADR-0002](adr/0002-run-each-story-run-as-a-cloudflare-workflow.md), §11). Owner, 2026-10-07; widened after the critic pass.
+
+**Critic resolutions (2026-10-07):** no overrides beyond the one above. Five findings were resolved by amendment. Run rows are kept on the Worker so redo and collect have no time limit (§1, §5, §7, §8, §11, ADR-0002). A timed-out step gets a "≈" list-price estimate (§4, §8, ADR-0004). The tracker and the grouping rules move to `lib/core/story/` (architecture.md §2 rule 3; §5, §8). §7 counts Draw again inside the 20 units and gains the R2 deploy step (§7, §11).
 
 ## 2. Constraints
 
@@ -126,14 +128,14 @@ The context has two people and two of our own systems. The learner uses only the
 - **AI choice and model list on the phone.** The fetched `models.json` is cached in `shared_preferences`, with the learner's three choices beside it. A choice that is no longer on the list falls back to that step's default and shows "<AI name> is no longer available" (AC-13). The Worker refuses it anyway.
 - **Story allowance.** A new D1 table `all_story_runs(utc_day, used)`, taken the way `takeSubtitleImport` takes `all_subtitle_imports`: one unit when a new run's story step starts and one for each Draw again. It is not given back on failure (AC-19). There is no per-address window: the spec caps the whole app, and the per-address rate limiter already applies.
 - **Word check (AC-08)** runs on the Worker, inside the Workflow, between the story step and the picture prompt step. It returns the missed words.
-- **Timeouts.** Each provider call is aborted at 90 s (story writer and picture prompt writer) or 120 s (picture maker, including Higgsfield's submit-and-poll) (AC-08b). A timed-out step is failed, with its time and with the price shown as unknown, because no usage came back.
+- **Timeouts.** Each provider call is aborted at 90 s (story writer and picture prompt writer) or 120 s (picture maker, including Higgsfield's submit-and-poll) (AC-08b). A timed-out step is failed, with its time and a "≈" estimated price, because no usage came back. A text step is priced from the input tokens sent plus the step's output limit × the list price, and a picture step at the price per picture (ADR-0004). The story runs screens mark it "≈".
 - **New providers.** Each provider gets one adapter file in `src/story/providers/` behind a common `writeText` / `drawPicture` shape. The keys are new Worker secrets, and each provider's base URL can be overridden for the test stubs (`*_API_URL`, as `ANTHROPIC_API_URL` today).
 - **Spec §8 open questions, resolved:** Higgsfield's price is shown as "≈ $X" per picture, the plan price divided by the credits one picture takes, fixed in `models.json`. The defaults are Sonnet 5.5 for the story writer and the picture prompt writer, and the Grok picture model for the picture maker.
 - **Pictures on the phone** are compressed with `flutter_image_compress` to ≤ 3 MB and kept under `mnemonic_pictures/` in the documents directory, beside `source_photos/`.
 
 ## 5. Building block view
 
-The feature follows the repo's existing shapes. In the app, pure rules (grouping, the grouped-words key) are plain Dart files with unit tests. Storage stays in `SessionStore` plus one new store for runs and pictures. Worker calls go through one service reached from `lib/core/providers.dart`, and screens read `@riverpod` notifiers. A long-lived `StoryRunTracker` notifier (`keepAlive`, like `photoUploadServiceProvider`) follows the runs that are not yet collected and writes their results to Isar. Screens watch Isar, so they show a run's current step whenever they open (AC-06, AC-10). In the Worker, the story feature is a new `src/story/` module beside `src/subtitles/`, with routes in the same route table, all `public: false`. Its Workflow class is exported from `src/index.ts`, and its D1 tables come in one new migration.
+The feature follows the repo's existing shapes. In the app, the parts more than one feature uses live in `lib/core/story/`: the pure grouping rules with the grouped-words key, the word-groups notifier and the story run tracker. The learn page, the Words screen and the story screen reach them only through providers, so features still don't import each other (architecture.md §2 rule 3). Storage stays in `SessionStore` plus one new store for runs and pictures. Worker calls go through one service reached from `lib/core/providers.dart`, and screens read `@riverpod` notifiers. A long-lived `StoryRunTracker` notifier (`keepAlive`, like `photoUploadServiceProvider`) follows the runs that are not yet collected and writes their results to Isar. Screens watch Isar, so they show a run's current step whenever they open (AC-06, AC-10). In the Worker, the story feature is a new `src/story/` module beside `src/subtitles/`, with routes in the same route table, all `public: false`. Its Workflow class is exported from `src/index.ts`, and its D1 tables come in one new migration.
 
 **Internal decomposition:**
 
@@ -154,28 +156,29 @@ lib/
 │   │   ├── story_api_service.dart           NEW Worker calls: models, grouping, start run, runs status, redo step, picture bytes
 │   │   ├── story_run_store.dart             NEW StoryRun reads/writes (newest first, by id, uncollected), never removes
 │   │   └── story_picture_store.dart         NEW mnemonic_pictures/ files, compressed ≤ 3 MB (flutter_image_compress)
+│   ├── story/                               NEW shared by learn, mnemonic_story, words_table and words_settings (rule 3)
+│   │   ├── word_grouping.dart               pure rules: what to regroup, local "All words" / small groups, validate a split, grouped-words key — ADR-0005
+│   │   ├── word_groups_notifier.dart        per-session groups, grouping state, selection; asks the tracker to start a run for a selected group without a story
+│   │   └── story_run_tracker.dart           keepAlive notifier: start, follow (one status call / 5 s while visible), collect, redo
 │   └── providers.dart                       + storyApiService, storyRunStore, storyPictureStore, offeredAis, aiChoice (persisted)
 └── features/
     ├── learn/
-    │   ├── word_grouping.dart               NEW pure rules: what to regroup, local "All words" / small groups, validate a split, grouped-words key — ADR-0005
-    │   ├── learn_groups_notifier.dart       NEW per-session groups, grouping state, selection; starts a run for a selected group without a story
     │   ├── widgets/group_pager.dart         NEW the pager of group cards (tap selects, swipe browses)
     │   └── learn_screen.dart                + group line, pager, grouping/waiting/limit messages; Start → StoryRoute for mnemonic-story
     ├── mnemonic_story/                      NEW feature folder
-    │   ├── story_run_tracker.dart           keepAlive notifier: start, follow (one status call / 5 s while visible), collect, redo
     │   ├── story_screen.dart                running step, picture (InteractiveViewer) over text, errors, "Words changed", Make a new story
     │   └── widgets/new_story_dialog.dart    the confirmation before a new run
     ├── words_settings/                      NEW feature folder
     │   ├── words_settings_screen.dart       three AI choices with prices, "no longer available", Story runs
     │   ├── story_runs_screen.dart           all runs, newest first
     │   └── story_run_screen.dart            one run's steps: AI, result, price, time, failed attempts
-    └── words_table/words_table_screen.dart  + settings button (as the main screen's); starts grouping quietly when needed (AC-03)
+    └── words_table/words_table_screen.dart  + settings button (as the main screen's); asks the word-groups notifier to group quietly when needed (AC-03)
 
 vocab-photo-api/
 ├── wrangler.jsonc                           + workflows: STORY_RUN → StoryRunWorkflow
 ├── migrations/0004_story_runs.sql           NEW all_story_runs, story_runs, story_run_steps (+ down/)
 └── src/
-    ├── index.ts                             + storyRoutes; export StoryRunWorkflow; cron also cleans story runs > 7 days
+    ├── index.ts                             + storyRoutes; export StoryRunWorkflow; cron also deletes run pictures > 7 days
     ├── env.ts                               + STORY_RUN, OPENCODE_ZEN_API_KEY, XAI_API_KEY, HIGGSFIELD_API_KEY, *_API_URL overrides
     └── story/                               NEW module
         ├── models.json                      offered AIs, roles, list prices, 15-word estimates, defaults — ADR-0004
@@ -186,7 +189,7 @@ vocab-photo-api/
         ├── word-check.ts                    AC-08 rule: whole word, any case, phrase in order, -s/-es/-ed/-ing
         ├── providers/                       anthropic.ts, opencode-zen.ts, xai.ts, higgsfield.ts (writeText / drawPicture, abort at 90 s / 120 s)
         ├── workflow.ts                      StoryRunWorkflow: story → word check → prompt → picture; redo of one step
-        ├── store.ts                         D1 runs/steps, R2 story-runs/<runId>/<attempt>, 7-day clean-up
+        ├── store.ts                         D1 runs/steps (kept), R2 story-runs/<runId>/<attempt> (deleted once collected or after 7 days)
         └── routes.ts                        models, grouping, start, status, redo, picture (all public: false)
 
 test/word_grouping_test.dart, test/story_*_test.dart          rules, stores, tracker with a fake service
@@ -210,8 +213,8 @@ C4Container
     Container_Boundary(cloud, "Cloudflare") {
         Container(worker, "vocab-photo-api Worker", "TypeScript, Cloudflare Workers", "App-secret story routes: models, grouping, start, status, redo, picture; allowance; models.json")
         Container(flow, "Story run workflow", "Cloudflare Workflows, same Worker script", "Runs story writer, word check, picture prompt writer, picture maker as durable steps")
-        ContainerDb(d1, "Story run records", "Cloudflare D1", "all_story_runs allowance; story runs and steps for 7 days")
-        ContainerDb(r2, "Run pictures", "Cloudflare R2, SOURCES bucket", "story-runs pictures until collected, 7 days")
+        ContainerDb(d1, "Story run records", "Cloudflare D1", "all_story_runs allowance; story runs and their steps, kept")
+        ContainerDb(r2, "Run pictures", "Cloudflare R2, SOURCES bucket", "story-runs pictures until collected, at most 7 days")
     }
 
     System_Ext(anthropic, "Anthropic API", "Grouping; text steps")
@@ -328,9 +331,9 @@ When a session's Words screen or learn page opens, the app compares the current 
 
 ## 7. Deployment view
 
-The Worker stays one script and one deployment. It gains a Workflow binding (`STORY_RUN` → `StoryRunWorkflow`, exported from `src/index.ts`), one D1 migration (`0004_story_runs.sql`) and three secrets (`OPENCODE_ZEN_API_KEY`, `XAI_API_KEY`, `HIGGSFIELD_API_KEY`). It uses a `story-runs/` prefix in the existing R2 `SOURCES` bucket and a longer daily cron job: the same `0 3 * * *` trigger also deletes story run rows and pictures older than 7 days. The app ships through the usual store build.
+The Worker stays one script and one deployment. It gains a Workflow binding (`STORY_RUN` → `StoryRunWorkflow`, exported from `src/index.ts`), one D1 migration (`0004_story_runs.sql`) and three secrets (`OPENCODE_ZEN_API_KEY`, `XAI_API_KEY`, `HIGGSFIELD_API_KEY`). It uses a `story-runs/` prefix in the existing R2 `SOURCES` bucket and a longer daily cron job: the same `0 3 * * *` trigger also deletes run pictures older than 7 days from R2. Run and step rows are kept (sad §1 override). The app ships through the usual store build.
 
-**Deploy order:** apply `0004` (`wrangler d1 migrations apply`), put the new secrets, `wrangler deploy` the Worker, then release the app. The Worker change is additive: an older app never calls the new routes. The app shows the AI choice only from the fetched list, so a provider without a secret is simply left out of `models.json` until its key exists.
+**Deploy order:** confirm R2 is enabled on the account and `SOURCES` is bound (the picture routes need it), apply `0004` (`wrangler d1 migrations apply`), put the new secrets, `wrangler deploy` the Worker, then release the app. The Worker change is additive: an older app never calls the new routes. The app shows the AI choice only from the fetched list, so a provider without a secret is simply left out of `models.json` until its key exists.
 
 **Monitoring:**
 - Metrics: the Worker's existing observability (`wrangler.jsonc` `observability.enabled`) covers the new routes and the workflow. No new log events (repo default).
@@ -338,7 +341,7 @@ The Worker stays one script and one deployment. It gains a Workflow binding (`ST
 - Workflow failures: each failed step is recorded in `story_run_steps` with its outcome, so a stuck or failing provider shows on the story runs screen.
 
 **Scaling thresholds:**
-- At most 20 runs, plus Draw again units, start per UTC day for the whole app (AC-19). That bounds R2 to about 20 × 7 = 140 pictures and D1 to a few hundred step rows at any time.
+- At most 20 allowance units (new runs + Draw again) per UTC day for the whole app (AC-19). That bounds R2 to about 20 × 7 = 140 pictures at any time, and D1 grows by at most 20 runs a day, a few KB each (a few MB a year).
 - The per-address rate limit (20 requests / 60 s) caps polling. One status call every 5 s is 12 a minute, which leaves room for grouping, starts and picture fetches.
 - On the phone, story runs are never removed. At about 3 MB a run and a few runs a week, that is about 100 MB a year (spec §1 assumption), to revisit if the list grows large (§11).
 
@@ -349,15 +352,15 @@ The repo's defaults are inherited (assumptions ledger A12, accepted 2026-10-07).
 | Concept | Convention | Where defined |
 |---|---|---|
 | Navigation (app) | `StoryRoute`, `WordsSettingsRoute`, `StoryRunsRoute` and `StoryRunRoute` are typed routes opened with `push`. The new-story confirmation is a dialog, and messages are on-screen text, not routes | CLAUDE.md rule 1; architecture.md §2 rule 1; sad §4 |
-| State (app) | Groups and selection come from a `@riverpod` notifier over `Session`. Runs come from `StoryRunTracker` (`keepAlive`) over `StoryRun`. Screens watch Isar, and transient state (pager page, zoom) stays in widget `State` | architecture.md §2 rule 2; sad §5 |
+| State (app) | Groups and selection come from the `@riverpod` word-groups notifier over `Session`. Runs come from `StoryRunTracker` (`keepAlive`) over `StoryRun`. Both live in `lib/core/story/` because several features use them (architecture.md §2 rule 3). Screens watch Isar, and transient state (pager page, zoom) stays in widget `State` | architecture.md §2 rule 2; sad §5 |
 | Persistence (app) | Isar `Session` (+ groups) and `StoryRun`. `shared_preferences` holds the AI choice and the cached model list. Pictures are files in `mnemonic_pictures/`. Nothing is ever removed from story runs | ADR-0003; ADR-0004 |
 | Identity | `WordPair.rowId` and the group id are UUIDs (`_uuidV4`). The run id is a UUID made by the app, used as the Workflow instance id and as the key of the allowance take, so a repeated start is free | ADR-0002; ADR-0003 |
 | Authentication | Every story route is `public: false`: `x-app-secret` plus the per-address rate limiter. No story route is public, so the shared link cannot reach them (AC-18) | `src/index.ts`; ADR-0001 |
 | Spending control | Server side only: the model must be on `models.json`, one `all_story_runs` unit per new run and per Draw again (≤ 20 per UTC day), and a redo is accepted only for a failed step of a run already in `story_runs`. Paid workflow steps have retries off | spec §6.1, AC-19; ADR-0002; ADR-0004 |
-| Errors | Provider failures, refusals and timeouts (90 s / 120 s) are recorded as a failed step with its price (unknown on a timeout) and time. The app shows the spec's messages ("Could not write the story", "The picture could not be drawn", …). Worker errors are JSON `{ error, code }`, as `/subtitles/words` answers | spec AC-04, AC-08, AC-08b, AC-09, AC-16, AC-19 |
+| Errors | Provider failures, refusals and timeouts (90 s / 120 s) are recorded as a failed step with its price (a "≈" list-price estimate on a timeout) and time. The app shows the spec's messages ("Could not write the story", "The picture could not be drawn", …). Worker errors are JSON `{ error, code }`, as `/subtitles/words` answers | spec AC-04, AC-08, AC-08b, AC-09, AC-16, AC-19 |
 | Prices and times | Priced on the Worker from the reported token use × list price, or the price per picture. Time is each step's own wall-clock time on the Worker, and a run's total is the sum of its steps (AC-14) | ADR-0004 |
 | Word check | One TypeScript function (`word-check.ts`) implements AC-08's rule. The app only shows the missed words it returns | spec AC-08; sad §4 |
-| Privacy | The group's English words, and the story, go to the chosen providers, as photo words go to Anthropic today. The Worker keeps run results for 7 days at most | spec §6.1; sad §1 decision override |
+| Privacy | The group's English words, and the story, go to the chosen providers, as photo words go to Anthropic today. The Worker keeps run and step rows (story, prompt, AI, price, time) with no expiry, and pictures until collected or 7 days at most | spec §6.1; sad §1 decision override |
 | Accessibility | Group cards are tappable at ≥ 48 × 48 dp with the group's name as their label. The running step is announced as text. The picture has a semantic label | Flutter defaults; learn-part-step-1 sad §8 |
 | Internationalisation | The UI stays English, as elsewhere. The story itself is Ukrainian with the English words embedded (CONTEXT "mnemonic story") | CONTEXT |
 | Logging / observability | No new log events. The Worker's existing observability, plus the D1 step records | `wrangler.jsonc` `observability` |
@@ -413,9 +416,10 @@ ADR files live under `docs/features/mnemonic-story/adr/NNNN-<title>.md`.
 | The app secret ships in the app. With it, anyone can start paid runs up to the allowance | High | The story allowance (≤ 20 per UTC day), the server-side model list, redo only for a counted run's failed step, and the per-address rate limiter. Security review by the Security Lead before release (spec §6.1) | Maksym, before `sdd:ship` |
 | If the Workflows engine restarts in the middle of an unfinished step, it runs that step again, so a rare double charge is possible (ADR-0002) | Low | Paid steps have retries off. Step times and prices are on the story runs screen, and the monthly invoice check (QG-5) would show it | Maksym |
 | Polling and other app calls share the per-address limit of 20 requests / 60 s | Medium | One status call for all followed runs every 5 s, only while the learn page or story screen is open. The tracker backs off on 429 | Maksym |
-| The Worker holds run results for up to 7 days, against spec §6.1's "stays on the device" (sad §1 override) | Low | Deleted by the daily clean-up after 7 days. Only story text, prompts, pictures and prices are kept, nothing personal | Maksym |
+| The Worker keeps run and step rows with no expiry, against spec §6.1's "stays on the device" (sad §1 override) | Low | Only vocabulary stories, prompts, AI names, prices and times, nothing personal, and the rows grow by a few MB a year. Pictures are deleted once collected or after 7 days | Maksym |
+| A picture the app has not collected within 7 days is deleted from R2 (for example, the app was not opened for a week) | Low | The app shows "The picture could not be drawn" with Draw again (AC-09). The run's story and prompt are still on the Worker, so redrawing works | Maksym |
 | New providers' APIs and prices (OpenCode Zen, xAI, Higgsfield credits) may change or differ from the list price | Medium | One adapter per provider, stub tests per adapter, `models.json` with `pricesAsOf`, and the ±25 % invoice check after the first month | Maksym |
-| The `R2 SOURCES` binding is optional in `env.ts`. Without it, pictures cannot be held | Medium | The story routes answer 503 when it is missing, as the photo routes do. The deploy checklist (§7) confirms R2 is enabled | Maksym |
+| The `R2 SOURCES` binding is optional in `env.ts`. Without it, pictures cannot be held | Medium | The routes that need R2 (start, Draw again, fetching a picture) answer 503 when it is missing, as the photo routes do. Grouping and the model list work without it. The §7 deploy order confirms R2 is enabled first | Maksym |
 | The Isar schema change (`WordPair.rowId`, `Session.groups`, `StoryRun`) ships to users' phones and cannot be rolled back | Medium | Additive fields only. The `rowId` fill-in runs once per older session on read, and an app test opens a session saved without `rowId` | Maksym |
 | AC-08's strict word check may fail many stories, which would hurt the "≥ 80 % finish with a picture" KPI | Medium | The story writer's prompt asks for each word as written. Failures show which words were missed, and the owner tunes the prompt from the story runs | Maksym |
 | Workflows under the local `wrangler dev` used by `npm test` may behave differently from production | Medium | Stub providers for every adapter. One manual run against real providers on a staging deploy before release | Maksym |

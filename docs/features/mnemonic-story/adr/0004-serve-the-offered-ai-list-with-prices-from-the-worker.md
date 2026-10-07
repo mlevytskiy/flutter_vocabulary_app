@@ -30,7 +30,7 @@ Words settings show three choices from a fixed list kept on the server, each wit
 
 ## Decision outcome
 
-**Chosen:** Option 1. The list and its prices change more often than the app ships, and AC-13 expects the app to notice. The app caches the last list it fetched, so Words settings open offline with the last known list. The Worker prices each step from the provider's reported token use × the list price, or from the price per picture, and returns the price with the step. The app never computes a price itself. Higgsfield's "≈" price per picture (the plan price ÷ credits per picture) and the defaults (Sonnet 5.5 for both text steps, Grok for the picture) are entries in the same JSON, which resolves spec §8.
+**Chosen:** Option 1. The list and its prices change more often than the app ships, and AC-13 expects the app to notice. The app caches the last list it fetched, so Words settings open offline with the last known list. The Worker prices each step from the provider's reported token use × the list price, or from the price per picture, and returns the price with the step. The app never computes a price itself. A step that times out reports no usage, so the Worker records a "≈" estimate: the input tokens sent plus the step's output limit × the list price, or the price per picture. That keeps AC-08b's "the step's price" and the run totals (AC-14) from undercounting. Higgsfield's "≈" price per picture (the plan price ÷ credits per picture) and the defaults (Sonnet 5.5 for both text steps, Grok for the picture) are entries in the same JSON, which resolves spec §8.
 
 ## Consequences
 
