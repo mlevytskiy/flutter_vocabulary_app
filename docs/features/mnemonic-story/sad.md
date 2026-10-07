@@ -89,10 +89,10 @@ C4Context
     title mnemonic-story — System Context
 
     Person(learner, "learner", "Studies a session's words as mnemonic stories on the phone")
-    Person(partner, "partner", "Holds a shared link; web learn page unchanged")
-    System(app, "Vocabulary app", "Flutter phone app: group pager, story screen, Words settings, story runs; keeps groups, stories and runs")
+    Person(partner, "partner", "Holds a shared link, web learn page unchanged")
+    System(app, "Vocabulary app", "Flutter phone app: group pager, story screen, Words settings, story runs, keeps groups, stories and runs")
     System(worker, "vocab-photo-api Worker", "Cloudflare Worker: grouping, story runs, story allowance, offered model list")
-    System_Ext(anthropic, "Anthropic API", "Grouping; story and picture prompt writing")
+    System_Ext(anthropic, "Anthropic API", "Grouping, story and picture prompt writing")
     System_Ext(zen, "OpenCode Zen", "Story and picture prompt writing")
     System_Ext(xai, "xAI Grok", "Picture making")
     System_Ext(higgs, "Higgsfield", "Picture making")
@@ -100,7 +100,7 @@ C4Context
     Rel(learner, app, "Selects a group, reads its story, chooses the AIs")
     Rel(partner, worker, "Opens the web learn page, unchanged", "HTTPS")
     Rel(app, worker, "Groups words, starts and follows story runs", "HTTPS + app secret")
-    Rel(worker, anthropic, "Groups words; writes stories and picture prompts", "HTTPS")
+    Rel(worker, anthropic, "Groups words, writes stories and picture prompts", "HTTPS")
     Rel(worker, zen, "Writes stories and picture prompts", "HTTPS")
     Rel(worker, xai, "Draws pictures", "HTTPS")
     Rel(worker, higgs, "Draws pictures", "HTTPS")
@@ -205,19 +205,19 @@ C4Container
     Person(learner, "learner")
 
     Container_Boundary(phone, "Learner's phone") {
-        Container(app, "Vocabulary app", "Flutter, go_router, Riverpod", "Group pager, story screen, Words settings, story runs; StoryRunTracker follows and collects runs")
-        ContainerDb(isar, "Device store", "Isar on the device", "Sessions with word groups; story runs with their steps")
+        Container(app, "Vocabulary app", "Flutter, go_router, Riverpod", "Group pager, story screen, Words settings, story runs, StoryRunTracker follows and collects runs")
+        ContainerDb(isar, "Device store", "Isar on the device", "Sessions with word groups, story runs with their steps")
         ContainerDb(files, "Picture files", "mnemonic_pictures/ in the documents directory", "Compressed story pictures, at most 3 MB each")
     }
 
     Container_Boundary(cloud, "Cloudflare") {
-        Container(worker, "vocab-photo-api Worker", "TypeScript, Cloudflare Workers", "App-secret story routes: models, grouping, start, status, redo, picture; allowance; models.json")
+        Container(worker, "vocab-photo-api Worker", "TypeScript, Cloudflare Workers", "App-secret story routes: models, grouping, start, status, redo, picture, allowance, models.json")
         Container(flow, "Story run workflow", "Cloudflare Workflows, same Worker script", "Runs story writer, word check, picture prompt writer, picture maker as durable steps")
-        ContainerDb(d1, "Story run records", "Cloudflare D1", "all_story_runs allowance; story runs and their steps, kept")
+        ContainerDb(d1, "Story run records", "Cloudflare D1", "all_story_runs allowance, story runs and their steps, kept")
         ContainerDb(r2, "Run pictures", "Cloudflare R2, SOURCES bucket", "story-runs pictures until collected, at most 7 days")
     }
 
-    System_Ext(anthropic, "Anthropic API", "Grouping; text steps")
+    System_Ext(anthropic, "Anthropic API", "Grouping, text steps")
     System_Ext(zen, "OpenCode Zen", "Text steps")
     System_Ext(xai, "xAI Grok", "Pictures")
     System_Ext(higgs, "Higgsfield", "Pictures")
@@ -273,7 +273,7 @@ sequenceDiagram
         else story complete
             Flow->>AI: picture prompt writer writes the prompt (90 s limit)
             Flow->>AI: picture maker draws the picture (120 s limit)
-            Flow->>D1: each step's result, price and time; the picture goes to R2
+            Flow->>D1: each step's result, price and time, the picture goes to R2
         end
         loop every 5 s while the learn page or story screen is open, and on app start
             App->>Worker: status of every run not yet collected
@@ -328,6 +328,428 @@ sequenceDiagram
 ```
 
 When a session's Words screen or learn page opens, the app compares the current words to learn with the key stored at the last grouping. If nothing changed, the groups stay as they are. A session with 19 or fewer words to learn is grouped on the phone, as "All words", or with a new group of its own beside a story group. Above 19, the app sends the words outside any story group, and the groups without a story, to the Worker, which asks the fixed AI for a split. The app checks the answer. A broken split, or a failed call, shows "Could not group your words" with Try again and keeps Start unavailable for Mnemonic story. Leftover words that cannot form a group of 7 wait, with the waiting message. A good split is saved, and the pager appears with the remembered group selected.
+
+### S-01 Group a session's words (US-01)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant X as <external-system>
+
+    Note over U,UI: Precondition: a session (the current one or one opened from History) has words to learn, Words screen (SCR-02) or learn page (SCR-03) is opening
+    U->>UI: opens the session's Words screen or learn page
+    UI->>DS: reads this session's word rows, groups, selected group and grouped-words key
+    DS-->>UI: session
+    UI->>UI: computes the current grouped-words key (row id + English word of each word to learn)
+    alt key unchanged since the last grouping
+        UI-->>U: groups as they are, no grouping starts
+    else 19 words to learn or fewer, no group with a story
+        UI->>DS: one group "All words" with every word to learn
+        Note over UI,DS: persists Session.groups, groupedWordsKey
+        UI-->>U: learn page without the group line and pager
+    else 19 or fewer, a group has a story, words were added
+        UI->>DS: the added words become their own group of any size, the story group keeps its words
+        Note over UI,DS: persists Session.groups, groupedWordsKey
+        UI-->>U: group line and pager with the new card
+    else more than 19 words to learn, changed
+        UI->>UI: takes the words outside every group with a story (or with a run in progress) and the groups without a story
+        UI-->>U: on the learn page, the pager shows "Grouping your words…", on the Words screen, nothing
+        UI->>S: asks for a split of those words, keeping the groups without a story
+        S->>X: grouping request to the fixed AI
+        X-->>S: proposed groups with names
+        S-->>UI: proposed groups
+        UI->>UI: validates: every word exactly once, 7 to 19 per group, groups without a story only gain words
+        alt the call failed, or a word is missing, doubled, or a group is outside 7 to 19
+            UI-->>U: "Could not group your words" with "Try again", Start unavailable for Mnemonic story
+        else fewer than 7 words have no room in a group without a story
+            UI->>DS: valid groups saved, those words wait outside any group
+            Note over UI,DS: persists Session.groups, groupedWordsKey
+            UI-->>U: "N more words are waiting for a group (at least 7 are needed)"
+        else valid
+            UI->>DS: groups, names and the new grouped-words key saved
+            Note over UI,DS: persists Session.groups, groupedWordsKey
+            UI-->>U: "We grouped your words into sets of up to 19 words. Please select one group to learn." and the pager, the remembered group selected, else the first
+        end
+    end
+    Note over UI,DS: a History session keeps its own groups, the current session is not changed
+    Note over U,UI: Postcondition: every word to learn is in exactly one group or waiting, groups with a story never changed
+```
+
+### S-02 Select a group and start its story run (US-01, US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over U,UI: Precondition: the learn page (SCR-03) shows the session's groups
+    alt the learner taps another group's card
+        UI->>DS: saves that group as the selected group, the previous one unselected
+        Note over UI,DS: persists Session.selectedGroupId
+    else the learner swipes the pager
+        UI-->>U: browses cards, the selection does not change
+    end
+    UI->>DS: reads the selected group and its story run id
+    alt the selected group has a story, or a run in progress
+        UI-->>U: no run starts
+    else no story and no run in progress
+        UI->>UI: reads the AI choice, a choice no longer on the offered list falls back to that step's default
+        UI->>DS: new story run in progress (new run id, the group's words, the AI choice)
+        Note over UI,DS: persists StoryRun (runId, sessionId, groupId, startedAt, outcome running)
+        UI->>S: starts the run with its run id, words and AI choice
+        S->>S: checks the three AIs are on the offered list
+        S->>SS: takes one unit of today's story allowance for this run id (a repeated run id takes none)
+        alt an AI is not on the offered list
+            S-->>UI: refused, AI not offered
+            UI->>DS: run marked not started, the choice reset to the defaults
+            UI-->>U: "<AI name> is no longer available"
+        else today's allowance used up
+            S-->>UI: refused, today's limit reached
+            UI->>DS: run marked not started, no allowance taken
+            UI-->>U: "Today's story limit is reached. Try again tomorrow."
+        else unit taken
+            Note over S,SS: persists story_runs row and the all_story_runs day count
+            S-->>UI: run started (see S-03)
+            UI-->>U: learn page as it was, the run goes on in the background
+        end
+    end
+    Note over UI,S: a run already going for another group carries on, several runs can go at once
+    Note over U,UI: Postcondition: exactly one group is selected, a group without a story has a run going, or a visible reason why not
+```
+
+### S-03 The story run on the server (US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as <service>
+    participant B as <message-bus>
+    participant X as <external-system>
+    participant SS as <data-store> server
+
+    Note over S,B: Trigger: a counted run start (S-02), keyed by the app's run id
+    S->>B: hands over the run, keyed by the run id
+    B->>B: checks the run id (an existing run is not started twice)
+    B->>X: story writer writes the story from the group's words (90 s limit)
+    alt the story writer fails, refuses or gives no answer within 90 s
+        B->>SS: story step failed, with its price (estimated on a timeout) and time
+        Note over B,SS: persists story_run_steps (story, failed)
+    else story written
+        B->>B: checks every group word appears as written
+        alt a word is missing
+            B->>SS: story step failed with the missed words, its price and time
+            Note over B,SS: persists story_run_steps (story, failed, missed words)
+        else every word present
+            B->>SS: story, price and time
+            Note over B,SS: persists story_run_steps (story, done)
+            B->>X: picture prompt writer writes the prompt from the story (90 s limit)
+            alt the prompt writer fails, refuses or gives no answer within 90 s
+                B->>SS: prompt step failed, with its price and time
+                Note over B,SS: persists story_run_steps (prompt, failed)
+            else prompt written
+                B->>SS: prompt, price and time
+                Note over B,SS: persists story_run_steps (prompt, done)
+                B->>X: picture maker draws from the prompt (120 s limit)
+                alt the picture maker fails, refuses or gives no answer within 120 s
+                    B->>SS: picture attempt failed, with its picture maker, price and time
+                    Note over B,SS: persists story_run_steps (picture attempt, failed)
+                else picture drawn
+                    B->>SS: picture kept until collected, its price and time
+                    Note over B,SS: persists story_run_steps (picture, done) and the run picture
+                end
+            end
+        end
+    end
+    Note over B,X: no retry on paid steps: a failed step is recorded as failed (the dead-letter outcome), and the learner decides to try again (S-05)
+    Note over B,SS: a finished step is never run or paid again, even if the app closed mid-run
+    Note over S,SS: Postcondition: every step that ran has its result or failure, AI, price and time on record
+```
+
+### S-04 Follow, collect and show the story (US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over U,UI: Precondition: Mnemonic story ticked on the learn page, a group selected
+    U->>UI: presses Start
+    UI->>DS: reads the selected group's story run
+    DS-->>UI: run with its steps
+    alt the group has a story (finished run with a picture on the phone)
+        UI-->>U: story screen (SCR-04): the same picture over the story text, no network, no new run
+    else a run is still going or not yet collected
+        UI-->>U: story screen with the running step: "Writing the story…", "Writing the picture prompt…" or "Drawing the picture…"
+        loop every 5 s while the learn page or story screen is open, and once on app start
+            UI->>S: status of every run not yet collected
+            S->>SS: reads their steps
+            SS-->>S: steps so far
+            S-->>UI: steps so far
+            UI->>DS: records each newly finished step
+            Note over UI,DS: persists StoryRun.steps
+            UI-->>U: the running step label moves on
+        end
+        alt the picture step is done
+            UI->>S: fetches the run's picture
+            S->>SS: reads the picture
+            SS-->>S: picture bytes
+            S-->>UI: picture
+            UI->>DS: picture compressed to at most 3 MB and kept as a file, run finished, the group's story is this run
+            Note over UI,DS: persists picture file, StoryRun (finished, collected), WordGroup.storyRunId and storyWords
+            UI-->>U: picture on top, story text under it, zoom and pan in place
+        else the story step failed with missed words
+            UI-->>U: "The story missed these words: …" with "Try again"
+        else the story writer failed
+            UI-->>U: "Could not write the story" with "Try again"
+        else the picture prompt writer failed
+            UI-->>U: "Could not write the picture prompt" with "Try again"
+        else the picture maker failed
+            UI-->>U: story text with "The picture could not be drawn" and "Draw again"
+        end
+    end
+    opt the learner left, locked the phone or closed the app mid-run
+        Note over UI,S: on return the loop picks the run up where the server is, nothing is started or paid again
+    end
+    Note over U,UI: Postcondition: the phone holds every finished step, a finished run with a picture is the group's story
+```
+
+### S-05 Try again and Draw again (US-02, US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over U,UI: Precondition: the story screen (SCR-04) shows a failed run of the selected group
+    alt "Try again" after a missed word or a story writer failure
+        U->>UI: presses "Try again"
+        UI-->>U: a new story run starts as in S-02 (takes one allowance unit)
+    else "Try again" after a picture prompt failure
+        U->>UI: presses "Try again"
+        UI->>S: redoes the prompt step of this run
+        S->>SS: checks the run exists and its prompt step failed
+        alt not a counted run, or the step did not fail
+            S-->>UI: refused
+            UI-->>U: the failure message stays
+        else accepted, no allowance unit taken
+            S-->>UI: prompt step restarted from the same story, then the picture as in S-03
+            UI->>DS: run back in progress
+            Note over UI,DS: persists StoryRun.outcome
+            UI-->>U: "Writing the picture prompt…"
+        end
+    else "Draw again" after a picture failure
+        U->>UI: presses "Draw again"
+        UI->>UI: reads the picture maker chosen now (falls back to the default if no longer offered)
+        UI->>S: redraws this run's picture with that picture maker
+        S->>SS: checks the run exists and its picture step failed, the AI is offered, and takes one allowance unit
+        alt not a counted run, or the picture did not fail, or the AI is not offered
+            S-->>UI: refused
+            UI-->>U: the failure message stays
+        else today's allowance used up
+            S-->>UI: refused, today's limit reached
+            UI-->>U: "Today's story limit is reached. Try again tomorrow."
+        else unit taken
+            Note over S,SS: persists all_story_runs day count, a new picture attempt on the same run
+            S-->>UI: picture attempt started from the same prompt, the story is not written again
+            UI->>DS: new attempt in progress, the failed attempt kept with its picture maker, price and time
+            Note over UI,DS: persists StoryRun.steps (attempts)
+            UI-->>U: "Drawing the picture…", then as in S-04
+        end
+    end
+    Note over U,UI: Postcondition: only a counted run's failed step can be redone, each Draw again is one allowance unit, a prompt redo none
+```
+
+### S-06 Choose the AIs (US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+
+    Note over U,UI: Precondition: the learner is on the Words screen (SCR-02)
+    U->>UI: taps the settings button
+    UI->>S: fetches the offered AI list with prices
+    alt list received
+        S-->>UI: offered AIs, roles, list prices, estimates, defaults
+        UI->>DS: caches the list
+        Note over UI,DS: persists the cached offered AI list
+    else no network
+        UI->>DS: reads the last cached list (only the defaults if none)
+    end
+    UI->>DS: reads the AI choice and the learner's finished steps per AI
+    UI->>UI: per text AI: "$X average · N runs" from finished steps of that role, else "≈ $X (estimate)", per picture maker: its fixed price
+    alt a chosen AI is no longer on the list
+        UI->>DS: that step back on its default AI
+        Note over UI,DS: persists AI choice
+        UI-->>U: Words settings (SCR-05) with "<AI name> is no longer available"
+    else every chosen AI still offered
+        UI-->>U: Words settings with the three choices and a price next to each option
+    end
+    U->>UI: picks another AI for a step
+    UI->>DS: saves the AI choice
+    Note over UI,DS: persists AI choice, kept after a restart, used by every new run
+    Note over U,UI: Postcondition: the AI choice names only offered AIs
+```
+
+### S-07 Compare story runs (US-04)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+
+    Note over U,UI: Precondition: Words settings (SCR-05) are open
+    U->>UI: taps "Story runs"
+    UI->>DS: reads every story run, newest first
+    DS-->>UI: runs with their steps
+    alt no story run yet
+        UI-->>U: Story runs (SCR-06): "No story runs yet"
+    else at least one run
+        UI-->>U: each run: group name, date, the three AIs, total price, total time (sum of step times), finished or where it stopped
+        U->>UI: taps a run
+        UI-->>U: Story run details (SCR-07): story writer and story, prompt writer and prompt, picture maker and picture, each step's price and time, failed attempts too, estimated prices marked "≈"
+    end
+    Note over UI,DS: runs that stopped at a step, or whose story was replaced, are listed like any other
+    Note over U,UI: Postcondition: nothing is removed from story runs
+```
+
+### S-08 Outdated story and making a new one (US-05)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+
+    Note over U,UI: Precondition: a word group has a mnemonic story
+    opt on the Words screen the learner deletes one of its words, edits its English word, or makes it stop being a word to learn
+        UI->>DS: saves the word rows, the group follows by row id (a deleted word leaves it, an edited word shows its new form)
+        Note over UI,DS: persists Session words and groups
+    end
+    U->>UI: opens that group's story
+    UI->>DS: reads the group, its current words and the words its story was made from
+    alt the English words changed since the story was made
+        UI-->>U: the story, marked "Words changed", with "Make a new story", nothing is made again on its own
+    else unchanged (or only a translation or definition edited)
+        UI-->>U: the story with "Make a new story"
+    end
+    U->>UI: presses "Make a new story"
+    UI-->>U: confirmation dialog
+    alt cancel
+        UI-->>U: the story as before
+    else confirm
+        UI->>S: starts a new run for the group's current words (even fewer than 7) as in S-02
+        alt today's allowance used up
+            S-->>UI: refused
+            UI-->>U: "Today's story limit is reached. Try again tomorrow.", the old story stays
+        else started
+            UI-->>U: the old story and picture stay shown while the new run goes (S-03, S-04)
+            alt the new run finishes with a picture
+                UI->>DS: the new run becomes the group's story, the earlier run stays in story runs
+                Note over UI,DS: persists WordGroup.storyRunId and storyWords
+                UI-->>U: the new story and picture replace the old
+            else the new run fails
+                UI-->>U: the old story stays with "The new story could not be made" and "Try again"
+            end
+        end
+    end
+    Note over U,UI: Postcondition: a group's story changes only when a newer run finishes with a picture
+```
+
+### S-09 Spending guard (US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as <user> partner or anyone without the app
+    participant UI as <ui> web learn page
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over P,UI: Precondition: a shared session's web learn page, or any caller outside the learner's app
+    P->>UI: ticks Mnemonic story and presses Start
+    UI->>S: requests the coming-soon page, as before
+    S-->>UI: coming-soon page, no story run starts
+    P->>S: tries to start a run, redo a step or group words without the app secret
+    S-->>P: refused, not authorised, nothing is paid
+    opt a caller with the app secret
+        P->>S: starts the 21st story run of the UTC day, or a Draw again past the allowance
+        S->>SS: tries to take one unit of today's story allowance
+        SS-->>S: none left
+        S-->>P: refused, today's limit reached
+        P->>S: asks for a picture prompt or picture step of a run that was never counted
+        S->>SS: looks the run up
+        SS-->>S: unknown run
+        S-->>P: refused
+        P->>S: starts a run with an AI not on the offered list
+        S-->>P: refused, AI not offered
+    end
+    Note over S,SS: Postcondition: at most 20 allowance units per UTC day, no route reachable from a shared link spends money on AI
+```
+
+**Coverage (use cases → flows, ACs → flows).**
+
+| User story | Flows |
+|---|---|
+| US-01 Select a word group | S-01, S-02 |
+| US-02 Read the story with its picture | S-02, S-03, S-04, S-05 |
+| US-03 Choose the AIs | S-06 |
+| US-04 Compare story runs | S-07 |
+| US-05 Make a story again | S-08 |
+| US-06 Keep AI spending bounded | S-05, S-09 (and the allowance branches of S-02, S-08) |
+
+| AC | Shown by |
+|---|---|
+| AC-01 | S-01 valid branch (line, pager, remembered or first group); S-02 tap/swipe branches |
+| AC-02 | S-01 "19 or fewer, no story" branch |
+| AC-02b | S-01 "19 or fewer, a group has a story, words added" branch |
+| AC-03 | S-01 key check; grouping from either screen, message only on the learn page |
+| AC-04 | S-01 "call failed or split invalid" branch |
+| AC-05 | S-01 waiting branch and "groups without a story only gain words"; run in progress counts as a story group |
+| AC-06 | S-02 background start, several runs at once; S-04 step labels, picture over text, zoom |
+| AC-07 | S-04 "group has a story" branch, no network, no new run |
+| AC-08 | S-03 missed-word branch; S-04 message; S-05 Try again |
+| AC-08b | S-03 writer and prompt failure/timeout branches; S-04 messages; S-05 prompt redo |
+| AC-09 | S-03 picture failure; S-04 "picture could not be drawn"; S-05 Draw again with the current picture maker |
+| AC-10 | S-03 "never run or paid again" note; S-04 leave-and-return option |
+| AC-11 | S-01 History note (the History session's groups, current session unchanged) |
+| AC-12 | S-06 prices and choice kept |
+| AC-13 | S-06 "no longer available"; S-02 fallback at start and server refusal |
+| AC-14 | S-07 list and details |
+| AC-15 | S-07 note: stopped and replaced runs listed |
+| AC-16 | S-08 confirm, old story kept while running, success and failure branches |
+| AC-17 | S-08 opt edit and "Words changed" branch |
+| AC-18 | S-09 web Start → coming soon; no-secret refusal |
+| AC-19 | S-02, S-05, S-08, S-09 allowance branches; S-09 uncounted-run refusal |
+
+**Flagged for later stages (not decided here):**
+- S-03 uses `<message-bus>` for the durable run orchestration (ADR-0002, §5 "Story run workflow"). It never retries a paid step, so the dead-letter outcome is "step recorded as failed".
+- S-02: the allowance take is keyed by run id, so `story_runs` needs the run id as its key, and `all_story_runs` needs the UTC day (`data-model`).
+- S-04: one status call covers several run ids. The `api` stage decides its shape within the per-address limit of 20 requests / 60 s (sad §11).
+- S-06: "$X average · N runs" is computed on the phone from finished steps of that role, so `StoryRun.steps` needs the role, model id and price (`data-model`).
 
 ## 7. Deployment view
 
