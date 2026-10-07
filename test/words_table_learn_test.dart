@@ -104,7 +104,8 @@ void main() {
     await tester.tap(learn);
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsOneWidget);
-    expect(find.text('1 word'), findsOneWidget);
+    expect(
+        tester.widget<LearnScreen>(find.byType(LearnScreen)).sessionId, isNull);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsNothing);
@@ -112,7 +113,7 @@ void main() {
     expect(find.byType(LearnShareBar), findsOneWidget);
   });
 
-  testWidgets('AC-13: a History session shows its count, current untouched',
+  testWidgets('AC-13: a History session opens learn for it, current untouched',
       (tester) async {
     await pump(tester, shownId: 'past');
     final before = container.read(wordInputNotifierProvider).value!;
@@ -121,7 +122,8 @@ void main() {
     await tester.tap(learn);
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsOneWidget);
-    expect(find.text('2 words'), findsOneWidget);
+    expect(tester.widget<LearnScreen>(find.byType(LearnScreen)).sessionId,
+        past.sessionId);
     final after = container.read(wordInputNotifierProvider).value!;
     expect(after.sessionId, beforeId);
     expect(after.words.length, beforeWords);

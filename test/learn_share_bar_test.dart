@@ -41,14 +41,23 @@ Future<void> _pump(
 }
 
 void main() {
-  testWidgets('AC-12: where it fits, Share is exactly as today', (t) async {
+  testWidgets(
+      'AC-12: Words centred, Learn and Share centred in the space beside it',
+      (t) async {
     await _pump(t, width: 600);
     final shareFinder = find.ancestor(
         of: find.text('Share'), matching: find.bySubtype<ElevatedButton>());
+    final learnFinder = find.ancestor(
+        of: find.text('Learn'), matching: find.bySubtype<ElevatedButton>());
     expect(shareFinder, findsOneWidget);
-    final pad = t.widget<Padding>(
-        find.ancestor(of: shareFinder, matching: find.byType(Padding)).first);
-    expect(pad.padding, const EdgeInsets.only(right: 16.0));
+    final words = t.getRect(find.text('Words'));
+    expect(words.center.dx, closeTo(300, 0.5));
+    // Arrow 56 on the left; Share's space runs to the right edge. Words keeps
+    // a little measuring slack either side, hence the 2.5 tolerance.
+    expect(
+        t.getRect(learnFinder).center.dx, closeTo((56 + words.left) / 2, 2.5));
+    expect(t.getRect(shareFinder).center.dx,
+        closeTo((words.right + 600) / 2, 2.5));
     final btn = t.widget<ElevatedButton>(shareFinder);
     final style = btn.style!;
     expect(style.backgroundColor?.resolve({}), Colors.white);
@@ -84,6 +93,22 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
+  for (final width in [600.0, 360.0, 320.0]) {
+    testWidgets('$width dp: Learn is drawn as tall as Share', (t) async {
+      await _pump(t, width: width, textScale: width == 320 ? 1.3 : 1.0);
+      double drawn(String name) {
+        final tip = find.byTooltip(name);
+        final material = tip.evaluate().isNotEmpty
+            ? find.descendant(of: tip, matching: find.byType(Material))
+            : find.ancestor(
+                of: find.text(name), matching: find.byType(Material));
+        return t.getSize(material.first).height;
+      }
+
+      expect(drawn('Learn'), drawn('Share'));
+    });
+  }
+
   for (final scale in [1.0, 1.3]) {
     testWidgets('320 dp / $scale: no overflow, Words whole, buttons >= 48',
         (t) async {
@@ -118,18 +143,16 @@ void main() {
     });
   }
 
-  testWidgets('AC-11b: icon-only at 320 dp / 130 % long press shows names',
+  testWidgets(
+      'AC-11b: at 320 dp / 130 % Learn goes icon-only, Share keeps its label',
       (t) async {
     await _pump(t, width: 320, textScale: 1.3);
     expect(find.text('Learn'), findsNothing);
-    expect(find.text('Share'), findsNothing);
     expect(find.byTooltip('Learn'), findsOneWidget);
-    expect(find.byTooltip('Share'), findsOneWidget);
-    for (final name in ['Learn', 'Share']) {
-      final size = t.getSize(find.byTooltip(name));
-      expect(size.width, greaterThanOrEqualTo(48));
-      expect(size.height, greaterThanOrEqualTo(48));
-    }
+    expect(find.text('Share'), findsOneWidget);
+    final size = t.getSize(find.byTooltip('Learn'));
+    expect(size.width, greaterThanOrEqualTo(48));
+    expect(size.height, greaterThanOrEqualTo(48));
     await t.longPress(find.byTooltip('Learn'));
     await t.pumpAndSettle();
     expect(find.text('Learn'), findsOneWidget);

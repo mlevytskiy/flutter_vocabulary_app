@@ -20,7 +20,8 @@ class _FakeInput extends WordInputNotifier {
 
 void main() {
   final mnemonic = find.widgetWithText(CheckboxListTile, 'Mnemonic story');
-  final start = find.widgetWithText(ElevatedButton, 'Start');
+  final start = find.descendant(
+      of: find.byType(AppBar), matching: find.bySubtype<ElevatedButton>());
   const soon = 'Coming soon — this exercise is not ready yet.';
 
   Future<GoRouter> pump(WidgetTester tester) async {
