@@ -341,3 +341,23 @@ The Worker stays one script and one deployment. It gains a Workflow binding (`ST
 - At most 20 runs, plus Draw again units, start per UTC day for the whole app (AC-19). That bounds R2 to about 20 × 7 = 140 pictures and D1 to a few hundred step rows at any time.
 - The per-address rate limit (20 requests / 60 s) caps polling. One status call every 5 s is 12 a minute, which leaves room for grouping, starts and picture fetches.
 - On the phone, story runs are never removed. At about 3 MB a run and a few runs a week, that is about 100 MB a year (spec §1 assumption), to revisit if the list grows large (§11).
+
+## 8. Crosscutting concepts
+
+The repo's defaults are inherited (assumptions ledger A12, accepted 2026-10-07). The rows below say how each one applies here.
+
+| Concept | Convention | Where defined |
+|---|---|---|
+| Navigation (app) | `StoryRoute`, `WordsSettingsRoute`, `StoryRunsRoute` and `StoryRunRoute` are typed routes opened with `push`. The new-story confirmation is a dialog, and messages are on-screen text, not routes | CLAUDE.md rule 1; architecture.md §2 rule 1; sad §4 |
+| State (app) | Groups and selection come from a `@riverpod` notifier over `Session`. Runs come from `StoryRunTracker` (`keepAlive`) over `StoryRun`. Screens watch Isar, and transient state (pager page, zoom) stays in widget `State` | architecture.md §2 rule 2; sad §5 |
+| Persistence (app) | Isar `Session` (+ groups) and `StoryRun`. `shared_preferences` holds the AI choice and the cached model list. Pictures are files in `mnemonic_pictures/`. Nothing is ever removed from story runs | ADR-0003; ADR-0004 |
+| Identity | `WordPair.rowId` and the group id are UUIDs (`_uuidV4`). The run id is a UUID made by the app, used as the Workflow instance id and as the key of the allowance take, so a repeated start is free | ADR-0002; ADR-0003 |
+| Authentication | Every story route is `public: false`: `x-app-secret` plus the per-address rate limiter. No story route is public, so the shared link cannot reach them (AC-18) | `src/index.ts`; ADR-0001 |
+| Spending control | Server side only: the model must be on `models.json`, one `all_story_runs` unit per new run and per Draw again (≤ 20 per UTC day), and a redo is accepted only for a failed step of a run already in `story_runs`. Paid workflow steps have retries off | spec §6.1, AC-19; ADR-0002; ADR-0004 |
+| Errors | Provider failures, refusals and timeouts (90 s / 120 s) are recorded as a failed step with its price (unknown on a timeout) and time. The app shows the spec's messages ("Could not write the story", "The picture could not be drawn", …). Worker errors are JSON `{ error, code }`, as `/subtitles/words` answers | spec AC-04, AC-08, AC-08b, AC-09, AC-16, AC-19 |
+| Prices and times | Priced on the Worker from the reported token use × list price, or the price per picture. Time is each step's own wall-clock time on the Worker, and a run's total is the sum of its steps (AC-14) | ADR-0004 |
+| Word check | One TypeScript function (`word-check.ts`) implements AC-08's rule. The app only shows the missed words it returns | spec AC-08; sad §4 |
+| Privacy | The group's English words, and the story, go to the chosen providers, as photo words go to Anthropic today. The Worker keeps run results for 7 days at most | spec §6.1; sad §1 decision override |
+| Accessibility | Group cards are tappable at ≥ 48 × 48 dp with the group's name as their label. The running step is announced as text. The picture has a semantic label | Flutter defaults; learn-part-step-1 sad §8 |
+| Internationalisation | The UI stays English, as elsewhere. The story itself is Ukrainian with the English words embedded (CONTEXT "mnemonic story") | CONTEXT |
+| Logging / observability | No new log events. The Worker's existing observability, plus the D1 step records | `wrangler.jsonc` `observability` |
