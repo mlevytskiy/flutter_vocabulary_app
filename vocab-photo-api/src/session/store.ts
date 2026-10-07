@@ -5,7 +5,9 @@ import {
   insertDialogueStatements,
   isRepeatAppend,
   pictureKey,
+  presentDialogue,
   type DeclaredDialogue,
+  type DialogueView,
 } from "./dialogues";
 import { logEvent } from "../log";
 import {
@@ -263,7 +265,7 @@ interface SourceRecord {
 
 /** One batch, so the session, its rows and its slots are read at the same revision. */
 async function readSession(env: Env, sessionId: string): Promise<StoredSession | null> {
-  const [sessions, rows, sources] = await env.DB.batch([
+  const [sessions, rows, sources, dialogues, dialogueWords] = await env.DB.batch([
     env.DB.prepare(
       `SELECT id, created_at, expires_at, rev, replaced_rev, detail FROM sessions WHERE id = ?1`
     ).bind(sessionId),
@@ -273,6 +275,15 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
     ).bind(sessionId),
     env.DB.prepare(
       `SELECT id, ord, kind, name, url, media_type, bytes, status, arrived_rev FROM sources WHERE session_id = ?1 ORDER BY ord`
+    ).bind(sessionId),
+    env.DB.prepare(
+      `SELECT id, position, lines_json, picture_arrived_rev, picture_media_type
+       FROM dialogues WHERE session_id = ?1 ORDER BY position`
+    ).bind(sessionId),
+    env.DB.prepare(
+      `SELECT dw.dialogue_id, r.id AS row_id, r.word, r.translation, r.definition
+       FROM dialogue_words dw JOIN rows r ON r.session_id = dw.session_id AND r.id = dw.row_id
+       WHERE dw.session_id = ?1 AND r.deleted_at_rev IS NULL ORDER BY r.position`
     ).bind(sessionId),
   ]);
   const session = (sessions.results as SessionRecord[])[0];
@@ -310,7 +321,52 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
         arrivedRev: source.arrived_rev,
       })
     ),
+    dialogues: presentDialogues(
+      dialogues.results as DialogueRecordRow[],
+      dialogueWords.results as DialogueWordRecord[]
+    ),
   };
+}
+
+interface DialogueRecordRow {
+  id: string;
+  position: number;
+  lines_json: string;
+  picture_arrived_rev: number | null;
+  picture_media_type: string | null;
+}
+
+interface DialogueWordRecord {
+  dialogue_id: string;
+  row_id: string;
+  word: string;
+  translation: string;
+  definition: string;
+}
+
+/** The dialogues the page renders: those with a linked word still in the table (as the change feed). */
+function presentDialogues(records: DialogueRecordRow[], words: DialogueWordRecord[]): DialogueView[] {
+  const byDialogue = new Map<string, DialogueWordRecord[]>();
+  for (const word of words) {
+    const list = byDialogue.get(word.dialogue_id) ?? [];
+    list.push(word);
+    byDialogue.set(word.dialogue_id, list);
+  }
+  const views: DialogueView[] = [];
+  for (const record of records) {
+    const view = presentDialogue(
+      {
+        id: record.id,
+        position: record.position,
+        lines: JSON.parse(record.lines_json) as string[],
+        pictureArrivedRev: record.picture_arrived_rev,
+        pictureMediaType: record.picture_media_type,
+      },
+      byDialogue.get(record.id) ?? []
+    );
+    if (view !== null) views.push(view);
+  }
+  return views;
 }
 
 /**

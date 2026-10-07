@@ -1,5 +1,6 @@
 import type { Env } from "../env";
 import { isAllowedMediaType } from "../http";
+import { matchPlaces } from "../story/word-check";
 import { isId } from "./types";
 
 /**
@@ -185,4 +186,59 @@ export async function isRepeatAppend(
     if (known.results.length > 0) return true;
   }
   return false;
+}
+
+/** One word of a dialogue as the page and the change feed show it (the places are per line). */
+export interface DialogueWordView {
+  rowId: string;
+  word: string;
+  translation: string;
+  definition: string;
+  places: [number, number][][];
+}
+
+/** A dialogue as the page renders it and the change feed sends it: one shape, so the script can re-render from feed data. */
+export interface DialogueView {
+  id: string;
+  position: number;
+  lines: string[];
+  picture: { mediaType: string | null; rev: number } | null;
+  words: DialogueWordView[];
+}
+
+/** A dialogue as read from D1, before its words are matched. */
+export interface DialogueRecord {
+  id: string;
+  position: number;
+  lines: string[];
+  pictureArrivedRev: number | null;
+  pictureMediaType: string | null;
+}
+
+/**
+ * The dialogue's current state, or null when no linked word is left (AC-11, AC-26): a word stays
+ * only where it still appears in some line (checked line by line, a phrase never spans two lines),
+ * with its places per line (AC-05).
+ */
+export function presentDialogue(
+  dialogue: DialogueRecord,
+  rows: readonly { row_id: string; word: string; translation: string; definition: string }[]
+): DialogueView | null {
+  const words: DialogueWordView[] = [];
+  for (const row of rows) {
+    const places = dialogue.lines.map((line) => matchPlaces(line, row.word));
+    if (places.every((inLine) => inLine.length === 0)) continue;
+    words.push({ rowId: row.row_id, word: row.word, translation: row.translation, definition: row.definition, places });
+  }
+  if (words.length === 0) return null;
+  return {
+    id: dialogue.id,
+    position: dialogue.position,
+    lines: dialogue.lines,
+    picture:
+      dialogue.pictureArrivedRev === null
+        ? null
+        : { mediaType: dialogue.pictureMediaType, rev: dialogue.pictureArrivedRev },
+    words,
+  };
 }

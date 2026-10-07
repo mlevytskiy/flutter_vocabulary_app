@@ -7,7 +7,7 @@ acs: ["AC-20", "AC-22"]
 files_hint: ["vocab-photo-api/src/session/page.ts", "vocab-photo-api/src/session/style.ts", "vocab-photo-api/test/page-dialogues.test.mjs"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Render the dialogue pages after the word table on the shared page

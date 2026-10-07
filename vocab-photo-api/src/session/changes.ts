@@ -1,7 +1,7 @@
 import type { Env } from "../env";
 import { jsonResponse } from "../http";
 import type { RouteContext, RouteDefinition } from "../routing";
-import { matchPlaces } from "../story/word-check";
+import { presentDialogue } from "./dialogues";
 import { isLiveSession } from "./store";
 import { CELL_FIELDS, ID_PATTERN, type CellField } from "./types";
 
@@ -124,33 +124,18 @@ function readFeed(env: Env, sessionId: string, since: number) {
  */
 function* dialogueChanges(changed: ChangedDialogue[], wordsByDialogue: Map<string, DialogueWordRow[]>) {
   for (const dialogue of changed) {
-    const lines = JSON.parse(dialogue.lines_json) as string[];
-    const words = [];
-    for (const row of wordsByDialogue.get(dialogue.id) ?? []) {
-      const places = lines.map((line) => matchPlaces(line, row.word));
-      if (places.every((inLine) => inLine.length === 0)) continue;
-      words.push({
-        rowId: row.row_id,
-        word: row.word,
-        translation: row.translation,
-        definition: row.definition,
-        places,
-      });
-    }
-    if (words.length === 0) {
-      yield dialogue.id;
-      continue;
-    }
-    yield {
-      id: dialogue.id,
-      position: dialogue.position,
-      lines,
-      picture:
-        dialogue.picture_arrived_rev === null
-          ? null
-          : { mediaType: dialogue.picture_media_type, rev: dialogue.picture_arrived_rev },
-      words,
-    };
+    yield (
+      presentDialogue(
+        {
+          id: dialogue.id,
+          position: dialogue.position,
+          lines: JSON.parse(dialogue.lines_json) as string[],
+          pictureArrivedRev: dialogue.picture_arrived_rev,
+          pictureMediaType: dialogue.picture_media_type,
+        },
+        wordsByDialogue.get(dialogue.id) ?? []
+      ) ?? dialogue.id
+    );
   }
 }
 
@@ -217,7 +202,6 @@ async function handleChanges({ url, env, params }: RouteContext): Promise<Respon
   const dialogues: unknown[] = [];
   const removedDialogues: string[] = [];
   for (const dialogue of dialogueChanges(dialoguesRead.results as ChangedDialogue[], wordsByDialogue)) {
-    if (dialogue === null) continue;
     if (typeof dialogue === "string") removedDialogues.push(dialogue);
     else dialogues.push(dialogue);
   }

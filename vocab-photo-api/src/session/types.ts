@@ -1,3 +1,5 @@
+import type { DialogueView } from "./dialogues";
+
 /**
  * The shape of a published session. Designed source-agnostic
  * (docs/idea-brief.md §7): a word table plus whatever the words came from.
@@ -115,6 +117,8 @@ export interface StoredSession {
   detail: SessionDetail;
   rows: StoredRow[];
   sources: StoredSource[];
+  /** Film dialogues with at least one word still in the table, in phone order (empty without dialogues). */
+  dialogues: DialogueView[];
 }
 
 /**

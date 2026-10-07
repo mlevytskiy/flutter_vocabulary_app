@@ -1,3 +1,4 @@
+import type { DialogueView } from "./dialogues";
 import { STYLE } from "./style";
 import { MAX_ENTRIES, type StoredRow, type StoredSession, type StoredSource } from "./types";
 
@@ -185,12 +186,72 @@ function renderPhotoButton(session: StoredSession): string {
   return `<button type="button" class="photo-button${total > 1 ? " stack" : ""}" aria-label="${label}">${thumbs}</button>`;
 }
 
+/**
+ * A line with the dialogue words' places in <strong>. `places` holds, per word, its [start, end)
+ * UTF-16 offsets in this line (the change feed's shape); overlapping ones (a word inside a phrase)
+ * merge into one bold run. Everything else is escaped text.
+ */
+function renderLine(line: string, places: [number, number][]): string {
+  const runs: [number, number][] = [];
+  for (const [start, end] of [...places].sort((a, b) => a[0] - b[0] || a[1] - b[1])) {
+    const last = runs[runs.length - 1];
+    if (last && start < last[1]) last[1] = Math.max(last[1], end);
+    else runs.push([start, end]);
+  }
+  let out = "";
+  let at = 0;
+  for (const [start, end] of runs) {
+    out += escapeHtml(line.slice(at, start)) + `<strong>${escapeHtml(line.slice(start, end))}</strong>`;
+    at = end;
+  }
+  return out + escapeHtml(line.slice(at));
+}
+
+/**
+ * One dialogue page (AC-20): its lines with every word's places bold, the scene picture once it has
+ * arrived, and the list of its words. Read-only: nothing here edits the dialogue or draws a picture
+ * (AC-22). The data is the change feed's `dialogues` entry (`DialogueView`), so the page script can
+ * build the same markup from a feed answer. The picture's `?v=` is the feed's `picture.rev`.
+ */
+export function renderDialogue(sessionId: string, dialogue: DialogueView): string {
+  const lines = dialogue.lines
+    .map((line, i) => `<p class="dialogue-line">${renderLine(line, dialogue.words.flatMap((w) => w.places[i] ?? []))}</p>`)
+    .join("\n");
+  const picture = dialogue.picture
+    ? `\n<img class="dialogue-picture" src="/s/${encodeURIComponent(sessionId)}/dialogues/${encodeURIComponent(dialogue.id)}/picture?v=${dialogue.picture.rev}" alt="Scene picture for this dialogue" loading="lazy">`
+    : "";
+  const words = dialogue.words
+    .map((w) => {
+      const translation = w.translation !== "" ? ` <span class="dw-translation">${escapeHtml(w.translation)}</span>` : "";
+      const definition = w.definition !== "" ? ` <span class="dw-definition">${escapeHtml(w.definition)}</span>` : "";
+      return `<li data-row="${escapeHtml(w.rowId)}"><span class="dw-word">${escapeHtml(w.word)}</span>${translation}${definition}</li>`;
+    })
+    .join("\n");
+  return `<section class="dialogue-page" data-dialogue="${escapeHtml(dialogue.id)}" data-position="${dialogue.position}">
+<div class="dialogue-lines">
+${lines}
+</div>${picture}
+<ul class="dialogue-words">
+${words}
+</ul>
+</section>`;
+}
+
+/** The dialogue pages after the word table, in the phone's order; nothing for a session without any. */
+function renderDialogues(session: StoredSession): string {
+  if (session.dialogues.length === 0) return "";
+  return `<div class="dialogues" aria-label="Dialogues from the film">
+${session.dialogues.map((d) => renderDialogue(session.id, d)).join("\n")}
+</div>
+`;
+}
+
 export function renderSessionPage(session: StoredSession, scriptPath: string): string {
   const collapsed = collapsedColumns(session);
   const count = session.rows.length;
   const words = `${count} ${count === 1 ? "word" : "words"}`;
   const photos = renderPhotos(session);
-  const classes = [photos ? "has-photos" : "", ...collapsed.map((field) => `no-${field}`)].filter((c) => c !== "");
+  const classes = [photos ? "has-photos" : "", session.dialogues.length > 0 ? "has-dialogues" : "", ...collapsed.map((field) => `no-${field}`)].filter((c) => c !== "");
   const head = (["word", "translation", "definition"] as Field[])
     .map((field) => renderHeader(field, collapsed.includes(field)))
     .join("");
@@ -214,7 +275,7 @@ ${renderBlankRow()}
 </div>
 ${photos}
 </div>
-<div class="toasts" aria-live="polite"></div>
+${renderDialogues(session)}<div class="toasts" aria-live="polite"></div>
 </main>`;
   return shell(`Vocabulary — ${count} ${count === 1 ? "word" : "words"}`, body, scriptPath);
 }
