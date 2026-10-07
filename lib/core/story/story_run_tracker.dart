@@ -43,6 +43,11 @@ class StoryFollow {
   bool _released = false;
   StoryFollow._(this._onRelease);
 
+  /// A handle for a test double of the tracker, whose `follow()` cannot reach
+  /// the private constructor.
+  @visibleForTesting
+  StoryFollow.forTest(this._onRelease);
+
   /// Lets go; a second call does nothing.
   void release() {
     if (_released) return;

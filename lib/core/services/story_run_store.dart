@@ -71,4 +71,10 @@ class StoryRunStore {
   Stream<StoryRun?> watch(String runId) => _isar.storyRuns
       .watchLazy(fireImmediately: true)
       .asyncMap((_) => byId(runId));
+
+  /// Emits every run, newest first, now and after every write to the
+  /// collection: the story screen picks the runs of its group from it.
+  Stream<List<StoryRun>> watchNewestFirst() => _isar.storyRuns
+      .watchLazy(fireImmediately: true)
+      .asyncMap((_) => newestFirst());
 }

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/learn_screen.dart';
+import '../features/mnemonic_story/story_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
 import '../features/words_table/words_table_screen.dart';
@@ -18,7 +19,10 @@ part 'routes.g.dart';
       routes: [
         TypedGoRoute<LearnRoute>(
           path: 'learn',
-          routes: [TypedGoRoute<ComingSoonRoute>(path: 'soon')],
+          routes: [
+            TypedGoRoute<ComingSoonRoute>(path: 'soon'),
+            TypedGoRoute<StoryRoute>(path: 'story'),
+          ],
         ),
       ],
     ),
@@ -69,6 +73,20 @@ class ComingSoonRoute extends GoRouteData with _$ComingSoonRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       ComingSoonScreen(exerciseId: exercise);
+}
+
+/// The mnemonic story of one group (mnemonic-story, SCR-04), pushed from Start
+/// with Mnemonic story ticked. Ids only, never objects (rule 1): [sessionId] is
+/// as on [LearnRoute] (none is the current session), [groupId] the group.
+class StoryRoute extends GoRouteData with _$StoryRoute {
+  const StoryRoute({this.sessionId, required this.groupId});
+
+  final String? sessionId;
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      StoryScreen(sessionId: sessionId, groupId: groupId);
 }
 
 class HistoryRoute extends GoRouteData with _$HistoryRoute {

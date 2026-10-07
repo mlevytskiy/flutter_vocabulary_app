@@ -8,11 +8,13 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
+import 'package:flutter_vocabulary_app/features/mnemonic_story/story_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 import 'fake_story_groups.dart';
 
-/// learn-part-step-1 T7 (AC-05, AC-05b): Start opens the coming-soon screen.
+/// learn-part-step-1 T7 (AC-05, AC-05b): Start opens an exercise screen. Since
+/// mnemonic-story T17 that is the story screen for Mnemonic story (AC-06).
 class _FakeInput extends WordInputNotifier {
   @override
   Future<Session> build() async => Session.create()
@@ -54,23 +56,23 @@ void main() {
     await tester.tap(mnemonic);
     await tester.pump();
     await tester.tap(start);
-    await tester.pumpAndSettle();
+    // The story screen's spinner never settles.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
   }
 
   void expectComingSoon() {
     expect(find.widgetWithText(AppBar, 'Learn'), findsNothing);
-    expect(find.text('Mnemonic story'), findsOneWidget);
-    expect(find.text(soon), findsOneWidget);
-    expect(find.widgetWithText(ElevatedButton, 'Back to exercises'),
-        findsOneWidget);
+    expect(find.byType(StoryScreen), findsOneWidget);
+    expect(find.text(soon), findsNothing);
   }
 
-  testWidgets('AC-05: Start shows the coming-soon screen; Back to exercises '
+  testWidgets('AC-06: Start with Mnemonic story shows the story screen; back '
       'returns with Mnemonic story still ticked', (tester) async {
     await pump(tester);
     await tickAndStart(tester);
     expectComingSoon();
-    await tester.tap(find.text('Back to exercises'));
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsOneWidget);
     expect(tester.widget<CheckboxListTile>(mnemonic).value, isTrue);

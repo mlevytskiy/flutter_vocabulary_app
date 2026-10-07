@@ -14,7 +14,8 @@ import 'widgets/group_pager.dart';
 import 'widgets/step_progress.dart';
 
 /// Said on the learn page when the day's story allowance is used up (AC-19).
-const storyDayLimitMessage = "Today's story limit is reached. Try again tomorrow.";
+const storyDayLimitMessage =
+    "Today's story limit is reached. Try again tomorrow.";
 
 /// The learn page (learn-part-step-1, SCR-03). [sessionId] is the session the
 /// exercises will read: none is the current session, an id is a History row
@@ -78,10 +79,19 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
         curve: Curves.easeInOut,
       );
 
-  /// Opens the first ticked exercise.
-  void _start() => ComingSoonRoute(
-        exercise: exercises.firstWhere((e) => _ticked.contains(e.id)).id,
-      ).push<void>(context);
+  /// Opens the first ticked exercise: Mnemonic story opens the story of the
+  /// selected group (AC-06); the others are still coming soon.
+  void _start() {
+    final id = exercises.firstWhere((e) => _ticked.contains(e.id)).id;
+    final group =
+        ref.read(wordGroupsNotifierProvider(widget.sessionId)).selectedGroupId;
+    if (id == 'mnemonic-story' && group != null) {
+      StoryRoute(sessionId: widget.sessionId, groupId: group)
+          .push<void>(context);
+    } else {
+      ComingSoonRoute(exercise: id).push<void>(context);
+    }
+  }
 
   @override
   void initState() {
@@ -174,8 +184,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
     // The story is made from the selected group, so Mnemonic story cannot
     // start without one (AC-04, AC-05).
     final canStart = _canStart(grouping);
-    final refusal = ref.watch(storyRunTrackerProvider.select(
-        (s) => s.refusals[grouping.selectedGroupId]));
+    final refusal = ref.watch(storyRunTrackerProvider
+        .select((s) => s.refusals[grouping.selectedGroupId]));
 
     return ScaffoldMessenger(
       key: _messenger,

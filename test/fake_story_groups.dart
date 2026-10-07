@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
 import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
+import 'package:flutter_vocabulary_app/features/mnemonic_story/story_screen.dart';
 
 /// Test doubles for the learn page's grouping state (mnemonic-story T16), so a
 /// widget test needs neither Isar nor the Worker.
@@ -38,6 +39,15 @@ class FakeTracker extends StoryRunTracker {
 
   @override
   StoryTrackerState build() => initial;
+
+  /// The story screen holds one; nothing is polled.
+  @override
+  StoryFollow follow() => StoryFollow.forTest(() {});
+
+  @override
+  Future<String?> startFor(String sessionId, WordGroup group,
+          {bool replacing = false}) async =>
+      null;
 }
 
 /// The overrides a screen that shows the learn page needs: one selected group
@@ -48,6 +58,7 @@ List<Override> fakeGroupOverrides([FakeGroups? groups]) => [
           FakeGroups(WordGroupsState(groups: [_all], selectedGroupId: 'all'))),
       storyRunTrackerProvider
           .overrideWith(() => FakeTracker(const StoryTrackerState())),
+      groupStoryRunsProvider('all').overrideWith((ref) => Stream.value([])),
     ];
 
 final _all = WordGroup()

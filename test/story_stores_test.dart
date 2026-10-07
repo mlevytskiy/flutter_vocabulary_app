@@ -130,6 +130,19 @@ void main() {
       expect(seen.last, 'done');
     });
 
+    test('watchNewestFirst emits all runs now and after every put', () async {
+      await runs.put(run('a', DateTime(2026, 10, 1)));
+      final seen = <List<String>>[];
+      final sub = runs.watchNewestFirst().listen(
+          (l) => seen.add([for (final r in l) r.runId]));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await runs.put(run('b', DateTime(2026, 10, 2)));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await sub.cancel();
+      expect(seen.first, ['a']);
+      expect(seen.last, ['b', 'a']);
+    });
+
     test('shares the database with the session store', () async {
       expect(Isar.getInstance('vocab'), isNotNull);
     });
