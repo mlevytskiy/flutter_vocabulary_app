@@ -139,50 +139,112 @@ Each tactical decision in later sections should trace to one of these seeds. Tac
 
 ## 5. Building block view
 
-<!-- 🎯 Why: INTERNAL DECOMPOSITION — modules, containers, datastores. The static topology: who
-     may talk to whom. Without §5, §6 (the flows) has no vocabulary of participants.
-     📋 Write: 1 ¶ on the style (layered / hexagonal / clean / event-driven) + a folder tree + a
-     C4Container block.
-     📌 Draw ONE Container per declared `target_surface` (frontmatter): a fullstack
-     [backend-service, web-frontend] = a backend-API container + a web/SPA container; a
-     [backend-service, mobile-app] = the API + the mobile app. The Container(web, …) line below is
-     just one surface's container — swap/add per what was declared in §4. → _shared/surfaces.md
-     📌 e.g. «web app, content API, media worker, datastore, object store, CDN». -->
-
-<One paragraph: layered / hexagonal / clean / event-driven, and why.>
+The feature extends the repo's existing shapes and adds no new style. In the app, the dialogue rules more than one feature uses live in `lib/core/dialogues/`: the matching rule, the Done filter, the edit rule and the push outbox. The main screen, the learn page, the dialogue screen and the words table reach them only through providers, so features still don't import each other's screens (architecture.md §2 rule 3). Dialogues are stored inside `Session` through `SessionStore`, scene pictures through the existing `StoryRunStore` and `StoryPictureStore`, and grouping stays in `lib/core/story/word_grouping.dart`, which gains the dialogue-group pass. In the Worker, the reply check for dialogues sits beside the subtitle prompt in `src/subtitles/`. Scene runs are a branch of `src/story/`. The published session's dialogues are a new `src/session/dialogues.ts` beside `changes.ts` and `edit.ts`, all in the same route table. The page script `src/session/client/page.js` renders dialogue changes from the change feed. One new D1 migration covers both the story-run columns and the dialogue tables.
 
 **Internal decomposition:**
 
 ```
-<e.g. modules/<feature>/>
-├── domain/       <entities + sentinel errors>
-├── app/          <use cases / services>
-├── infra/        <repository + integration impl>
-├── ports/        <handlers, DTOs, error mapping>
-└── wiring        <self-wiring entry point>
+lib/
+├── router/routes.dart                          + DialogueRoute (under 'learn', groupId, sessionId?)
+├── core/
+│   ├── models/
+│   │   ├── film_dialogue.dart                  NEW @embedded FilmDialogue: id, lines, wordRowIds, scenePictureRunId?, importId, pushState — ADR-0003
+│   │   ├── session.dart                        + dialogues (pager order)
+│   │   ├── word_group.dart                     + dialogueId?
+│   │   └── story_run.dart                      + kind (story | scene), sceneText?
+│   ├── dialogues/                              NEW shared by word_input, learn, dialogue, words_table (rule 3)
+│   │   ├── dialogue_match.dart                 pure AC-05 rule: does a word appear, where (for bold); tested against the Worker's case file
+│   │   ├── dialogue_rules.dart                 pure: Done filter (AC-03), edit rule (AC-11, AC-26), card names (AC-13)
+│   │   └── dialogue_push.dart                  keepAlive outbox: append an import's rows + dialogues, upload scene pictures, retry with growing pauses and on app start — ADR-0005
+│   ├── services/
+│   │   ├── subtitle_words_service.dart         + dialogues flag in the request, dialogues in SubtitleWordsResult
+│   │   ├── session_publish_service.dart        + dialogues in the publish payload (words by row position, pictures declared)
+│   │   └── story_api_service.dart              + start a scene run (kind, dialogue text, prompt and picture AIs)
+│   ├── story/
+│   │   ├── word_grouping.dart                  + dialogue-group pass before the existing rules; dialogue groups exempt from 7..19
+│   │   └── story_run_tracker.dart              + startScene(dialogue); a scene run's picture becomes FilmDialogue.scenePictureRunId
+│   └── providers.dart                          + dialoguesSettingProvider (persisted), dialoguePushProvider
+└── features/
+    ├── settings/settings_screen.dart           + "Get dialogues from subtitles" switch (off by default)
+    ├── word_input/
+    │   ├── subtitle_import_flow.dart           + sends the flag, carries dialogues to Done, hands them to the notifier with the words
+    │   ├── word_input_notifier.dart            + addWordsWithDialogues (one save), applies the edit rule on every word change
+    │   ├── word_input_screen.dart              + PageView only when the session has dialogues; page 1 unchanged
+    │   └── widgets/dialogue_page.dart          NEW read-only dialogue page: lines with bold words, word list, scene picture
+    ├── learn/
+    │   ├── exercises.dart                      + dialogs-from-movie (twelve), availability needs session dialogues in the app
+    │   └── learn_screen.dart                   + the dialogue-groups line, Start → DialogueRoute then StoryRoute when both ticked
+    └── dialogue/                               NEW feature folder
+        └── dialogue_screen.dart                the dialogue with bold words and its scene picture: progress, failures, Try again, Draw again
+
+vocab-photo-api/
+├── migrations/0005_film_dialogues.sql          NEW story_runs + kind, scene_text; dialogues, dialogue_words (+ down/)
+└── src/
+    ├── subtitles/
+    │   ├── prompt.ts                           + dialogue block and reply shape when asked; byte-identical prompt without it
+    │   ├── dialogues.ts                        NEW reply check: AC-04/AC-05 links, ≤ 8 lines, ≤ 200 chars a line, first 10
+    │   └── routes.ts                           + `dialogues` flag in, `dialogues` out
+    ├── story/
+    │   ├── word-check.ts                       + places of each match (for bold); shared case file match-cases.json
+    │   ├── prompts.ts                          + scene prompt (dialogue as data) and buildScenePrompt (speech bubbles verbatim)
+    │   ├── run-steps.ts / workflow.ts          + kind scene: prompt → picture, no story step, no word check
+    │   └── routes.ts                           + start accepts kind scene; allowance taken at start as today
+    └── session/
+        ├── dialogues.ts                        NEW append route (app secret + edit token, import id), picture upload route, D1 reads/writes
+        ├── handlers.ts / store.ts              + dialogues in publish and republish (replace with the rows)
+        ├── changes.ts                          + dialogues and picture arrivals in the change feed
+        ├── page.ts                             + dialogue pages after the table, bold places marked, both layouts
+        └── client/page.js                      + dialogue pages follow row edits, deletes and new dialogues from the feed
+
+test/dialogue_*_test.dart, test/word_grouping_test.dart                  rules (against match-cases.json), Done filter, grouping, outbox
+vocab-photo-api/test/dialogues-*.test.mjs, story-scene.test.mjs          reply check, switch-off identity, append idempotency, page, scene runs
 ```
 
-**C4 Container (L2):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. ONE Container per declared target_surface (frontmatter); the web container below is one example surface. -->
+**C4 Container (L2):**
 
 ```mermaid
 C4Container
-    title <feature> — Containers
+    title get-words-from-subtitles-improvment — Containers
 
-    Person(actor, "<Actor>")
+    Person(learner, "learner")
+    Person(partner, "partner")
 
-    Container_Boundary(app, "<Our system>") {
-        Container(web, "<Web/UI>", "<technology>", "<purpose>")
-        Container(api, "<API/handler>", "<technology>", "<purpose>")
-        ContainerDb(db, "<Datastore>", "<technology>", "<purpose>")
+    Container_Boundary(phone, "Learner's phone") {
+        Container(app, "Vocabulary app", "Flutter, go_router, Riverpod", "Dialogues setting, main screen pager, dialogue groups, dialogue screen, dialogue push outbox")
+        ContainerDb(isar, "Device store", "Isar on the device", "Sessions with dialogues and word groups, story runs including scene runs")
+        ContainerDb(files, "Picture files", "mnemonic_pictures/ in the documents directory", "Story and scene pictures")
     }
 
-    System_Ext(ext, "<External>", "<purpose>")
+    Container_Boundary(cloud, "Cloudflare") {
+        Container(worker, "vocab-photo-api Worker", "TypeScript, Cloudflare Workers", "Subtitle import with dialogues, story and scene run routes, dialogue append and picture upload, change feed")
+        Container(page, "Shared page", "Server-rendered HTML + plain JavaScript", "Word table then dialogue pages, both layouts, live updates")
+        Container(flow, "Story run workflow", "Cloudflare Workflows, same Worker script", "Story runs and two-step scene runs as durable steps")
+        ContainerDb(d1, "Worker database", "Cloudflare D1", "Story allowance, runs and steps, published sessions with rows and dialogues")
+        ContainerDb(r2, "Picture bucket", "Cloudflare R2, SOURCES bucket", "Run pictures until collected, published photos and scene pictures")
+    }
 
-    Rel(actor, web, "<interaction>", "<protocol>")
-    Rel(web, api, "<calls>")
-    Rel(api, db, "<reads/writes>", "<driver>")
-    Rel(api, ext, "<emits>", "<protocol>")
+    System_Ext(anthropic, "Anthropic API", "Words and dialogues, text steps")
+    System_Ext(textai, "OpenCode Zen", "Text steps")
+    System_Ext(picai, "xAI Grok and Higgsfield", "Pictures")
+
+    Rel(learner, app, "Imports, reads dialogue pages, starts Dialogs from movie")
+    Rel(partner, page, "Reads dialogue pages, edits words", "HTTPS")
+    Rel(app, isar, "Reads and writes sessions and runs", "Riverpod providers")
+    Rel(app, files, "Writes and reads pictures", "dart:io")
+    Rel(app, worker, "Imports, starts and collects scene runs, publishes, appends dialogues, uploads pictures", "HTTPS + x-app-secret")
+    Rel(page, worker, "Polls the change feed, saves word edits", "HTTPS")
+    Rel(worker, anthropic, "Picks words and dialogues", "HTTPS")
+    Rel(worker, d1, "Allowance, runs, sessions, rows, dialogues", "D1 binding")
+    Rel(worker, r2, "Stores and serves pictures", "R2 binding")
+    Rel(worker, flow, "Creates a story or scene run", "Workflow binding")
+    Rel(flow, d1, "Records each step", "D1 binding")
+    Rel(flow, r2, "Stores the picture", "R2 binding")
+    Rel(flow, anthropic, "Writes picture prompts", "HTTPS")
+    Rel(flow, textai, "Writes picture prompts", "HTTPS")
+    Rel(flow, picai, "Draws scene pictures", "HTTPS")
 ```
+
+There is one container per declared surface. The **Vocabulary app** (mobile-app) keeps sessions with their dialogues, and story runs including scene runs, in the **Device store**, and pictures as **Picture files**. It talks only to the **Worker** (backend-service). The Worker picks words and dialogues with Anthropic in one call, and hands scene runs to the **Story run workflow**, which writes the prompt with the chosen text AI and draws with the chosen picture AI. When a session already has a link, the app also appends an import's rows and dialogues, and uploads scene pictures, to the Worker, which keeps them in **D1** and **R2**. The **Shared page** (web-frontend) is served by the Worker and polls its change feed, so new dialogues, pictures and word edits appear there. It can save word edits but has no route that draws or changes a dialogue.
 
 ## 6. Runtime view
 
