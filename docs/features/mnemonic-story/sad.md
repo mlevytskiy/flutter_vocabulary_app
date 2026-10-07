@@ -60,3 +60,48 @@ target_surfaces: [mobile-app, backend-service]  # decided in §4 (ADR-0001) — 
 - Data classification: internal (spec §6.1). The words of a word group go to the chosen AI providers, as photo words go to Anthropic today. No personal data is added.
 - Security review: required (spec §6.1). The Security Lead signs off §8 "Spending control" and ADR-0002 before release (§11).
 - Provider terms: each provider is used only through its paid API with a key held as a Worker secret. Pictures that a provider refuses are a failed picture (AC-09), never retried with altered words.
+
+## 3. Context and scope
+
+The learner collects words on the phone. The learn page from learn-part-step-1 lists eleven exercises, and Mnemonic story is the only one that can be ticked. This feature makes it real in the app. The app asks the Worker to group the session's words and to run each group through three AIs, and keeps the groups, stories, pictures and run records on the phone. The Worker holds the provider keys, the offered model list and the daily allowance, and calls four AI providers. The partner's web learn page is not changed: Mnemonic story there still leads to coming soon, and no public route can start a run.
+
+<!-- brownfield: Flutter app (lib/, go_router + Riverpod, Isar on device) + Cloudflare Worker (vocab-photo-api/, TypeScript, D1 + KV + R2, x-app-secret on app routes, per-address rate limiter, daily subtitle allowance in D1, Anthropic as the only AI); read from docs/architecture.md, CLAUDE.md and an explorer scan — no docs/architecture-map.md exists -->
+
+**External systems (in / out):**
+
+| Actor or system | Type | Interaction |
+|---|---|---|
+| learner | Person | Selects a word group, reads its story, chooses the AIs, compares story runs, makes a story again — all in the app |
+| partner | Person | Unchanged: opens the web learn page, where Mnemonic story still leads to coming soon (AC-18) |
+| Vocabulary app | System (ours) | Groups and stories on the phone; calls the Worker with the app secret |
+| vocab-photo-api Worker | System (ours) | Groups words, runs story runs, keeps the allowance and the offered model list, holds results until collected |
+| Anthropic API | System (external) | Grouping (fixed model); story writer and picture prompt writer (Sonnet 5.5, Opus 5.5) |
+| OpenCode Zen | System (external, new) | Story writer and picture prompt writer for the OpenCode Zen models on the list; OpenAI-compatible API |
+| xAI (Grok) | System (external, new) | Picture maker for the Grok picture models on the list |
+| Higgsfield | System (external, new) | Picture maker for the Higgsfield picture models on the list; credits under a plan |
+
+**C4 Context (L1):**
+
+```mermaid
+C4Context
+    title mnemonic-story — System Context
+
+    Person(learner, "learner", "Studies a session's words as mnemonic stories on the phone")
+    Person(partner, "partner", "Holds a shared link; web learn page unchanged")
+    System(app, "Vocabulary app", "Flutter phone app: group pager, story screen, Words settings, story runs; keeps groups, stories and runs")
+    System(worker, "vocab-photo-api Worker", "Cloudflare Worker: grouping, story runs, story allowance, offered model list")
+    System_Ext(anthropic, "Anthropic API", "Grouping; story and picture prompt writing")
+    System_Ext(zen, "OpenCode Zen", "Story and picture prompt writing")
+    System_Ext(xai, "xAI Grok", "Picture making")
+    System_Ext(higgs, "Higgsfield", "Picture making")
+
+    Rel(learner, app, "Selects a group, reads its story, chooses the AIs")
+    Rel(partner, worker, "Opens the web learn page, unchanged", "HTTPS")
+    Rel(app, worker, "Groups words, starts and follows story runs", "HTTPS + app secret")
+    Rel(worker, anthropic, "Groups words; writes stories and picture prompts", "HTTPS")
+    Rel(worker, zen, "Writes stories and picture prompts", "HTTPS")
+    Rel(worker, xai, "Draws pictures", "HTTPS")
+    Rel(worker, higgs, "Draws pictures", "HTTPS")
+```
+
+The context has two people and two of our own systems. The learner uses only the phone app. The app talks only to our Worker, with the app secret, and never to an AI provider directly, so no provider key ships in the app. The Worker calls four AI providers: Anthropic, which it already uses, plus three new ones. The partner's web learn page sits on the Worker as before. It gains nothing, so nothing on the web can spend money.
