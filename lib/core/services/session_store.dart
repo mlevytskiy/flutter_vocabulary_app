@@ -3,6 +3,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/session.dart';
+import '../models/story_run.dart';
+import 'source_photo_store.dart' show uuidV4;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
 /// `shared_preferences` pointer saying which session is the current one — the
@@ -24,19 +26,49 @@ class SessionStore {
     final dir =
         directory ?? (await getApplicationDocumentsDirectory()).path;
     final isar = Isar.getInstance('vocab') ??
-        await Isar.open([SessionSchema], directory: dir, name: 'vocab');
+        await Isar.open([SessionSchema, StoryRunSchema],
+            directory: dir, name: 'vocab');
     final prefs = await SharedPreferences.getInstance();
-    return SessionStore._(isar, prefs);
+    final store = SessionStore._(isar, prefs);
+    await store._fillRowIdsEverywhere();
+    return store;
+  }
+
+  /// Gives every row without a [WordPair.rowId] one and saves it, so rows
+  /// stored before mnemonic-story get stable ids once. Returns [s] itself.
+  /// Never throws, see the class doc.
+  Future<Session> _withRowIds(Session s) async {
+    if (s.words.every((w) => w.rowId.isNotEmpty)) return s;
+    for (final w in s.words) {
+      if (w.rowId.isEmpty) w.rowId = uuidV4();
+    }
+    try {
+      await _isar.writeTxn(() => _isar.sessions.put(s));
+    } catch (_) {
+      // the ids stay on this object; the next read tries again
+    }
+    return s;
+  }
+
+  Future<void> _fillRowIdsEverywhere() async {
+    try {
+      for (final s in await _isar.sessions.where().findAll()) {
+        await _withRowIds(s);
+      }
+    } catch (_) {
+      // ignored on purpose, see the class doc
+    }
   }
 
   Future<void> close() => _isar.close();
 
   Future<Session?> byId(String sessionId) async {
     try {
-      return await _isar.sessions
+      final s = await _isar.sessions
           .filter()
           .sessionIdEqualTo(sessionId)
           .findFirst();
+      return s == null ? null : await _withRowIds(s);
     } catch (_) {
       return null;
     }
@@ -46,10 +78,11 @@ class SessionStore {
   /// empty store.
   Future<Session?> newest() async {
     try {
-      return await _isar.sessions
+      final s = await _isar.sessions
           .where()
           .sortByLastLocalModifiedAtDesc()
           .findFirst();
+      return s == null ? null : await _withRowIds(s);
     } catch (_) {
       return null;
     }
@@ -62,7 +95,10 @@ class SessionStore {
           .where()
           .sortByLastLocalModifiedAtDesc()
           .findAll();
-      return all.where((s) => !s.isEmpty).toList();
+      return [
+        for (final s in all)
+          if (!s.isEmpty) await _withRowIds(s),
+      ];
     } catch (_) {
       return const [];
     }
@@ -73,6 +109,11 @@ class SessionStore {
   /// session object is left untouched.
   Future<void> put(Session s) async {
     try {
+      // A row keeps its id for good, so a new one gets it now, on the
+      // caller's object too: a group may name it before the next read.
+      for (final w in s.words) {
+        if (!w.isEmpty && w.rowId.isEmpty) w.rowId = uuidV4();
+      }
       await _isar.writeTxn(() async {
         final existing = await _isar.sessions
             .filter()
@@ -90,7 +131,10 @@ class SessionStore {
           ]
           ..sources = [for (final p in s.sources) p.copy()]
           ..publishedId = s.publishedId
-          ..editToken = s.editToken;
+          ..editToken = s.editToken
+          ..groups = [for (final g in s.groups) g.copy()]
+          ..selectedGroupId = s.selectedGroupId
+          ..groupedWordsKey = s.groupedWordsKey;
         s.id = await _isar.sessions.put(toWrite);
       });
     } catch (_) {
@@ -118,7 +162,10 @@ class SessionStore {
       .where()
       .sortByLastLocalModifiedAtDesc()
       .watch(fireImmediately: true)
-      .map((all) => all.where((s) => !s.isEmpty).toList());
+      .asyncMap((all) async => [
+            for (final s in all)
+              if (!s.isEmpty) await _withRowIds(s),
+          ]);
 
   Future<String?> currentSessionId() async =>
       _prefs.getString(_currentSessionKey);

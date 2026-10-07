@@ -42,6 +42,12 @@ class WordPair {
   /// Editing the row keeps it; clearing the row drops it.
   String? sourceId;
 
+  /// A UUID that stays with this row for good, so a word group can name its
+  /// rows and follow them through edits and deletions (mnemonic-story AC-17,
+  /// ADR-0003). Empty only on a row not stored yet and on rows saved before
+  /// mnemonic-story; `SessionStore` fills it in once.
+  String rowId;
+
   WordPair({
     this.word = '',
     this.translation = '',
@@ -53,6 +59,7 @@ class WordPair {
     this.definitionOptionsJson,
     this.definitionMarkedFilled = false,
     this.sourceId,
+    this.rowId = '',
   });
 
   @ignore
@@ -85,6 +92,7 @@ class WordPair {
         definitionOptionsJson: json['definitionOptionsJson'] as String?,
         definitionMarkedFilled: json['definitionMarkedFilled'] as bool? ?? false,
         sourceId: json['sourceId'] as String?,
+        rowId: json['rowId'] as String? ?? '',
       );
 
   Map<String, dynamic> toJson() => {
@@ -98,6 +106,7 @@ class WordPair {
         'definitionOptionsJson': definitionOptionsJson,
         'definitionMarkedFilled': definitionMarkedFilled,
         'sourceId': sourceId,
+        'rowId': rowId,
       };
 
   /// A verbatim copy — used when writing to / reading from the store so the
@@ -113,6 +122,7 @@ class WordPair {
         definitionOptionsJson: definitionOptionsJson,
         definitionMarkedFilled: definitionMarkedFilled,
         sourceId: sourceId,
+        rowId: rowId,
       );
 
   @ignore

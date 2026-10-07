@@ -33,33 +33,38 @@ const WordPairSchema = Schema(
       name: r'hasTranslationOptions',
       type: IsarType.bool,
     ),
-    r'sourceId': PropertySchema(
+    r'rowId': PropertySchema(
       id: 4,
+      name: r'rowId',
+      type: IsarType.string,
+    ),
+    r'sourceId': PropertySchema(
+      id: 5,
       name: r'sourceId',
       type: IsarType.string,
     ),
     r'translation': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'translation',
       type: IsarType.string,
     ),
     r'translationMarkedFilled': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'translationMarkedFilled',
       type: IsarType.bool,
     ),
     r'translationOptionsJson': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'translationOptionsJson',
       type: IsarType.string,
     ),
     r'word': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'word',
       type: IsarType.string,
     ),
     r'wordMarkedFilled': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'wordMarkedFilled',
       type: IsarType.bool,
     )
@@ -83,6 +88,7 @@ int _wordPairEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.rowId.length * 3;
   {
     final value = object.sourceId;
     if (value != null) {
@@ -110,12 +116,13 @@ void _wordPairSerialize(
   writer.writeBool(offsets[1], object.definitionMarkedFilled);
   writer.writeString(offsets[2], object.definitionOptionsJson);
   writer.writeBool(offsets[3], object.hasTranslationOptions);
-  writer.writeString(offsets[4], object.sourceId);
-  writer.writeString(offsets[5], object.translation);
-  writer.writeBool(offsets[6], object.translationMarkedFilled);
-  writer.writeString(offsets[7], object.translationOptionsJson);
-  writer.writeString(offsets[8], object.word);
-  writer.writeBool(offsets[9], object.wordMarkedFilled);
+  writer.writeString(offsets[4], object.rowId);
+  writer.writeString(offsets[5], object.sourceId);
+  writer.writeString(offsets[6], object.translation);
+  writer.writeBool(offsets[7], object.translationMarkedFilled);
+  writer.writeString(offsets[8], object.translationOptionsJson);
+  writer.writeString(offsets[9], object.word);
+  writer.writeBool(offsets[10], object.wordMarkedFilled);
 }
 
 WordPair _wordPairDeserialize(
@@ -129,12 +136,13 @@ WordPair _wordPairDeserialize(
     definitionMarkedFilled: reader.readBoolOrNull(offsets[1]) ?? false,
     definitionOptionsJson: reader.readStringOrNull(offsets[2]),
     hasTranslationOptions: reader.readBoolOrNull(offsets[3]) ?? false,
-    sourceId: reader.readStringOrNull(offsets[4]),
-    translation: reader.readStringOrNull(offsets[5]) ?? '',
-    translationMarkedFilled: reader.readBoolOrNull(offsets[6]) ?? false,
-    translationOptionsJson: reader.readStringOrNull(offsets[7]),
-    word: reader.readStringOrNull(offsets[8]) ?? '',
-    wordMarkedFilled: reader.readBoolOrNull(offsets[9]) ?? false,
+    rowId: reader.readStringOrNull(offsets[4]) ?? '',
+    sourceId: reader.readStringOrNull(offsets[5]),
+    translation: reader.readStringOrNull(offsets[6]) ?? '',
+    translationMarkedFilled: reader.readBoolOrNull(offsets[7]) ?? false,
+    translationOptionsJson: reader.readStringOrNull(offsets[8]),
+    word: reader.readStringOrNull(offsets[9]) ?? '',
+    wordMarkedFilled: reader.readBoolOrNull(offsets[10]) ?? false,
   );
   return object;
 }
@@ -155,16 +163,18 @@ P _wordPairDeserializeProp<P>(
     case 3:
       return (reader.readBoolOrNull(offset) ?? false) as P;
     case 4:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset) ?? '') as P;
     case 5:
-      return (reader.readStringOrNull(offset) ?? '') as P;
-    case 6:
-      return (reader.readBoolOrNull(offset) ?? false) as P;
-    case 7:
       return (reader.readStringOrNull(offset)) as P;
-    case 8:
+    case 6:
       return (reader.readStringOrNull(offset) ?? '') as P;
+    case 7:
+      return (reader.readBoolOrNull(offset) ?? false) as P;
+    case 8:
+      return (reader.readStringOrNull(offset)) as P;
     case 9:
+      return (reader.readStringOrNull(offset) ?? '') as P;
+    case 10:
       return (reader.readBoolOrNull(offset) ?? false) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -475,6 +485,136 @@ extension WordPairQueryFilter
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'hasTranslationOptions',
         value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'rowId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'rowId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'rowId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'rowId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'rowId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'rowId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'rowId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'rowId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'rowId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordPair, WordPair, QAfterFilterCondition> rowIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'rowId',
+        value: '',
       ));
     });
   }
