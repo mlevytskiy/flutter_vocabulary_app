@@ -130,3 +130,109 @@ The context has two people and two of our own systems. The learner uses only the
 - **New providers.** Each provider gets one adapter file in `src/story/providers/` behind a common `writeText` / `drawPicture` shape. The keys are new Worker secrets, and each provider's base URL can be overridden for the test stubs (`*_API_URL`, as `ANTHROPIC_API_URL` today).
 - **Spec §8 open questions, resolved:** Higgsfield's price is shown as "≈ $X" per picture, the plan price divided by the credits one picture takes, fixed in `models.json`. The defaults are Sonnet 5.5 for the story writer and the picture prompt writer, and the Grok picture model for the picture maker.
 - **Pictures on the phone** are compressed with `flutter_image_compress` to ≤ 3 MB and kept under `mnemonic_pictures/` in the documents directory, beside `source_photos/`.
+
+## 5. Building block view
+
+The feature follows the repo's existing shapes. In the app, pure rules (grouping, the grouped-words key) are plain Dart files with unit tests. Storage stays in `SessionStore` plus one new store for runs and pictures. Worker calls go through one service reached from `lib/core/providers.dart`, and screens read `@riverpod` notifiers. A long-lived `StoryRunTracker` notifier (`keepAlive`, like `photoUploadServiceProvider`) follows the runs that are not yet collected and writes their results to Isar. Screens watch Isar, so they show a run's current step whenever they open (AC-06, AC-10). In the Worker, the story feature is a new `src/story/` module beside `src/subtitles/`, with routes in the same route table, all `public: false`. Its Workflow class is exported from `src/index.ts`, and its D1 tables come in one new migration.
+
+**Internal decomposition:**
+
+```
+lib/
+├── router/routes.dart                       + StoryRoute (under 'learn', sessionId?, groupId)
+│                                            + WordsSettingsRoute (under 'table') → StoryRunsRoute → StoryRunRoute (runId)
+├── core/
+│   ├── models/
+│   │   ├── word_pair.dart                   + rowId (UUID, filled in for older rows on read) — ADR-0003
+│   │   ├── word_group.dart                  NEW @embedded WordGroup: id, name, rowIds, storyRunId?, storyWords (English words when its story was made)
+│   │   ├── session.dart                     + groups, selectedGroupId, groupedWordsKey
+│   │   ├── story_run.dart                   NEW @collection StoryRun: runId, sessionId, groupId, groupName, words, startedAt, models, steps, outcome, collected
+│   │   │                                    + @embedded StoryStep: role, attempt, modelId, modelName, outcome, text / picturePath, missedWords, priceUsd?, ms
+│   │   └── offered_ai.dart                  NEW OfferedAi + AiChoice (read from the Worker's models.json) — ADR-0004
+│   ├── services/
+│   │   ├── session_store.dart               + opens StoryRunSchema beside SessionSchema; rowId fill-in on read
+│   │   ├── story_api_service.dart           NEW Worker calls: models, grouping, start run, runs status, redo step, picture bytes
+│   │   ├── story_run_store.dart             NEW StoryRun reads/writes (newest first, by id, uncollected), never removes
+│   │   └── story_picture_store.dart         NEW mnemonic_pictures/ files, compressed ≤ 3 MB (flutter_image_compress)
+│   └── providers.dart                       + storyApiService, storyRunStore, storyPictureStore, offeredAis, aiChoice (persisted)
+└── features/
+    ├── learn/
+    │   ├── word_grouping.dart               NEW pure rules: what to regroup, local "All words" / small groups, validate a split, grouped-words key — ADR-0005
+    │   ├── learn_groups_notifier.dart       NEW per-session groups, grouping state, selection; starts a run for a selected group without a story
+    │   ├── widgets/group_pager.dart         NEW the pager of group cards (tap selects, swipe browses)
+    │   └── learn_screen.dart                + group line, pager, grouping/waiting/limit messages; Start → StoryRoute for mnemonic-story
+    ├── mnemonic_story/                      NEW feature folder
+    │   ├── story_run_tracker.dart           keepAlive notifier: start, follow (one status call / 5 s while visible), collect, redo
+    │   ├── story_screen.dart                running step, picture (InteractiveViewer) over text, errors, "Words changed", Make a new story
+    │   └── widgets/new_story_dialog.dart    the confirmation before a new run
+    ├── words_settings/                      NEW feature folder
+    │   ├── words_settings_screen.dart       three AI choices with prices, "no longer available", Story runs
+    │   ├── story_runs_screen.dart           all runs, newest first
+    │   └── story_run_screen.dart            one run's steps: AI, result, price, time, failed attempts
+    └── words_table/words_table_screen.dart  + settings button (as the main screen's); starts grouping quietly when needed (AC-03)
+
+vocab-photo-api/
+├── wrangler.jsonc                           + workflows: STORY_RUN → StoryRunWorkflow
+├── migrations/0004_story_runs.sql           NEW all_story_runs, story_runs, story_run_steps (+ down/)
+└── src/
+    ├── index.ts                             + storyRoutes; export StoryRunWorkflow; cron also cleans story runs > 7 days
+    ├── env.ts                               + STORY_RUN, OPENCODE_ZEN_API_KEY, XAI_API_KEY, HIGGSFIELD_API_KEY, *_API_URL overrides
+    └── story/                               NEW module
+        ├── models.json                      offered AIs, roles, list prices, 15-word estimates, defaults — ADR-0004
+        ├── models.ts                        typed view + isOffered(role, id) + price(step usage)
+        ├── allowance.ts                     takeStoryRun: one unit per new run / Draw again from all_story_runs
+        ├── grouping.ts                      grouping prompt + Haiku 4.5 call + JSON parse
+        ├── prompts.ts                       story writer and picture prompt writer prompts
+        ├── word-check.ts                    AC-08 rule: whole word, any case, phrase in order, -s/-es/-ed/-ing
+        ├── providers/                       anthropic.ts, opencode-zen.ts, xai.ts, higgsfield.ts (writeText / drawPicture, abort at 90 s / 120 s)
+        ├── workflow.ts                      StoryRunWorkflow: story → word check → prompt → picture; redo of one step
+        ├── store.ts                         D1 runs/steps, R2 story-runs/<runId>/<attempt>, 7-day clean-up
+        └── routes.ts                        models, grouping, start, status, redo, picture (all public: false)
+
+test/word_grouping_test.dart, test/story_*_test.dart          rules, stores, tracker with a fake service
+vocab-photo-api/test/story-*.test.mjs (+ zen/xai/higgsfield stubs)  routes, allowance, word check, workflow, AC-18
+```
+
+**C4 Container (L2):**
+
+```mermaid
+C4Container
+    title mnemonic-story — Containers
+
+    Person(learner, "learner")
+
+    Container_Boundary(phone, "Learner's phone") {
+        Container(app, "Vocabulary app", "Flutter, go_router, Riverpod", "Group pager, story screen, Words settings, story runs; StoryRunTracker follows and collects runs")
+        ContainerDb(isar, "Device store", "Isar on the device", "Sessions with word groups; story runs with their steps")
+        ContainerDb(files, "Picture files", "mnemonic_pictures/ in the documents directory", "Compressed story pictures, at most 3 MB each")
+    }
+
+    Container_Boundary(cloud, "Cloudflare") {
+        Container(worker, "vocab-photo-api Worker", "TypeScript, Cloudflare Workers", "App-secret story routes: models, grouping, start, status, redo, picture; allowance; models.json")
+        Container(flow, "Story run workflow", "Cloudflare Workflows, same Worker script", "Runs story writer, word check, picture prompt writer, picture maker as durable steps")
+        ContainerDb(d1, "Story run records", "Cloudflare D1", "all_story_runs allowance; story runs and steps for 7 days")
+        ContainerDb(r2, "Run pictures", "Cloudflare R2, SOURCES bucket", "story-runs pictures until collected, 7 days")
+    }
+
+    System_Ext(anthropic, "Anthropic API", "Grouping; text steps")
+    System_Ext(zen, "OpenCode Zen", "Text steps")
+    System_Ext(xai, "xAI Grok", "Pictures")
+    System_Ext(higgs, "Higgsfield", "Pictures")
+
+    Rel(learner, app, "Selects a group, reads its story, chooses the AIs")
+    Rel(app, isar, "Reads and writes groups and story runs", "Riverpod providers")
+    Rel(app, files, "Writes and reads pictures", "dart:io")
+    Rel(app, worker, "Groups words, starts runs, follows and collects them", "HTTPS + x-app-secret")
+    Rel(worker, d1, "Takes allowance units, reads run status", "D1 binding")
+    Rel(worker, flow, "Creates a run or a one-step redo", "Workflow binding")
+    Rel(worker, anthropic, "Groups words", "HTTPS")
+    Rel(flow, d1, "Records each step's result, price and time", "D1 binding")
+    Rel(flow, r2, "Stores the picture", "R2 binding")
+    Rel(flow, anthropic, "Writes story or prompt", "HTTPS")
+    Rel(flow, zen, "Writes story or prompt", "HTTPS")
+    Rel(flow, xai, "Draws the picture", "HTTPS")
+    Rel(flow, higgs, "Draws the picture", "HTTPS")
+    Rel(worker, r2, "Serves a run's picture to the app", "R2 binding")
+```
+
+There is one container per declared surface, plus their stores. The **Vocabulary app** (mobile-app) keeps everything lasting on the phone: sessions with their word groups and the story runs in the **Device store**, and the pictures as **Picture files**. It talks only to the **Worker** (backend-service). The Worker answers grouping itself, calling Anthropic. For a story run, it takes an allowance unit in **D1** and hands the run to the **Story run workflow**, which ships in the same Worker script. The workflow calls the chosen text provider (Anthropic or OpenCode Zen) and picture provider (xAI or Higgsfield), records each step in D1 and stores the picture in **R2**. The app polls the Worker for status and downloads the picture, after which the phone holds the only lasting copy.
