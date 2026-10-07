@@ -12,7 +12,7 @@
 | T5 | [Add the Grok and Higgsfield picture adapters with a 120 s limit](./T5-worker-picture-providers.md) | infra | Maksym | M | T2, T4 | done |
 | T6 | [Add the story allowance take and the run store to the Worker](./T6-worker-allowance-and-run-store.md) | infra | Maksym | M | T1 | done |
 | T7 | [Serve the offered AI list and the grouping split from the Worker](./T7-worker-models-and-grouping-routes.md) | ports | Maksym | M | T2, T4 | done |
-| T8 | [Run each story run as a Workflow on the Worker](./T8-worker-story-run-workflow.md) | app | Maksym | L | T3, T4, T5, T6 | todo |
+| T8 | [Run each story run as a Workflow on the Worker](./T8-worker-story-run-workflow.md) | app | Maksym | L | T3, T4, T5, T6 | done |
 | T9 | [Add the start, status, redo and picture routes and the 7-day picture clean-up](./T9-worker-story-run-routes.md) | ports | Maksym | M | T7, T8 | todo |
 | T10 | [Add WordPair.rowId, WordGroup and the StoryRun collection to the app](./T10-app-story-models.md) | domain | Maksym | M | — | todo |
 | T11 | [Add the pure word-grouping rules to the app](./T11-app-word-grouping-rules.md) | domain | Maksym | M | T10 | todo |

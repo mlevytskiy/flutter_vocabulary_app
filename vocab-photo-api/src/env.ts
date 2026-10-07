@@ -1,3 +1,5 @@
+import type { StoryRunParams } from "./story/run-steps.ts";
+
 export interface Env {
   ANTHROPIC_API_KEY: string;
   /** Overrides the Anthropic API's base URL for subtitle imports; unset in production. The tests point it at a local stub. */
@@ -43,4 +45,6 @@ export interface Env {
   DEFINITIONS: KVNamespace;
   /** Editable sessions, rows, cell revisions, photo slots and autofill counters (good-looking-web, ADR-0003). Schema in `migrations/`. */
   DB: D1Database;
+  /** The story run Workflow, one instance per run, named by the app's run id (mnemonic-story, ADR-0002). */
+  STORY_RUN: Workflow<StoryRunParams>;
 }

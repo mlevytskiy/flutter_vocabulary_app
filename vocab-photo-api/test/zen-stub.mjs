@@ -9,6 +9,9 @@
 //   "STUB:error"       -> 500
 //   "STUB:slow:<ms>"   -> the default reply after <ms> milliseconds
 //   anything else      -> a short story with token usage
+// A test can script the next calls: `POST /__script` with a JSON array of markers
+// (e.g. ["ok", "STUB:error"]) makes the following calls use them in order, "ok" meaning
+// the default reply; `POST /__reset` clears the counters and the script (mnemonic-story T8).
 // `GET /__calls` answers `{ count, last, lastAuth }` -- how many calls so far, the last
 // request body and its Authorization header -- so a test can tell what was sent.
 import { createServer } from "node:http";
@@ -36,6 +39,7 @@ function answer(model, firstLine) {
 
 export function startZenStub() {
   const calls = { count: 0, last: null, lastAuth: null, lastPath: null };
+  let script = [];
   const server = createServer((req, res) => {
     const url = new URL(req.url, "http://stub");
     if (url.pathname === "/__calls") {
@@ -46,12 +50,24 @@ export function startZenStub() {
     req.on("data", (chunk) => (raw += chunk));
     req.on("end", () => {
       const body = JSON.parse(raw || "{}");
+      if (url.pathname === "/__script") {
+        script = Array.isArray(body) ? body : [];
+        res.writeHead(204);
+        return res.end();
+      }
+      if (url.pathname === "/__reset") {
+        script = [];
+        Object.assign(calls, { count: 0, last: null, lastAuth: null, lastPath: null });
+        res.writeHead(204);
+        return res.end();
+      }
       calls.count += 1;
       calls.last = body;
       calls.lastAuth = req.headers["authorization"] ?? null;
       calls.lastPath = url.pathname;
       const user = body.messages?.find((m) => m.role === "user")?.content;
-      const firstLine = typeof user === "string" ? user.split("\n")[0] : "";
+      const scripted = script.shift();
+      const firstLine = scripted !== undefined ? (scripted === "ok" ? "" : scripted) : typeof user === "string" ? user.split("\n")[0] : "";
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);
       const { status, body: reply } = answer(body.model, slow ? "" : firstLine);
       const send = () => {

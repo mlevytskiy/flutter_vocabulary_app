@@ -6,6 +6,9 @@
 //   "STUB:empty"      -> 200 with no data
 //   "STUB:slow:<ms>"  -> the picture after <ms> milliseconds
 //   anything else     -> a picture as base64
+// A test can script the next calls: `POST /__script` with a JSON array of markers
+// (e.g. ["STUB:error"]) makes the following calls use them in order, "ok" meaning the
+// default picture; `POST /__reset` clears the counters and the script (mnemonic-story T8).
 // `GET /__calls` answers `{ count, last, lastAuth, lastPath }`.
 import { createServer } from "node:http";
 
@@ -16,6 +19,7 @@ export const PICTURE_BYTES = Buffer.from(
 
 export function startXaiStub() {
   const calls = { count: 0, last: null, lastAuth: null, lastPath: null };
+  let script = [];
   const server = createServer((req, res) => {
     const url = new URL(req.url, "http://stub");
     const json = (status, body) => {
@@ -28,11 +32,21 @@ export function startXaiStub() {
     req.on("data", (chunk) => (raw += chunk));
     req.on("end", () => {
       const body = JSON.parse(raw || "{}");
+      if (url.pathname === "/__script") {
+        script = Array.isArray(body) ? body : [];
+        { res.writeHead(204); return res.end(); }
+      }
+      if (url.pathname === "/__reset") {
+        script = [];
+        Object.assign(calls, { count: 0, last: null, lastAuth: null, lastPath: null });
+        { res.writeHead(204); return res.end(); }
+      }
       calls.count += 1;
       calls.last = body;
       calls.lastAuth = req.headers["authorization"] ?? null;
       calls.lastPath = url.pathname;
-      const prompt = String(body.prompt ?? "").split("\n")[0];
+      const scripted = script.shift();
+      const prompt = scripted !== undefined ? (scripted === "ok" ? "" : scripted) : String(body.prompt ?? "").split("\n")[0];
       const slow = prompt.match(/^STUB:slow:(\d+)$/);
       const picture = { data: [{ b64_json: PICTURE_BYTES.toString("base64"), respect_moderation: true }], model: body.model };
       switch (slow ? "" : prompt) {

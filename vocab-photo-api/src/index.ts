@@ -14,6 +14,7 @@ import { subtitleRoutes } from "./subtitles/routes";
 import { storyRoutes } from "./story/routes.ts";
 
 export type { Env } from "./env";
+export { StoryRunWorkflow } from "./story/workflow.ts";
 
 interface Options {
   context: boolean;
