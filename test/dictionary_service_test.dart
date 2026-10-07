@@ -1,3 +1,6 @@
+@Tags(['smoke'])
+library;
+
 import 'dart:async';
 import 'dart:convert';
 
