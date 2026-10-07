@@ -10,6 +10,7 @@ import { takeDrawAgain, takeStoryRun } from "./allowance.ts";
 import { groupWords, parseGroupingRequest } from "./grouping.ts";
 import { defaults, isOffered, offeredModels, pricesAsOf } from "./models.ts";
 import type { StoryRunParams } from "./run-steps.ts";
+import { sceneLines } from "./prompts.ts";
 import { findCountedRun, getPicture, recordStep, runStatus } from "./store.ts";
 
 /** GET /story/models -- the offered AIs with prices and the defaults (ADR-0004). Owner-only fields stay out. */
@@ -42,6 +43,9 @@ const RUN_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const MAX_WORDS = 50;
 const MAX_WORD_LENGTH = 100;
 const MAX_STATUS_IDS = 50;
+// A film dialogue is at most 8 lines of at most 200 characters (sad §8, as the import's check).
+const MAX_SCENE_LINES = 8;
+const MAX_SCENE_LINE_LENGTH = 200;
 
 const serviceUnavailable = () => jsonResponse({ error: "Story pictures are not available", code: "no_storage" }, 503);
 const notOffered = (model: string) => jsonResponse({ error: "That AI is not offered", code: "not_offered", model }, 422);
@@ -71,30 +75,51 @@ async function startInstance(env: Env, id: string, params: StoryRunParams): Prom
   }
 }
 
-/** POST /story/runs -- check the three AIs, take one unit of the day, start the run (S-02). */
+/** POST /story/runs -- check the AIs, take one unit of the day, start the run (S-02; ADR-0004 for kind scene). */
 async function handleStart({ request, env }: RouteContext): Promise<Response> {
   const body = await readJson(request);
   if (!body) return jsonResponse({ error: "Body must be a JSON object" }, 400);
-  const { runId, words, storyModel, promptModel, pictureModel } = body;
+  const { runId, words, storyModel, promptModel, pictureModel, kind, sceneText } = body;
   if (typeof runId !== "string" || !RUN_ID.test(runId)) return jsonResponse({ error: "runId must be 1-40 letters, digits, - or _" }, 400);
-  if (
-    !Array.isArray(words) ||
-    words.length < 1 ||
-    words.length > MAX_WORDS ||
-    !words.every((w) => typeof w === "string" && w.trim() !== "" && w.length <= MAX_WORD_LENGTH)
-  ) {
-    return jsonResponse({ error: `words must be 1-${MAX_WORDS} non-empty strings` }, 400);
-  }
-  if (typeof storyModel !== "string" || typeof promptModel !== "string" || typeof pictureModel !== "string") {
-    return jsonResponse({ error: "storyModel, promptModel and pictureModel are required" }, 400);
+  if (kind !== undefined && kind !== "story" && kind !== "scene") return jsonResponse({ error: "kind must be story or scene" }, 400);
+  const scene = kind === "scene";
+  if (scene) {
+    // A scene run has a dialogue instead of words and takes no story AI (ADR-0004).
+    const lines = typeof sceneText === "string" ? sceneLines(sceneText) : [];
+    if (lines.length < 1 || lines.length > MAX_SCENE_LINES || lines.some((line) => line.length > MAX_SCENE_LINE_LENGTH)) {
+      return jsonResponse({ error: `sceneText must be 1-${MAX_SCENE_LINES} lines of at most ${MAX_SCENE_LINE_LENGTH} characters` }, 400);
+    }
+    if (typeof promptModel !== "string" || typeof pictureModel !== "string") {
+      return jsonResponse({ error: "promptModel and pictureModel are required" }, 400);
+    }
+  } else {
+    if (
+      !Array.isArray(words) ||
+      words.length < 1 ||
+      words.length > MAX_WORDS ||
+      !words.every((w) => typeof w === "string" && w.trim() !== "" && w.length <= MAX_WORD_LENGTH)
+    ) {
+      return jsonResponse({ error: `words must be 1-${MAX_WORDS} non-empty strings` }, 400);
+    }
+    if (typeof storyModel !== "string" || typeof promptModel !== "string" || typeof pictureModel !== "string") {
+      return jsonResponse({ error: "storyModel, promptModel and pictureModel are required" }, 400);
+    }
   }
   if (!env.SOURCES) return serviceUnavailable();
 
-  for (const [role, model] of [["text", storyModel], ["text", promptModel], ["picture", pictureModel]] as const) {
-    if (!isOffered(role, model)) return notOffered(model);
+  const checked = scene
+    ? ([["text", promptModel], ["picture", pictureModel]] as const)
+    : ([["text", storyModel], ["text", promptModel], ["picture", pictureModel]] as const);
+  for (const [role, model] of checked) {
+    if (!isOffered(role, model as string)) return notOffered(model as string);
   }
 
-  const take = await takeStoryRun(env, { runId, words: words as string[], storyModel, promptModel, pictureModel });
+  const take = await takeStoryRun(
+    env,
+    scene
+      ? { runId, kind: "scene", sceneText: sceneLines(sceneText as string).join("\n"), words: [], storyModel: "", promptModel: promptModel as string, pictureModel: pictureModel as string }
+      : { runId, words: words as string[], storyModel: storyModel as string, promptModel: promptModel as string, pictureModel: pictureModel as string }
+  );
   if (take.outcome === "refused") return dayLimit();
   // `existing` is a repeat of a counted start: free, and the instance is only created if it is missing.
   await startInstance(env, runId, { runId, mode: "full", attempt: 1 });
@@ -129,7 +154,8 @@ async function handleRedo({ request, env }: RouteContext): Promise<Response> {
 
   if (step === "prompt") {
     const prompt = stepOf("prompt", 1);
-    if (stepOf("story", 1)?.outcome !== "done" || prompt?.outcome !== "failed") return notFailed();
+    // A scene run has no story step: its prompt is written from the dialogue (ADR-0004).
+    if ((run.kind === "story" && stepOf("story", 1)?.outcome !== "done") || prompt?.outcome !== "failed") return notFailed();
     // Marked running at once, so a second tap before the Workflow starts is refused; no unit is taken.
     await recordStep(env, { runId, role: "prompt", attempt: 1, modelId: prompt.modelId, outcome: "running", startedAt: new Date().toISOString() });
     await startInstance(env, `${runId}-p-${suffix}`, { runId, mode: "prompt", attempt: nextAttempt(run.steps) });

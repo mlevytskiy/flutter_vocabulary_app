@@ -3,9 +3,10 @@ import type { NewStoryRun } from "./store.ts";
 
 /**
  * The story allowance (mnemonic-story ADR-0002, sad §4, §8, AC-19): at most 20 story
- * runs a UTC day across the whole app. A new run takes one unit when its story step
- * starts and each "Draw again" takes one; a repeated start, a step that carries on
- * after the app comes back (AC-10) and redoing the picture prompt take none. A unit is
+ * runs a UTC day across the whole app. A new run takes one unit when its first step
+ * starts (the story step, or the picture prompt step of a scene run, ADR-0004) and each
+ * "Draw again" takes one; a repeated start, a step that carries on after the app comes back
+ * (AC-10) and redoing the picture prompt take none. A unit is
  * never given back when a step fails. Unlike `takeSubtitleImport` there is no
  * per-address window: the per-address rate limiter already applies.
  */
@@ -34,9 +35,12 @@ export async function takeStoryRun(env: Pick<Env, "DB">, run: NewStoryRun, now =
          AND NOT EXISTS (SELECT 1 FROM story_runs WHERE run_id = ?2)`
     ).bind(day, run.runId),
     env.DB.prepare(
-      `INSERT INTO story_runs (run_id, created_at, words_json, story_model, prompt_model, picture_model)
-       SELECT ?1, ?2, ?3, ?4, ?5, ?6 WHERE changes() = 1`
-    ).bind(run.runId, now.toISOString(), JSON.stringify(run.words), run.storyModel, run.promptModel, run.pictureModel),
+      `INSERT INTO story_runs (run_id, created_at, words_json, story_model, prompt_model, picture_model, kind, scene_text)
+       SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8 WHERE changes() = 1`
+    ).bind(
+      run.runId, now.toISOString(), JSON.stringify(run.words), run.storyModel, run.promptModel, run.pictureModel,
+      run.kind ?? "story", run.sceneText ?? null
+    ),
     env.DB.prepare(`SELECT EXISTS (SELECT 1 FROM story_runs WHERE run_id = ?1) AS found`).bind(run.runId),
   ]);
   if (taken.meta.changes === 1) return { outcome: "taken" };

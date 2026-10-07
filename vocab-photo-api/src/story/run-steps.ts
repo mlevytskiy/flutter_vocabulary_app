@@ -8,10 +8,13 @@
 
 import type { Env } from "../env";
 import { estimateOnTimeout, priceOf, type Price, type Usage } from "./models.ts";
-import { buildPicturePrompt, parsePictureScenes, picturePromptWriterPrompt, splitCaptions, storyWriterPrompt, type Prompt } from "./prompts.ts";
+import {
+  buildPicturePrompt, buildScenePrompt, parsePictureScenes, picturePromptWriterPrompt, sceneLines, scenePromptWriterPrompt,
+  splitCaptions, storyWriterPrompt, type Prompt,
+} from "./prompts.ts";
 import { drawPicture } from "./providers/picture.ts";
 import { DEFAULT_MAX_OUTPUT_TOKENS, writeText } from "./providers/text.ts";
-import { findCountedRun, putPicture, recordStep, runStatus, type StepRecord, type StepRole } from "./store.ts";
+import { findCountedRun, putPicture, recordStep, runStatus, type RunKind, type StepRecord, type StepRole } from "./store.ts";
 import { missedWords } from "./word-check.ts";
 
 /** What starts a Workflow instance. A redo of one step is a new instance of the same run. */
@@ -54,7 +57,11 @@ type RunEnv = Pick<Env, "DB" | "SOURCES"> &
   >;
 
 interface RunInput {
+  /** A scene run has no story step and no word check: its dialogue goes straight to the picture prompt writer (ADR-0004). */
+  kind: RunKind;
   words: string[];
+  /** The dialogue of a scene run; null for a story run. */
+  sceneText: string | null;
   storyModel: string;
   promptModel: string;
   pictureModel: string;
@@ -75,7 +82,7 @@ const PRIVATE_FAILURE: StepResult = { ok: false };
 /** About 4 characters to a token: the input size of a timed-out step, for its estimated price. */
 const inputTokens = (prompt: Prompt) => Math.ceil((prompt.system.length + prompt.user.length) / 4);
 
-/** Runs the steps `params.mode` asks for. A run the Worker never counted runs nothing (AC-19). */
+/** Runs the steps `params.mode` asks for (a scene run skips the story step in every mode). A run the Worker never counted runs nothing (AC-19). */
 export async function runStoryRun(env: RunEnv, runner: StepRunner, params: StoryRunParams): Promise<void> {
   const input = await runner.do("load run", STEP_CONFIG, () => loadRun(env, params.runId));
   if (!input) return;
@@ -83,7 +90,7 @@ export async function runStoryRun(env: RunEnv, runner: StepRunner, params: Story
   let story = input.story;
   let prompt = input.prompt;
 
-  if (params.mode === "full") {
+  if (params.mode === "full" && input.kind === "story") {
     const result = await runner.do("story", STEP_CONFIG, () => storyStep(env, params, input));
     if (!result.ok) return;
     story = result.text ?? null;
@@ -102,7 +109,9 @@ async function loadRun(env: RunEnv, runId: string): Promise<RunInput | null> {
   const text = (role: StepRole) =>
     run.steps.find((s) => s.role === role && s.attempt === ATTEMPT_1 && s.outcome === "done")?.text ?? null;
   return {
+    kind: run.kind,
     words: run.words,
+    sceneText: run.sceneText,
     storyModel: run.storyModel,
     promptModel: run.promptModel,
     pictureModel: run.pictureModel,
@@ -178,27 +187,35 @@ async function storyStep(env: RunEnv, params: StoryRunParams, input: RunInput): 
 }
 
 async function promptStep(env: RunEnv, params: StoryRunParams, input: RunInput, story: string | null): Promise<StepResult> {
-  if (story === null) {
+  const sceneText = input.kind === "scene" ? input.sceneText : null;
+  if (story === null && sceneText === null) {
     // A prompt redo needs the story an earlier instance finished; without it there is nothing to write from.
     const startedAt = await begin(env, params.runId, "prompt", ATTEMPT_1, input.promptModel);
     await finish(env, startedAt, { runId: params.runId, role: "prompt", attempt: ATTEMPT_1, modelId: input.promptModel, outcome: "failed", priceUsd: 0 });
     return PRIVATE_FAILURE;
   }
-  // The captions are the story's own sentences; the AI only adds a character and a scene for each,
-  // and the image prompt is assembled here so the captions reach the picture maker verbatim.
-  const captions = splitCaptions(story);
-  const { text, record, startedAt } = await textStep(env, params, "prompt", input.promptModel, picturePromptWriterPrompt(captions));
+  // A story: the captions are the story's own sentences; the AI only adds a character and a scene for each.
+  // A scene: the dialogue's lines are the only text, and the AI adds one scene. Either way the image prompt
+  // is assembled here so the text reaches the picture maker verbatim.
+  const lines = sceneText === null ? [] : sceneLines(sceneText);
+  const captions = story === null ? [] : splitCaptions(story);
+  const writer = sceneText === null ? picturePromptWriterPrompt(captions) : scenePromptWriterPrompt(lines);
+  const expected = sceneText === null ? captions.length : 1;
+  const { text, record, startedAt } = await textStep(env, params, "prompt", input.promptModel, writer);
   if (text === null) {
     await finish(env, startedAt, record);
     return PRIVATE_FAILURE;
   }
-  const scenes = captions.length > 0 ? parsePictureScenes(text, captions.length) : null;
+  const scenes = expected > 0 ? parsePictureScenes(text, expected) : null;
   if (scenes === null) {
     // An unusable reply was still paid for: the step fails with the price its usage gave.
     await finish(env, startedAt, { ...record, outcome: "failed", text: undefined });
     return PRIVATE_FAILURE;
   }
-  const prompt = buildPicturePrompt({ character: scenes.character, captions, scenes: scenes.scenes });
+  const prompt =
+    sceneText === null
+      ? buildPicturePrompt({ character: scenes.character, captions, scenes: scenes.scenes })
+      : buildScenePrompt({ character: scenes.character, lines, scene: scenes.scenes[0] });
   await finish(env, startedAt, { ...record, text: prompt });
   return { ok: true, text: prompt };
 }

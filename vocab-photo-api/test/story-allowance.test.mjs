@@ -143,6 +143,8 @@ test("createRun inserts a run once and says whether it was new; findCountedRun r
     storyModel: "m-story",
     promptModel: "m-prompt",
     pictureModel: "m-picture",
+    kind: "story", // get-words-from-subtitles-improvment T5: a run record names its kind
+    sceneText: null,
   });
   assert.deepEqual(days(env.DB), [], "createRun takes no allowance");
 });

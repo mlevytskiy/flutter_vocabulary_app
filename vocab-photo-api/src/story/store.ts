@@ -14,16 +14,26 @@ const ID_CHUNK = 50;
 export type StepRole = "story" | "prompt" | "picture";
 export type StepOutcome = "running" | "done" | "failed";
 
+export type RunKind = "story" | "scene";
+
 export interface NewStoryRun {
   runId: string;
-  /** The English words the story is about. */
+  /** `story` (the default) or `scene`: a film dialogue's picture, with no story step (ADR-0004). */
+  kind?: RunKind;
+  /** The English words the story is about; empty for a scene run. */
   words: string[];
+  /** The dialogue's lines, one per line; only for a scene run. */
+  sceneText?: string;
+  /** The story writer; an empty string for a scene run, which has none (D1's NOT NULL stays). */
   storyModel: string;
   promptModel: string;
   pictureModel: string;
 }
 
-export interface StoryRunRecord extends NewStoryRun {
+export interface StoryRunRecord extends Omit<NewStoryRun, "kind" | "sceneText"> {
+  kind: RunKind;
+  /** The dialogue of a scene run; null for a story run. */
+  sceneText: string | null;
   createdAt: string;
 }
 
@@ -57,6 +67,8 @@ interface RunRow {
   story_model: string;
   prompt_model: string;
   picture_model: string;
+  kind: RunKind;
+  scene_text: string | null;
 }
 
 interface StepRow {
@@ -83,6 +95,8 @@ function toRun(row: RunRow): StoryRunRecord {
     storyModel: row.story_model,
     promptModel: row.prompt_model,
     pictureModel: row.picture_model,
+    kind: row.kind,
+    sceneText: row.scene_text,
   };
 }
 
@@ -107,10 +121,13 @@ function toStep(row: StepRow): StepStatus & { runId: string } {
 /** Inserts a run row; false when the run id already exists. Takes no allowance (see `takeStoryRun`). */
 export async function createRun(env: Pick<Env, "DB">, run: NewStoryRun, now = new Date()): Promise<boolean> {
   const result = await env.DB.prepare(
-    `INSERT OR IGNORE INTO story_runs (run_id, created_at, words_json, story_model, prompt_model, picture_model)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+    `INSERT OR IGNORE INTO story_runs (run_id, created_at, words_json, story_model, prompt_model, picture_model, kind, scene_text)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)`
   )
-    .bind(run.runId, now.toISOString(), JSON.stringify(run.words), run.storyModel, run.promptModel, run.pictureModel)
+    .bind(
+      run.runId, now.toISOString(), JSON.stringify(run.words), run.storyModel, run.promptModel, run.pictureModel,
+      run.kind ?? "story", run.sceneText ?? null
+    )
     .run();
   return result.meta.changes === 1;
 }

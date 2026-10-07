@@ -78,8 +78,9 @@ export function startZenStub() {
       const firstLine = scripted !== undefined ? (scripted === "ok" ? "" : scripted) : typeof user === "string" ? user.split("\n")[0] : "";
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);
       const system = body.messages?.find((m) => m.role === "system")?.content;
+      // A scene run's picture prompt writer gets the dialogue inside <dialogue> tags and one scene to write.
       const captionCount = typeof system === "string" && system.includes("image generator") && typeof user === "string"
-        ? (user.match(/^\d+\. /gm) ?? []).length
+        ? user.includes("<dialogue>") ? 1 : (user.match(/^\d+\. /gm) ?? []).length
         : null;
       const { status, body: reply } = answer(body.model, slow ? "" : firstLine, captionCount);
       const send = () => {
