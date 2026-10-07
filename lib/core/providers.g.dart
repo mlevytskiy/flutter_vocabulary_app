@@ -93,6 +93,44 @@ final sourcePhotoStoreProvider = Provider<SourcePhotoStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SourcePhotoStoreRef = ProviderRef<SourcePhotoStore>;
+String _$storyRunStoreHash() => r'1baae4ddf9fdf660adf336fb38e2b2a162325378';
+
+/// The story runs, kept in the same database as the sessions (ADR-0003).
+///
+/// Copied from [storyRunStore].
+@ProviderFor(storyRunStore)
+final storyRunStoreProvider = FutureProvider<StoryRunStore>.internal(
+  storyRunStore,
+  name: r'storyRunStoreProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$storyRunStoreHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef StoryRunStoreRef = FutureProviderRef<StoryRunStore>;
+String _$storyPictureStoreHash() => r'625afbaf103c13e839e9def2035d1edb5251d58f';
+
+/// The compressed story pictures kept on the phone.
+///
+/// Copied from [storyPictureStore].
+@ProviderFor(storyPictureStore)
+final storyPictureStoreProvider = Provider<StoryPictureStore>.internal(
+  storyPictureStore,
+  name: r'storyPictureStoreProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$storyPictureStoreHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef StoryPictureStoreRef = ProviderRef<StoryPictureStore>;
 String _$googleTranslateServiceHash() =>
     r'6afdf9f3d52ebdc231e65e17d05446c50f457432';
 

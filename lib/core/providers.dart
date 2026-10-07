@@ -17,6 +17,8 @@ import 'services/session_publish_service.dart';
 import 'services/session_store.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
+import 'services/story_picture_store.dart';
+import 'services/story_run_store.dart';
 import 'services/subtitle_words_service.dart';
 import 'services/vocab_photo_service.dart';
 
@@ -39,6 +41,17 @@ Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
 @Riverpod(keepAlive: true)
 SourcePhotoStore sourcePhotoStore(Ref ref) => SourcePhotoStore();
+
+/// The story runs, kept in the same database as the sessions (ADR-0003).
+@Riverpod(keepAlive: true)
+Future<StoryRunStore> storyRunStore(Ref ref) async {
+  await ref.watch(sessionStoreProvider.future); // opens the shared database
+  return StoryRunStore.open();
+}
+
+/// The compressed story pictures kept on the phone.
+@Riverpod(keepAlive: true)
+StoryPictureStore storyPictureStore(Ref ref) => StoryPictureStore();
 
 @Riverpod(keepAlive: true)
 GoogleTranslateService googleTranslateService(Ref ref) =>
