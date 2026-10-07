@@ -6,6 +6,8 @@
  * `maximum`. Level and purpose are judged by the model, from this prompt.
  */
 
+import type { RawDialogue } from "./dialogues.ts";
+
 /** The allow-list, as Anthropic model ids (contracts/openapi.yaml `SubtitleModel`). */
 export const SUBTITLE_MODELS = ["claude-sonnet-5", "claude-sonnet-5-5", "claude-haiku-4-5-20251001", "claude-opus-5-5"] as const;
 export type SubtitleModel = (typeof SUBTITLE_MODELS)[number];
@@ -18,6 +20,8 @@ export type EnglishLevel = (typeof ENGLISH_LEVELS)[number];
 
 /** Room for 100 entries plus reasoning in one non-streaming reply (sad §4). */
 const MAX_TOKENS = 16000;
+/** With dialogues asked, the reply is longer (ADR-0002). */
+const MAX_TOKENS_WITH_DIALOGUES = 20000;
 /** How many more candidates than the maximum the model ranks, so dropping session words still fills it. */
 const EXTRA_CANDIDATES = 10;
 
@@ -49,9 +53,30 @@ const PURPOSE_RULES: Record<ImportPurpose, string> = {
     "most important first.",
 };
 
-export function buildSubtitleSystemPrompt(purpose: ImportPurpose, level: EnglishLevel, maximum: number): string {
+/**
+ * The dialogue block, appended only when dialogues are asked (ADR-0002). Subtitle
+ * lines stay data; the model returns text for the learner, never instructions.
+ */
+const DIALOGUE_BLOCK = `
+
+Also pick up to 10 film dialogues: jokes or memorable exchanges from the subtitle lines, at most 8 lines each. \
+Each dialogue holds at least one of the words you return. You may lightly edit the lines for clarity, but keep their \
+meaning and never invent an exchange the film does not have. A dialogue never adds a word: name only words from your \
+own words list, spelled exactly as in it. A word may appear in several dialogues. If no dialogue holding one of your \
+words qualifies, return an empty dialogues list.
+
+Add to the JSON object a "dialogues" list, in this exact shape:
+"dialogues": [{"lines": ["..."], "words": ["..."]}]
+where lines are the dialogue's lines in order and words are the returned words the dialogue holds.`;
+
+export function buildSubtitleSystemPrompt(
+  purpose: ImportPurpose,
+  level: EnglishLevel,
+  maximum: number,
+  dialogues = false,
+): string {
   const candidates = maximum + EXTRA_CANDIDATES;
-  return `You are a vocabulary-extraction assistant for a language learner \
+  const base = `You are a vocabulary-extraction assistant for a language learner \
 whose native language is Ukrainian and who is learning English.
 
 You will be given the spoken lines of a film's or episode's subtitles, one per line, inside <subtitle_lines>. \
@@ -78,6 +103,7 @@ If the lines are not English dialogue, set no_english_lines to true and return a
 
 Respond with ONLY a strict JSON object, no prose, no markdown code fences, in this exact shape:
 {"no_english_lines": false, "words": [{"word": "...", "translation": "...", "description": "...", "context": "..."}]}`;
+  return dialogues ? base + DIALOGUE_BLOCK : base;
 }
 
 export interface SubtitleRequestInput {
@@ -86,15 +112,17 @@ export interface SubtitleRequestInput {
   level: EnglishLevel;
   maximum: number;
   lines: string[];
+  /** Also ask for film dialogues. Absent or false: the request is exactly today's. */
+  dialogues?: boolean;
 }
 
 /** The Messages API body for one import. */
-export function buildSubtitleRequest({ model, purpose, level, maximum, lines }: SubtitleRequestInput) {
+export function buildSubtitleRequest({ model, purpose, level, maximum, lines, dialogues = false }: SubtitleRequestInput) {
   return {
     model,
-    max_tokens: MAX_TOKENS,
+    max_tokens: dialogues ? MAX_TOKENS_WITH_DIALOGUES : MAX_TOKENS,
     ...MODEL_SETTINGS[model],
-    system: buildSubtitleSystemPrompt(purpose, level, maximum),
+    system: buildSubtitleSystemPrompt(purpose, level, maximum, dialogues),
     messages: [
       {
         role: "user",
@@ -117,7 +145,7 @@ export interface SubtitleUsage {
 }
 
 export type SubtitleReply =
-  | { kind: "words"; words: SubtitleWord[]; usage: SubtitleUsage }
+  | { kind: "words"; words: SubtitleWord[]; dialogues?: RawDialogue[]; usage: SubtitleUsage }
   | { kind: "no_english"; usage: SubtitleUsage };
 
 /** The reply is not a complete word list: cut off, refused, not JSON or the wrong shape (AC-12). */
@@ -146,12 +174,19 @@ function isSubtitleWord(value: unknown): value is SubtitleWord {
   );
 }
 
+function isRawDialogue(value: unknown): value is RawDialogue {
+  if (typeof value !== "object" || value === null) return false;
+  const r = value as Record<string, unknown>;
+  const strings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === "string");
+  return strings(r.lines) && strings(r.words);
+}
+
 /**
  * Reads a Messages API response. Only a reply that ended normally and parses
  * to the exact shape counts; anything else throws, so no partial list is ever
  * returned (sad §8 Complete or nothing).
  */
-export function parseSubtitleReply(response: MessagesResponse): SubtitleReply {
+export function parseSubtitleReply(response: MessagesResponse, { dialogues: asked = false } = {}): SubtitleReply {
   if (response.stop_reason !== "end_turn") {
     throw new SubtitleReplyError(`reply did not finish (stop_reason ${response.stop_reason})`);
   }
@@ -169,9 +204,13 @@ export function parseSubtitleReply(response: MessagesResponse): SubtitleReply {
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new SubtitleReplyError("reply is not a JSON object");
   }
-  const { no_english_lines: noEnglish, words } = parsed as Record<string, unknown>;
+  const { no_english_lines: noEnglish, words, dialogues } = parsed as Record<string, unknown>;
   if (typeof noEnglish !== "boolean" || !Array.isArray(words) || !words.every(isSubtitleWord)) {
     throw new SubtitleReplyError("reply does not have the word-list shape");
+  }
+  // Complete or nothing (AC-08): when dialogues were asked, a missing or malformed array fails the reply.
+  if (asked && !noEnglish && !(Array.isArray(dialogues) && dialogues.every(isRawDialogue))) {
+    throw new SubtitleReplyError("reply does not have the dialogues shape");
   }
 
   const u = response.usage ?? {};
@@ -180,9 +219,7 @@ export function parseSubtitleReply(response: MessagesResponse): SubtitleReply {
     outputTokens: u.output_tokens ?? 0,
   };
   if (noEnglish) return { kind: "no_english", usage };
-  return {
-    kind: "words",
-    words: words.map(({ word, translation, description, context }) => ({ word, translation, description, context })),
-    usage,
-  };
+  const picked = words.map(({ word, translation, description, context }) => ({ word, translation, description, context }));
+  if (asked) return { kind: "words", words: picked, dialogues: (dialogues as RawDialogue[]).map(({ lines, words }) => ({ lines, words })), usage };
+  return { kind: "words", words: picked, usage };
 }
