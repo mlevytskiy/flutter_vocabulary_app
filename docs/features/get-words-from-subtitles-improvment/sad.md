@@ -248,31 +248,100 @@ There is one container per declared surface. The **Vocabulary app** (mobile-app)
 
 ## 6. Runtime view
 
-<!-- 🎯 Why: the RUNTIME FLOW of 1–2 critical scenarios — who talks to whom, when, in what order.
-     Without §6, §5 is just boxes with no life.
-     📋 Write: a Mermaid sequenceDiagram. Participants are names from §5 (don't invent new ones).
-     Messages are semantic («saves a draft»), NO HTTP verbs / paths / status codes — endpoint-level
-     sequences arrive at the `api` stage.
-     📌 e.g. «author → web: composes draft → web → content API: save». Seed the primary flow(s) here;
-     the `sequences` stage then covers every §5 AC (no cap). Never N/A for M+; XS/S keeps ≥1 happy-path flow. -->
+Two seed flows: the import with dialogues, from Start to the shared page, and drawing a scene picture. The `sequences` stage then covers every §5 AC.
 
-**Critical flow 1: <flow name>**
+**Critical flow 1: an import with dialogues, to the pager and the shared link (US-02, US-03, US-05; AC-02 – AC-05, AC-08, AC-12, AC-20)**
 
 ```mermaid
 sequenceDiagram
-    actor Actor
-    participant Web
-    participant Service
-    participant Store
-    Actor->>Web: <action>
-    Web->>Service: <call>
-    Service->>Store: <write>
-    Store-->>Service: ok
-    Service-->>Web: result
-    Web-->>Actor: confirmation
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Device store
+    participant Worker as vocab-photo-api Worker
+    participant AI as Anthropic API
+    participant D1 as Worker database
+    participant Page as Shared page
+    Learner->>App: imports a subtitle file with the dialogues setting on
+    App->>Worker: dialogue lines, level, purpose, maximum, model, session words, dialogues asked
+    Worker->>D1: takes one subtitle-import unit
+    Worker->>AI: one request for words and up to 10 dialogues
+    AI-->>Worker: words and dialogues in one reply
+    alt reply cut off, incomplete or malformed, no connection or too slow
+        Worker-->>App: the words could not be picked
+        App-->>Learner: message, session and pager unchanged
+    else complete reply
+        Worker->>Worker: keeps the first maximum words, unlinks words not in their dialogue, drops dialogues over 8 lines, past 10 or without words
+        Worker-->>App: words and checked dialogues
+        App-->>Learner: results dialog with the words, as today
+        Learner->>App: removes some words, taps Done
+        alt the current session changed during the import
+            App-->>Learner: words and dialogues dropped, nothing changes
+        else same session
+            App->>App: drops removed words from each dialogue, drops dialogues left without words
+            App->>Store: words and dialogues saved in one session save, dialogues after the existing ones
+            App-->>Learner: main screen pager, page 1 unchanged, one page per dialogue with bold words
+            opt the session already has a shared link
+                App->>Worker: appends this import's rows and dialogues, with the edit token and import id
+                Worker->>D1: adds rows and dialogues once per import id, raises the revision
+                Worker-->>App: added, the dialogues are marked delivered
+                Page->>Worker: polls changes since its last revision
+                Worker-->>Page: new rows and dialogues
+                Page-->>Page: shows the new dialogue pages after the existing ones
+            end
+        end
+    end
 ```
 
-**Critical flow 2: <e.g. async event propagation>** — <if applicable, otherwise N/A>.
+With the setting on, the app asks the Worker for words and dialogues in the same request. The Worker takes one import unit and makes one AI call. If the reply is cut off, malformed or late, the learner gets the existing "couldn't be picked" message and nothing changes. Otherwise the Worker keeps the words as today and checks the dialogues: links only to returned words that really appear in the text, no more than 8 lines, the first 10, each with at least one word. The results dialog lists only the words. At Done, if the session is still the one the import started in, the app removes the learner's removed words from the dialogues, drops any dialogue left empty, and saves words and dialogues together. The main screen becomes a pager. If the session was already shared, the app appends this import's rows and dialogues to the link, once per import id, and the partner's page shows them on its next poll. A failed append stays pending and is retried.
+
+**Critical flow 2: Start on a dialogue group draws its scene picture (US-04; AC-13, AC-14, AC-18, AC-19, AC-22)**
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Device store
+    participant Worker as vocab-photo-api Worker
+    participant Flow as Story run workflow
+    participant AI as AI providers
+    Learner->>App: ticks Dialogs from movie, presses Start on a dialogue group
+    App->>Store: reads the dialogue and its scene picture run
+    alt the scene picture is already on the phone
+        App-->>Learner: dialogue screen with bold words and the picture, nothing paid
+    else no picture yet
+        App->>Store: new scene run in progress, with the dialogue text and the AI choice
+        App->>Worker: starts a scene run with its run id
+        Worker->>Worker: checks the two AIs are on the offered list
+        alt today's story allowance used up
+            Worker-->>App: refused, today's limit reached
+            App-->>Learner: dialogue shown, "Today's story limit is reached. Try again tomorrow."
+        else one unit taken
+            Worker->>Flow: creates the scene run
+            Worker-->>App: run started
+            App-->>Learner: dialogue shown, drawing progress
+            Flow->>AI: picture prompt writer gets the dialogue as scene content (90 s limit)
+            alt prompt writer failed, refused or late
+                Flow-->>Flow: prompt step failed, recorded
+                App-->>Learner: "Could not write the picture prompt" with Try again, free
+            else prompt written
+                Flow->>Flow: places the lines in speech bubbles verbatim
+                Flow->>AI: picture maker draws one scene, invented characters (120 s limit)
+                alt picture maker failed, refused or late
+                    App-->>Learner: "The picture could not be drawn" with Draw again, one unit
+                else picture drawn
+                    App->>Worker: collects the run and the picture, as for stories
+                    App->>Store: picture file, run finished, becomes the dialogue's scene picture
+                    App-->>Learner: dialogue with its scene picture
+                    opt the session already has a shared link
+                        App->>Worker: uploads the scene picture for that dialogue
+                    end
+                end
+            end
+        end
+    end
+```
+
+Start on a dialogue group opens the dialogue screen. If the dialogue already has its scene picture, it is shown from the phone and nothing is paid. Otherwise the app records a scene run and starts it on the Worker. The Worker checks both AIs and takes one unit of the shared story allowance, or answers with the daily-limit message. The workflow has the picture prompt written from the dialogue, treated as scene content only. Code then puts the lines into speech bubbles, and the picture maker draws one scene with invented characters. A failed prompt offers a free Try again; a failed picture offers Draw again for one unit. The app follows and collects the run as it does stories, and keeps the picture as the dialogue's scene picture. When the session is shared, it uploads the picture to the link.
 
 ## 7. Deployment view
 
