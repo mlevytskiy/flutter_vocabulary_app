@@ -373,3 +373,35 @@ The repo's defaults are inherited (assumptions ledger A12, accepted 2026-10-07).
 | 0005 | Let the app own the grouping rules and the AI only split words | Accepted | §4 |
 
 ADR files live under `docs/features/mnemonic-story/adr/NNNN-<title>.md`.
+
+## 10. Quality requirements
+
+**QG-1. Spending is bounded and never doubled**
+- **When:** story runs are started on any one UTC day, from any copy of the app or with a leaked app secret, including repeated starts of the same run id, Try again, Draw again and redoing the picture prompt.
+- **Then:** ≤ 20 story runs started per UTC day across the whole app, one unit per run start or "Draw again" (AC-19). A repeated start of the same run id and a prompt redo take none. A model not on `models.json`, and a redo for an unknown or not-failed step, are refused. No public route starts a run (AC-18).
+- **How verify:** spec §6: "server-side count, one unit per run start or "Draw again" (AC-19); a test that the 21st of a day is refused". In `vocab-photo-api/test/story-allowance.test.mjs`: 20 starts are accepted and the 21st is refused, a repeated run id takes no unit, Draw again takes one, a prompt redo takes none, an unlisted model and an uncounted redo are refused. `story-routes.test.mjs` checks that every story route answers 401 without the secret and that the web learn page and coming-soon link are unchanged.
+
+**QG-2. A story run finishes on its own**
+- **When:** the learner starts a story run with the default AI choice, then stays, or leaves, locks the phone or closes the app.
+- **Then:** ≤ 3 min from start to the picture shown, with the default AI choice. A finished step is never redone or paid again, and a step in progress when the app closed is collected on return (AC-10).
+- **How verify:** spec §6: "the total times (sum of step times) on the story runs screen, median of the first 10 runs". Plus a Worker test that runs a workflow against stub providers, interrupts the client after the story step and checks that each stub was called exactly once. Plus an app test where `StoryRunTracker` with a fake service, restarted mid-run, collects the run without a second start.
+
+**QG-3. A saved story opens at once**
+- **When:** the learner presses Start for a group that already has a mnemonic story, in this visit or after restarting the app.
+- **Then:** ≤ 500 ms from Start to the picture and text shown, with no network call and no new run (AC-07).
+- **How verify:** spec §6: "5 runs on the owner's phone at release". Plus an app test that opening the story screen of a group with a story calls no Worker method.
+
+**QG-4. Grouping is quick and safe**
+- **When:** a session with 60 words to learn is grouped.
+- **Then:** ≤ 30 s for a 60-word session. An invalid split is never shown (AC-04), and a group with a story never changes its words (AC-05).
+- **How verify:** spec §6: "5 runs on the owner's phone at release". Plus `test/word_grouping_test.dart` covering AC-02, AC-02b, AC-03's change rule, AC-04's rejections and AC-05's waiting and stability rules.
+
+**QG-5. Prices can be trusted**
+- **When:** the owner reads the story runs after the first month.
+- **Then:** the month's sum of run prices within ±25 % of the providers' invoices.
+- **How verify:** spec §6: "owner compares the story runs total with the invoices after the first month". Plus a Worker unit test of the price rule for each provider's usage shape.
+
+**QG-6. The picture is sharp and small**
+- **When:** a finished picture is stored and viewed on the story screen.
+- **Then:** zoom up to at least 4× with pan, no visible blur at 2× on the owner's phone, and ≤ 3 MB on the device per story run (picture included).
+- **How verify:** spec §6: "device check at release" and "check app storage after 10 runs". Plus an app test that `story_picture_store.dart` writes ≤ 3 MB for an oversized input.
