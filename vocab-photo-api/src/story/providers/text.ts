@@ -5,7 +5,7 @@
 //
 // Imports carry the `.ts` extension so the Node tests can load this module directly.
 
-import { offeredModels, type Usage } from "../models.ts";
+import { GROUPING_MODEL, offeredModels, type Usage } from "../models.ts";
 import { writeWithAnthropic } from "./anthropic.ts";
 import { writeWithZen } from "./opencode-zen.ts";
 
@@ -55,7 +55,11 @@ export interface AdapterCall {
 export type Adapter = (call: AdapterCall) => Promise<TextResult>;
 
 export async function writeText(env: TextEnv, req: TextRequest): Promise<TextResult> {
-  const model = offeredModels.find((m) => m.id === req.model);
+  // The fixed grouping AI is not on the offered list (it is not choosable) but goes through here too.
+  const model =
+    req.model === GROUPING_MODEL
+      ? { role: "text", provider: "anthropic" }
+      : offeredModels.find((m) => m.id === req.model);
   if (!model || model.role !== "text") throw new Error(`not an offered text model: ${req.model}`);
 
   const call = {

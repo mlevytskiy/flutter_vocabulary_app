@@ -11,6 +11,7 @@ import { deleteExpiredSessions } from "./session/cleanup";
 import { assetRoutes } from "./session/assets";
 import { learnRoutes } from "./learn/routes";
 import { subtitleRoutes } from "./subtitles/routes";
+import { storyRoutes } from "./story/routes.ts";
 
 export type { Env } from "./env";
 
@@ -267,6 +268,7 @@ const ROUTES: RouteDefinition[] = [
   ...assetRoutes,
   ...subtitleRoutes,
   ...learnRoutes,
+  ...storyRoutes,
 ];
 
 export default {

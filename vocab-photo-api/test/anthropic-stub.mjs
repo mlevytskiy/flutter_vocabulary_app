@@ -9,6 +9,10 @@
 //   "STUB:refusal"     -> stop_reason "refusal"
 //   "STUB:error"       -> 500
 //   "STUB:slow:<ms>"   -> the default reply after <ms> milliseconds
+// A grouping request (its system prompt names "topical groups", user content = JSON {words, keep}, mnemonic-story
+// T7) picks its mode from a word that starts "STUB:" and otherwise answers the keep groups
+// unchanged plus one new group of every other word:
+//   "STUB:error" / "STUB:refusal" / "STUB:malformed" as above, "STUB:no-groups" -> JSON with no groups
 //   anything else      -> 14 ranked candidates, with a case duplicate, for the
 //                         route to drop session words and cut to the maximum
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
@@ -49,6 +53,24 @@ function answer(model, firstLine) {
   }
 }
 
+function groupingAnswer(model, content) {
+  let request;
+  try {
+    request = JSON.parse(content);
+  } catch {
+    return { status: 400, body: { type: "error", error: { type: "invalid_request_error", message: "stub: not JSON" } } };
+  }
+  const marker = request.words.map((w) => w.word).find((w) => w.startsWith("STUB:"));
+  if (marker === "STUB:no-groups") return { status: 200, body: message(model, JSON.stringify({ note: "none" })) };
+  if (marker) return answer(model, marker);
+  const kept = new Set(request.keep.flatMap((g) => g.rowIds));
+  const groups = [
+    ...request.keep.map((g) => ({ id: g.id, name: g.name, rowIds: g.rowIds })),
+    { name: "Stub group", rowIds: request.words.map((w) => w.rowId).filter((id) => !kept.has(id)) },
+  ];
+  return { status: 200, body: message(model, "```json\n" + JSON.stringify({ groups }) + "\n```") };
+}
+
 export function startAnthropicStub() {
   const calls = { count: 0, last: null, lastApiKey: null };
   const server = createServer((req, res) => {
@@ -65,6 +87,11 @@ export function startAnthropicStub() {
       calls.last = body;
       calls.lastApiKey = req.headers["x-api-key"] ?? null;
       const content = typeof body.messages?.[0]?.content === "string" ? body.messages[0].content : "";
+      if (typeof body.system === "string" && body.system.includes("topical groups")) {
+        const { status, body: reply } = groupingAnswer(body.model, content);
+        res.writeHead(status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(reply));
+      }
       const firstLine = content.replace(/^<subtitle_lines>\n/, "").split("\n")[0];
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);
       const { status, body: reply } = answer(body.model, slow ? "" : firstLine);
