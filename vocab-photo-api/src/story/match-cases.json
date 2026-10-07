@@ -1,0 +1,33 @@
+{
+  "note": "Shared cases for the AC-05 matching rule: matchPlaces(text, word) must return exactly `places`, each [start, end) in UTF-16 code units (JavaScript string indexes, Dart String indexes), in text order. Read by the Worker test and by the Dart port.",
+  "cases": [
+    { "name": "whole word", "text": "Tide rises", "word": "tide", "places": [[0, 4]] },
+    { "name": "any letter case in the text", "text": "TIDE rises", "word": "tide", "places": [[0, 4]] },
+    { "name": "any letter case in the word", "text": "the tide rises", "word": "TIDE", "places": [[4, 8]] },
+    { "name": "word absent", "text": "the harbour is calm", "word": "tide", "places": [] },
+    { "name": "ending s", "text": "He walks", "word": "walk", "places": [[3, 8]] },
+    { "name": "ending es", "text": "she watches", "word": "watch", "places": [[4, 11]] },
+    { "name": "ending ed", "text": "they walked", "word": "walk", "places": [[5, 11]] },
+    { "name": "ending ing", "text": "we are walking", "word": "walk", "places": [[7, 14]] },
+    { "name": "other form does not count", "text": "he tackled it", "word": "tackle", "places": [] },
+    { "name": "doubled letter is another form", "text": "running fast", "word": "run", "places": [] },
+    { "name": "word inside another word", "text": "They deliver mail", "word": "live", "places": [] },
+    { "name": "word at the end of another word", "text": "an olive and lives", "word": "live", "places": [[13, 18]] },
+    { "name": "phrase in order", "text": "Ти live up to очікувань", "word": "live up to", "places": [[3, 13]] },
+    { "name": "phrase out of order", "text": "Ти live очікувань up to", "word": "live up to", "places": [] },
+    { "name": "phrase words apart", "text": "Ти up live to очікувань", "word": "live up to", "places": [] },
+    { "name": "phrase broken by punctuation", "text": "Ти live, потім up to", "word": "live up to", "places": [] },
+    { "name": "phrase with an ending on a word", "text": "he veers off the road", "word": "veer off", "places": [[3, 12]] },
+    { "name": "apostrophe stays in the word", "text": "I don't know", "word": "don't", "places": [[2, 7]] },
+    { "name": "curly apostrophe stays in the word", "text": "I don’t know", "word": "don’t", "places": [[2, 7]] },
+    { "name": "part before an apostrophe does not count", "text": "I don't know", "word": "don", "places": [] },
+    { "name": "repeats: every place", "text": "Run, run and running", "word": "run", "places": [[0, 3], [5, 8]] },
+    { "name": "repeats with every ending", "text": "walk walks walked walking", "word": "walk", "places": [[0, 4], [5, 10], [11, 17], [18, 25]] },
+    { "name": "hyphenated word is a phrase", "text": "one-finger typer", "word": "one-finger", "places": [[0, 10]] },
+    { "name": "second part of a hyphenated word", "text": "one-finger typer", "word": "finger", "places": [[4, 10]] },
+    { "name": "Cyrillic text around an English word", "text": "Він бачить tide і тікає", "word": "tide", "places": [[11, 15]] },
+    { "name": "offsets count UTF-16 code units", "text": "😀 tide", "word": "tide", "places": [[3, 7]] },
+    { "name": "blank word has no place", "text": "anything", "word": "  ", "places": [] },
+    { "name": "phrase repeated", "text": "in a pinch, in a pinch", "word": "in a pinch", "places": [[0, 10], [12, 22]] }
+  ]
+}

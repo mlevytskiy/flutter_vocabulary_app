@@ -6,7 +6,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
 | T1 | [Add scene-run columns and the published-dialogue tables to D1](./T1-worker-dialogue-tables.md) | migration | Maksym | S | — | done |
-| T2 | [Return where each word appears from the word check, and pin the rule with a shared case file](./T2-worker-matching-rule-places.md) | domain | Maksym | S | — | todo |
+| T2 | [Return where each word appears from the word check, and pin the rule with a shared case file](./T2-worker-matching-rule-places.md) | domain | Maksym | S | — | done |
 | T3 | [Ask for dialogues in the subtitle prompt and check them in the reply](./T3-worker-subtitle-dialogue-prompt-and-check.md) | domain | Maksym | M | T2 | todo |
 | T4 | [Accept the dialogues flag on POST /subtitles/words and return the checked dialogues](./T4-worker-subtitle-route-dialogues.md) | ports | Maksym | S | T3 | todo |
 | T5 | [Run scene pictures as two-step runs of the story run workflow](./T5-worker-scene-runs.md) | app | Maksym | L | T1 | todo |
