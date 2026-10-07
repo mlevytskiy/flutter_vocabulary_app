@@ -19,6 +19,8 @@
 // A picture prompt writer request (system names an "image generator", user = numbered captions, mnemonic-story
 // owner feedback 2026-10-07) answers valid JSON {character, scenes} with one scene per caption, or prose
 // when the user message carries "STUB:badjson".
+//   "STUB:no-dialogues"  -> the default words and an empty dialogues list
+//   "STUB:bad-dialogues" -> the default words, no dialogues key (a reply that breaks the asked-for shape)
 //   anything else      -> 14 ranked candidates, with a case duplicate, for the
 //                         route to drop session words and cut to the maximum
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
@@ -36,6 +38,16 @@ export const STUB_WORDS = [
   context: `A line with ${word.toLowerCase()} in it.`,
 }));
 
+// Dialogues the default reply carries (the Worker keeps them only when the import asks for them): one
+// holding two words, one with a link to a word that is not in its lines and one the model never proposed,
+// one only for "fog" (gone when the session already has it), and one of 9 lines (over the limit).
+export const STUB_DIALOGUES = [
+  { lines: ["A: You look reluctant.", "B: The tide is coming in."], words: ["reluctant", "tide"] },
+  { lines: ["A: Grab the rope!", "B: Lifting it now."], words: ["grab", "rope", "lift", "harbour", "notproposed"] },
+  { lines: ["A: What fog.", "B: Yes."], words: ["fog"] },
+  { lines: Array.from({ length: 9 }, (_, i) => `Line ${i + 1} of the tide.`), words: ["tide"] },
+];
+
 const message = (model, text, stop_reason = "end_turn") => ({
   id: "msg_stub",
   type: "message",
@@ -45,13 +57,16 @@ const message = (model, text, stop_reason = "end_turn") => ({
   stop_reason,
   usage: { input_tokens: 1200, output_tokens: 340, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
 });
-const list = (words, noEnglish = false) => JSON.stringify({ no_english_lines: noEnglish, words });
+const list = (words, noEnglish = false, dialogues = STUB_DIALOGUES) =>
+  JSON.stringify({ no_english_lines: noEnglish, words, ...(dialogues ? { dialogues } : {}) });
 
 function answer(model, firstLine) {
   switch (firstLine) {
     case "STUB:empty": return { status: 200, body: message(model, list([])) };
     case "STUB:no-english": return { status: 200, body: message(model, list([], true)) };
     case "STUB:cutoff": return { status: 200, body: message(model, list(STUB_WORDS).slice(0, 200), "max_tokens") };
+    case "STUB:no-dialogues": return { status: 200, body: message(model, list(STUB_WORDS, false, [])) };
+    case "STUB:bad-dialogues": return { status: 200, body: message(model, list(STUB_WORDS, false, null)) };
     case "STUB:malformed": return { status: 200, body: message(model, "Here are some words: reluctant, tide.") };
     case "STUB:refusal": return { status: 200, body: message(model, "", "refusal") };
     case "STUB:error": return { status: 500, body: { type: "error", error: { type: "api_error", message: "stub" } } };
