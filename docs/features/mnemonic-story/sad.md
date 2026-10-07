@@ -325,3 +325,19 @@ sequenceDiagram
 ```
 
 When a session's Words screen or learn page opens, the app compares the current words to learn with the key stored at the last grouping. If nothing changed, the groups stay as they are. A session with 19 or fewer words to learn is grouped on the phone, as "All words", or with a new group of its own beside a story group. Above 19, the app sends the words outside any story group, and the groups without a story, to the Worker, which asks the fixed AI for a split. The app checks the answer. A broken split, or a failed call, shows "Could not group your words" with Try again and keeps Start unavailable for Mnemonic story. Leftover words that cannot form a group of 7 wait, with the waiting message. A good split is saved, and the pager appears with the remembered group selected.
+
+## 7. Deployment view
+
+The Worker stays one script and one deployment. It gains a Workflow binding (`STORY_RUN` → `StoryRunWorkflow`, exported from `src/index.ts`), one D1 migration (`0004_story_runs.sql`) and three secrets (`OPENCODE_ZEN_API_KEY`, `XAI_API_KEY`, `HIGGSFIELD_API_KEY`). It uses a `story-runs/` prefix in the existing R2 `SOURCES` bucket and a longer daily cron job: the same `0 3 * * *` trigger also deletes story run rows and pictures older than 7 days. The app ships through the usual store build.
+
+**Deploy order:** apply `0004` (`wrangler d1 migrations apply`), put the new secrets, `wrangler deploy` the Worker, then release the app. The Worker change is additive: an older app never calls the new routes. The app shows the AI choice only from the fetched list, so a provider without a secret is simply left out of `models.json` until its key exists.
+
+**Monitoring:**
+- Metrics: the Worker's existing observability (`wrangler.jsonc` `observability.enabled`) covers the new routes and the workflow. No new log events (repo default).
+- Spend: the D1 `all_story_runs` row per UTC day is the day's count, and the story runs screen's totals are the month's spend. The owner compares them with the invoices after the first month (spec §6 "Price accuracy").
+- Workflow failures: each failed step is recorded in `story_run_steps` with its outcome, so a stuck or failing provider shows on the story runs screen.
+
+**Scaling thresholds:**
+- At most 20 runs, plus Draw again units, start per UTC day for the whole app (AC-19). That bounds R2 to about 20 × 7 = 140 pictures and D1 to a few hundred step rows at any time.
+- The per-address rate limit (20 requests / 60 s) caps polling. One status call every 5 s is 12 a minute, which leaves room for grouping, starts and picture fetches.
+- On the phone, story runs are never removed. At about 3 MB a run and a few runs a week, that is about 100 MB a year (spec §1 assumption), to revisit if the list grows large (§11).
