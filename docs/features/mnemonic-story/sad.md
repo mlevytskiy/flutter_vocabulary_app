@@ -361,3 +361,15 @@ The repo's defaults are inherited (assumptions ledger A12, accepted 2026-10-07).
 | Accessibility | Group cards are tappable at ≥ 48 × 48 dp with the group's name as their label. The running step is announced as text. The picture has a semantic label | Flutter defaults; learn-part-step-1 sad §8 |
 | Internationalisation | The UI stays English, as elsewhere. The story itself is Ukrainian with the English words embedded (CONTEXT "mnemonic story") | CONTEXT |
 | Logging / observability | No new log events. The Worker's existing observability, plus the D1 step records | `wrangler.jsonc` `observability` |
+
+## 9. Architecture decisions
+
+| # | Title | Status | Section |
+|---|---|---|---|
+| 0001 | Change the app and the Worker as two surfaces | Accepted | §4 |
+| 0002 | Run each story run as a Cloudflare Workflow | Accepted | §4 |
+| 0003 | Keep word groups in the session and story runs in their own collection | Accepted | §4 |
+| 0004 | Serve the offered AI list with prices from the Worker | Accepted | §4 |
+| 0005 | Let the app own the grouping rules and the AI only split words | Accepted | §4 |
+
+ADR files live under `docs/features/mnemonic-story/adr/NNNN-<title>.md`.
