@@ -18,7 +18,7 @@
 | T11 | [Add the pure word-grouping rules to the app](./T11-app-word-grouping-rules.md) | domain | Maksym | M | T10 | done |
 | T12 | [Add the app's story service for the Worker's story routes](./T12-app-story-api-service.md) | infra | Maksym | M | T10, T7, T9 | done |
 | T13 | [Add the story run store and the picture store to the app](./T13-app-story-run-and-picture-stores.md) | infra | Maksym | M | T10 | done |
-| T14 | [Add the word-groups notifier that groups a session and keeps its selection](./T14-app-word-groups-notifier.md) | app | Maksym | M | T11, T12 | todo |
+| T14 | [Add the word-groups notifier that groups a session and keeps its selection](./T14-app-word-groups-notifier.md) | app | Maksym | M | T11, T12 | done |
 | T15 | [Add the story run tracker that starts, follows and collects runs](./T15-app-story-run-tracker.md) | app | Maksym | L | T12, T13 | todo |
 | T16 | [Show the group line, the group pager and grouping messages on the learn page](./T16-app-learn-page-groups.md) | ui | Maksym | M | T14 | todo |
 | T17 | [Add the story screen and open it from Start for Mnemonic story](./T17-app-story-screen.md) | ui | Maksym | L | T15, T11 | todo |
