@@ -39,7 +39,7 @@ Spec AC-20 says that dialogues added by a later import, and pictures drawn later
 - Appending does not touch existing rows, so it cannot cause an edit conflict.
 
 **Negative**
-- A new delivery path in the app, with a retry that survives a restart (a pending mark on each `FilmDialogue`), and a new Worker route with D1 tables for dialogues and their words.
+- A new delivery path in the app, with a retry that survives a restart (`importId`, `importRowIds` and `pushState` on each `FilmDialogue`), and a new Worker route with D1 tables for dialogues and their words. A pending dialogue whose words are all removed before delivery stays hidden (no page, group or publish) until its import is delivered, then is removed; the delivery sends only rows that still exist and dialogues that still have words.
 - Two sync rules for words: an import with dialogues appends its rows, while other changes need a republish.
 - The feature grows towards size L (§11).
 

@@ -25,7 +25,7 @@ A film dialogue has its lines, the word rows linked to it at Done (which only sh
 
 ## Considered options
 
-1. **Embedded in `Session`** — a new `@embedded FilmDialogue` (`id`, `lines`, `wordRowIds`, `scenePictureRunId`, push state) in `Session.dialogues`, in pager order; `WordGroup.dialogueId`; `StoryRun.kind` and `StoryRun.sceneText`.
+1. **Embedded in `Session`** — a new `@embedded FilmDialogue` (`id`, `lines`, `wordRowIds`, `scenePictureRunId`, and the delivery fields `importId`, `importRowIds`, `pushState`) in `Session.dialogues`, in pager order; `WordGroup.dialogueId`; `StoryRun.kind` and `StoryRun.sceneText`.
 2. **Own Isar collection** — `FilmDialogue` as a `@collection` keyed by `sessionId`, as `StoryRun` is.
 
 ## Decision outcome
