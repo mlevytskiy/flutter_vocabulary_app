@@ -376,17 +376,15 @@ Nothing new to run. The app ships in its usual store build. The Worker stays one
 
 ## 9. Architecture decisions
 
-<!-- 🎯 Why: the REVERSE INDEX onto the adr/ folder. `ls adr/` gives the files; §9 gives the
-     semantics — why they exist, which SAD section they attach to, what status.
-     📋 Write: a 4-column table, one row per ADR. Mixed status is fine.
-     📌 e.g. «0001 | Store content as a table of typed blocks | Accepted | §4». -->
-
 | # | Title | Status | Section |
 |---|---|---|---|
-| <NNNN> | <imperative — e.g. "Use a sliding-window counter for rate limiting"> | Accepted | §<N> |
-| <NNNN> | <imperative — e.g. "Co-locate the worker in the API process"> | Accepted | §<N> |
+| 0001 | Change the app, the Worker and the shared page as three surfaces | Accepted | §4 |
+| 0002 | Pick words and dialogues in one AI request | Accepted | §4 |
+| 0003 | Keep film dialogues in the session and link their words by row id | Accepted | §4 |
+| 0004 | Draw scene pictures as two-step runs of the story run workflow | Accepted | §4 |
+| 0005 | Add an import's rows and dialogues to the published session automatically | Accepted | §4 |
 
-ADR files live under `docs/features/<slug>/adr/NNNN-<title>.md`.
+ADR files live under `docs/features/get-words-from-subtitles-improvment/adr/NNNN-<title>.md`.
 
 ## 10. Quality requirements
 
