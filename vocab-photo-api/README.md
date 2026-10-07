@@ -604,7 +604,7 @@ to KV before the release import into D1 on first open.
    # → expire-sources, enabled, all prefixes, "Expire objects after 30 days"
    ```
 
-4. **Worker.** `npm test && npm run typecheck && npm run deploy`.
+4. **Worker.** `npm run test:full && npm run typecheck && npm run deploy`.
 5. **Smoke-test the live Worker:** open a link published before this deploy (it imports from KV
    and renders); publish from the current app build (no photos) and edit a cell on the page from
    two browsers.
@@ -630,7 +630,7 @@ an old Worker refuses the `kind` field. Needs the owner's Cloudflare login; run 
    npx wrangler d1 migrations list DB --remote      # → "No migrations to apply!"
    ```
 
-2. **Worker.** `npm test && npm run typecheck && npm run deploy`.
+2. **Worker.** `npm run test:full && npm run typecheck && npm run deploy`.
 3. **Publish check from the current store build** (the build *before* the Quizlet release, which
    sends photos without `kind`): publish a session with photos, upload them, open the link and
    check the photos show. Also open a link published before this deploy: it must render as before.
@@ -650,7 +650,7 @@ Release order (sad §7): **D1 → Worker → app build**. An older app never cal
    npx wrangler d1 migrations list DB --remote      # → "No migrations to apply!"
    ```
 
-2. **Worker.** `npm test && npm run typecheck && npm run deploy`. Nothing new to configure:
+2. **Worker.** `npm run test:full && npm run typecheck && npm run deploy`. Nothing new to configure:
    the route uses `ANTHROPIC_API_KEY`, `APP_SHARED_SECRET`, the existing cron and the existing
    rate limiter. `ANTHROPIC_API_URL` and `SUBTITLE_AI_TIMEOUT_MS` are for tests only; leave them
    unset in production.
@@ -709,16 +709,24 @@ field of the log lines (`src/log.ts`):
 ## Tests
 
 ```bash
-npm test
+npm test                            # smoke: test/smoke.test.mjs (~15 s)
+npm test -- test/edit.test.mjs      # smoke + the files named (a feature's tests)
+npm run test:full                   # full regression: every test/**/*.test.mjs (~1 min)
+npm run test:long                   # soak: the paced two-partner sessions (~17 min)
 ```
+
+When to run which is in [`../docs/testing.md`](../docs/testing.md); `../tool/test.sh` runs the
+same tiers for the app and the Worker together.
 
 `scripts/test.mjs` starts `wrangler dev` on a free port with fresh local bindings (a
 throwaway `--persist-to` directory, so every run starts empty, with the D1 migrations
-applied), runs
-`node --test "test/**/*.test.mjs"` against it, and stops it. The secrets come from
+applied), runs `node --test` over the chosen files against it, one file at a time, and
+stops it. The secrets come from
 `.dev.vars`, or `.dev.vars.example` when there is none. Shared helpers (`baseUrl`,
 `appHeaders()`, `publish()`, `get()`, and `d1()` / `kvPut()` / `kvDelete()` for reading
-and seeding the local state `wrangler dev` serves from) live in `test/helpers.mjs`. The tests only work through
+and seeding the local state `wrangler dev` serves from) live in `test/helpers.mjs`. `d1()`
+opens the local D1 SQLite file in-process through `node:sqlite` (no subprocess); `kvPut()` /
+`kvDelete()` still run `wrangler kv` (~3 s each). The tests only work through
 `npm test`, because they need the address it passes in. The dictionary is a local stub
 (`test/mw-stub.mjs`, passed to `wrangler dev` as `MW_API_URL` and a fake `MW_API_KEY`), so no
 test uses the real Merriam-Webster quota, even with a real key in `.dev.vars`. The AI behind
@@ -747,8 +755,9 @@ enough for two partners behind one router while one of them fills a column at 3 
 second (AC-35), and stops a script hammering the database. Over it the answer is
 `429 { "code": "rate_limited" }`. Page reads and polling are not limited.
 
-`npm test -- test/rows.test.mjs` runs one test file; `npm run test:long` also runs the
-15-minute two-partner session.
+`npm run test:long` runs the two paced two-partner sessions (65 s and 15 minutes); the full
+regression skips them, because "the page write limit refuses the 301st write" already shows
+300 writes in one minute land.
 
 ## Notes
 

@@ -1,7 +1,7 @@
 # flutter_vocabulary_app — instructions for agents
 
-Read `docs/architecture.md` first (short). If you are doing the restructuring, follow
-`docs/refactoring-plan.md` one step at a time. Behaviour spec for the lightning icons:
+Read `docs/architecture.md` first (short). Tests: `docs/testing.md`. If you are doing the
+restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour spec for the lightning icons:
 `docs/lightning_icon_rules.md`. Server: `vocab-photo-api/` (Cloudflare Worker).
 
 ## Rules
@@ -15,11 +15,15 @@ Read `docs/architecture.md` first (short). If you are doing the restructuring, f
 5. No new packages, no removed packages, no new domain models, no `packages/` folder — ask first.
 6. If a step cannot be done as written, stop and write what you found under that step in
    `docs/refactoring-plan.md`. Do not improvise a different structure.
+7. Tests (`docs/testing.md`): while developing run `tool/test.sh smoke`; write tests for what you
+   build and run them with `tool/test.sh changed`. Run the full regression (`tool/test.sh full`)
+   only when the owner asks.
 
 ## Before finishing
 
 ```
 dart run build_runner build --delete-conflicting-outputs
 flutter analyze
+tool/test.sh changed
 grep -rn "Navigator.push\|MaterialPageRoute\|static final .* instance" lib
 ```

@@ -1,8 +1,11 @@
-// `npm test`: starts `wrangler dev` on a free port with fresh local bindings
-// (D1/KV/R2/rate limiters simulated under a throwaway --persist-to dir, with the
-// D1 migrations applied), waits until it answers, runs `node --test` over
-// test/**/*.test.mjs against it, then stops it. No package beyond wrangler
-// itself (sad §10). The dictionary is a local stub (`test/mw-stub.mjs`), so no
+// Starts `wrangler dev` on a free port with fresh local bindings (D1/KV/R2/rate
+// limiters simulated under a throwaway --persist-to dir, with the D1 migrations
+// applied), waits until it answers, runs `node --test` against it, then stops it.
+// Which files run (docs/testing.md):
+//   npm test                          the smoke test only (test/smoke.test.mjs)
+//   npm test -- test/a.test.mjs ...   the smoke test plus the files named
+//   npm run test:full                 every test/**/*.test.mjs (full regression)
+// No package beyond wrangler itself (sad §10). The dictionary is a local stub (`test/mw-stub.mjs`), so no
 // test spends the real Merriam-Webster quota. The AI behind subtitle imports is
 // a local stub too (`test/anthropic-stub.mjs`), so no test spends Anthropic credit.
 import { spawn, spawnSync } from "node:child_process";
@@ -120,13 +123,17 @@ let code;
 try {
   await waitUntilUp(baseUrl, worker, 60_000);
   // One file at a time: the files share one `wrangler dev` and one local D1, and
-  // concurrent `wrangler d1 execute` subprocesses against it fail at random.
-  // `npm test -- test/rows.test.mjs` runs only the files named.
-  const files = process.argv.slice(2);
-  code = await run(process.execPath, ["--test", "--test-concurrency=1", ...(files.length ? files : ["test/**/*.test.mjs"])], {
+  // several of them reset or count the same day totals.
+  const args = process.argv.slice(2);
+  const named = args.filter((arg) => arg !== "--full");
+  const files = args.includes("--full") ? ["test/**/*.test.mjs"] : [...new Set(["test/smoke.test.mjs", ...named])];
+  console.log(`# running ${args.includes("--full") ? "the full regression" : files.join(", ")}`);
+  code = await run(process.execPath, ["--test", "--test-concurrency=1", ...files], {
     cwd: root,
     env: {
       ...process.env,
+      // test/helpers.mjs reads the local D1 through node:sqlite.
+      NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --disable-warning=ExperimentalWarning`.trim(),
       VOCAB_API_BASE_URL: baseUrl,
       VOCAB_API_DEV_VARS: join(root, devVars),
       VOCAB_API_STATE_DIR: stateDir,

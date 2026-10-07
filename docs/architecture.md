@@ -255,6 +255,8 @@ bytes). The Worker side is in `vocab-photo-api/README.md`; the design is in
 ## 4. Checklist for any change
 
 - [ ] `flutter analyze` clean; `dart run build_runner build --delete-conflicting-outputs` run, `.g.dart` committed
+- [ ] Tests per [`testing.md`](testing.md): new behaviour has tests; `tool/test.sh changed` passes
+      (smoke + the tests this branch touches). The full regression runs only when the owner asks.
 - [ ] `grep -rn "Navigator.push\|MaterialPageRoute" lib` → only `lib/router/` (or nothing)
 - [ ] `grep -rn "static final .* instance" lib` → only `lib/core/services/photo_scaler.dart` (`PhotoScaler.instance`, documented exception: the singleton stays for now, wrapped by `photoScalerProvider`)
 - [ ] On device, the walkthrough in `docs/refactoring-plan.md` §"Behaviour that must not change" passes

@@ -30,11 +30,13 @@ async function pick(body, headers = appHeaders({ "content-type": "application/js
 // The day total is shared by every address, so each test starts from an empty day.
 beforeEach(() => d1("DELETE FROM all_subtitle_imports"));
 
-// Ten imports from one address must land in one 10-minute window.
+// Ten imports from one address must land in one 10-minute window. They take
+// about a second against the stub, so 10 s left in the window is plenty; waiting
+// for a full minute's margin cost up to a minute of every run.
 async function awayFromWindowEdge() {
   const intoWindow = Date.now() % (10 * 60 * 1000);
   const left = 10 * 60 * 1000 - intoWindow;
-  if (left < 60_000) await new Promise((ok) => setTimeout(ok, left + 1000));
+  if (left < 10_000) await new Promise((ok) => setTimeout(ok, left + 1000));
 }
 
 test("200: ranked words, at most the maximum, no session word in any case, no duplicates, plus model, time and usage", async () => {
