@@ -7,6 +7,8 @@ import '../features/learn/learn_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
+import '../features/words_settings/story_run_screen.dart';
+import '../features/words_settings/story_runs_screen.dart';
 import '../features/words_settings/words_settings_screen.dart';
 import '../features/words_table/words_table_screen.dart';
 
@@ -25,7 +27,15 @@ part 'routes.g.dart';
             TypedGoRoute<StoryRoute>(path: 'story'),
           ],
         ),
-        TypedGoRoute<WordsSettingsRoute>(path: 'settings'),
+        TypedGoRoute<WordsSettingsRoute>(
+          path: 'settings',
+          routes: [
+            TypedGoRoute<StoryRunsRoute>(
+              path: 'runs',
+              routes: [TypedGoRoute<StoryRunRoute>(path: ':runId')],
+            ),
+          ],
+        ),
       ],
     ),
     TypedGoRoute<HistoryRoute>(path: 'history'),
@@ -97,7 +107,29 @@ class WordsSettingsRoute extends GoRouteData with _$WordsSettingsRoute {
   const WordsSettingsRoute();
 
   @override
-  Widget build(BuildContext context, GoRouterState state) => const WordsSettingsScreen();
+  Widget build(BuildContext context, GoRouterState state) => WordsSettingsScreen(
+        onOpenStoryRuns: () => const StoryRunsRoute().push(context),
+      );
+}
+
+/// Every story run, newest first (SCR-06).
+class StoryRunsRoute extends GoRouteData with _$StoryRunsRoute {
+  const StoryRunsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => StoryRunsScreen(
+        onOpenRun: (runId) => StoryRunRoute(runId: runId).push(context),
+      );
+}
+
+/// One story run's details (SCR-07). An id, never the object — rule 1.
+class StoryRunRoute extends GoRouteData with _$StoryRunRoute {
+  const StoryRunRoute({required this.runId});
+
+  final String runId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => StoryRunScreen(runId: runId);
 }
 
 class HistoryRoute extends GoRouteData with _$HistoryRoute {

@@ -35,6 +35,18 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
             GoRouteData.$route(
               path: 'settings',
               factory: _$WordsSettingsRoute._fromState,
+              routes: [
+                GoRouteData.$route(
+                  path: 'runs',
+                  factory: _$StoryRunsRoute._fromState,
+                  routes: [
+                    GoRouteData.$route(
+                      path: ':runId',
+                      factory: _$StoryRunRoute._fromState,
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
@@ -197,6 +209,55 @@ mixin _$WordsSettingsRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/table/settings',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$StoryRunsRoute on GoRouteData {
+  static StoryRunsRoute _fromState(GoRouterState state) =>
+      const StoryRunsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/settings/runs',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$StoryRunRoute on GoRouteData {
+  static StoryRunRoute _fromState(GoRouterState state) => StoryRunRoute(
+        runId: state.pathParameters['runId']!,
+      );
+
+  StoryRunRoute get _self => this as StoryRunRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/settings/runs/${Uri.encodeComponent(_self.runId)}',
       );
 
   @override
