@@ -6,7 +6,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
 | T1 | [Add the story allowance, story run and step tables to D1](./T1-worker-story-tables.md) | migration | Maksym | S | — | done |
-| T2 | [Add the offered AI list with prices and the step pricing rule to the Worker](./T2-worker-offered-ai-list.md) | domain | Maksym | M | — | todo |
+| T2 | [Add the offered AI list with prices and the step pricing rule to the Worker](./T2-worker-offered-ai-list.md) | domain | Maksym | M | — | done |
 | T3 | [Add the word check every story must pass to the Worker](./T3-worker-word-check.md) | domain | Maksym | S | — | done |
 | T4 | [Add the Anthropic and OpenCode Zen text adapters with a 90 s limit](./T4-worker-text-providers.md) | infra | Maksym | M | T2 | todo |
 | T5 | [Add the Grok and Higgsfield picture adapters with a 120 s limit](./T5-worker-picture-providers.md) | infra | Maksym | M | T2, T4 | todo |

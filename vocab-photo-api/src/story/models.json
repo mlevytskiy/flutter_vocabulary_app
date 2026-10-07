@@ -1,0 +1,32 @@
+{
+  "_note": "Entries marked provisional: true (OpenCode Zen, xAI, Higgsfield) are shipped with unverified ids and prices; the owner verifies them at final review (T2 owner decision, 2026-10-07).",
+  "_estimate15Usd": "Assumption: one text step for a 15-word group is about 1,000 input tokens and 600 output tokens; estimate15Usd = (1000 x input price + 600 x output price) / 1e6.",
+  "pricesAsOf": "2026-10-07",
+  "defaults": { "story": "claude-sonnet-5-5", "prompt": "claude-sonnet-5-5", "picture": "grok-imagine-image" },
+  "models": [
+    {
+      "id": "claude-sonnet-5-5", "name": "Sonnet 5.5", "provider": "anthropic", "role": "text",
+      "inputUsdPerMTok": 2, "outputUsdPerMTok": 10, "estimate15Usd": 0.008
+    },
+    {
+      "id": "claude-opus-5-5", "name": "Opus 5.5", "provider": "anthropic", "role": "text",
+      "inputUsdPerMTok": 4, "outputUsdPerMTok": 20, "estimate15Usd": 0.016
+    },
+    {
+      "id": "deepseek-v4-flash", "name": "DeepSeek V4 Flash", "provider": "opencode-zen", "role": "text",
+      "inputUsdPerMTok": 0.14, "outputUsdPerMTok": 0.28, "estimate15Usd": 0.000308, "provisional": true
+    },
+    {
+      "id": "gpt-5.4-mini", "name": "GPT-5.4 mini", "provider": "opencode-zen", "role": "text",
+      "inputUsdPerMTok": 0.75, "outputUsdPerMTok": 4.5, "estimate15Usd": 0.00345, "provisional": true
+    },
+    {
+      "id": "grok-imagine-image", "name": "Grok Imagine", "provider": "xai", "role": "picture",
+      "usdPerPicture": 0.02, "provisional": true
+    },
+    {
+      "id": "marketing-studio/image/sunburst", "name": "Higgsfield Marketing Studio", "provider": "higgsfield", "role": "picture",
+      "usdPerPicture": 0.013, "approx": true, "provisional": true
+    }
+  ]
+}
