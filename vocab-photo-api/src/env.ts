@@ -4,6 +4,12 @@ export interface Env {
   ANTHROPIC_API_URL?: string;
   /** Overrides the 225 s limit on a subtitle import's AI call, in ms; unset in production. The tests shorten it. */
   SUBTITLE_AI_TIMEOUT_MS?: string;
+  /** OpenCode Zen key for the story text step (mnemonic-story). A secret: `wrangler secret put OPENCODE_ZEN_API_KEY`. */
+  OPENCODE_ZEN_API_KEY: string;
+  /** Overrides OpenCode Zen's base URL; unset in production. The tests point it at a local stub. */
+  OPENCODE_ZEN_API_URL?: string;
+  /** Overrides the 90 s limit on a story text call, in ms; unset in production. The tests shorten it. */
+  STORY_TEXT_TIMEOUT_MS?: string;
   APP_SHARED_SECRET: string;
   RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
   /** Page writes per IP: save cell, add row, delete row, define (good-looking-web, sad §8). */
