@@ -11,7 +11,7 @@
 | T4 | [Accept the dialogues flag on POST /subtitles/words and return the checked dialogues](./T4-worker-subtitle-route-dialogues.md) | ports | Maksym | S | T3 | done |
 | T5 | [Run scene pictures as two-step runs of the story run workflow](./T5-worker-scene-runs.md) | app | Maksym | L | T1 | done |
 | T6 | [Store dialogues with a published session and carry them in publish and republish](./T6-worker-published-dialogues-store.md) | infra | Maksym | M | T1, T2 | done |
-| T7 | [Add the append route and the scene-picture upload route for a published session](./T7-worker-append-and-scene-picture-routes.md) | ports | Maksym | M | T6 | todo |
+| T7 | [Add the append route and the scene-picture upload route for a published session](./T7-worker-append-and-scene-picture-routes.md) | ports | Maksym | M | T6 | done |
 | T8 | [Carry dialogues and scene-picture arrivals in the shared page's change feed](./T8-worker-change-feed-dialogues.md) | ports | Maksym | M | T6, T2 | todo |
 | T9 | [Render the dialogue pages after the word table on the shared page](./T9-web-dialogue-pages.md) | ui | Maksym | M | T6, T2 | todo |
 | T10 | [Keep the shared page's dialogue pages in step with the change feed](./T10-web-dialogue-live-updates.md) | ui | Maksym | M | T8, T9 | todo |

@@ -2,19 +2,24 @@ import { MAX_RAW_BYTES, htmlResponse, isAllowedMediaType, jsonResponse } from ".
 import type { RouteContext, RouteDefinition } from "../routing";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
 import { pageAssets, pageHeaders } from "./assets";
-import { parseDialogues } from "./dialogues";
+import { MAX_DIALOGUES_PER_IMPORT, parseDialogues } from "./dialogues";
+import { badRequest, gone, listFull, pageError } from "./edit";
 import { renderNotFoundPage, renderSessionPage } from "./page";
 import {
+  appendToSession,
   createSession,
+  getDialoguePictureObject,
   getSourceObject,
   hasSourceStorage,
   loadSession,
   republishSession,
   storeDeclaredPhoto,
+  storeDialoguePicture,
 } from "./store";
 import {
   ID_PATTERN,
   MAX_SESSION_JSON_BYTES,
+  isId,
   parseDetail,
   parseEntries,
   parseRepublish,
@@ -136,6 +141,113 @@ async function handleUploadSource({ request, env, url, params }: RouteContext): 
   });
 }
 
+/** What a write that needs the session's edit token answers when it is missing or wrong. */
+function forbidden(): Response {
+  return pageError(403, "forbidden", "The edit token is missing or wrong.");
+}
+
+/**
+ * POST /sessions/:id/dialogues -- secret-gated, and `x-edit-token` must be the
+ * token the session was published with. `{ importId, entries: [{word, translation,
+ * definition?}], dialogues: [{id, lines, entries: positions in `entries`, picture?}] }`
+ * -> `{ importId, rev, url }`. Adds the rows after the existing rows and the
+ * dialogues after the existing dialogues at one new revision (ADR-0005); an
+ * import already added -- by id, or because a republish carried its dialogues --
+ * adds nothing and answers the same, so the app may retry. An unknown or
+ * expired session is `gone`, a wrong token is refused.
+ */
+async function handleAppendDialogues({ request, env, url, params }: RouteContext): Promise<Response> {
+  const text = await request.text();
+  if (text.length > MAX_SESSION_JSON_BYTES) {
+    return pageError(413, "bad_request", "Payload is too large");
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    return badRequest("Body must be JSON");
+  }
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    return badRequest("Body must be a JSON object with `importId` and `entries`");
+  }
+  const record = body as Record<string, unknown>;
+  if (!isId(record.importId)) return badRequest("`importId` must be 1-64 letters, digits or dashes");
+  const importId = record.importId;
+  const parsed = parseEntries(record.entries);
+  if (!parsed.ok) return badRequest(parsed.error);
+  // Every dialogue of the body belongs to this import, so the per-import cap counts them together.
+  const declared = record.dialogues ?? [];
+  if (!Array.isArray(declared)) return badRequest("`dialogues` must be an array");
+  const dialogues = parseDialogues(
+    declared.map((item) => (typeof item === "object" && item !== null ? { ...item, importId } : item)),
+    parsed.keptIndexes
+  );
+  if (!dialogues.ok) return badRequest(dialogues.error);
+  if (dialogues.dialogues.length > MAX_DIALOGUES_PER_IMPORT) {
+    return badRequest(`At most ${MAX_DIALOGUES_PER_IMPORT} dialogues per import`);
+  }
+
+  const result = await appendToSession(env, params.id, request.headers.get("x-edit-token"), {
+    importId,
+    entries: parsed.entries,
+    entryIndexes: parsed.keptIndexes,
+    dialogues: dialogues.dialogues,
+  });
+  switch (result.outcome) {
+    case "gone":
+      return gone();
+    case "forbidden":
+      return forbidden();
+    case "list_full":
+      return listFull();
+    default:
+      return jsonResponse({ importId, rev: result.rev, url: publicUrl(url, params.id) });
+  }
+}
+
+/**
+ * POST /sessions/:id/dialogues/:dialogueId/picture -- secret-gated, with the
+ * session's `x-edit-token`. Raw image bytes of the dialogue's scene picture,
+ * like a photo upload. A repeat after the bytes arrived answers the same and
+ * changes nothing. Only the app can call it: the page has no route that draws
+ * or stores a picture (AC-22).
+ */
+async function handleUploadDialoguePicture({ request, env, url, params }: RouteContext): Promise<Response> {
+  if (!hasSourceStorage(env)) {
+    return jsonResponse({ error: "Picture storage is not configured on this Worker (enable R2, see README)" }, 503);
+  }
+  const mediaType = request.headers.get("content-type");
+  if (!isAllowedMediaType(mediaType)) {
+    return badRequest("Content-Type header must be one of: image/jpeg, image/png, image/webp");
+  }
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength === 0) return badRequest("Request body must contain image bytes");
+  if (bytes.byteLength > MAX_RAW_BYTES) return pageError(413, "bad_request", "Image is too large");
+
+  const outcome = await storeDialoguePicture(
+    env,
+    params.id,
+    request.headers.get("x-edit-token"),
+    params.dialogueId,
+    bytes,
+    mediaType
+  );
+  switch (outcome) {
+    case "gone":
+      return gone();
+    case "forbidden":
+      return forbidden();
+    case "not_declared":
+      return pageError(404, "not_found", "This session has no dialogue with that id.");
+    default:
+      return jsonResponse({
+        dialogueId: params.dialogueId,
+        url: `${publicUrl(url, params.id)}/dialogues/${params.dialogueId}/picture`,
+        pageUrl: publicUrl(url, params.id),
+      });
+  }
+}
+
 /** GET /s/:id -- public. The page a person reads. */
 async function handleSessionPage({ env, params }: RouteContext): Promise<Response> {
   const session = await loadSession(env, params.id);
@@ -189,6 +301,27 @@ async function handleGetSource({ env, params }: RouteContext): Promise<Response>
   });
 }
 
+/**
+ * GET /s/:id/dialogues/:dialogueId/picture -- public. The bytes of one arrived
+ * scene picture of this live session; anything else is the gone page, as for photos.
+ */
+async function handleGetDialoguePicture({ env, params }: RouteContext): Promise<Response> {
+  const object = await getDialoguePictureObject(env, params.id, params.dialogueId);
+  if (!object) {
+    return gonePage();
+  }
+  return new Response(object.body, {
+    status: 200,
+    headers: {
+      "content-type": object.httpMetadata?.contentType ?? "application/octet-stream",
+      "content-length": String(object.size),
+      "etag": object.httpEtag,
+      // A picture never changes once uploaded; the dialogue id is random.
+      "cache-control": "public, max-age=86400, immutable",
+    },
+  });
+}
+
 export const sessionRoutes: RouteDefinition[] = [
   { method: "POST", pattern: /^\/sessions$/, public: false, handler: handleCreateSession },
   {
@@ -196,6 +329,18 @@ export const sessionRoutes: RouteDefinition[] = [
     pattern: new RegExp(`^/sessions/(?<id>${ID_PATTERN})/sources/(?<sourceId>${ID_PATTERN})$`),
     public: false,
     handler: handleUploadSource,
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/sessions/(?<id>${ID_PATTERN})/dialogues$`),
+    public: false,
+    handler: handleAppendDialogues,
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/sessions/(?<id>${ID_PATTERN})/dialogues/(?<dialogueId>${ID_PATTERN})/picture$`),
+    public: false,
+    handler: handleUploadDialoguePicture,
   },
   { method: "GET", pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})$`), public: true, handler: handleSessionPage },
   {
@@ -209,5 +354,11 @@ export const sessionRoutes: RouteDefinition[] = [
     pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})/sources/(?<sourceId>${ID_PATTERN})$`),
     public: true,
     handler: handleGetSource,
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/s/(?<id>${ID_PATTERN})/dialogues/(?<dialogueId>${ID_PATTERN})/picture$`),
+    public: true,
+    handler: handleGetDialoguePicture,
   },
 ];

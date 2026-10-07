@@ -110,29 +110,45 @@ export function parseDialogues(value: unknown, keptEntryIndexes: readonly number
 const INSERT_DIALOGUE = `INSERT INTO dialogues
   (session_id, id, position, lines_json, import_id, added_rev, picture_media_type)
   VALUES (?1, ?2, ?3, ?4, ?5, (SELECT rev FROM sessions WHERE id = ?1), ?6)`;
+// An append puts its dialogues after the ones the session already has; each insert looks at what the
+// one before it wrote, so the order holds without reading first.
+const INSERT_DIALOGUE_AFTER_EXISTING = `INSERT INTO dialogues
+  (session_id, id, position, lines_json, import_id, added_rev, picture_media_type)
+  VALUES (?1, ?2, (SELECT coalesce(max(position), -1) + 1 FROM dialogues WHERE session_id = ?1), ?3, ?4,
+    (SELECT rev FROM sessions WHERE id = ?1), ?5)`;
 const INSERT_DIALOGUE_WORD = `INSERT INTO dialogue_words (session_id, dialogue_id, row_id) VALUES (?1, ?2, ?3)`;
 
 /**
  * Statements storing `dialogues` for a session whose rows were just inserted.
  * `rowIdByEntryIndex` maps an app-side entry position to its row id. They run
  * in the publish batch, after the session's revision is set, so `added_rev` is
- * the revision of that publish.
+ * the revision of that publish. With `afterExisting` (an append) the positions
+ * continue after the session's current dialogues instead of starting at 0.
  */
 export function insertDialogueStatements(
   env: Env,
   sessionId: string,
   dialogues: readonly DeclaredDialogue[],
-  rowIdByEntryIndex: ReadonlyMap<number, string>
+  rowIdByEntryIndex: ReadonlyMap<number, string>,
+  { afterExisting = false }: { afterExisting?: boolean } = {}
 ): D1PreparedStatement[] {
   return dialogues.flatMap((dialogue, position) => [
-    env.DB.prepare(INSERT_DIALOGUE).bind(
-      sessionId,
-      dialogue.id,
-      position,
-      JSON.stringify(dialogue.lines),
-      dialogue.importId,
-      dialogue.pictureMediaType
-    ),
+    afterExisting
+      ? env.DB.prepare(INSERT_DIALOGUE_AFTER_EXISTING).bind(
+          sessionId,
+          dialogue.id,
+          JSON.stringify(dialogue.lines),
+          dialogue.importId,
+          dialogue.pictureMediaType
+        )
+      : env.DB.prepare(INSERT_DIALOGUE).bind(
+          sessionId,
+          dialogue.id,
+          position,
+          JSON.stringify(dialogue.lines),
+          dialogue.importId,
+          dialogue.pictureMediaType
+        ),
     ...dialogue.entries.map((index) =>
       env.DB.prepare(INSERT_DIALOGUE_WORD).bind(sessionId, dialogue.id, rowIdByEntryIndex.get(index))
     ),
@@ -145,4 +161,28 @@ export function deleteDialogueStatements(env: Env, sessionId: string): D1Prepare
     env.DB.prepare(`DELETE FROM dialogue_words WHERE session_id = ?1`).bind(sessionId),
     env.DB.prepare(`DELETE FROM dialogues WHERE session_id = ?1`).bind(sessionId),
   ];
+}
+
+/** The R2 key of a dialogue's scene picture, under its session's prefix like the photos. */
+export const pictureKey = (sessionId: string, dialogueId: string) =>
+  `sessions/${sessionId}/dialogues/${dialogueId}/picture`;
+
+/** Whether this session already has an import with this id, or a dialogue with any of these ids. */
+export async function isRepeatAppend(
+  env: Env,
+  sessionId: string,
+  importId: string,
+  dialogueIds: readonly string[]
+): Promise<boolean> {
+  const imported = await env.DB.prepare(`SELECT 1 AS found FROM dialogue_imports WHERE session_id = ?1 AND import_id = ?2`)
+    .bind(sessionId, importId)
+    .all();
+  if (imported.results.length > 0) return true;
+  for (const dialogueId of dialogueIds) {
+    const known = await env.DB.prepare(`SELECT 1 AS found FROM dialogues WHERE session_id = ?1 AND id = ?2`)
+      .bind(sessionId, dialogueId)
+      .all();
+    if (known.results.length > 0) return true;
+  }
+  return false;
 }
