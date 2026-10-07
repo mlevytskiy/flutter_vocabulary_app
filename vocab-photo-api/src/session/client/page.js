@@ -75,7 +75,17 @@
  * @typedef {{ rev: number, reload?: boolean,
  *   cells?: { rowId: string, field: Field, value: string, rev: number }[],
  *   rows?: FeedRow[], deleted?: { rowId: string, rev: number }[],
- *   sources?: { id: string }[] }} Feed
+ *   sources?: { id: string }[], dialogues?: FeedDialogue[],
+ *   removedDialogues?: string[] }} Feed
+ */
+
+/**
+ * A dialogue as the change feed sends it (T8): `places` are UTF-16 [start, end)
+ * offsets, one list per line, in the same order as `lines`.
+ * @typedef {{ id: string, position: number, lines: string[],
+ *   picture: { mediaType: string, rev: number } | null,
+ *   words: { rowId: string, word: string, translation: string, definition: string,
+ *     places: [number, number][][] }[] }} FeedDialogue
  */
 
 /** @typedef {"filled" | "nothing" | "paused" | "failed"} Fill */
@@ -1109,6 +1119,8 @@ function applyFeed(feed) {
     if (row) removedElsewhere(row);
   }
   for (const source of feed.sources ?? []) photoArrived(source.id);
+  for (const dialogue of feed.dialogues ?? []) showDialogue(dialogue);
+  for (const id of feed.removedDialogues ?? []) removeDialogue(id);
   for (const row of changed) flash(row);
   if (feed.rev > state.rev) state.rev = feed.rev;
 }
@@ -1183,6 +1195,117 @@ function photoArrived(id) {
   // The open dialog shows it too.
   const shown = main.querySelectorAll(".dialog-slide")[index]?.querySelector(".placeholder");
   if (shown) shown.replaceWith(img.cloneNode());
+}
+
+/**
+ * AC-20, AC-21: one dialogue page built from the feed's data, with the same markup
+ * the Worker renders (`renderDialogue` in page.ts). Text goes in through
+ * `textContent` only (AC-33). Nothing in it is an input or a button (AC-22).
+ * @param {FeedDialogue} dialogue
+ * @returns {HTMLElement}
+ */
+function buildDialogue(dialogue) {
+  const section = document.createElement("section");
+  section.className = "dialogue-page";
+  section.dataset.dialogue = dialogue.id;
+  section.dataset.position = String(dialogue.position);
+  const lines = document.createElement("div");
+  lines.className = "dialogue-lines";
+  dialogue.lines.forEach((line, i) => {
+    const p = document.createElement("p");
+    p.className = "dialogue-line";
+    /** @type {[number, number][]} */
+    const runs = [];
+    const places = dialogue.words.flatMap((w) => w.places[i] ?? []).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const [start, end] of places) {
+      const last = runs[runs.length - 1];
+      if (last && start < last[1]) last[1] = Math.max(last[1], end);
+      else runs.push([start, end]);
+    }
+    let at = 0;
+    for (const [start, end] of runs) {
+      if (start > at) p.append(document.createTextNode(line.slice(at, start)));
+      const strong = document.createElement("strong");
+      strong.textContent = line.slice(start, end);
+      p.append(strong);
+      at = end;
+    }
+    if (at < line.length) p.append(document.createTextNode(line.slice(at)));
+    lines.append(p);
+  });
+  section.append(lines);
+  if (dialogue.picture) {
+    const img = document.createElement("img");
+    img.className = "dialogue-picture";
+    img.src = `/s/${encodeURIComponent(state.session)}/dialogues/${encodeURIComponent(dialogue.id)}/picture?v=${dialogue.picture.rev}`;
+    img.alt = "Scene picture for this dialogue";
+    img.loading = "lazy";
+    section.append(img);
+  }
+  const list = document.createElement("ul");
+  list.className = "dialogue-words";
+  for (const word of dialogue.words) {
+    const li = document.createElement("li");
+    li.dataset.row = word.rowId;
+    /** @type {[string, string][]} */
+    const parts = [["dw-word", word.word]];
+    if (word.translation !== "") parts.push(["dw-translation", word.translation]);
+    if (word.definition !== "") parts.push(["dw-definition", word.definition]);
+    parts.forEach(([className, text], n) => {
+      if (n > 0) li.append(document.createTextNode(" "));
+      const span = document.createElement("span");
+      span.className = className;
+      span.textContent = text;
+      li.append(span);
+    });
+    list.append(li);
+  }
+  section.append(list);
+  return section;
+}
+
+/**
+ * A dialogue the feed carries: a new one goes in by its position, a known one
+ * (changed words, a translation edit, an arrived picture) is rebuilt in place.
+ * Only the dialogue container is touched, so text typed in the table stays (AC-36).
+ * @param {FeedDialogue} dialogue
+ */
+function showDialogue(dialogue) {
+  if (!main) return;
+  let container = main.querySelector(".dialogues");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "dialogues";
+    container.setAttribute("aria-label", "Dialogues from the film");
+    main.insertBefore(container, main.querySelector(".toasts"));
+  }
+  main.classList.add("has-dialogues");
+  const built = buildDialogue(dialogue);
+  const sections = Array.from(container.querySelectorAll(".dialogue-page"));
+  const known = sections.find((section) => /** @type {HTMLElement} */ (section).dataset.dialogue === dialogue.id);
+  if (known) {
+    known.replaceWith(built);
+    return;
+  }
+  const after = sections.find((section) => Number(/** @type {HTMLElement} */ (section).dataset.position) > dialogue.position);
+  container.insertBefore(built, after ?? null);
+}
+
+/**
+ * The feed says a dialogue is gone (deleted, or none of its words is left).
+ * @param {string} id
+ */
+function removeDialogue(id) {
+  if (!main) return;
+  const container = main.querySelector(".dialogues");
+  if (!container) return;
+  for (const section of Array.from(container.querySelectorAll(".dialogue-page"))) {
+    if (/** @type {HTMLElement} */ (section).dataset.dialogue === id) section.remove();
+  }
+  if (!container.querySelector(".dialogue-page")) {
+    container.remove();
+    main.classList.remove("has-dialogues");
+  }
 }
 
 /**

@@ -14,7 +14,7 @@
 | T7 | [Add the append route and the scene-picture upload route for a published session](./T7-worker-append-and-scene-picture-routes.md) | ports | Maksym | M | T6 | done |
 | T8 | [Carry dialogues and scene-picture arrivals in the shared page's change feed](./T8-worker-change-feed-dialogues.md) | ports | Maksym | M | T6, T2 | done |
 | T9 | [Render the dialogue pages after the word table on the shared page](./T9-web-dialogue-pages.md) | ui | Maksym | M | T6, T2 | done |
-| T10 | [Keep the shared page's dialogue pages in step with the change feed](./T10-web-dialogue-live-updates.md) | ui | Maksym | M | T8, T9 | todo |
+| T10 | [Keep the shared page's dialogue pages in step with the change feed](./T10-web-dialogue-live-updates.md) | ui | Maksym | M | T8, T9 | done |
 | T11 | [Add "Dialogs from movie" to the exercise list for the app and the web](./T11-exercise-list-dialogs-from-movie.md) | domain | Maksym | S | — | todo |
 | T12 | [Add FilmDialogue, Session.dialogues, WordGroup.dialogueId and StoryRun kind to the app](./T12-app-dialogue-models.md) | domain | Maksym | M | — | todo |
 | T13 | [Port the matching rule to Dart and test it against the Worker's case file](./T13-app-matching-rule.md) | domain | Maksym | S | T2 | todo |
