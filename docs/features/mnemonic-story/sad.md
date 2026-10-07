@@ -405,3 +405,25 @@ ADR files live under `docs/features/mnemonic-story/adr/NNNN-<title>.md`.
 - **When:** a finished picture is stored and viewed on the story screen.
 - **Then:** zoom up to at least 4× with pan, no visible blur at 2× on the owner's phone, and ≤ 3 MB on the device per story run (picture included).
 - **How verify:** spec §6: "device check at release" and "check app storage after 10 runs". Plus an app test that `story_picture_store.dart` writes ≤ 3 MB for an oversized input.
+
+## 11. Risks and technical debt
+
+| Risk / debt | Severity | Mitigation | Owner |
+|---|---|---|---|
+| The app secret ships in the app. With it, anyone can start paid runs up to the allowance | High | The story allowance (≤ 20 per UTC day), the server-side model list, redo only for a counted run's failed step, and the per-address rate limiter. Security review by the Security Lead before release (spec §6.1) | Maksym, before `sdd:ship` |
+| If the Workflows engine restarts in the middle of an unfinished step, it runs that step again, so a rare double charge is possible (ADR-0002) | Low | Paid steps have retries off. Step times and prices are on the story runs screen, and the monthly invoice check (QG-5) would show it | Maksym |
+| Polling and other app calls share the per-address limit of 20 requests / 60 s | Medium | One status call for all followed runs every 5 s, only while the learn page or story screen is open. The tracker backs off on 429 | Maksym |
+| The Worker holds run results for up to 7 days, against spec §6.1's "stays on the device" (sad §1 override) | Low | Deleted by the daily clean-up after 7 days. Only story text, prompts, pictures and prices are kept, nothing personal | Maksym |
+| New providers' APIs and prices (OpenCode Zen, xAI, Higgsfield credits) may change or differ from the list price | Medium | One adapter per provider, stub tests per adapter, `models.json` with `pricesAsOf`, and the ±25 % invoice check after the first month | Maksym |
+| The `R2 SOURCES` binding is optional in `env.ts`. Without it, pictures cannot be held | Medium | The story routes answer 503 when it is missing, as the photo routes do. The deploy checklist (§7) confirms R2 is enabled | Maksym |
+| The Isar schema change (`WordPair.rowId`, `Session.groups`, `StoryRun`) ships to users' phones and cannot be rolled back | Medium | Additive fields only. The `rowId` fill-in runs once per older session on read, and an app test opens a session saved without `rowId` | Maksym |
+| AC-08's strict word check may fail many stories, which would hurt the "≥ 80 % finish with a picture" KPI | Medium | The story writer's prompt asks for each word as written. Failures show which words were missed, and the owner tunes the prompt from the story runs | Maksym |
+| Workflows under the local `wrangler dev` used by `npm test` may behave differently from production | Medium | Stub providers for every adapter. One manual run against real providers on a staging deploy before release | Maksym |
+| Repo texts this design outdates: CLAUDE.md rule 3 (the new visible parts) and rule 5 (`WordGroup`, `StoryRun`, `StoryStep`, `WordPair.rowId` approved), `docs/architecture.md` §1/§3, `vocab-photo-api/README.md` (story routes, secrets, Workflow), and learn-part-step-1 `CONTEXT.md` ("the learn page saves nothing") | Low | Update them with the code in the implementing tasks | Maksym |
+
+**Accepted debt (acceptable in v1, plan to fix later):**
+- Story runs are never removed from the phone (about 100 MB a year, spec §1). Revisit if the list grows large.
+- The grouping AI's cost is not recorded or shown (spec §3).
+- The app learns of progress only by polling while a story-related screen is open. There are no push notifications and no background fetch.
+- Prices are list-price estimates, not invoice copies (spec §3 "Exact billing").
+- The web learn page still leads to coming soon for Mnemonic story (spec §3).
