@@ -388,29 +388,22 @@ ADR files live under `docs/features/get-words-from-subtitles-improvment/adr/NNNN
 
 ## 10. Quality requirements
 
-<!-- 🎯 Why: the QUALITY TREE — take a goal from §1 and break it into concrete leaves: tests,
-     metrics, configs, drills. ⭐ Without §10, §1 is a manifesto. With §10 each declaration maps
-     to something PROVABLE.
-     📋 Write: per §1 goal — When / Then / How-verify. Numbers from spec §6 NFR VERBATIM (don't
-     round ≤250ms to ≤300ms — that's a critic F6 hit).
-     📌 e.g. «p95 ≤ 500 ms on a block update, verified by a 100 req/s load test». -->
-
 Each top-3 goal from §1 expanded into a full scenario:
 
-**QG-1. <quality attribute>**
-- **When:** <trigger condition>
-- **Then:** <expected behaviour with numbers from spec §6 NFR>
-- **How verify:** <test / chaos drill / load test / metric>
+**QG-1. Switch off changes nothing**
+- **When:** the dialogues setting is off (never changed, or turned off) and the learner runs a subtitle import, in a session with or without dialogues (AC-01, AC-23).
+- **Then:** "0 differences in what the import sends and what it shows, with the switch off" (spec §6), and with the switch on, "0 imports at maximum 20 fail with the switch on where the same film succeeds with it off" (spec §6). With the switch off, there is no pager in a session without dialogues, and a session that has dialogues keeps them and gains none.
+- **How verify:** (1) a Worker test builds the request for the same input with no `dialogues` field and compares the system prompt, `max_tokens` and body byte for byte with a snapshot of today's `buildSubtitleRequest`; (2) an app test asserts the request JSON has no `dialogues` key when the setting is off, and a widget test asserts no `PageView` for a session without dialogues; (3) the spec §6 device pass: 10 runs (5 films × 2), each with the switch on and off at maximum 20, logging failures per run.
 
-**QG-2. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-2. Every kept dialogue can be trusted**
+- **When:** an import with the switch on returns its reply, the learner removes words in the results dialog and taps Done, or later edits or deletes a dialogue word (AC-03 – AC-05, AC-08, AC-11).
+- **Then:** "≤ 10 kept, each ≤ 8 lines (extra or longer ones dropped, AC-05)" and "100% of bold words appear in their dialogue's text" (spec §6). A reply cut off anywhere, the dialogues included, gives neither words nor dialogues, and the session and pager stay unchanged.
+- **How verify:** (1) Worker tests on the reply check with stubbed replies: 11 dialogues, a 9-line dialogue, a link to a word not returned, a linked word absent from the text, a reply with `stop_reason` `max_tokens`, a malformed `dialogues` array; (2) the shared match-case file run by both the TypeScript and the Dart test suites; (3) app tests on the Done filter and the edit rule against AC-03, AC-06, AC-11 and AC-26 examples; (4) an assertion, on every reply in the device pass, that each bold word matches under the AC-05 rule.
 
-**QG-3. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-3. Scene pictures keep spending bounded**
+- **When:** the learner presses Start on a dialogue group, "Try again" or "Draw again", on a day with mnemonic stories already run; or anyone holding the shared link tries to draw (AC-14, AC-18, AC-19, AC-22).
+- **Then:** "scene pictures and mnemonic stories together ≤ 20 story runs per UTC day" (spec §6). "the 21st Start or "Draw again" of a UTC day gets the AC-19 message" (spec §6). A drawn picture is shown again with nothing paid. "Try again" of the prompt step takes nothing. No public route starts a run. Each step keeps "picture prompt writer ≤ 90 s, picture maker ≤ 120 s, as in mnemonic-story" (spec §6).
+- **How verify:** (1) Worker tests: 20 mixed story and scene starts on one UTC day succeed and the 21st start or Draw again is refused; a repeated scene start with the same run id takes nothing; Try again of a scene's prompt step leaves `all_story_runs.used` unchanged; a test walks every `public: true` route and asserts none creates a run; (2) Worker tests with stub providers that stall: the prompt step fails at 90 s and the picture step at 120 s, each recorded with its time; (3) an app test: Start on a dialogue group whose scene run is collected makes no Worker call; (4) story runs records per step on the device pass.
 
 ## 11. Risks and technical debt
 
