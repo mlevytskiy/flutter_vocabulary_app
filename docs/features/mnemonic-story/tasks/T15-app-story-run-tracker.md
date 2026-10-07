@@ -7,7 +7,7 @@ acs: ["AC-06", "AC-07", "AC-08", "AC-08b", "AC-09", "AC-10", "AC-16", "AC-19"]
 files_hint: ["lib/core/story/story_run_tracker.dart", "lib/core/story/word_groups_notifier.dart", "test/story_run_tracker_test.dart"]
 owner: "Maksym"
 estimate: "L"
-status: "todo"
+status: "done"
 ---
 
 # T15 — Add the story run tracker that starts, follows and collects runs

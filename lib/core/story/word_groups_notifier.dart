@@ -4,6 +4,7 @@ import '../../features/word_input/word_input_notifier.dart';
 import '../models/session.dart';
 import '../models/word_group.dart';
 import '../providers.dart';
+import 'story_run_tracker.dart';
 import 'word_grouping.dart';
 
 part 'word_groups_notifier.g.dart';
@@ -54,10 +55,12 @@ class WordGroupsState {
 }
 
 /// Asks the story run tracker to start a run for a group that has neither a
-/// story nor a run (AC-06). A no-op until `StoryRunTracker` (T15) replaces it.
+/// story nor a run (AC-06). Tests replace it with `overrideWithValue`.
 typedef StoryRunStartHook = Future<void> Function(String sessionId, WordGroup group);
 
-final storyRunStartHookProvider = Provider<StoryRunStartHook>((ref) => (sessionId, group) async {});
+final storyRunStartHookProvider = Provider<StoryRunStartHook>((ref) => (sessionId, group) async {
+      await ref.read(storyRunTrackerProvider.notifier).startFor(sessionId, group);
+    });
 
 /// The groups of one session and the learner's selection among them. A null
 /// [sessionId] is the current session; an id is a History session, which is
@@ -94,6 +97,14 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
     }
     _publish(session, state.status);
     await _startRunIfNeeded(session);
+  }
+
+  /// Publishes the session as it is saved now, without grouping: a story run
+  /// finished and changed a group's story (AC-16).
+  Future<void> reload() async {
+    final session = await _session();
+    if (session == null || _disposed) return;
+    _publish(session, state.status);
   }
 
   Future<void> _ensureGrouped() async {
