@@ -236,3 +236,92 @@ C4Container
 ```
 
 There is one container per declared surface, plus their stores. The **Vocabulary app** (mobile-app) keeps everything lasting on the phone: sessions with their word groups and the story runs in the **Device store**, and the pictures as **Picture files**. It talks only to the **Worker** (backend-service). The Worker answers grouping itself, calling Anthropic. For a story run, it takes an allowance unit in **D1** and hands the run to the **Story run workflow**, which ships in the same Worker script. The workflow calls the chosen text provider (Anthropic or OpenCode Zen) and picture provider (xAI or Higgsfield), records each step in D1 and stores the picture in **R2**. The app polls the Worker for status and downloads the picture, after which the phone holds the only lasting copy.
+
+## 6. Runtime view
+
+Two seed flows: the story run, the paid and critical one, with its failure and leave-and-return branches, and grouping. The `sequences` stage then covers every §5 AC.
+
+**Critical flow 1: a story run, from selecting a group to the picture shown (US-02, US-06; AC-06 – AC-10, AC-19)**
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Device store
+    participant Worker as vocab-photo-api Worker
+    participant Flow as Story run workflow
+    participant D1 as Story run records
+    participant AI as AI providers
+    Learner->>App: selects a group without a story, or opens the learn page with it selected
+    App->>Store: saves a new story run in progress (new run id, group words, AI choice)
+    App->>Worker: starts the run with its run id, words and AI choice
+    Worker->>Worker: checks the three AIs are on the offered list
+    Worker->>D1: takes one unit of today's story allowance, once per run id
+    alt allowance used up
+        Worker-->>App: refused, today's limit reached
+        App-->>Learner: "Today's story limit is reached. Try again tomorrow."
+    else unit taken
+        Worker->>Flow: creates the run's workflow
+        Worker-->>App: run started
+        Flow->>AI: story writer writes the story (90 s limit)
+        Flow->>Flow: checks every group word appears
+        alt a word is missing, or the story writer failed
+            Flow->>D1: story step failed, with missed words, price and time
+        else story complete
+            Flow->>AI: picture prompt writer writes the prompt (90 s limit)
+            Flow->>AI: picture maker draws the picture (120 s limit)
+            Flow->>D1: each step's result, price and time; the picture goes to R2
+        end
+        loop every 5 s while the learn page or story screen is open, and on app start
+            App->>Worker: status of every run not yet collected
+            Worker->>D1: reads their steps
+            Worker-->>App: steps so far
+            App->>Store: records finished steps
+        end
+        opt the learner closed the app mid-run
+            Note over App,Flow: the workflow carries on, nothing is redone or paid again, results are collected on return
+        end
+        App->>Worker: fetches the finished picture
+        App->>Store: compressed picture file, run finished, becomes the group's story
+        App-->>Learner: story screen shows the picture over the story text, zoom and pan
+    end
+```
+
+The learner selects a group that has no story. The app records a new run locally and asks the Worker to start it. The Worker checks that the AI choice is on the offered list and takes one unit of the day's allowance. If none is left, the learner sees the daily-limit message and nothing is paid. Otherwise the Worker hands the run to its workflow and answers at once. The workflow has the story written and checks that every word is present. If a word is missing or the story writer fails, the run stops at the story step. Otherwise it has the picture prompt written and the picture drawn, recording each step's result, price and time. Meanwhile the app asks for the status of every unfinished run every 5 s while a story-related screen is open, and once on app start, and copies each finished step to the phone. If the app was closed, the workflow simply carried on, and the app collects the results when it next opens. When the picture is ready, the app downloads it, compresses it, stores it and makes this run the group's story.
+
+**Critical flow 2: grouping a session with more than 19 words to learn (US-01; AC-01, AC-03 – AC-05)**
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Device store
+    participant Worker as vocab-photo-api Worker
+    participant AI as Anthropic API
+    Learner->>App: opens a session's Words screen or learn page
+    App->>Store: reads the session's words to learn, groups and grouped-words key
+    alt words to learn unchanged since the last grouping
+        App-->>Learner: groups as they are, last selected group selected
+    else 19 words to learn or fewer
+        App->>Store: one "All words" group, or a new own group beside a story group
+    else more than 19 and changed
+        App->>App: picks the words outside every group with a story, and the groups without a story
+        App-->>Learner: pager shows "Grouping your words…" if the learn page is open
+        App->>Worker: asks for a split of those words
+        Worker->>AI: grouping prompt with the fixed model
+        AI-->>Worker: proposed groups with names
+        Worker-->>App: proposed groups
+        App->>App: validates every word exactly once and 7 to 19 per group, keeps groups without a story stable
+        alt split invalid or the call failed
+            App-->>Learner: "Could not group your words" with "Try again", Start unavailable for Mnemonic story
+        else fewer than 7 words have no room
+            App->>Store: groups saved, leftover words wait
+            App-->>Learner: "N more words are waiting for a group (at least 7 are needed)"
+        else valid
+            App->>Store: groups and the new grouped-words key saved
+            App-->>Learner: group line and pager, the remembered group selected or the first
+        end
+    end
+```
+
+When a session's Words screen or learn page opens, the app compares the current words to learn with the key stored at the last grouping. If nothing changed, the groups stay as they are. A session with 19 or fewer words to learn is grouped on the phone, as "All words", or with a new group of its own beside a story group. Above 19, the app sends the words outside any story group, and the groups without a story, to the Worker, which asks the fixed AI for a split. The app checks the answer. A broken split, or a failed call, shows "Could not group your words" with Try again and keeps Start unavailable for Mnemonic story. Leftover words that cannot form a group of 7 wait, with the waiting message. A good split is saved, and the pager appears with the remembered group selected.
