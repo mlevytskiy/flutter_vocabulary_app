@@ -15,7 +15,7 @@
 | T8 | [Run each story run as a Workflow on the Worker](./T8-worker-story-run-workflow.md) | app | Maksym | L | T3, T4, T5, T6 | done |
 | T9 | [Add the start, status, redo and picture routes and the 7-day picture clean-up](./T9-worker-story-run-routes.md) | ports | Maksym | M | T7, T8 | done |
 | T10 | [Add WordPair.rowId, WordGroup and the StoryRun collection to the app](./T10-app-story-models.md) | domain | Maksym | M | — | done |
-| T11 | [Add the pure word-grouping rules to the app](./T11-app-word-grouping-rules.md) | domain | Maksym | M | T10 | todo |
+| T11 | [Add the pure word-grouping rules to the app](./T11-app-word-grouping-rules.md) | domain | Maksym | M | T10 | done |
 | T12 | [Add the app's story service for the Worker's story routes](./T12-app-story-api-service.md) | infra | Maksym | M | T10, T7, T9 | todo |
 | T13 | [Add the story run store and the picture store to the app](./T13-app-story-run-and-picture-stores.md) | infra | Maksym | M | T10 | todo |
 | T14 | [Add the word-groups notifier that groups a session and keeps its selection](./T14-app-word-groups-notifier.md) | app | Maksym | M | T11, T12 | todo |
