@@ -31,6 +31,7 @@ status: "in-progress"
 
 ## Notes
 
+- Owner deployed on 2026-10-07: remote migration 0004 applied, secrets XAI_API_KEY / HIGGSFIELD_API_KEY / OPENCODE_ZEN_API_KEY set, `wrangler deploy` version 7e83d809-d3c5-4639-9f81-dc4d9f5fb2c5. A live grouping bug was found right after: with 45 words Haiku answered 10 groups of 2 to 6 words with invented ids on new groups, the Worker passed it on (200) and the app's `applySplit` rejected it ("Could not group your words"). Fixed in the Worker only (commit "make the grouping split always valid for the app"): prompt states the word count and target number of groups, the Worker validates with the app's rules, retries the AI once, then repairs deterministically. **Needs a redeploy** (`npm run deploy` from `vocab-photo-api/`); no app build needed.
 - The story run time (≤ 3 min median of the first 10 runs) and the ±25 % price check happen after release, on the story runs screen.
 
 ### Docs done (2026-10-07)

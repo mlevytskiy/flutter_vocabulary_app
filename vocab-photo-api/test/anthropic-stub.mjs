@@ -11,7 +11,10 @@
 //   "STUB:slow:<ms>"   -> the default reply after <ms> milliseconds
 // A grouping request (its system prompt names "topical groups", user content = JSON {words, keep}, mnemonic-story
 // T7) picks its mode from a word that starts "STUB:" and otherwise answers the keep groups
-// unchanged plus one new group of every other word:
+// unchanged plus the other words in even new groups of 7 to 19 (the app's rules):
+//   "STUB:small-groups" -> the live bad reply (many groups under 7, invented ids) on the first ask,
+//                          a valid split when the request carries `problems` (the retry)
+//   "STUB:small-always" -> the bad reply on every ask
 //   "STUB:error" / "STUB:refusal" / "STUB:malformed" as above, "STUB:no-groups" -> JSON with no groups
 //   anything else      -> 14 ranked candidates, with a case duplicate, for the
 //                         route to drop session words and cut to the maximum
@@ -62,12 +65,27 @@ function groupingAnswer(model, content) {
   }
   const marker = request.words.map((w) => w.word).find((w) => w.startsWith("STUB:"));
   if (marker === "STUB:no-groups") return { status: 200, body: message(model, JSON.stringify({ note: "none" })) };
-  if (marker) return answer(model, marker);
   const kept = new Set(request.keep.flatMap((g) => g.rowIds));
-  const groups = [
-    ...request.keep.map((g) => ({ id: g.id, name: g.name, rowIds: g.rowIds })),
-    { name: "Stub group", rowIds: request.words.map((w) => w.rowId).filter((id) => !kept.has(id)) },
-  ];
+  const fresh = request.words.map((w) => w.rowId).filter((id) => !kept.has(id));
+  const keepGroups = request.keep.map((g) => ({ id: g.id, name: g.name, rowIds: g.rowIds }));
+  if (marker === "STUB:small-always" || (marker === "STUB:small-groups" && !request.problems)) {
+    // What Haiku really answered: small groups, each with an invented id.
+    const groups = [...keepGroups];
+    for (let at = 0, i = 0; at < fresh.length; i += 1) {
+      const size = [2, 4, 4, 4, 5, 5, 5, 6, 5, 5][i % 10];
+      groups.push({ id: `topic${i}`, name: `Topic ${i}`, rowIds: fresh.slice(at, at + size) });
+      at += size;
+    }
+    return { status: 200, body: message(model, JSON.stringify({ groups })) };
+  }
+  if (marker && marker !== "STUB:small-groups") return answer(model, marker);
+  const count = fresh.length < 7 ? 1 : Math.ceil(fresh.length / 19);
+  const groups = [...keepGroups];
+  for (let i = 0; i < count; i += 1) {
+    const from = Math.floor((fresh.length * i) / count);
+    const to = Math.floor((fresh.length * (i + 1)) / count);
+    if (to > from) groups.push({ name: `Stub group ${i + 1}`, rowIds: fresh.slice(from, to) });
+  }
   return { status: 200, body: message(model, "```json\n" + JSON.stringify({ groups }) + "\n```") };
 }
 

@@ -48,20 +48,20 @@ test("AC-12: the models route returns the offered list with the defaults and no 
   for (const model of body.models) assert.equal("provisional" in model, false, `${model.id} leaks provisional`);
 });
 
-test("AC-03: the grouping route returns the AI's groups unchanged, asking the fixed Haiku model", async () => {
+test("AC-03: the grouping route returns a valid AI split unchanged, asking the fixed Haiku model", async () => {
   const before = (await stubCalls()).count;
   const keep = [{ id: "g1", name: "Sea", rowIds: ["k1", "k2"] }];
-  const res = await post({ words: [...words(20), { rowId: "k1", word: "tide" }, { rowId: "k2", word: "harbour" }], keep });
+  const res = await post({ words: [...words(18), { rowId: "k1", word: "tide" }, { rowId: "k2", word: "harbour" }], keep });
   assert.equal(res.status, 200);
   const body = await res.json();
   assert.deepEqual(body.groups[0], { id: "g1", name: "Sea", rowIds: ["k1", "k2"] });
   assert.equal(body.groups.length, 2);
-  assert.equal(body.groups[1].rowIds.length, 20);
+  assert.equal(body.groups[1].rowIds.length, 18);
   const seen = await stubCalls();
   assert.equal(seen.count, before + 1);
   assert.equal(seen.last.model, "claude-haiku-4-5-20251001");
   const sent = JSON.parse(seen.last.messages[0].content);
-  assert.equal(sent.words.length, 22);
+  assert.equal(sent.words.length, 20);
   assert.deepEqual(sent.keep, keep);
 });
 
