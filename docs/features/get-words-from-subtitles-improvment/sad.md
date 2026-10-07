@@ -66,38 +66,48 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 3. Context and scope
 
-<!-- 🎯 Why: draws the SYSTEM BOUNDARY — who talks to it from outside, where the trust zone ends.
-     Without §3, §5 and §8 (authorization) blur — unclear what's «inside» vs «outside».
-     📋 Write: 2–3 sentences of business context + an external-systems table + a C4Context block.
-     📌 «External: none (deliberate, no third-party in v1)» is itself a decision worth stating.
-     Trust boundary — the line past which you don't trust data without checking it.
-     Never N/A — greenfield still draws the planned actors + external systems. -->
+The learner imports words from a film's subtitle file on the phone. With the dialogues setting on, the same import also brings back up to 10 film dialogues, which the app keeps with the session, shows as pages after the words, and uses as word groups on the learn page. A scene picture for a dialogue group is drawn through the Worker by the learner's chosen AIs, counted against the same story allowance as mnemonic stories. The partner reads the same dialogue pages, with their scene pictures, on the shared page, and can still only edit words; nothing on the shared page or the web learn page can draw a picture or change a dialogue.
 
-<Business context in 2–3 sentences. What the system does for whom.>
-
-<!-- brownfield: <one-line scan summary> (or «N/A — greenfield repo» if no source existed) -->
+<!-- brownfield: Flutter app (lib/, go_router + Riverpod, Isar on device, story runs and word groups from mnemonic-story) + Cloudflare Worker (vocab-photo-api/, TypeScript, D1 + KV + R2; /subtitles/words single Anthropic call, StoryRunWorkflow, server-rendered shared page with a change feed); read from docs/architecture.md, CLAUDE.md, the words-from-subtitles / mnemonic-story / good-looking-web SADs and the code directly — no docs/architecture-map.md exists (run /sdd:survey to persist one) -->
 
 **External systems (in / out):**
 
 | Actor or system | Type | Interaction |
 |---|---|---|
-| <author role> | Person | <what they do> |
-| <external service> | System (internal/external) | <interaction> |
-| <identity provider> | System (external) | <provides auth tokens> |
+| learner | Person | Turns the dialogues setting on, imports from subtitles, reads dialogue pages, starts "Dialogs from movie" in the app |
+| partner | Person | Opens the shared link: reads dialogue pages and scene pictures, edits words as before |
+| Vocabulary app | System (ours) | Keeps dialogues with the session, shows the pager, groups words by dialogue, starts and collects scene pictures |
+| vocab-photo-api Worker | System (ours) | Picks words and dialogues in one subtitle import, runs scene-picture runs under the story allowance, serves the shared page with dialogue pages |
+| Anthropic API | System (external) | Picks words and dialogues (subtitle import model); writes picture prompts when an Anthropic model is the picture prompt writer |
+| OpenCode Zen | System (external) | Writes picture prompts when one of its models is the picture prompt writer |
+| xAI (Grok) | System (external) | Draws scene pictures when a Grok model is the picture maker |
+| Higgsfield | System (external) | Draws scene pictures when a Higgsfield model is the picture maker |
 
-**C4 Context (L1):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. -->
+**C4 Context (L1):**
 
 ```mermaid
 C4Context
-    title <feature> — System Context
+    title get-words-from-subtitles-improvment — System Context
 
-    Person(actor, "<Actor role>", "<intent>")
-    System(app, "<Our system>", "<one-sentence description>")
-    System_Ext(ext, "<External system>", "<one-sentence description>")
+    Person(learner, "learner", "Imports words and film dialogues from subtitles, learns them dialogue by dialogue")
+    Person(partner, "partner", "Reads the dialogue pages on the shared page, edits words")
+    System(app, "Vocabulary app", "Flutter phone app: dialogues setting, main screen pager, dialogue groups, dialogue screen")
+    System(worker, "vocab-photo-api Worker", "Cloudflare Worker: subtitle import with dialogues, scene-picture runs, story allowance, shared page")
+    System_Ext(anthropic, "Anthropic API", "Picks words and dialogues, writes picture prompts")
+    System_Ext(zen, "OpenCode Zen", "Writes picture prompts")
+    System_Ext(xai, "xAI Grok", "Draws scene pictures")
+    System_Ext(higgs, "Higgsfield", "Draws scene pictures")
 
-    Rel(actor, app, "<interaction>", "<protocol>")
-    Rel(app, ext, "<interaction>", "<protocol>")
+    Rel(learner, app, "Imports, reads dialogue pages, starts Dialogs from movie")
+    Rel(partner, worker, "Reads dialogue pages, edits words on the shared page", "HTTPS")
+    Rel(app, worker, "Imports words and dialogues, draws scene pictures, publishes", "HTTPS + app secret")
+    Rel(worker, anthropic, "Picks words and dialogues, writes picture prompts", "HTTPS")
+    Rel(worker, zen, "Writes picture prompts", "HTTPS")
+    Rel(worker, xai, "Draws scene pictures", "HTTPS")
+    Rel(worker, higgs, "Draws scene pictures", "HTTPS")
 ```
+
+The context has two people and two of our own systems. The learner uses only the phone app, which talks only to our Worker with the app secret, so no provider key ships in the app. The Worker picks words and dialogues with Anthropic in the one subtitle import call, and draws scene pictures through the picture prompt writer and picture maker providers mnemonic-story already uses. The partner reaches only the Worker's shared page, which can show dialogues and pictures but has no route that draws one.
 
 ## 4. Solution strategy
 
