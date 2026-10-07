@@ -407,22 +407,24 @@ Each top-3 goal from §1 expanded into a full scenario:
 
 ## 11. Risks and technical debt
 
-<!-- 🎯 Why: ⭐ collects EVERYTHING that can break — not only the technical. Without §11 risks get
-     discussed at standups and lost; debt lives only in the head of whoever accepted it.
-     📋 Write: a risk/debt table — severity — mitigation — owner. Accepted debt in its own block.
-     📌 The first risk is often a product risk, not a technical one. That's normal. -->
-
-<!-- Severity literals: Low / Medium / High for regular risks; "Open question" for rows created by
-     a Save-as-OQ resolution during the Socratic walk (see references/socratic.md). -->
-
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| <e.g. Worker lag may reach hours during a downstream outage> | Medium | <alert >10 min, on-call playbook, retry backoff> | <DevOps> |
-| <e.g. No event-schema versioning in v1> | Medium | <ADR-NNNN planned for v2, tolerate unknown fields> | <Backend> |
-| Open architectural decision: <decision-headline> | Open question | Resolve before <stage trigger or YYYY-MM-DD>; <inline rationale from the Save-as-OQ> | <owner> |
+| Size grows towards L: ADR-0005 adds a delivery outbox, an append route, D1 dialogue tables and change-feed work on top of an M plan | Medium | Re-run `/sdd:classify-size get-words-from-subtitles-improvment` before `tasks`, so the task breakdown and test tiers are sized for it | Maksym (owner) |
+| An import with dialogues at maximum 100 hits the 225 s Worker limit or `max_tokens` 20000 more often than without (ADR-0002) | Medium | The spec §6 device pass measures time and failures per model at maximum 20 and 100. If the "0 extra failed imports" target fails at 20, revisit ADR-0002 (two calls) or lower the dialogue cap. Time per model shows in the results dialog | Maksym (owner) |
+| The mnemonic-story implement run is still in progress on the same branch, and this feature changes its files (`word_grouping.dart`, `story_run_tracker.dart`, `run-steps.ts`, `StoryRun`) | Medium | Start this feature's `implement` only after the mnemonic-story run is finished and reviewed. Branch from that state | Maksym (owner) |
+| Dialogue text reaches a second AI (the picture prompt writer): instructions hidden in a subtitle line could steer the picture | Medium | Dialogue passed as data in tags, speech-bubble text placed by code, one scene of invented characters, refusals are failed pictures (§8). Security Lead signs off before release (spec §6.1) | Security Lead |
+| A picture maker refuses or blurs film-like scenes, or draws a real actor's likeness | Medium | The prompt asks for invented characters. A refusal is AC-18 "The picture could not be drawn", and each Draw again costs one unit. The device pass notes refusals per picture maker | Maksym (owner) |
+| Two sync rules for words on the shared link: an import with dialogues appends its rows, while typed words and phone edits still need a republish, which also replaces the partner's edits and the dialogues | Medium | Accepted by the owner with ADR-0005. The share sheet keeps its existing republish warning. A later feature can unify phone-to-link sync | Maksym (owner) |
+| The Worker's publish limits (500 entries, 256 KB) now include dialogues, so a large session with many dialogues could fail to publish | Low | ≤ 16 KB of dialogue text per import (§7). The Worker answers "too large" and the app shows its existing "Could not publish the link" message | Maksym (owner) |
+| The AC-05 rule exists in TypeScript and in Dart and could drift | Low | One shared case file read by both test suites (§4, §8) | Maksym (owner) |
+| A pending append or picture upload whose link has expired (30 days) or whose edit token was replaced is never delivered | Low | The route answers "gone"; the app marks it delivered-or-dropped and stops retrying. A first publish or a republish carries every dialogue | Maksym (owner) |
+| Provisional picture makers and picture prompt writers from mnemonic-story (`provisional: true` in `models.json`) now also draw scene pictures | Low | The same owner verification of ids and prices before release covers both kinds of run | Maksym (owner) |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
-- <e.g. the entity is immutable / unversioned — OK for v1, may need audit versioning in v2>
+- Words typed by hand and the learner's edits on the phone reach the shared link only by a republish (ADR-0005). The phone never reads the partner's edits back, so AC-21 is read as "the same rules in both places" (§4).
+- A scene run stores an empty `story_model` in D1, because SQLite cannot drop `NOT NULL` without a table rebuild (ADR-0004).
+- Spec §1's decision on AC-20 says "the way word changes do". Since ADR-0005, an import's rows reach the link on their own, unlike other word changes. The spec wording should be aligned when it is next edited.
+- No alerting: logs only, read with `wrangler tail` during the device pass (§7).
 
 ## 12. Glossary
 
