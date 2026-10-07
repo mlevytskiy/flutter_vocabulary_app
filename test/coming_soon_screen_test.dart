@@ -10,6 +10,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
+import 'fake_story_groups.dart';
 
 /// learn-part-step-1 T7 (AC-05, AC-05b): Start opens the coming-soon screen.
 class _FakeInput extends WordInputNotifier {
@@ -29,6 +30,8 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final container = ProviderContainer(overrides: [
+      ...fakeGroupOverrides(),
+      ...fakeGroupOverrides(),
       wordInputNotifierProvider.overrideWith(() => _FakeInput()),
     ]);
     addTearDown(container.dispose);

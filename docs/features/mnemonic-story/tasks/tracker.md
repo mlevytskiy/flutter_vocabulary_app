@@ -20,7 +20,7 @@
 | T13 | [Add the story run store and the picture store to the app](./T13-app-story-run-and-picture-stores.md) | infra | Maksym | M | T10 | done |
 | T14 | [Add the word-groups notifier that groups a session and keeps its selection](./T14-app-word-groups-notifier.md) | app | Maksym | M | T11, T12 | done |
 | T15 | [Add the story run tracker that starts, follows and collects runs](./T15-app-story-run-tracker.md) | app | Maksym | L | T12, T13 | done |
-| T16 | [Show the group line, the group pager and grouping messages on the learn page](./T16-app-learn-page-groups.md) | ui | Maksym | M | T14 | todo |
+| T16 | [Show the group line, the group pager and grouping messages on the learn page](./T16-app-learn-page-groups.md) | ui | Maksym | M | T14 | done |
 | T17 | [Add the story screen and open it from Start for Mnemonic story](./T17-app-story-screen.md) | ui | Maksym | L | T15, T11 | todo |
 | T18 | [Add the Words settings button and screen with the three AI choices](./T18-app-words-settings.md) | ui | Maksym | M | T12, T13 | todo |
 | T19 | [Add the story runs list and a run's details screen](./T19-app-story-runs-screens.md) | ui | Maksym | M | T18 | todo |

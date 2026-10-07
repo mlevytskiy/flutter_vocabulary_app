@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/models/session.dart';
+import '../../core/providers.dart';
+import '../../core/services/story_api_service.dart';
+import '../../core/story/story_run_tracker.dart';
+import '../../core/story/word_grouping.dart';
+import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
+import '../word_input/word_input_notifier.dart';
 import 'exercises.dart';
+import 'widgets/group_pager.dart';
 import 'widgets/step_progress.dart';
+
+/// Said on the learn page when the day's story allowance is used up (AC-19).
+const storyDayLimitMessage = "Today's story limit is reached. Try again tomorrow.";
 
 /// The learn page (learn-part-step-1, SCR-03). [sessionId] is the session the
 /// exercises will read: none is the current session, an id is a History row
@@ -75,8 +86,17 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _showHint());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _showHint();
+      // Grouping starts here too when the words changed (AC-03); the page
+      // shows it going.
+      _groups.ensureGrouped().catchError((_) {});
+    });
   }
+
+  WordGroupsNotifier get _groups =>
+      ref.read(wordGroupsNotifierProvider(widget.sessionId).notifier);
 
   /// Sticky until OK or until an exercise is ticked.
   void _showHint() {
@@ -99,9 +119,63 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
     }
   }
 
+  bool _canStart(WordGroupsState grouping) =>
+      _ticked.isNotEmpty &&
+      !(_ticked.contains('mnemonic-story') && grouping.selectedGroupId == null);
+
+  /// The session whose words the groups name.
+  Session? get _session => widget.sessionId == null
+      ? ref.watch(wordInputNotifierProvider).valueOrNull
+      : ref.watch(sessionByIdProvider(widget.sessionId!)).valueOrNull;
+
+  /// The group line, the group pager and the grouping messages above the
+  /// exercise cards (AC-01 – AC-05, AC-19).
+  List<Widget> _groupSection(
+      WordGroupsState grouping, StoryStartRefusal? refusal) {
+    final style = Theme.of(context).textTheme.bodyMedium;
+    Widget line(String text, {Key? key}) => Padding(
+          key: key,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Text(text, textAlign: TextAlign.center, style: style),
+        );
+    final status = grouping.status;
+    return [
+      if (status is GroupingInProgress) line('Grouping your words…'),
+      if (status is GroupingFailed) ...[
+        line('Could not group your words'),
+        ElevatedButton(
+          onPressed: () => _groups.ensureGrouped().catchError((_) {}),
+          child: const Text('Try again'),
+        ),
+      ],
+      if (grouping.groups.length >= 2) ...[
+        line('We grouped your words into sets of up to 19 words. '
+            'Please select one group to learn.'),
+        GroupPager(
+          groups: grouping.groups,
+          wordsByRowId: {
+            for (final w in wordsToLearn(_session ?? Session.create()))
+              w.rowId: w.word.trim(),
+          },
+          selectedId: grouping.selectedGroupId,
+          onSelect: (id) => _groups.select(id).catchError((_) {}),
+        ),
+      ],
+      if (status is GroupingWaiting)
+        line('${status.count} more words are waiting for a group '
+            '(at least 7 are needed)'),
+      if (refusal?.reason == StoryRefusal.dayLimit) line(storyDayLimitMessage),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final canStart = _ticked.isNotEmpty;
+    final grouping = ref.watch(wordGroupsNotifierProvider(widget.sessionId));
+    // The story is made from the selected group, so Mnemonic story cannot
+    // start without one (AC-04, AC-05).
+    final canStart = _canStart(grouping);
+    final refusal = ref.watch(storyRunTrackerProvider.select(
+        (s) => s.refusals[grouping.selectedGroupId]));
 
     return ScaffoldMessenger(
       key: _messenger,
@@ -128,6 +202,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              ..._groupSection(grouping, refusal),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: SizedBox(
@@ -144,7 +219,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
               Flexible(
                 child: SizedBox(
                   height: _cardSize.height + 2 * _shadowRoom,
-                  child: LayoutBuilder(builder: _pager),
+                  child: LayoutBuilder(
+                      builder: (context, c) => _pager(context, c, canStart)),
                 ),
               ),
             ],
@@ -154,11 +230,11 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
     );
   }
 
-  Widget _pager(BuildContext context, BoxConstraints constraints) {
+  Widget _pager(
+      BuildContext context, BoxConstraints constraints, bool canStart) {
     final width = constraints.maxWidth;
     final cardWidth = width < _cardSize.width ? width : _cardSize.width;
     final isLast = _page == _stages.length - 1;
-    final canStart = _ticked.isNotEmpty;
     return Stack(
       children: [
         PageView.builder(

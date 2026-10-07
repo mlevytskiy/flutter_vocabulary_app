@@ -12,6 +12,7 @@ import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
+import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
@@ -50,6 +51,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       // Belt and braces: ask the platform to hide the keyboard outright, in
       // case the input screen's field kept an open connection through the push.
       SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+      // Group the words quietly when they changed (mnemonic-story AC-03).
+      if (!mounted) return;
+      ref
+          .read(wordGroupsNotifierProvider(widget.sessionId).notifier)
+          .ensureGrouped()
+          .catchError((_) {});
     });
   }
 

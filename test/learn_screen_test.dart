@@ -10,6 +10,7 @@ import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/widgets/step_progress.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
+import 'fake_story_groups.dart';
 
 /// learn-part-step-1 T6 (AC-04, AC-06, AC-07, AC-13): the app's learn page.
 class _FakeInput extends WordInputNotifier {
@@ -38,6 +39,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     container = ProviderContainer(overrides: [
+      ...fakeGroupOverrides(),
       wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
       sessionByIdProvider(history.sessionId)
           .overrideWith((ref) async => history),

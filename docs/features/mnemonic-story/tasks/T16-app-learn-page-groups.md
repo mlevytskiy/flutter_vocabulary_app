@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-02b", "AC-03", "AC-04", "AC-05", "AC-19"]
 files_hint: ["lib/features/learn/learn_screen.dart", "lib/features/learn/widgets/group_pager.dart", "lib/features/words_table/words_table_screen.dart", "test/learn_groups_ui_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T16 — Show the group line, the group pager and grouping messages on the learn page
