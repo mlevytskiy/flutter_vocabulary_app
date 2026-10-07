@@ -10,7 +10,7 @@
 | T3 | [Add the word check every story must pass to the Worker](./T3-worker-word-check.md) | domain | Maksym | S | — | done |
 | T4 | [Add the Anthropic and OpenCode Zen text adapters with a 90 s limit](./T4-worker-text-providers.md) | infra | Maksym | M | T2 | done |
 | T5 | [Add the Grok and Higgsfield picture adapters with a 120 s limit](./T5-worker-picture-providers.md) | infra | Maksym | M | T2, T4 | done |
-| T6 | [Add the story allowance take and the run store to the Worker](./T6-worker-allowance-and-run-store.md) | infra | Maksym | M | T1 | todo |
+| T6 | [Add the story allowance take and the run store to the Worker](./T6-worker-allowance-and-run-store.md) | infra | Maksym | M | T1 | done |
 | T7 | [Serve the offered AI list and the grouping split from the Worker](./T7-worker-models-and-grouping-routes.md) | ports | Maksym | M | T2, T4 | todo |
 | T8 | [Run each story run as a Workflow on the Worker](./T8-worker-story-run-workflow.md) | app | Maksym | L | T3, T4, T5, T6 | todo |
 | T9 | [Add the start, status, redo and picture routes and the 7-day picture clean-up](./T9-worker-story-run-routes.md) | ports | Maksym | M | T7, T8 | todo |
