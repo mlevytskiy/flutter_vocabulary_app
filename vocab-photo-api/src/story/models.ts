@@ -30,6 +30,8 @@ export interface PictureModel extends ModelBase {
   usdPerPicture: number;
   /** True when the price per picture is itself approximate (Higgsfield: plan price / credits). */
   approx?: boolean;
+  /** Extra options merged into the picture request body (xAI: aspect_ratio, resolution, quality). Never sent to the app. */
+  request?: Record<string, string | number>;
 }
 
 export type OfferedModel = TextModel | PictureModel;

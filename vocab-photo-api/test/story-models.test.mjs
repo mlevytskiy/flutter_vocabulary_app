@@ -15,7 +15,7 @@ import {
 test("every default names an offered model of the right role", () => {
   assert.equal(defaults.story, "claude-sonnet-5-5");
   assert.equal(defaults.prompt, "claude-sonnet-5-5");
-  assert.equal(defaults.picture, "grok-imagine-image");
+  assert.equal(defaults.picture, "grok-imagine-image-2.0");
   assert.ok(isOffered("text", defaults.story));
   assert.ok(isOffered("text", defaults.prompt));
   assert.ok(isOffered("picture", defaults.picture));
@@ -82,4 +82,13 @@ test("every text AI has a positive 15-word estimate; every entry has a role and 
     if (m.role === "text") assert.ok(m.estimate15Usd > 0, m.id);
   }
   assert.equal(new Set(offeredModels.map((m) => m.id)).size, offeredModels.length);
+});
+
+test("Grok Imagine 2.0 is offered as a picture AI at $0.08 (2k, medium) and is the default; the older Grok stays at $0.02", () => {
+  const byId = Object.fromEntries(offeredModels.map((m) => [m.id, m]));
+  const two = byId["grok-imagine-image-2.0"];
+  assert.deepEqual([two.name, two.provider, two.role, two.usdPerPicture], ["Grok Imagine 2.0", "xai", "picture", 0.08]);
+  assert.deepEqual(two.request, { aspect_ratio: "16:9", resolution: "2k", quality: "medium" });
+  assert.deepEqual(byId["grok-imagine-image"].request, { aspect_ratio: "16:9" });
+  assert.deepEqual(priceOf({ modelId: "grok-imagine-image-2.0" }), { usd: 0.08, estimated: false });
 });

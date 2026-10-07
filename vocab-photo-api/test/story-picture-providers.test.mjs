@@ -7,6 +7,7 @@ import { startHiggsfieldStub } from "./higgsfield-stub.mjs";
 import { drawPicture, DEFAULT_PICTURE_TIMEOUT_MS } from "../src/story/providers/picture.ts";
 
 const GROK = "grok-imagine-image";
+const GROK2 = "grok-imagine-image-2.0";
 const HIGGS = "marketing-studio/image/sunburst";
 let xai;
 let higgs;
@@ -43,7 +44,7 @@ test("Grok: the picture bytes come back, asked for as base64 with the app's key"
   const seen = await calls(xai);
   assert.equal(seen.lastAuth, "Bearer xai-key");
   assert.equal(seen.lastPath, "/images/generations");
-  assert.deepEqual(seen.last, { model: GROK, prompt: "a cat tackling a problem", response_format: "b64_json" });
+  assert.deepEqual(seen.last, { aspect_ratio: "16:9", model: GROK, prompt: "a cat tackling a problem", response_format: "b64_json" });
 });
 
 test("Grok: a refusal is a refusal", async () => {
@@ -114,4 +115,18 @@ test("the limit can come from the env override when the call gives none", async 
 test("a model that is not an offered picture model is a programming error", async () => {
   await assert.rejects(() => draw("claude-sonnet-5-5", "x"), /picture model/);
   await assert.rejects(() => draw("nope", "x"), /picture model/);
+});
+
+test("Grok: each model's request options are merged into the body (2.0: 16:9, 2k, medium; the older Grok: 16:9 only)", async () => {
+  await draw(GROK2, "panels");
+  let sent = (await calls(xai)).last;
+  assert.deepEqual(
+    [sent.model, sent.prompt, sent.response_format, sent.aspect_ratio, sent.resolution, sent.quality],
+    [GROK2, "panels", "b64_json", "16:9", "2k", "medium"],
+  );
+  await draw(GROK, "panels");
+  sent = (await calls(xai)).last;
+  assert.equal(sent.aspect_ratio, "16:9");
+  assert.equal("quality" in sent, false, "quality is only supported by 2.0");
+  assert.equal("resolution" in sent, false);
 });

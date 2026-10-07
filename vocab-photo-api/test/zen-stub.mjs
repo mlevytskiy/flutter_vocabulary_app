@@ -8,7 +8,10 @@
 //   "STUB:empty"       -> an empty reply
 //   "STUB:error"       -> 500
 //   "STUB:slow:<ms>"   -> the default reply after <ms> milliseconds
-//   anything else      -> a short story with token usage
+//   "STUB:badjson"     -> prose instead of JSON (only meaningful for the picture prompt writer)
+//   anything else      -> a short story with token usage; a picture prompt writer request (its system
+//                         prompt names an "image generator") gets valid JSON {character, scenes} with
+//                         one scene per numbered caption
 // A test can script the next calls: `POST /__script` with a JSON array of markers
 // (e.g. ["ok", "STUB:error"]) makes the following calls use them in order, "ok" meaning
 // the default reply; `POST /__reset` clears the counters and the script (mnemonic-story T8).
@@ -18,6 +21,10 @@ import { createServer } from "node:http";
 
 export const ZEN_STUB_TEXT = "Ви tackle проблему → ви live up до очікувань";
 
+export const STUB_CHARACTER = "a young adult with short dark hair, a blue jacket, and a backpack";
+export const stubScenes = (count) => Array.from({ length: count }, (_, i) => `scene number ${i + 1}`);
+export const stubPromptJson = (count) => JSON.stringify({ character: STUB_CHARACTER, scenes: stubScenes(count) });
+
 const completion = (model, message, finish_reason = "stop") => ({
   id: "chatcmpl-stub",
   object: "chat.completion",
@@ -26,14 +33,15 @@ const completion = (model, message, finish_reason = "stop") => ({
   usage: { prompt_tokens: 910, completion_tokens: 275, total_tokens: 1185 },
 });
 
-function answer(model, firstLine) {
+function answer(model, firstLine, captionCount = null) {
   switch (firstLine) {
     case "STUB:refusal": return { status: 200, body: completion(model, { content: null, refusal: "I can't help with that." }) };
     case "STUB:filtered": return { status: 200, body: completion(model, { content: "" }, "content_filter") };
     case "STUB:cutoff": return { status: 200, body: completion(model, { content: ZEN_STUB_TEXT }, "length") };
     case "STUB:empty": return { status: 200, body: completion(model, { content: "" }) };
     case "STUB:error": return { status: 500, body: { error: { message: "stub", type: "server_error" } } };
-    default: return { status: 200, body: completion(model, { content: ZEN_STUB_TEXT }) };
+    case "STUB:badjson": return { status: 200, body: completion(model, { content: "Here is a lovely picture of the story, no JSON." }) };
+    default: return { status: 200, body: completion(model, { content: captionCount === null ? ZEN_STUB_TEXT : stubPromptJson(captionCount) }) };
   }
 }
 
@@ -69,7 +77,11 @@ export function startZenStub() {
       const scripted = script.shift();
       const firstLine = scripted !== undefined ? (scripted === "ok" ? "" : scripted) : typeof user === "string" ? user.split("\n")[0] : "";
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);
-      const { status, body: reply } = answer(body.model, slow ? "" : firstLine);
+      const system = body.messages?.find((m) => m.role === "system")?.content;
+      const captionCount = typeof system === "string" && system.includes("image generator") && typeof user === "string"
+        ? (user.match(/^\d+\. /gm) ?? []).length
+        : null;
+      const { status, body: reply } = answer(body.model, slow ? "" : firstLine, captionCount);
       const send = () => {
         if (res.destroyed) return;
         res.writeHead(status, { "content-type": "application/json" });

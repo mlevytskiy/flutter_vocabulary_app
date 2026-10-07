@@ -8,7 +8,7 @@
 
 import type { Env } from "../env";
 import { estimateOnTimeout, priceOf, type Price, type Usage } from "./models.ts";
-import { picturePromptWriterPrompt, storyWriterPrompt, type Prompt } from "./prompts.ts";
+import { buildPicturePrompt, parsePictureScenes, picturePromptWriterPrompt, splitCaptions, storyWriterPrompt, type Prompt } from "./prompts.ts";
 import { drawPicture } from "./providers/picture.ts";
 import { DEFAULT_MAX_OUTPUT_TOKENS, writeText } from "./providers/text.ts";
 import { findCountedRun, putPicture, recordStep, runStatus, type StepRecord, type StepRole } from "./store.ts";
@@ -184,9 +184,23 @@ async function promptStep(env: RunEnv, params: StoryRunParams, input: RunInput, 
     await finish(env, startedAt, { runId: params.runId, role: "prompt", attempt: ATTEMPT_1, modelId: input.promptModel, outcome: "failed", priceUsd: 0 });
     return PRIVATE_FAILURE;
   }
-  const { text, record, startedAt } = await textStep(env, params, "prompt", input.promptModel, picturePromptWriterPrompt(story));
-  await finish(env, startedAt, record);
-  return text === null ? PRIVATE_FAILURE : { ok: true, text };
+  // The captions are the story's own sentences; the AI only adds a character and a scene for each,
+  // and the image prompt is assembled here so the captions reach the picture maker verbatim.
+  const captions = splitCaptions(story);
+  const { text, record, startedAt } = await textStep(env, params, "prompt", input.promptModel, picturePromptWriterPrompt(captions));
+  if (text === null) {
+    await finish(env, startedAt, record);
+    return PRIVATE_FAILURE;
+  }
+  const scenes = captions.length > 0 ? parsePictureScenes(text, captions.length) : null;
+  if (scenes === null) {
+    // An unusable reply was still paid for: the step fails with the price its usage gave.
+    await finish(env, startedAt, { ...record, outcome: "failed", text: undefined });
+    return PRIVATE_FAILURE;
+  }
+  const prompt = buildPicturePrompt({ character: scenes.character, captions, scenes: scenes.scenes });
+  await finish(env, startedAt, { ...record, text: prompt });
+  return { ok: true, text: prompt };
 }
 
 async function pictureStep(env: RunEnv, params: StoryRunParams, input: RunInput, prompt: string | null): Promise<StepResult> {

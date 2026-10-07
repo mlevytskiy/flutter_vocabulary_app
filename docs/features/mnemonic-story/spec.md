@@ -135,6 +135,8 @@ Committed approach: the session's words to learn are split into word groups of 7
 **When** the story writer's step finishes
 **Then** the picture is not drawn. The story screen says "The story missed these words: …", lists them, and offers "Try again", which starts a new story run. The run appears in the story runs as failed at the story step, with that step's price and time.
 
+The story reads as a story path: one Ukrainian sentence per word, each with its English word or phrase inside, joined by "→" (never Russian). Its picture is ONE illustration of small connected panels, one per sentence, each with a caption banner carrying that sentence exactly as written (owner feedback after the live test, 2026-10-07). The Worker builds the picture prompt in code from the story's sentences and the character and scenes the picture prompt writer returns, so the captions reach the picture maker verbatim.
+
 A word counts as present when it appears as a whole word, in any letter case. A phrase counts when its words appear in order, next to each other. Each English word may carry the ending -s, -es, -ed or -ing ("veers off" counts for "veer off"). A word inside another word ("live" in "deliver") does not count, and neither does any other form or a translation.
 
 ### AC-08b (US-02) — error
@@ -145,7 +147,7 @@ A word counts as present when it appears as a whole word, in any letter case. A 
 
 ### AC-09 (US-02) — error
 
-**Given** a story run wrote the story and the picture prompt, but the picture could not be drawn (the picture maker refused or failed)
+**Given** a story run wrote the story and the picture prompt (the panels with their Ukrainian captions), but the picture could not be drawn (the picture maker refused or failed)
 **When** the learner opens the story screen
 **Then** the story text is shown with "The picture could not be drawn" and a "Draw again" button. "Draw again" redoes only the picture in the same story run, from the same picture prompt and with the picture maker chosen now, without writing the story again. The failed attempt stays on that run as a failed attempt, with its picture maker, price and time.
 
@@ -245,4 +247,4 @@ A word counts as present when it appears as a whole word, in any letter case. A 
 ## 8. Open questions
 
 - [ ] Higgsfield charges in credits under a plan rather than a fixed dollar price per picture. How should its price be shown next to it and on the story runs? Default now: the plan's price per picture worked out from credits, labelled "≈". — owner: Maksym, due: before `sdd:design`
-- [ ] Which AIs are the defaults for each step (used first, and when a chosen AI disappears, AC-13)? Default now: Sonnet 5.5 for story and picture prompt, Grok for the picture. — owner: Maksym, due: before `sdd:design`
+- [ ] Which AIs are the defaults for each step (used first, and when a chosen AI disappears, AC-13)? Default now: Sonnet 5.5 for story and picture prompt, Grok Imagine 2.0 ($0.08, 2k, readable captions) for the picture. — owner: Maksym, due: before `sdd:design`

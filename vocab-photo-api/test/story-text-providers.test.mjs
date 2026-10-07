@@ -118,10 +118,11 @@ test("the story writer prompt carries every word as written, the arrow format an
   assert.match(system, /→/);
   assert.match(system, /Ukrainian/i);
   assert.match(system, /veers off/, "the owner's sample is the example");
+  assert.doesNotMatch(system, /осьминог/, "the sample is Ukrainian, never Russian");
 });
 
-test("the picture prompt writer prompt carries the story", () => {
-  const { system, user } = picturePromptWriterPrompt("Ви tackle проблему → ви live up до очікувань");
-  assert.ok(user.includes("tackle проблему"));
-  assert.match(system, /picture/i);
+test("the picture prompt writer prompt carries the numbered captions", () => {
+  const { system, user } = picturePromptWriterPrompt(["Ви tackle проблему", "ви live up до очікувань"]);
+  assert.ok(user.includes("2. ви live up до очікувань"));
+  assert.match(system, /JSON/);
 });

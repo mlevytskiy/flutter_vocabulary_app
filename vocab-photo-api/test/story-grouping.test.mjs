@@ -35,10 +35,10 @@ test("AC-12: the models route returns the offered list with the defaults and no 
   assert.match(res.headers.get("content-type") ?? "", /application\/json/);
   const body = await res.json();
   assert.equal(body.pricesAsOf, "2026-10-07");
-  assert.deepEqual(body.defaults, { story: "claude-sonnet-5-5", prompt: "claude-sonnet-5-5", picture: "grok-imagine-image" });
+  assert.deepEqual(body.defaults, { story: "claude-sonnet-5-5", prompt: "claude-sonnet-5-5", picture: "grok-imagine-image-2.0" });
   assert.deepEqual(Object.keys(body).sort(), ["defaults", "models", "pricesAsOf"]);
   const ids = body.models.map((m) => m.id);
-  assert.ok(ids.includes("claude-sonnet-5-5") && ids.includes("claude-opus-5-5") && ids.includes("grok-imagine-image"));
+  assert.ok(ids.includes("claude-sonnet-5-5") && ids.includes("claude-opus-5-5") && ids.includes("grok-imagine-image") && ids.includes("grok-imagine-image-2.0"));
   assert.ok(!ids.includes("claude-haiku-4-5-20251001"), "the grouping AI is not offered");
   const sonnet = body.models.find((m) => m.id === "claude-sonnet-5-5");
   assert.deepEqual(sonnet, {
@@ -46,6 +46,7 @@ test("AC-12: the models route returns the offered list with the defaults and no 
     inputUsdPerMTok: 2, outputUsdPerMTok: 10, estimate15Usd: 0.008,
   });
   for (const model of body.models) assert.equal("provisional" in model, false, `${model.id} leaks provisional`);
+  for (const model of body.models) assert.equal("request" in model, false, `${model.id} leaks request options`);
 });
 
 test("AC-03: the grouping route returns a valid AI split unchanged, asking the fixed Haiku model", async () => {

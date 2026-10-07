@@ -14,7 +14,10 @@ import { findCountedRun, getPicture, recordStep, runStatus } from "./store.ts";
 
 /** GET /story/models -- the offered AIs with prices and the defaults (ADR-0004). Owner-only fields stay out. */
 async function handleModels(): Promise<Response> {
-  const models = offeredModels.map(({ provisional: _provisional, ...model }) => model);
+  const models = offeredModels.map(({ provisional: _provisional, ...model }) => {
+    const { request: _request, ...offered } = model as typeof model & { request?: unknown };
+    return offered;
+  });
   return jsonResponse({ pricesAsOf, defaults, models });
 }
 

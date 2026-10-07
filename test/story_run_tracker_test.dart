@@ -203,12 +203,12 @@ void main() {
     expect(run.groupId, 'g1');
     expect(run.groupName, 'Food');
     expect(run.words, [for (var i = 1; i <= 8; i++) 'w$i']);
-    expect(run.models, ['claude-sonnet-5-5', 'claude-sonnet-5-5', 'grok-imagine-image'],
+    expect(run.models, ['claude-sonnet-5-5', 'claude-sonnet-5-5', 'grok-imagine-image-2.0'],
         reason: 'a saved AI that is no longer offered falls back to the default');
     expect(api.starts, hasLength(1));
     expect(api.starts.single['runId'], run.runId);
     expect(api.starts.single['story'], 'claude-sonnet-5-5');
-    expect(api.starts.single['picture'], 'grok-imagine-image');
+    expect(api.starts.single['picture'], 'grok-imagine-image-2.0');
   });
 
   test('a run goes started, then each step, then collected, and becomes the group\'s story (AC-06, AC-16)',
@@ -361,7 +361,7 @@ void main() {
 
     expect(result, isA<StoryStarted>());
     expect(api.redos, [
-      {'runId': run.runId, 'step': 'picture', 'pictureModel': 'grok-imagine-image'},
+      {'runId': run.runId, 'step': 'picture', 'pictureModel': 'grok-imagine-image-2.0'},
     ]);
     var now = (await runStore.byId(run.runId))!;
     expect(now.outcome, 'running');
@@ -418,14 +418,14 @@ void main() {
 
   test('a not-offered refusal records the AI and resets that step to its default (AC-13)', () async {
     await boot();
-    api.startResult = const StoryRefused(StoryRefusal.notOffered, model: 'grok-imagine-image');
+    api.startResult = const StoryRefused(StoryRefusal.notOffered, model: 'grok-imagine-image-2.0');
 
     await tracker().startFor(session.sessionId, group);
 
     final refusal = container.read(storyRunTrackerProvider).refusals['g1']!;
     expect(refusal.reason, StoryRefusal.notOffered);
-    expect(refusal.aiName, 'Grok Imagine');
-    expect(container.read(aiChoiceProvider).ids[AiRole.picture], 'grok-imagine-image');
+    expect(refusal.aiName, 'Grok Imagine 2.0');
+    expect(container.read(aiChoiceProvider).ids[AiRole.picture], 'grok-imagine-image-2.0');
     expect((await runStore.newestFirst()).single.collected, isTrue);
   });
 

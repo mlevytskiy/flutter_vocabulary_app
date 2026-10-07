@@ -105,7 +105,7 @@ class OfferedAiList {
   /// AIs only (AC-13).
   static const fallback = OfferedAiList(
     pricesAsOf: '2026-10-07',
-    defaults: AiChoice(story: 'claude-sonnet-5-5', prompt: 'claude-sonnet-5-5', picture: 'grok-imagine-image'),
+    defaults: AiChoice(story: 'claude-sonnet-5-5', prompt: 'claude-sonnet-5-5', picture: 'grok-imagine-image-2.0'),
     models: [
       OfferedAi(
         id: 'claude-sonnet-5-5',
@@ -117,11 +117,11 @@ class OfferedAiList {
         estimate15Usd: 0.008,
       ),
       OfferedAi(
-        id: 'grok-imagine-image',
-        name: 'Grok Imagine',
+        id: 'grok-imagine-image-2.0',
+        name: 'Grok Imagine 2.0',
         provider: 'xai',
         role: 'picture',
-        usdPerPicture: 0.02,
+        usdPerPicture: 0.08,
       ),
     ],
   );

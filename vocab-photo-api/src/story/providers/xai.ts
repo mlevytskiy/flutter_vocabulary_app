@@ -12,11 +12,11 @@ interface ImagesReply {
   data?: { b64_json?: string; respect_moderation?: boolean }[];
 }
 
-export const drawWithXai: PictureAdapter = async ({ model, prompt, apiKey, baseUrl, signal }) => {
+export const drawWithXai: PictureAdapter = async ({ model, prompt, request, apiKey, baseUrl, signal }) => {
   const response = await fetch(endpoint(baseUrl, DEFAULT_API_URL, "images/generations"), {
     method: "POST",
     headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-    body: JSON.stringify({ model, prompt, response_format: "b64_json" }),
+    body: JSON.stringify({ ...request, model, prompt, response_format: "b64_json" }),
     signal,
   });
   if (!response.ok) {

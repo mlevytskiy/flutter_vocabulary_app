@@ -307,6 +307,15 @@ against the allowance) only when it must split words by topic (`GroupingAsk`); i
 `groupedWordsKey` of the session changes. Start with Mnemonic story ticked opens `StoryScreen` for
 the selected group (Start stays disabled until a group is selected).
 
+The story is a Ukrainian story path (one sentence per word, English word inside, joined by "→") and its
+picture is one illustration of small connected panels, each with a caption banner carrying that sentence.
+The picture prompt writer AI returns only JSON `{character, scenes[]}` (one scene per sentence); the Worker
+splits the story on "→" and assembles the final image prompt in code (`buildPicturePrompt` in
+`src/story/prompts.ts`), so the captions reach the picture maker verbatim. That assembled prompt is what the
+prompt step stores, the picture step sends and the app shows; unparseable JSON fails the prompt step. The
+default picture maker is Grok Imagine 2.0 ($0.08, 2k, medium quality); a model may carry a `request` object
+in `models.json` that the xAI adapter merges into the request body (never sent to the app).
+
 A story run is made on the Worker, not the phone: `StoryRunTracker.startFor` takes a run id (a UUID
 the app makes), POSTs `/story/runs`, and the Worker's `StoryRunWorkflow` (story writer -> picture
 prompt writer -> picture maker, no retries on paid steps, word check after the story) records every

@@ -16,6 +16,9 @@
 //                          a valid split when the request carries `problems` (the retry)
 //   "STUB:small-always" -> the bad reply on every ask
 //   "STUB:error" / "STUB:refusal" / "STUB:malformed" as above, "STUB:no-groups" -> JSON with no groups
+// A picture prompt writer request (system names an "image generator", user = numbered captions, mnemonic-story
+// owner feedback 2026-10-07) answers valid JSON {character, scenes} with one scene per caption, or prose
+// when the user message carries "STUB:badjson".
 //   anything else      -> 14 ranked candidates, with a case duplicate, for the
 //                         route to drop session words and cut to the maximum
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
@@ -109,6 +112,14 @@ export function startAnthropicStub() {
         const { status, body: reply } = groupingAnswer(body.model, content);
         res.writeHead(status, { "content-type": "application/json" });
         return res.end(JSON.stringify(reply));
+      }
+      if (typeof body.system === "string" && body.system.includes("image generator")) {
+        const count = (content.match(/^\d+\. /gm) ?? []).length;
+        const text = content.includes("STUB:badjson")
+          ? "Here is a lovely picture of the story, no JSON."
+          : JSON.stringify({ character: "a young adult with short dark hair, a blue jacket, and a backpack", scenes: Array.from({ length: count }, (_, i) => `scene number ${i + 1}`) });
+        res.writeHead(200, { "content-type": "application/json" });
+        return res.end(JSON.stringify(message(body.model, text)));
       }
       const firstLine = content.replace(/^<subtitle_lines>\n/, "").split("\n")[0];
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);

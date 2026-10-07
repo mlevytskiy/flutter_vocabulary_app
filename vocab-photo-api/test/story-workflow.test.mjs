@@ -5,7 +5,8 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, test } from "node:test";
 import { sqliteD1 } from "./sqlite-d1.mjs";
-import { startZenStub, ZEN_STUB_TEXT } from "./zen-stub.mjs";
+import { startZenStub, ZEN_STUB_TEXT, STUB_CHARACTER, stubScenes } from "./zen-stub.mjs";
+import { buildPicturePrompt, splitCaptions } from "../src/story/prompts.ts";
 import { startXaiStub, PICTURE_BYTES } from "./xai-stub.mjs";
 import { takeStoryRun, takeDrawAgain } from "../src/story/allowance.ts";
 import { recordStep, runStatus } from "../src/story/store.ts";
@@ -13,6 +14,9 @@ import { runStoryRun, STEP_CONFIG } from "../src/story/run-steps.ts";
 
 const STORY_MODEL = "deepseek-v4.1-flash";
 const PICTURE_MODEL = "grok-imagine-image";
+// What the prompt step stores and the picture step sends: built in code from the story's captions.
+const STORY_CAPTIONS = splitCaptions(ZEN_STUB_TEXT);
+const ASSEMBLED = buildPicturePrompt({ character: STUB_CHARACTER, captions: STORY_CAPTIONS, scenes: stubScenes(STORY_CAPTIONS.length) });
 let zen;
 let xai;
 let env;
@@ -103,7 +107,8 @@ test("a full run records story, prompt and picture with prices and times, and ke
   ]);
   const [story, prompt, picture] = list;
   assert.equal(story.text, ZEN_STUB_TEXT);
-  assert.equal(prompt.text, ZEN_STUB_TEXT);
+  assert.equal(prompt.text, ASSEMBLED);
+  assert.ok(ASSEMBLED.includes("«Ви tackle проблему»"), "the captions are in the prompt verbatim");
   assert.deepEqual(story.missedWords, null);
   // 910 in x 0.3 + 275 out x 1.2 per million tokens
   assert.ok(Math.abs(story.priceUsd - (910 * 0.3 + 275 * 1.2) / 1e6) < 1e-12);
@@ -120,7 +125,7 @@ test("a full run records story, prompt and picture with prices and times, and ke
   assert.equal((await calls(xai)).count, 1);
   assert.ok(e.seen.every((s) => s.config.retries.limit === 0));
   // The picture prompt writer was given the story, the picture maker the written prompt.
-  assert.equal((await calls(xai)).last.prompt, ZEN_STUB_TEXT);
+  assert.equal((await calls(xai)).last.prompt, ASSEMBLED);
 });
 
 test("a missed word stops the run at the story and lists the words (AC-08)", async () => {
@@ -159,6 +164,17 @@ test("a picture prompt writer failure stops at the prompt step and keeps the sto
   await runStoryRun(env, engine(), { runId: "r4", mode: "full", attempt: 1 });
   const list = await steps("r4");
   assert.deepEqual(list.map((s) => [s.role, s.outcome]), [["story", "done"], ["prompt", "failed"]]);
+  assert.equal((await calls(xai)).count, 0);
+});
+
+test("a prompt writer reply that is not the JSON asked for fails the prompt step, priced from its usage, and no picture is drawn (AC-08b)", async () => {
+  await start("r4b");
+  await script(zen, ["ok", "STUB:badjson"]);
+  await runStoryRun(env, engine(), { runId: "r4b", mode: "full", attempt: 1 });
+  const list = await steps("r4b");
+  assert.deepEqual(list.map((s) => [s.role, s.outcome]), [["story", "done"], ["prompt", "failed"]]);
+  assert.equal(list[1].text, null);
+  assert.ok(Math.abs(list[1].priceUsd - (910 * 0.3 + 275 * 1.2) / 1e6) < 1e-12);
   assert.equal((await calls(xai)).count, 0);
 });
 
@@ -211,7 +227,7 @@ test("prompt redo runs the prompt step from the same story, then the picture (AC
   ]);
   const seen = await calls(zen);
   assert.equal(seen.count, 1, "only the prompt step called the text AI");
-  assert.match(seen.last.messages.find((m) => m.role === "user").content, /Story:\n/);
+  assert.match(seen.last.messages.find((m) => m.role === "user").content, /Captions:\n1\. /);
   assert.equal((await calls(xai)).count, 1);
 });
 
@@ -228,7 +244,7 @@ test("picture redo draws again from the same prompt with the picture AI chosen n
   assert.equal(pictures[1].pictureKey, "story-runs/r8/2");
   assert.equal((await calls(zen)).count, 0, "no text AI call");
   assert.equal((await calls(xai)).count, 2);
-  assert.equal((await calls(xai)).last.prompt, ZEN_STUB_TEXT);
+  assert.equal((await calls(xai)).last.prompt, ASSEMBLED);
   assert.equal(env.SOURCES.objects.has("story-runs/r8/1"), false);
 });
 

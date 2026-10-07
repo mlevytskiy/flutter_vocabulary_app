@@ -47,6 +47,8 @@ export interface PictureAdapterCall {
   prompt: string;
   apiKey: string;
   baseUrl?: string;
+  /** The model's own request options from models.json, if any. */
+  request?: Record<string, string | number>;
   pollIntervalMs: number;
   signal: AbortSignal;
 }
@@ -77,7 +79,7 @@ export async function drawPicture(env: PictureEnv, req: PictureRequest): Promise
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await adapter({ model: req.model, prompt: req.prompt, ...credentials, pollIntervalMs, signal: controller.signal });
+    return await adapter({ model: req.model, prompt: req.prompt, request: model.request, ...credentials, pollIntervalMs, signal: controller.signal });
   } catch {
     // An abort surfaces as an AbortError; anything else (network, bad JSON) is an error.
     return { failed: controller.signal.aborted ? "timeout" : "error" };
