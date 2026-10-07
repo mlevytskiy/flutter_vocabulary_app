@@ -345,25 +345,17 @@ Start on a dialogue group opens the dialogue screen. If the dialogue already has
 
 ## 7. Deployment view
 
-<!-- 🎯 Why: the TOPOLOGY DevOps must know without reading the deploy charts — how many replicas,
-     where the background worker lives, AT WHAT NUMBERS we scale.
-     📋 Write: 2–3 sentences on topology + monitoring + concrete threshold numbers.
-     📌 e.g. «500 authors → partition by quarter» (not «we'll think about scale later»).
-     🎯 N/A allowed for XS/S that reuses an existing deployment unit with no change.
-     Deployment-diagram scaffold → templates/deployment.md. -->
-
-<Topology in 2–3 sentences. Where it runs, replicas, scaling thresholds.>
+Nothing new to run. The app ships in its usual store build. The Worker stays one script (`vocab-photo-api`), with the same `STORY_RUN` Workflow binding, D1 `DB` and R2 `SOURCES` bucket. The deploy order is: apply D1 migration `0005_film_dialogues.sql` (`wrangler d1 migrations apply`; down script in `migrations/down/`), then `wrangler deploy`, then the app build. An app on the old build never sends `dialogues: true`, and the Worker answers it exactly as today. A new app against an old Worker gets no `dialogues` field back and shows words only. That counts as no dialogue qualifying (AC-07), not as a failure. Scene pictures for published sessions are kept in R2 under the session's prefix, and are deleted with the session by the existing daily clean-up after its 30 days. Run pictures under `story-runs/` keep their 7-day clean-up.
 
 **Monitoring:**
-- <Metrics — e.g. `<metric_name>`>
-- <Alerts — e.g. «worker lag > 10 min → page on-call»>
-- <Tracing — e.g. spans on the request boundary>
+- `logEvent("subtitle import", …)` gains `dialogues` (asked, returned, kept) and keeps `aiMs`, words and tokens, so time per model with dialogues on can be compared (spec §6). Lines and dialogue text are never logged.
+- Story run logs gain `kind`, so scene runs and stories are counted apart within the shared 20.
+- Append and picture-upload routes log the outcome (added, repeat, expired link, refused), never the content.
+- No alerting exists in this repo. The owner reads Worker logs (`wrangler tail`) during the device pass.
 
 **Scaling thresholds:**
-- <e.g. comfortable in one table up to N rows/year>
-- <e.g. partition by quarter above N rows/year>
-
-<!-- For XS/S with no deployment change: <!-- N/A: reuses existing deployment unit, no infra change --> -->
+- ≤ 10 dialogues × 8 lines per import, ≤ 200 characters a line: about 16 KB of dialogue text per import at most. This fits inside the existing 2 MB request body. The Worker's publish limits (500 entries, 256 KB) now count the dialogues too, so a session near those limits could fail to publish (§11).
+- At most 20 story runs a day, scene and story together, so R2 and Workflow use stay at today's scale.
 
 ## 8. Crosscutting concepts
 
