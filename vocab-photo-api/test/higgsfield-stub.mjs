@@ -2,19 +2,20 @@
 // picture-provider tests (mnemonic-story T5). The shape is provisional, as the adapter's:
 //   POST /<model id>                  {prompt} -> {request_id, status:"queued", status_url}
 //   GET  /requests/<id>/status        -> in_progress ... then completed {images:[{url}]},
-//                                        or failed / nsfw
+//                                        or failed / nsfw / canceled
 //   GET  /files/<id>.png              -> the picture
 // Behaviour comes from the prompt's first line:
 //   "STUB:refusal"   -> the job ends nsfw        "STUB:failed"  -> the job ends failed
+//   "STUB:canceled"  -> the job ends canceled
 //   "STUB:error"     -> the submit answers 500   "STUB:nodownload" -> the picture URL answers 404
 //   "STUB:slow:<ms>" -> the job completes <ms> after the submit (polls say in_progress before)
 //   anything else    -> completes on the second poll
-// `GET /__calls` answers `{ submits, polls, last, lastAuth, lastPath }`.
+// `GET /__calls` answers `{ submits, polls, last, lastAuth, lastPath, lastIdempotencyKey }`.
 import { createServer } from "node:http";
 import { PICTURE_BYTES } from "./xai-stub.mjs";
 
 export function startHiggsfieldStub() {
-  const calls = { submits: 0, polls: 0, last: null, lastAuth: null, lastPath: null };
+  const calls = { submits: 0, polls: 0, last: null, lastAuth: null, lastPath: null, lastIdempotencyKey: null };
   const jobs = new Map();
   let nextId = 1;
   let base = "";
@@ -36,6 +37,7 @@ export function startHiggsfieldStub() {
       const ready = job.slowMs === null ? job.polls >= 2 : Date.now() - job.at >= job.slowMs;
       if (job.mode === "STUB:refusal") return json(200, { status: "nsfw", request_id: status[1] });
       if (job.mode === "STUB:failed") return json(200, { status: "failed", request_id: status[1] });
+      if (job.mode === "STUB:canceled") return json(200, { status: "canceled", request_id: status[1] });
       if (!ready) return json(200, { status: "in_progress", request_id: status[1] });
       const file = job.mode === "STUB:nodownload" ? "missing" : status[1];
       return json(200, { status: "completed", request_id: status[1], images: [{ url: `${base}files/${file}.png` }] });
@@ -54,6 +56,7 @@ export function startHiggsfieldStub() {
       calls.last = body;
       calls.lastAuth = req.headers["authorization"] ?? null;
       calls.lastPath = url.pathname;
+      calls.lastIdempotencyKey = req.headers["idempotency-key"] ?? null;
       const prompt = String(body.prompt ?? "").split("\n")[0];
       if (prompt === "STUB:error") return json(500, { detail: "stub" });
       const slow = prompt.match(/^STUB:slow:(\d+)$/);

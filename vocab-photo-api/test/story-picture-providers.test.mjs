@@ -75,6 +75,7 @@ test("Higgsfield: submits, polls until done and downloads the picture", async ()
   assert.equal(seen.lastAuth, "Key higgs-key");
   assert.equal(seen.lastPath, `/${HIGGS}`);
   assert.equal(seen.last.prompt, "a cat tackling a problem");
+  assert.match(seen.lastIdempotencyKey ?? "", /^[0-9a-f-]{36}$/, "the submit carries an Idempotency-Key");
 });
 
 test("Higgsfield: a refused (nsfw) job is a refusal", async () => {
@@ -85,6 +86,7 @@ test("Higgsfield: a failed job, a failed submit and a failed download are errors
   assert.equal((await draw(HIGGS, "STUB:failed")).failed, "error");
   assert.equal((await draw(HIGGS, "STUB:error")).failed, "error");
   assert.equal((await draw(HIGGS, "STUB:nodownload")).failed, "error");
+  assert.equal((await draw(HIGGS, "STUB:canceled")).failed, "error");
 });
 
 test("Higgsfield: polling counts inside the limit", async () => {

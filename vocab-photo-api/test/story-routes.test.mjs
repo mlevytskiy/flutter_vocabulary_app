@@ -15,7 +15,7 @@ const higgsfieldUrl = process.env.VOCAB_API_HIGGSFIELD_STUB_URL;
 const calls = async (url) => (await fetchAgain(new URL("__calls", url))).json();
 
 const WORDS = ["tackle", "live up"];
-const MODELS = { storyModel: "deepseek-v4-flash", promptModel: "deepseek-v4-flash", pictureModel: "grok-imagine-image" };
+const MODELS = { storyModel: "deepseek-v4.1-flash", promptModel: "deepseek-v4.1-flash", pictureModel: "grok-imagine-image" };
 const json = { "content-type": "application/json" };
 const newId = () => randomUUID();
 
@@ -63,12 +63,12 @@ const stepOf = (run, role, attempt = 1) => run.steps.find((s) => s.role === role
 function seedRun(runId, steps) {
   d1(
     `INSERT INTO story_runs (run_id, created_at, words_json, story_model, prompt_model, picture_model)
-     VALUES (${sql(runId)}, '2026-10-07T00:00:00.000Z', ${sql(JSON.stringify(WORDS))}, 'deepseek-v4-flash', 'deepseek-v4-flash', 'grok-imagine-image')`,
+     VALUES (${sql(runId)}, '2026-10-07T00:00:00.000Z', ${sql(JSON.stringify(WORDS))}, 'deepseek-v4.1-flash', 'deepseek-v4.1-flash', 'grok-imagine-image')`,
   );
   for (const [role, attempt, outcome, text] of steps) {
     d1(
       `INSERT INTO story_run_steps (run_id, role, attempt, model_id, outcome, text, started_at)
-       VALUES (${sql(runId)}, ${sql(role)}, ${attempt}, 'deepseek-v4-flash', ${sql(outcome)}, ${text ? sql(text) : "NULL"}, '2026-10-07T00:00:01.000Z')`,
+       VALUES (${sql(runId)}, ${sql(role)}, ${attempt}, 'deepseek-v4.1-flash', ${sql(outcome)}, ${text ? sql(text) : "NULL"}, '2026-10-07T00:00:01.000Z')`,
     );
   }
 }
@@ -142,7 +142,7 @@ test("AC-13, AC-19: start refuses an AI that is not offered, with no unit taken 
   for (const bad of [
     { storyModel: "gpt-nonexistent" },
     { promptModel: "claude-haiku-4-5-20251001" },
-    { pictureModel: "deepseek-v4-flash" }, // a text AI is not a picture AI
+    { pictureModel: "deepseek-v4.1-flash" }, // a text AI is not a picture AI
     { storyModel: "grok-imagine-image" }, // a picture AI is not a text AI
   ]) {
     const run = newId();
@@ -254,7 +254,7 @@ test("AC-13: Draw again with an AI that is not offered is refused and takes no u
   const run = newId();
   seedRun(run, [["story", 1, "done", STORY], ["prompt", 1, "done", "p"], ["picture", 1, "failed", null]]);
   const before = used();
-  const res = await redo({ runId: run, step: "picture", pictureModel: "deepseek-v4-flash" });
+  const res = await redo({ runId: run, step: "picture", pictureModel: "deepseek-v4.1-flash" });
   assert.equal(res.status, 422);
   assert.equal((await res.json()).code, "not_offered");
   assert.equal(used(), before);

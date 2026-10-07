@@ -11,7 +11,7 @@ import { takeStoryRun, takeDrawAgain } from "../src/story/allowance.ts";
 import { recordStep, runStatus } from "../src/story/store.ts";
 import { runStoryRun, STEP_CONFIG } from "../src/story/run-steps.ts";
 
-const STORY_MODEL = "deepseek-v4-flash";
+const STORY_MODEL = "deepseek-v4.1-flash";
 const PICTURE_MODEL = "grok-imagine-image";
 let zen;
 let xai;
@@ -105,8 +105,8 @@ test("a full run records story, prompt and picture with prices and times, and ke
   assert.equal(story.text, ZEN_STUB_TEXT);
   assert.equal(prompt.text, ZEN_STUB_TEXT);
   assert.deepEqual(story.missedWords, null);
-  // 910 in x 0.14 + 275 out x 0.28 per million tokens
-  assert.ok(Math.abs(story.priceUsd - (910 * 0.14 + 275 * 0.28) / 1e6) < 1e-12);
+  // 910 in x 0.3 + 275 out x 1.2 per million tokens
+  assert.ok(Math.abs(story.priceUsd - (910 * 0.3 + 275 * 1.2) / 1e6) < 1e-12);
   assert.equal(story.priceEstimated, false);
   assert.equal(picture.priceUsd, 0.02);
   for (const s of list) {

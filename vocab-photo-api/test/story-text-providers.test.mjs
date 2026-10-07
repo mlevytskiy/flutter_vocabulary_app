@@ -69,14 +69,14 @@ test("Anthropic: no answer within the limit is a timeout with no usage", async (
 });
 
 test("Zen: the text and the reported usage come back, sent as a bearer key to chat/completions", async () => {
-  const result = await ask("deepseek-v4-flash", "tell a story");
+  const result = await ask("deepseek-v4.1-flash", "tell a story");
   assert.equal(result.failed, undefined);
   assert.match(result.text, /tackle/);
-  assert.deepEqual(result.usage, { modelId: "deepseek-v4-flash", inputTokens: 910, outputTokens: 275 });
+  assert.deepEqual(result.usage, { modelId: "deepseek-v4.1-flash", inputTokens: 910, outputTokens: 275 });
   const seen = await calls(zen);
   assert.equal(seen.lastAuth, "Bearer zen-key");
   assert.equal(seen.lastPath, "/chat/completions");
-  assert.equal(seen.last.model, "deepseek-v4-flash");
+  assert.equal(seen.last.model, "deepseek-v4.1-flash");
   assert.deepEqual(seen.last.messages.map((m) => m.role), ["system", "user"]);
 });
 
@@ -92,7 +92,7 @@ test("Zen: an HTTP error, a cut-off reply and an empty reply are errors", async 
 });
 
 test("Zen: no answer within the limit is a timeout with no usage", async () => {
-  const result = await ask("deepseek-v4-flash", "STUB:slow:3000", { timeoutMs: 300 });
+  const result = await ask("deepseek-v4.1-flash", "STUB:slow:3000", { timeoutMs: 300 });
   assert.equal(result.failed, "timeout");
   assert.equal(result.usage, undefined);
 });
@@ -103,7 +103,7 @@ test("a server that cannot be reached is an error", async () => {
 });
 
 test("the limit can come from the env override when the call gives none", async () => {
-  const result = await writeText({ ...env, STORY_TEXT_TIMEOUT_MS: "300" }, { model: "deepseek-v4-flash", system: "s", user: "STUB:slow:3000" });
+  const result = await writeText({ ...env, STORY_TEXT_TIMEOUT_MS: "300" }, { model: "deepseek-v4.1-flash", system: "s", user: "STUB:slow:3000" });
   assert.equal(result.failed, "timeout");
 });
 

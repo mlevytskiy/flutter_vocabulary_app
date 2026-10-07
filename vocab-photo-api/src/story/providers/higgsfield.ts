@@ -1,19 +1,19 @@
 // The Higgsfield picture adapter: submit a job, poll it until it is done, download the
 // picture. All inside the call's one abort signal, so the 120 s limit covers the polling.
 //
-// PROVISIONAL API shape (not verified against the live service; the owner verifies it with
-// the ids and prices, models.json):
-//   POST {base}/{model id}              {prompt}  -> {request_id, status, status_url?}
-//   GET  {base}/requests/{id}/status    -> {status: queued | in_progress | completed | failed | nsfw,
-//                                           images?: [{url}]}
+// API shape per docs.higgsfield.ai (quickstart, requests lifecycle):
+//   POST {base}/{model id}              {prompt} + Idempotency-Key -> {request_id, status, status_url}
+//   GET  {status_url}                   -> {status: queued | in_progress | completed | failed | nsfw
+//                                           | canceled, images?: [{url}]}
 //   GET  {images[0].url}                -> the picture
-// Auth is `Authorization: Key <HIGGSFIELD_API_KEY>`; the base URL defaults to
-// https://platform.higgsfield.ai/ and `HIGGSFIELD_API_URL` overrides it for the stub.
+// Auth is `Authorization: Key <HIGGSFIELD_API_KEY>`, where the key is "<key id>:<key secret>";
+// the base URL defaults to https://api.higgsfield.ai/ and `HIGGSFIELD_API_URL` overrides it for
+// the stub.
 
 import { endpoint } from "./text.ts";
 import { sleep, type PictureAdapter } from "./picture.ts";
 
-const DEFAULT_API_URL = "https://platform.higgsfield.ai/";
+const DEFAULT_API_URL = "https://api.higgsfield.ai/";
 
 interface Job {
   request_id?: string;
@@ -27,7 +27,7 @@ export const drawWithHiggsfield: PictureAdapter = async ({ model, prompt, apiKey
 
   const submit = await fetch(endpoint(baseUrl, DEFAULT_API_URL, model), {
     method: "POST",
-    headers,
+    headers: { ...headers, "idempotency-key": crypto.randomUUID() },
     body: JSON.stringify({ prompt }),
     signal,
   });
@@ -52,6 +52,7 @@ export const drawWithHiggsfield: PictureAdapter = async ({ model, prompt, apiKey
       case "nsfw":
         return { failed: "refused" };
       case "failed":
+      case "canceled":
         return { failed: "error" };
       default:
         await sleep(pollIntervalMs, signal);
