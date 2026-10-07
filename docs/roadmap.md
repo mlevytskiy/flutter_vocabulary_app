@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-10-06"
+updated_at: "2026-10-07"
 ---
 
 # Roadmap — flutter_vocabulary_app
@@ -40,6 +40,7 @@ people across the table through a link, and leaves with an AnkiDroid-importable 
 | 18 | Words from a photo already on the phone: "Get words from photo" offers Camera or Gallery; a gallery photo then goes the camera photo's way | owner request 2026-10-06 → [spec](features/photo-from-gallery/spec.md) | XS | spec'd |
 | 19 | Words from a Quizlet set: "Import from Quizlet" replaces Screenshot in the red + menu; paste a set link, review the cards in the results dialog, add them; the set (name + link) shows in the shared page's source pager like a photo | owner request 2026-10-06 → [spec](features/import-from-quizlet/spec.md) | M | done 2026-10-06 |
 | 20 | Learning part, step 1: a Learn button on the Words screen and on the shared page opens a learn page listing the exercises in three stages; only Mnemonic story can be ticked, and Start opens a coming-soon screen | owner request 2026-10-06 → [spec](features/learn-part-step-1/spec.md) | S | spec'd |
+| 21 | Mnemonic story: the learn page groups a session's words (7 to 19 per group) and Start makes one connected Ukrainian story with a picture per group, on the Worker; the learner picks the three AIs in Words settings (cheapest first, prices shown) and compares runs, prices and times on the story runs screens | owner request 2026-10-07 → [spec](features/mnemonic-story/spec.md) · [tasks](features/mnemonic-story/tasks/tracker.md) | L | in progress: code complete 2026-10-07, release checks pending owner |
 
 Steps 2 and 3 correct things the brief treats as already-solved ground. Two lookups during this
 pass moved them: the padding guard step 2 pins is **already in the Worker prompt**, and the Worker

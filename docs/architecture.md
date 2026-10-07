@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-10-06"
+updated_at: "2026-10-07"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -77,6 +77,19 @@ lib/
                                 the translation, any other the definition; cleaning, the 500
                                 character cut, duplicates, skipped cards, the numbers the results
                                 dialog names)
+                                story_api_service.dart (mnemonic-story: the Worker's /story/* routes —
+                                offered AI list, grouping split, start, status, redo, picture bytes;
+                                30 s timeout, throws StoryApiException)
+                                story_run_store.dart (Isar StoryRun: put/byId/watch; nothing is ever
+                                removed) and StoryPictureStore (mnemonic_pictures/<runId>-<attempt>.jpg,
+                                at most 3 MB each)
+    story/                      mnemonic-story logic shared by several features (rule 3 below):
+                                word_grouping.dart (pure: group sizes 7..19, "All words" / "New words",
+                                groupedWordsKey, planGrouping, applySplit)
+                                word_groups_notifier.dart (+.g) (grouping a session, the selected
+                                group; keepAlive, per session)
+                                story_run_tracker.dart (+.g) (starts runs, polls the Worker every 5 s,
+                                collects stories and pictures onto the phone; read once in app.dart)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
@@ -128,6 +141,19 @@ lib/
                                       reads the current session or a History row (LearnRoute)
       coming_soon_screen.dart         what Start opens while the picked exercise is not built
                                       (ComingSoonRoute carries the exercise id)
+      widgets/group_pager.dart        the group pager on the learn page (a card per word group);
+                                      step_progress.dart shows a running run's steps
+    mnemonic_story/
+      story_screen.dart               the story, its picture (zoomable), progress, failures and
+                                      "Make a new story" (StoryRoute: groupId, optional sessionId)
+      widgets/new_story_dialog.dart   the new-story confirmation (a dialog, not a route)
+    words_settings/
+      words_settings_screen.dart      Words settings (WordsSettingsRoute, from the Words screen's
+                                      settings button): the three AI choices (story writer, picture
+                                      prompt writer, picture maker), each list cheapest first with the
+                                      average price of past runs and the list price; "Story runs"
+      story_runs_screen.dart          every story run on the phone, newest first, with totals
+      story_run_screen.dart           one run in full: each step's AI, result, price, time
     history/
       history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
                                       a row opens WordsTableScreen for that sessionId
@@ -198,6 +224,16 @@ flowchart LR
   T -->|ref.watch| N
   T -->|LearnRoute push| L[LearnScreen]
   L -->|Start: ComingSoonRoute push| C[ComingSoonScreen]
+  L -->|Start with Mnemonic story: StoryRoute push| Y[StoryScreen]
+  L -->|ensureGrouped| GN[wordGroupsNotifierProvider<br/>core/story]
+  GN -->|POST /story/grouping| SA[storyApiServiceProvider<br/>Worker /story/*]
+  Y -->|follow / startFor| R[storyRunTrackerProvider<br/>core/story]
+  R -->|start, poll, picture| SA
+  R -->|put runs| SR[storyRunStoreProvider<br/>Isar StoryRun + mnemonic_pictures/]
+  Y -->|watch| SR
+  T -->|WordsSettingsRoute push| WS[WordsSettingsScreen]
+  WS -->|StoryRunsRoute / StoryRunRoute push| SR2[Story runs screens]
+  SR2 -->|watch| SR
   S -->|HistoryRoute().go| H[HistoryScreen]
   H -->|watchNonEmpty| W
   H -->|WordsTableRoute sessionId| T
@@ -261,6 +297,35 @@ photos is gone; publishing declares every source that has a linked row, bounded 
 switch publishes or hides the photos only; only photos are uploaded afterwards (`photo_upload_service.dart` skips sets, which have no
 bytes). The Worker side is in `vocab-photo-api/README.md`; the design is in
 `docs/features/import-from-quizlet/sad.md`.
+
+### Mnemonic story (mnemonic-story)
+
+The learn page now groups the session's words to learn into word groups of 7 to 19 (a smaller
+session is one group, "All words"). `word_grouping.dart` decides locally what it can
+(`GroupingLocal`) and asks the Worker's `POST /story/grouping` (a cheap Haiku call, not counted
+against the allowance) only when it must split words by topic (`GroupingAsk`); it re-runs only when
+`groupedWordsKey` of the session changes. Start with Mnemonic story ticked opens `StoryScreen` for
+the selected group (Start stays disabled until a group is selected).
+
+A story run is made on the Worker, not the phone: `StoryRunTracker.startFor` takes a run id (a UUID
+the app makes), POSTs `/story/runs`, and the Worker's `StoryRunWorkflow` (story writer -> picture
+prompt writer -> picture maker, no retries on paid steps, word check after the story) records every
+step and its price in D1. The phone polls `GET /story/runs?ids=` every 5 s while a story screen is
+open or runs are uncollected, copies finished runs into Isar `StoryRun` and the picture into
+`mnemonic_pictures/`, after which the Worker's copy is no longer needed (it is deleted after 7 days
+at most). So a closed app loses nothing, and a saved story opens from the phone alone. Runs are never
+removed from the phone.
+
+The three AIs come from the Worker's offered AI list (`GET /story/models`, from `src/story/models.json`),
+fetched and cached in `shared_preferences` with a bundled fallback. Each picker lists them cheapest
+first, with a secondary line of list prices; a stored choice that is no longer offered falls back to
+the default (AC-13). What shipped is provisional for non-Anthropic models: the OpenCode Zen text
+models (DeepSeek V4.1 Flash, GPT-5.4 mini) and the xAI and Higgsfield picture makers carry
+`provisional: true` in `models.json` until the owner verifies ids and prices; their API keys are Worker
+secrets (`OPENCODE_ZEN_API_KEY`, `XAI_API_KEY`, `HIGGSFIELD_API_KEY`). No story route is public
+(`x-app-secret`), and at most 20 runs (starts plus "Draw again") start per UTC day for the whole app.
+The Worker side is in `vocab-photo-api/README.md`; the design is in
+`docs/features/mnemonic-story/sad.md`.
 
 ## 4. Checklist for any change
 
