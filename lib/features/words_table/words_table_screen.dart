@@ -433,16 +433,37 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         : null;
     final canEdit = sessionId != null && sessionId != currentId;
     return Scaffold(
-      floatingActionButton: canEdit
-          ? FloatingActionButton(
-              onPressed: () => _confirmEdit(sessionId),
-              tooltip: 'Edit',
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+      // Settings bottom-left, like the main screen's settings button (same
+      // size, elevation and colours); Edit, when there is one, stays bottom-right.
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            FloatingActionButton(
+              heroTag: null,
+              onPressed: () => const WordsSettingsRoute().push(context),
+              tooltip: 'Settings',
+              elevation: 8.0,
               shape: const CircleBorder(),
-              child: const Icon(Icons.edit),
-            )
-          : null,
+              backgroundColor: const Color(0xff954ef3),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.settings),
+            ),
+            if (canEdit)
+              FloatingActionButton(
+                heroTag: null,
+                onPressed: () => _confirmEdit(sessionId),
+                tooltip: 'Edit',
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.edit),
+              ),
+          ],
+        ),
+      ),
       appBar: LearnShareBar(
         title: 'Words',
         onLearn: () => _learn(wordPairs),

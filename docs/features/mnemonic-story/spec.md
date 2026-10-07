@@ -167,6 +167,8 @@ A word counts as present when it appears as a whole word, in any letter case. A 
 **When** the learner taps the settings button, which looks like the main screen's settings button, and opens Words settings
 **Then** Words settings show three choices, each a list of the AIs on the app's offered list, a fixed list kept on the server: the story writer and the picture prompt writer (Anthropic Sonnet 5.5, Anthropic Opus 5.5 and the OpenCode Zen models put on the list), and the picture maker (the Grok and Higgsfield picture models put on the list). Each story writer and picture prompt writer option shows a price per story: "≈ $X (estimate)" until it has run, worked out from the provider's list price for a group of 15 words, then "$X average · N runs". The average and N count only the learner's runs where that AI finished that step, kept separately for the story writer and the picture prompt writer. Each picture maker option shows its fixed price per picture. The choice is kept after the app restarts and is used by every new story run.
 
+*Owner-requested addition (2026-10-07, T18): each option list runs from the cheapest to the most expensive, and each option also shows a small line with the provider's list price (for example "List price: $0.30 in · $1.20 out per 1M tokens" or "List price: $0.02 per picture", with "≈" when the price is approximate), under the label above.*
+
 ### AC-13 (US-03) — cross-context
 
 **Given** the AI chosen for one of the three steps is no longer offered (it was taken off the app's offered list, or its provider stopped serving it)

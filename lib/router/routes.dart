@@ -7,6 +7,7 @@ import '../features/learn/learn_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
+import '../features/words_settings/words_settings_screen.dart';
 import '../features/words_table/words_table_screen.dart';
 
 part 'routes.g.dart';
@@ -24,6 +25,7 @@ part 'routes.g.dart';
             TypedGoRoute<StoryRoute>(path: 'story'),
           ],
         ),
+        TypedGoRoute<WordsSettingsRoute>(path: 'settings'),
       ],
     ),
     TypedGoRoute<HistoryRoute>(path: 'history'),
@@ -87,6 +89,15 @@ class StoryRoute extends GoRouteData with _$StoryRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       StoryScreen(sessionId: sessionId, groupId: groupId);
+}
+
+/// Words settings (mnemonic-story, SCR-05): the AI for each step of a story
+/// run. Global, like the app's settings, so it carries no session id.
+class WordsSettingsRoute extends GoRouteData with _$WordsSettingsRoute {
+  const WordsSettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const WordsSettingsScreen();
 }
 
 class HistoryRoute extends GoRouteData with _$HistoryRoute {
