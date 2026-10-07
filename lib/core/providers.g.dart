@@ -149,6 +149,45 @@ final dictionaryServiceProvider = Provider<DictionaryService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef DictionaryServiceRef = ProviderRef<DictionaryService>;
+String _$storyApiServiceHash() => r'a236884d7c0ebee6e6e8e747202f0035a3f0f616';
+
+/// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
+///
+/// Copied from [storyApiService].
+@ProviderFor(storyApiService)
+final storyApiServiceProvider = Provider<StoryApiService>.internal(
+  storyApiService,
+  name: r'storyApiServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$storyApiServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef StoryApiServiceRef = ProviderRef<StoryApiService>;
+String _$offeredAisHash() => r'5a7c2096143ae6f5c0db6e33b3300caccad2a625';
+
+/// The AIs on the Worker's offered list. Fetched on first use and cached in
+/// preferences; when the fetch fails, the cached list is used, and when there is
+/// none either, the built-in defaults (AC-13). Never throws.
+///
+/// Copied from [offeredAis].
+@ProviderFor(offeredAis)
+final offeredAisProvider = FutureProvider<OfferedAiList>.internal(
+  offeredAis,
+  name: r'offeredAisProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$offeredAisHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef OfferedAisRef = FutureProviderRef<OfferedAiList>;
 String _$sessionPublishServiceHash() =>
     r'f1fa0f257c2278cdc3e762d3755c1f1baa8ecbfc';
 
@@ -381,6 +420,26 @@ final nonEmptySessionsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef NonEmptySessionsRef = AutoDisposeStreamProviderRef<List<Session>>;
+String _$aiChoiceNotifierHash() => r'56fb292859c4632c546aa2450c049a959ad528bc';
+
+/// The learner's saved AI for each step of a story run (AC-12). Persisted like
+/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+///
+/// Copied from [AiChoiceNotifier].
+@ProviderFor(AiChoiceNotifier)
+final aiChoiceNotifierProvider =
+    NotifierProvider<AiChoiceNotifier, StoredAiChoice>.internal(
+  AiChoiceNotifier.new,
+  name: r'aiChoiceNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$aiChoiceNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$AiChoiceNotifier = Notifier<StoredAiChoice>;
 String _$dragModeHash() => r'6c8be31e69381c41da06163dfa7a77cfa9c1bb89';
 
 /// Whether the word list is in drag-and-drop (reorder) mode. A pure display

@@ -3,6 +3,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'dart:convert';
+
+import 'models/offered_ai.dart';
 import 'models/session.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
@@ -13,6 +16,7 @@ import 'services/pronunciation_service.dart';
 import 'services/session_publish_service.dart';
 import 'services/session_store.dart';
 import 'services/source_photo_store.dart';
+import 'services/story_api_service.dart';
 import 'services/subtitle_words_service.dart';
 import 'services/vocab_photo_service.dart';
 
@@ -46,6 +50,81 @@ PronunciationService pronunciationService(Ref ref) => PronunciationService();
 /// Dictionary senses for the definition field, via the Worker (ADR-0002).
 @Riverpod(keepAlive: true)
 DictionaryService dictionaryService(Ref ref) => DictionaryService();
+
+/// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
+@Riverpod(keepAlive: true)
+StoryApiService storyApiService(Ref ref) => StoryApiService();
+
+/// The AIs on the Worker's offered list. Fetched on first use and cached in
+/// preferences; when the fetch fails, the cached list is used, and when there is
+/// none either, the built-in defaults (AC-13). Never throws.
+@Riverpod(keepAlive: true)
+Future<OfferedAiList> offeredAis(Ref ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  try {
+    final list = await ref.watch(storyApiServiceProvider).offeredAis();
+    await prefs.setString(OfferedAiCache.key, jsonEncode(list.toJson()));
+    return list;
+  } catch (_) {
+    final cached = prefs.getString(OfferedAiCache.key);
+    if (cached != null) {
+      try {
+        return OfferedAiList.fromJson(jsonDecode(cached) as Map<String, dynamic>);
+      } catch (_) {
+        // A damaged cache is as good as none.
+      }
+    }
+    return OfferedAiList.fallback;
+  }
+}
+
+/// Short name used across the app and the design docs.
+final aiChoiceProvider = aiChoiceNotifierProvider;
+
+/// The learner's saved AI for each step of a story run (AC-12). Persisted like
+/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+@Riverpod(keepAlive: true)
+class AiChoiceNotifier extends _$AiChoiceNotifier {
+  static String idKey(AiRole role) => 'story_ai_${role.name}';
+  static String nameKey(AiRole role) => 'story_ai_${role.name}_name';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  StoredAiChoice build() {
+    loaded;
+    return const StoredAiChoice();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    // A choice made before the stored values arrived wins over them.
+    if (_setByLearner) return;
+    final ids = <AiRole, String>{};
+    final names = <AiRole, String>{};
+    for (final role in AiRole.values) {
+      final id = prefs.getString(idKey(role));
+      if (id == null) continue;
+      ids[role] = id;
+      final name = prefs.getString(nameKey(role));
+      if (name != null) names[role] = name;
+    }
+    state = StoredAiChoice(ids: ids, names: names);
+  }
+
+  Future<void> set(AiRole role, OfferedAi ai) async {
+    _setByLearner = true;
+    state = StoredAiChoice(
+      ids: {...state.ids, role: ai.id},
+      names: {...state.names, role: ai.name},
+    );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(idKey(role), ai.id);
+    await prefs.setString(nameKey(role), ai.name);
+  }
+}
 
 @Riverpod(keepAlive: true)
 SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();
