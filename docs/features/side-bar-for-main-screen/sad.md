@@ -144,50 +144,90 @@ Each tactical decision in later sections traces to one of these seeds. A decisio
 
 ## 5. Building block view
 
-<!-- 🎯 Why: INTERNAL DECOMPOSITION — modules, containers, datastores. The static topology: who
-     may talk to whom. Without §5, §6 (the flows) has no vocabulary of participants.
-     📋 Write: 1 ¶ on the style (layered / hexagonal / clean / event-driven) + a folder tree + a
-     C4Container block.
-     📌 Draw ONE Container per declared `target_surface` (frontmatter): a fullstack
-     [backend-service, web-frontend] = a backend-API container + a web/SPA container; a
-     [backend-service, mobile-app] = the API + the mobile app. The Container(web, …) line below is
-     just one surface's container — swap/add per what was declared in §4. → _shared/surfaces.md
-     📌 e.g. «web app, content API, media worker, datastore, object store, CDN». -->
-
-<One paragraph: layered / hexagonal / clean / event-driven, and why.>
+The app keeps its simplified structure (architecture.md §1): one package, feature folders, typed routes, Riverpod for state and services. The photo panel is a sub-folder of the `word_input` feature, because only the main screen's words page shows it (spec §3). The two things another feature also needs live in `lib/core/`: the variant choice, which Settings writes, and the gesture exclusion service, which wraps a platform channel like any other service. Behaviour and look are split as ADR-0003 decides: the behaviour files know nothing of a variant's drawing, and a look file holds drawing only.
 
 **Internal decomposition:**
 
 ```
-<e.g. modules/<feature>/>
-├── domain/       <entities + sentinel errors>
-├── app/          <use cases / services>
-├── infra/        <repository + integration impl>
-├── ports/        <handlers, DTOs, error mapping>
-└── wiring        <self-wiring entry point>
+lib/
+  core/
+    providers.dart (+.g)          + photoTabTopProvider (key photo_tab_top), photoPanelVariantProvider
+                                    (key photo_panel_variant, until the pick), systemGestureExclusionProvider
+    services/
+      system_gesture_exclusion.dart   setRects(List<Rect>) → MethodChannel('vocab/system_gesture_exclusion');
+                                      never throws; no-op off Android 10+
+  features/
+    word_input/
+      word_input_screen.dart      mounts PhotoPanel; owns PhotoPanelController, the list's ScrollController
+                                  and row keys; PopScope (Back steps the panel back); rows IgnorePointer and
+                                  tap-to-close while open; pager physics off while open (T19's PageView)
+      widgets/word_row_item.dart  + optional highlight decoration (null = today's row)
+      photo_panel/
+        photos_with_words.dart    photosWithWordsProvider: the current session's photo sources with ≥1 linked
+                                  row, in Session.sources order, with their row ids
+        photo_panel_controller.dart   PhotoPanelController (ChangeNotifier): stop, selected photo
+        photo_panel.dart          PhotoPanel: OverlayPortal, the openness AnimationController, drags and their
+                                  direction, Back step, busy / drawer / session-change rules, gesture exclusion
+                                  calls, Semantics labels and actions
+        photo_panel_stops.dart    pure: settle(openness, velocity) → closed | half-open | full-open (AC-08)
+        photo_preview.dart        reads a source through SourcePhotoStore, decodes at a given width, shows the
+                                  "not available" placeholder on null or a decode error
+        row_jump.dart             scroll to the first linked row: estimated offset, then ensureVisible
+        looks/
+          photo_panel_look.dart   the PhotoPanelLook interface (ADR-0003); asserts tab height ≤ 200 dp
+          look_a.dart, look_b.dart, look_c.dart   the design variants (two removed at the pick)
+    settings/settings_screen.dart + the temporary "Photo panel design" choice (removed at the pick)
+android/app/src/main/kotlin/com/unique/androidvocabularyapp2/MainActivity.kt
+                                  + the vocab/system_gesture_exclusion channel handler
+test/
+  photo_panel_stops_test.dart, photos_with_words_test.dart, photo_panel_test.dart (every look),
+  photo_tab_position_test.dart, system_gesture_exclusion_test.dart, + cases in settings_screen_test.dart
 ```
 
-**C4 Container (L2):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. ONE Container per declared target_surface (frontmatter); the web container below is one example surface. -->
+**C4 Container (L2):**
 
 ```mermaid
 C4Container
-    title <feature> — Containers
+    title side-bar-for-main-screen — Containers
 
-    Person(actor, "<Actor>")
+    Person(learner, "learner")
 
-    Container_Boundary(app, "<Our system>") {
-        Container(web, "<Web/UI>", "<technology>", "<purpose>")
-        Container(api, "<API/handler>", "<technology>", "<purpose>")
-        ContainerDb(db, "<Datastore>", "<technology>", "<purpose>")
+    Container_Boundary(app, "Vocabulary app (mobile-app, Flutter)") {
+        Container(screen, "Main screen", "Flutter widget, word_input_screen.dart", "Words page with the word list, pager of #22, PopScope, row touch rule")
+        Container(panel, "Photo panel", "Flutter widget, OverlayPortal", "Photo tab and panel: openness, stops, gestures, selection, jump, Semantics")
+        Container(looks, "Design variant looks", "Dart, PhotoPanelLook", "Draws the tab, small and large photos, row highlight; two removed at the pick")
+        Container(photos, "Photos with words", "Riverpod provider", "Current session photo sources with linked rows, in order added")
+        Container(prefs, "Panel preferences", "Riverpod notifiers", "Tab height; design variant until the pick")
+        Container(settings, "Settings screen", "Flutter widget", "Temporary Photo panel design choice")
+        Container(bridge, "Gesture exclusion bridge", "Dart service + Kotlin MainActivity", "Sends the tab rectangle to Android")
     }
 
-    System_Ext(ext, "<External>", "<purpose>")
+    ContainerDb(isar, "Session store", "Isar, isar_community 3.3.0-dev.1", "Session with words and sources")
+    ContainerDb(files, "Source photo files", "files under source_photos/", "Kept 1600 px photos, read by SourcePhotoStore")
+    ContainerDb(sp, "Preferences", "shared_preferences", "photo_tab_top, photo_panel_variant")
+    System_Ext(android, "Android system navigation", "Edge swipe means Back")
 
-    Rel(actor, web, "<interaction>", "<protocol>")
-    Rel(web, api, "<calls>")
-    Rel(api, db, "<reads/writes>", "<driver>")
-    Rel(api, ext, "<emits>", "<protocol>")
+    Rel(learner, screen, "Scrolls, edits, presses Back", "touch")
+    Rel(learner, panel, "Taps, drags, zooms", "touch, screen reader")
+    Rel(screen, panel, "Mounts, reads the stop and selection")
+    Rel(panel, screen, "Asks to scroll to and highlight rows")
+    Rel(panel, looks, "Asks the chosen look to draw")
+    Rel(panel, photos, "Watches")
+    Rel(photos, isar, "Reads the current session", "via wordInputNotifierProvider")
+    Rel(panel, files, "Reads photo bytes", "SourcePhotoStore")
+    Rel(panel, prefs, "Reads and writes the tab height, reads the variant")
+    Rel(settings, prefs, "Writes the variant")
+    Rel(prefs, sp, "Persists")
+    Rel(panel, bridge, "Sends or clears the tab rectangle")
+    Rel(bridge, android, "Sets gesture exclusion rectangles", "MethodChannel")
 ```
+
+The container view has one surface, the phone app, drawn as its logical modules.
+- The learner touches the main screen and the photo panel, which the main screen mounts.
+- The panel watches the derived "photos with words" (which reads the current session from the Isar store), reads photo bytes from the kept files, and keeps the tab's height in the preferences.
+- It asks the chosen look to draw, asks the main screen to scroll to and highlight rows, and tells Android the tab's rectangle through the gesture exclusion bridge.
+- The Settings screen writes the variant choice until the pick.
+- Nothing leaves the phone.
 
 ## 6. Runtime view
 
