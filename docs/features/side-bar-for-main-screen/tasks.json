@@ -1,0 +1,391 @@
+{
+  "slug": "side-bar-for-main-screen",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add the pure settle rule and the photo panel controller",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-08",
+        "AC-15"
+      ],
+      "dod": "`photo_panel_stops_test.dart` and `photo_panel_controller_test.dart` pass: settle picks the nearest stop, a flick moves exactly one stop past the start stop, any leftward drag from closed gives at least half-open, and only one photo is ever selected (same photo again clears, another moves, close clears, a vanished photo clears).",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_panel_stops.dart",
+        "lib/features/word_input/photo_panel/photo_panel_controller.dart",
+        "test/photo_panel_stops_test.dart",
+        "test/photo_panel_controller_test.dart"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Derive the current session's photos with words",
+      "layer": "app",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-15",
+        "AC-16"
+      ],
+      "dod": "`photos_with_words_test.dart` passes: only photo sources of the current session with at least one linked row are listed, in `Session.sources` order, with their row ids; a typed, Quizlet-only or emptied session gives an empty list; deleting a photo's last row or clearing its word removes it at once.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photos_with_words.dart",
+        "lib/features/word_input/photo_panel/photos_with_words.g.dart",
+        "test/photos_with_words_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Keep the photo tab's height and the review-only design variant in preferences",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-14",
+        "AC-19"
+      ],
+      "dod": "`photo_panel_prefs_test.dart` passes: `photo_tab_top` is read back after a restart, the first default sits beside the first word rows, a stored value is clamped between the top bar and the floating-button row, and a failed write of `photo_panel_variant` keeps the chosen variant in memory.",
+      "files_hint": [
+        "lib/core/providers.dart",
+        "lib/core/providers.g.dart",
+        "test/photo_panel_prefs_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the gesture exclusion service and its Android channel handler",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "`system_gesture_exclusion_test.dart` passes against a mocked `vocab/system_gesture_exclusion` channel (rects sent in physical pixels, empty list clears, platform errors swallowed, no call off Android), and `MainActivity.kt` builds in `flutter build apk --debug`.",
+      "files_hint": [
+        "lib/core/services/system_gesture_exclusion.dart",
+        "lib/core/providers.dart",
+        "android/app/src/main/kotlin/com/unique/androidvocabularyapp2/MainActivity.kt",
+        "test/system_gesture_exclusion_test.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Show a photo from the kept file at preview size, with a not-available placeholder",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-09"
+      ],
+      "dod": "`photo_preview_test.dart` passes: a readable source decodes with `cacheWidth` = width × device pixel ratio, and a `null` read or a decode error shows the \"not available\" placeholder while the other previews still show.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_preview.dart",
+        "test/photo_preview_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Define the PhotoPanelLook interface and build look A",
+      "layer": "ui",
+      "deps": [
+        "T3",
+        "T5"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-19"
+      ],
+      "dod": "`photo_panel_look_test.dart` passes: look A is returned for variant `a`, its tab is at most 200 dp tall (the interface assertion fires for a taller test look), it draws at most three mini previews plus the count, and its row highlight is non-null while `WordRowItem` with no highlight is unchanged.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/looks/photo_panel_look.dart",
+        "lib/features/word_input/photo_panel/looks/look_a.dart",
+        "lib/features/word_input/photo_panel/looks/looks.dart",
+        "test/photo_panel_look_test.dart"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Draw the photo tab in an overlay and let it be dragged up or down",
+      "layer": "ui",
+      "deps": [
+        "T2",
+        "T3",
+        "T6"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-14",
+        "AC-17"
+      ],
+      "dod": "`photo_tab_position_test.dart` passes: no photo with words draws nothing; the tab sits beside the first rows, then at the kept height after a vertical drag and a restart; it stays put while the list scrolls; it rides above the keyboard and returns; it stays between the top bar and the floating buttons (and above a SnackBar); a touch while busy is ignored.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "test/photo_tab_position_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Open the panel half-open and full-open, settle at stops, and step back",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T7"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-07",
+        "AC-08",
+        "AC-10"
+      ],
+      "dod": "`photo_panel_open_test.dart` passes: a tap settles half-open within `pump(300 ms)` with no animation running and the small photos oldest first; a short left drag gives half-open, a longer one full-open, a flick one stop further; the expand control opens full-open; a drag back on the handle settles by the rule; `stepBack()` goes full-open → half-open → closed; opening unfocuses the field and keeps its text.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "test/photo_panel_open_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Show the large photos in full-open with zoom and neighbour-only decoding",
+      "layer": "ui",
+      "deps": [
+        "T8"
+      ],
+      "acs": [
+        "AC-07b",
+        "AC-09"
+      ],
+      "dod": "`photo_panel_full_open_test.dart` passes: full-open starts at the selected photo (or the first), a two-finger scale zooms with `InteractiveViewer`, a drag on a zoomed photo pans it and does not move the panel, browsing does not change the selected photo, a tap on a large photo does nothing, only the shown photo and its neighbours are decoded, and an unreadable photo shows the placeholder.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "lib/features/word_input/photo_panel/looks/look_a.dart",
+        "test/photo_panel_full_open_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Send the tab or handle rectangle to the gesture exclusion service at every change",
+      "layer": "wiring",
+      "deps": [
+        "T4",
+        "T8"
+      ],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "`photo_panel_exclusion_test.dart` passes against the mocked channel: closed sends the tab's on-screen rectangle after every layout and move, half-open sends the handle, full-open, the drawer open and no tab send an empty list, and the last call always matches what is on screen.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "test/photo_panel_exclusion_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Make every panel state reachable and closable with a screen reader",
+      "layer": "ui",
+      "deps": [
+        "T9"
+      ],
+      "acs": [
+        "AC-18"
+      ],
+      "dod": "`photo_panel_semantics_test.dart` passes with `tester.ensureSemantics()`: the tab is one node labelled \"Session photos, N\" whose tap action opens half-open (ignored while busy), each small photo is a selectable button, labelled expand, close and back-to-half-open buttons exist, and every state is reached and left without a drag.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "lib/features/word_input/photo_panel/looks/photo_panel_look.dart",
+        "test/photo_panel_semantics_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Give the word list a ScrollController, row keys, a row highlight and the jump to a row",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-06"
+      ],
+      "dod": "`row_jump_test.dart` passes with 200 rows of mixed heights: after the jump and `pump(500 ms)` the first linked row (in the list's current order) is fully in view, an already visible row does not move, both the normal and the drag-mode list scroll; `word_row_layout_test.dart` and `app_smoke_test.dart` stay green unchanged with no highlight.",
+      "files_hint": [
+        "lib/features/word_input/widgets/word_row_item.dart",
+        "lib/features/word_input/photo_panel/row_jump.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/row_jump_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Mount the photo panel on the main screen with Back stepping, highlight and jump",
+      "layer": "wiring",
+      "deps": [
+        "T8",
+        "T12"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-06",
+        "AC-10",
+        "AC-15"
+      ],
+      "dod": "`main_screen_photo_panel_test.dart` passes on the real `WordInputScreen`: a session with photos shows the tab; selecting a photo highlights all its rows and jumps to the first; another tap moves or clears it without scrolling; scrolling keeps half-open and the highlight; Back steps full-open → half-open → closed and leaves only when closed; a session with no photo with words has no `PopScope` interception and looks as today; deleting the selected photo's last row clears the selection.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "test/main_screen_photo_panel_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Make an open panel own the main screen's touches and close on a session change",
+      "layer": "wiring",
+      "deps": [
+        "T13"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-15b",
+        "AC-16",
+        "AC-17"
+      ],
+      "dod": "`main_screen_photo_panel_test.dart` passes the new cases: with the panel open a tap on a row, the top bar, its menu or the floating buttons only closes it (no focus, no handler, no route), the visible list still scrolls in half-open, the drawer does not open and the tab is hidden while the drawer is open, a new current session id closes the panel and clears the selection, pushing another route closes it first, a background/resume with the same session keeps stop and selection, and the tab ignores touches while busy.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "test/main_screen_photo_panel_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Keep the tab on every pager page and open the panel only over the words page",
+      "layer": "ui",
+      "deps": [
+        "T14"
+      ],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "`photo_panel_pager_test.dart` passes on a session with dialogues: a drag on the tab on the words page leaves `PageController.page` unchanged; opening from a dialogue page first animates to page 0 then settles; while open no swipe changes the page; while closed a swipe away from the tab changes the page; the tab does not move with a page swipe.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/features/word_input/photo_panel/photo_panel.dart",
+        "test/photo_panel_pager_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Build design variant B",
+      "layer": "ui",
+      "deps": [
+        "T11"
+      ],
+      "acs": [
+        "AC-19"
+      ],
+      "dod": "`photo_panel_look_test.dart` passes for look B (variant `b` maps to it, tab ≤ 200 dp, highlight non-null), and the full behaviour suite of T19 passes with it.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/looks/look_b.dart",
+        "lib/features/word_input/photo_panel/looks/looks.dart",
+        "test/photo_panel_look_test.dart"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Build design variant C",
+      "layer": "ui",
+      "deps": [
+        "T11"
+      ],
+      "acs": [
+        "AC-19"
+      ],
+      "dod": "`photo_panel_look_test.dart` passes for look C (variant `c` maps to it, tab ≤ 200 dp, highlight non-null), and the full behaviour suite of T19 passes with it.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/looks/look_c.dart",
+        "lib/features/word_input/photo_panel/looks/looks.dart",
+        "test/photo_panel_look_test.dart"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Add the temporary \"Photo panel design\" choice to Settings",
+      "layer": "ui",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-19"
+      ],
+      "dod": "`settings_screen_test.dart` passes the new case: the \"Photo panel design\" choice lists the variants, styled like the word detail mode choice, and picking one writes `photo_panel_variant` and changes `photoPanelVariantProvider` at once.",
+      "files_hint": [
+        "lib/features/settings/settings_screen.dart",
+        "test/settings_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Run the panel behaviour suite against every look and write the device-pass checklist",
+      "layer": "tests",
+      "deps": [
+        "T10",
+        "T15",
+        "T16",
+        "T17",
+        "T18"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-07b",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-15b",
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-19"
+      ],
+      "dod": "`photo_panel_test.dart` runs the AC-01 to AC-18 cases once per `PhotoPanelVariant` and passes for all, including the 300 ms open and the 500 ms jump in 200 rows; switching the variant redraws at once; `tool/test.sh changed` is green; `device-pass.md` lists every spec §6 NFR and §7 KPI with its method and an empty result column.",
+      "files_hint": [
+        "test/photo_panel_test.dart",
+        "docs/features/side-bar-for-main-screen/device-pass.md"
+      ]
+    },
+    {
+      "id": "T20",
+      "title": "Keep the picked look and remove the others, the variant choice and its key",
+      "layer": "wiring",
+      "deps": [
+        "T19"
+      ],
+      "acs": [
+        "AC-20"
+      ],
+      "dod": "Only the picked look remains and `PhotoPanel` uses it directly; `grep -rn \"photo_panel_variant\\|PhotoPanelVariant\" lib test` is empty; the Settings choice is gone and `settings_screen_test.dart` is back to its pre-feature cases; CLAUDE.md rule 3 no longer lists the Settings choice; `docs/architecture.md` names `photo_panel/` and the gesture exclusion channel; `tool/test.sh changed` is green.",
+      "files_hint": [
+        "lib/features/word_input/photo_panel/looks",
+        "lib/core/providers.dart",
+        "lib/core/providers.g.dart",
+        "lib/features/settings/settings_screen.dart",
+        "test/settings_screen_test.dart",
+        "test/photo_panel_test.dart",
+        "test/photo_panel_look_test.dart",
+        "CLAUDE.md",
+        "docs/architecture.md",
+        "docs/roadmap.md"
+      ]
+    }
+  ]
+}

@@ -304,6 +304,329 @@ Flow 1: once the main screen shows, the photo panel gets the current session's p
 
 Flow 2: a touch on the tab reaches the app because its area is excluded. If the finger first moves up or down, the tab moves, its new height is kept, and the excluded area follows. If it first moves left, the panel turns off the pager's swipe and the rows' touches, follows the finger, and settles at the nearest stop (or one further after a flick). Back then steps the panel back one stop. A swipe from the edge away from the tab is still system Back.
 
+The flows below were added by the `sequences` stage (2026-10-13) and use the generic participants: `<user>` is the learner, `<ui> main screen` is the main screen with its word list and pager, `<ui> photo panel` is the photo tab and panel with the chosen look, `<service>` is the derived "photos with words" or the panel preferences, `<data-store>` is the session store, the kept photo files or the preferences on the device, and `<external-system>` is the Android system navigation (reached through the gesture exclusion bridge).
+
+### Flow 3: show and update the photo tab from the current session (US-01; AC-01, AC-02, AC-15, AC-16)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    participant S as <service> photos with words
+    participant DS as <data-store> device
+    Note over U,UI: Precondition: the main screen shows the words page or a dialogue page
+    UI->>S: watch the current session
+    S->>DS: read the current session's rows and sources
+    DS-->>S: the current session only
+    S->>S: keep photo sources with at least one linked row, in the order added
+    alt no photo with words (typed, Quizlet only, or all photo rows deleted)
+        S-->>P: empty list
+        P-->>UI: draw nothing, no Back interception
+        Note over U,UI: the screen is exactly as today
+    else at least one photo with words
+        S-->>P: the current session's photos with words
+        P->>DS: read the kept tab height
+        alt no height kept yet
+            DS-->>P: nothing, use the default beside the first word rows
+        else height kept
+            DS-->>P: kept height, clamped between the top bar and the floating buttons
+        end
+        P-->>U: tab on the right side with mini previews
+    end
+    U->>UI: scroll the list or swipe to another page
+    P-->>U: tab stays at its place (unless the look hides it while scrolling)
+    opt keyboard opens
+        P-->>U: tab sits just above the keyboard, back at its height when it closes
+    end
+    U->>UI: delete a photo's last row, clear its word, or add words from a new photo
+    UI->>DS: save the session
+    Note over UI,DS: persists Session rows and sources (existing write, unchanged)
+    DS-->>S: current session changed
+    S-->>P: new photos with words
+    alt photos with words left
+        P-->>U: tab and an open panel update at once, a vanished selected photo is unselected
+    else none left
+        P-->>U: panel closes, tab disappears, exclusion cleared
+    end
+    Note over U,P: Postcondition: the tab shows only the current session's photos with words, or nothing
+```
+
+Flow 3: the panel watches the current session through "photos with words", which keeps only the photos that still have a word row, in the order they were added. With none, nothing is drawn and the screen is as today. Otherwise the panel reads the kept tab height (or uses the default beside the first rows), clamps it between the top bar and the floating buttons, and shows the tab. The tab stays put while the list scrolls or the page changes, unless the look hides it while scrolling, and rides above the keyboard while it is open. When rows are deleted, cleared or added, the session save makes the list update at once: a photo with no rows left disappears (and is unselected if it was selected), and with no photo left the panel closes and the tab disappears.
+
+### Flow 4: select, reselect and deselect a photo (US-02; AC-05, AC-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    Note over U,P: Precondition: the panel is half-open
+    U->>P: tap photo A
+    P->>P: selected photo is A
+    P->>UI: highlight A's rows, scroll as little as needed to A's first row
+    U->>UI: scroll the visible word list
+    UI-->>U: list scrolls, panel stays half-open, A's rows stay highlighted
+    alt tap photo A again
+        U->>P: tap photo A
+        P->>P: no selected photo
+        P->>UI: remove the highlight, do not scroll
+    else tap photo B
+        U->>P: tap photo B
+        P->>P: selected photo is B
+        P->>UI: move the highlight to B's rows, scroll to B's first row
+    else the panel closes
+        U->>P: Back, drag back, or a touch outside the panel
+        P->>P: no selected photo
+        P->>UI: remove the highlight, do not scroll
+    end
+    Note over U,P: Postcondition: at most one photo is selected, and the selection is never saved
+```
+
+Flow 4: in half-open, a tap on a photo selects it, highlights its rows and scrolls the list just enough to show its first row. Scrolling the list keeps the panel half-open and the highlight on. Tapping the same photo again clears the selection, tapping another photo moves the highlight (and the scroll) to its rows, and closing the panel clears it. Removing a highlight never scrolls. Only one photo is ever selected, and nothing is saved.
+
+### Flow 5: open full-open and browse the large photos (US-03; AC-07, AC-07b, AC-09)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    participant DS as <data-store> device photo files
+    participant X as <external-system> Android navigation
+    Note over U,P: Precondition: the tab is shown or the panel is half-open
+    alt from the tab or half-open
+        U->>P: drag further to the left and let go
+    else from half-open
+        U->>P: tap the expand control
+    end
+    P->>UI: rows ignore touches, pager does not swipe
+    P->>DS: read the selected photo (or the first) and its neighbours at screen size
+    alt picture can be read
+        DS-->>P: bytes
+    else file missing or decode fails
+        DS-->>P: nothing, show the not available placeholder
+    end
+    P->>X: clear the exclusion rectangle
+    P-->>U: small photos grow into the large ones, settles full-open at the selected or first photo
+    U->>P: two-finger zoom on a large photo
+    P-->>U: photo zoomed, a drag now pans it
+    U->>P: browse to another large photo
+    P->>DS: read its neighbours, drop photos far away
+    P-->>U: other photo shown, selected photo unchanged
+    U->>P: tap a large photo
+    P-->>U: nothing else happens
+    U->>UI: Back
+    UI->>P: step back one stop
+    P->>X: exclude the panel handle
+    P-->>U: half-open, the same photo's rows still highlighted
+    Note over U,P: Postcondition: browsing never changes the selected photo
+```
+
+Flow 5: a longer drag to the left from the tab or from half-open, or the expand control in half-open, opens full-open. The panel keeps the rows and pager inert, reads the selected photo (or the first) and its neighbours at screen size, showing the placeholder for any it cannot read, clears the edge exclusion, and animates the small photos into the large ones. Two fingers zoom a photo, after which a drag pans it. Browsing loads neighbours and drops far photos without changing the selected photo, and a tap on a large photo does nothing. Back returns to half-open, re-excludes the handle, and the same photo's rows are still highlighted.
+
+### Flow 6: close the panel by a touch outside, a drag back or a left-edge swipe (US-04; AC-10, AC-11)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant X as <external-system> Android navigation
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    Note over U,P: Precondition: the panel is half-open or full-open
+    alt half-open, touch outside the panel (word list, top bar or menu, floating buttons)
+        U->>UI: tap
+        UI->>P: close
+        P->>P: no selected photo
+        P-->>U: closed, no field focused, no control pressed, no menu or screen opened
+    else half-open, scroll the visible list
+        U->>UI: drag the list
+        UI-->>U: list scrolls, panel stays half-open
+    else swipe in from the left screen edge
+        U->>X: swipe in from the left edge
+        X->>UI: Back
+        UI->>P: step back one stop
+        P-->>U: one stop back, the drawer does not open
+    else drag back (from the handle in full-open, from the panel in half-open)
+        U->>P: drag to the right and let go
+        P->>P: settle at the nearest stop, one further after a flick, never skip a stop
+        P-->>U: half-open or closed
+    end
+    Note over U,P: in full-open a drag on a large photo browses or pans, it never moves the panel
+    alt panel now closed
+        P->>X: exclude the tab rectangle again
+        P->>UI: rows and pager respond again
+    else panel now half-open
+        P->>X: exclude the panel handle
+    end
+    Note over U,P: Postcondition: Back leaves the main screen only when the panel is closed
+```
+
+Flow 6: in half-open, any touch outside the panel (rows, top bar or its menu, floating buttons) only closes the panel and clears the selection, while a drag on the visible list still scrolls it. A swipe in from the left edge is system Back: it steps the panel back one stop and never opens the drawer. A drag back starts on the handle in full-open (a drag on a large photo browses instead) or on the panel in half-open, and settles by the stop rule. Afterwards the panel excludes the tab again (closed) or the handle (half-open), and Back leaves the main screen only once the panel is closed.
+
+### Flow 7: open the panel from a dialogue page (US-05; AC-13)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    Note over U,P: Precondition: the panel is closed and a dialogue page is shown, with the tab at its place
+    U->>UI: swipe sideways away from the tab
+    UI-->>U: page changes as before, the tab does not move
+    U->>P: tap, drag left, or double-tap the tab
+    alt screen busy analysing a photo
+        P-->>U: touch ignored, panel stays closed
+    else not busy
+        P->>UI: return the pager to the words page
+        UI-->>P: words page shown
+        P->>UI: pager does not swipe, rows ignore touches
+        P-->>U: settles half-open, or full-open after a longer drag
+        U->>UI: swipe sideways while the panel is open
+        UI-->>U: page does not change
+    end
+    Note over U,P: Postcondition: an open panel always sits over the words page
+```
+
+Flow 7: with the panel closed, a sideways swipe away from the tab changes the page as before and the tab stays where it is. Opening the tab from a dialogue page (tap, drag or screen-reader double-tap) is ignored while the screen is busy; otherwise the panel first brings the pager back to the words page, then turns off the pager's swipe and the rows, and settles. While it is open, no swipe changes the page.
+
+### Flow 8: the current session changes, or the app returns from the background (US-05; AC-15b, AC-16)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    participant S as <service> photos with words
+    participant DS as <data-store> device session store
+    Note over U,P: Precondition: the panel is open and a photo is selected
+    alt another session becomes current (History directly or through the drawer, RESTORE, or a new session)
+        U->>UI: make another session current
+        Note over UI,P: the panel closes before any other route is pushed
+        UI->>DS: load or create the session
+        Note over UI,DS: persists the current session (existing write, unchanged)
+        DS-->>S: current session id changed
+        P->>P: close, no selected photo
+        S-->>P: the new current session's photos with words only
+        P-->>U: words page with the new session's tab, or no tab
+    else the app goes to the background and returns, same current session
+        U->>UI: leave the app and come back
+        UI-->>P: same current session id
+        P-->>U: panel at the same stop, the same photo selected
+    end
+    Note over U,P: Postcondition: another session's photos are never shown
+```
+
+Flow 8: when another session becomes current (from History, directly or through the drawer, from the RESTORE offer, or a new session), the panel closes first and clears the selection. The session is loaded or created as today, and "photos with words" switches to the new session only, so the tab shows its photos or disappears. When the app goes to the background and comes back with the same session, the panel keeps its stop and its selected photo.
+
+### Flow 9: use the panel with a screen reader, without any drag (US-02, US-04; AC-18)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> learner
+    participant UI as <ui> main screen
+    participant P as <ui> photo panel
+    Note over U,P: Precondition: a screen reader is on and the tab is shown
+    U->>P: move focus to the tab
+    P-->>U: announces Session photos with their count
+    U->>P: double-tap the tab
+    alt screen busy analysing a photo
+        P-->>U: ignored, panel stays closed
+    else not busy
+        P-->>U: half-open with labelled expand and close buttons, each small photo a selectable button
+        U->>P: double-tap a small photo
+        P->>UI: select it, highlight its rows, scroll to its first row
+        U->>P: double-tap the expand button
+        P-->>U: full-open with a labelled control back to half-open
+        alt the control back
+            U->>P: double-tap back to half-open
+        else Back
+            U->>UI: Back
+            UI->>P: step back one stop
+        end
+        P-->>U: half-open
+        U->>P: double-tap the close button, or Back
+        P-->>U: closed, no selected photo
+    end
+    Note over U,P: Postcondition: every state was reached and left without a drag
+```
+
+Flow 9: the screen reader announces the tab as the session's photos with their count. A double-tap opens half-open, unless the screen is busy. There, each small photo is a selectable button that selects its photo and jumps to its rows, and labelled buttons expand to full-open or close. Full-open has a labelled control back to half-open, and Back works too. The close button or Back closes the panel, so no state needs a drag.
+
+### Flow 10: switch the design variant during the review (US-06; AC-19)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user> owner
+    participant ST as <ui> settings screen
+    participant S as <service> panel preferences
+    participant DS as <data-store> device preferences
+    participant P as <ui> photo panel
+    Note over U,ST: Precondition: the review build, with the temporary Photo panel design choice
+    U->>ST: pick design variant B
+    ST->>S: set the variant to B
+    S->>DS: write the variant
+    Note over S,DS: persists photo_panel_variant (preference, removed at the pick)
+    alt write fails
+        DS-->>S: error
+        S-->>ST: keep B in memory for this run
+    end
+    S-->>P: variant changed
+    U->>ST: back to the main screen
+    P-->>U: tab and panel drawn with look B at once, same behaviour
+    Note over U,P: Postcondition: every look passes AC-01 to AC-18, only the look, full-open browsing and hiding while scrolling differ
+```
+
+Flow 10: in the review build, the owner picks a variant in the temporary Settings choice. The preference is written (if the write fails, the choice still holds in memory for this run) and the panel redraws at once with that look, with the same behaviour. AC-20 is not a runtime flow: the pick task removes the losing looks, the choice and its key before the release build, checked by the grep in §11.
+
+**Coverage (sequences, 2026-10-13).**
+
+| User story | Flows |
+|---|---|
+| US-01 | 1, 3 |
+| US-02 | 1, 4, 9 |
+| US-03 | 5 |
+| US-04 | 2, 6, 9 |
+| US-05 | 2, 7, 8 |
+| US-06 | 10 (AC-20 not runtime) |
+
+| AC | Shown in |
+|---|---|
+| AC-01 | Flow 3 (place, height, keyboard, scroll and page); Flow 1 (previews) |
+| AC-02 | Flow 3, no photo with words branch |
+| AC-03 | Flow 1, not busy branch |
+| AC-04 | Flow 1, tap a photo; Flow 4 |
+| AC-05 | Flow 4, all three branches |
+| AC-06 | Flow 4, scroll step; Flow 6, scroll branch |
+| AC-07 | Flow 5, opening steps |
+| AC-07b | Flow 5, zoom, browse, tap and Back steps |
+| AC-08 | Flow 2, settle step; Flow 6, drag back branch |
+| AC-09 | Flow 1 and Flow 5, file missing or decode fails branches |
+| AC-10 | Flow 2, Back; Flow 6, left-edge and drag back branches |
+| AC-11 | Flow 6, touch outside and scroll branches |
+| AC-12 | Flow 2 |
+| AC-13 | Flow 2 (words page); Flow 7 (dialogue page) |
+| AC-14 | Flow 2, up or down branch |
+| AC-15 | Flow 3, update branches |
+| AC-15b | Flow 8 |
+| AC-16 | Flow 3 (reads the current session only); Flow 8 (switches to the new session only) |
+| AC-17 | Flow 1, Flow 7 and Flow 9, busy branches |
+| AC-18 | Flow 9 |
+| AC-19 | Flow 10 |
+| AC-20 | Not runtime: a release step (the pick task removes the looks, the choice and the key; grep in §11) |
+
+**Flagged for design (not decided here).**
+- Flow 8: while the panel is open, every main-screen control ignores touches (§8 "Touch ownership"), so History, the drawer and the RESTORE offer can be reached only after the panel closes. The session-change rule still matters for a session that changes without such a touch. Check this against #22 and the main screen's code before `tasks`.
+- The persist steps are two `shared_preferences` keys (`photo_tab_top` in Flow 2, `photo_panel_variant` in Flow 10) and the existing session save. Nothing new goes into Isar, so there is no schema change and no index to add.
+
 ## 7. Deployment view
 
 Nothing new is deployed. The feature ships inside the existing phone app, through the usual store build, on Android and iOS. It brings no Worker change, no migration and no new permission. The only platform addition is the gesture exclusion handler in the Android `MainActivity` (ADR-0002), which is a no-op before Android 10. iOS needs nothing. Two builds matter:
