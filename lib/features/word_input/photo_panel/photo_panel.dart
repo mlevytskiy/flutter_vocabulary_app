@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:flutter/foundation.dart';
+
 import '../../../core/providers.dart';
+import '../../../core/services/system_gesture_exclusion.dart';
 import 'looks/looks.dart';
 import 'looks/photo_panel_look.dart';
 import 'photo_panel_controller.dart';
@@ -108,6 +111,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   Rect _page = Rect.zero;
   Size _overlay = Size.zero;
 
+  /// The rectangles last sent to Android's gesture exclusion, and the ones
+  /// this frame wants (ADR-0002).
+  late final SystemGestureExclusion _exclusion;
+  List<Rect> _sentRects = const [];
+  List<Rect> _wantedRects = const [];
+  double _devicePixelRatio = 1;
+  bool _sendScheduled = false;
+
   PhotoPanelLook get _look =>
       widget.look ?? lookFor(ref.watch(photoPanelVariantProvider));
 
@@ -115,6 +126,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   void initState() {
     super.initState();
     _openness = AnimationController(vsync: this, value: widget.controller.stop.openness);
+    _exclusion = ref.read(systemGestureExclusionProvider);
     _portal.show();
     widget.controller.addListener(_onControllerChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) => _watchScrolling());
@@ -134,6 +146,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   @override
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
+    if (_sentRects.isNotEmpty) _exclusion.clear();
     _watchedPosition?.isScrollingNotifier.removeListener(_onScrolling);
     _openness.dispose();
     _column.dispose();
@@ -307,6 +320,46 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       z.dispose();
     }
     _zooms.clear();
+  }
+
+  // The Android Back-gesture exclusion (ADR-0002).
+
+  /// What Android should leave to the app now: the tab while closed, the
+  /// handle while half-open, nothing in full-open or with no tab.
+  List<Rect> _exclusionFor(List<PhotoWithWords> photos) {
+    if (photos.isEmpty) return const [];
+    final look = _look;
+    switch (widget.controller.stop) {
+      case PanelStop.closed:
+        if (look.hidesTabWhileScrolling && _listScrolling) return const [];
+        final tab = tabSizeFor(look, photos.length);
+        final top = _page.top + _tabTop(_page.size, tab);
+        return [Rect.fromLTWH(_page.right - tab.width, top, tab.width, tab.height)];
+      case PanelStop.halfOpen:
+        final half = _panelRect(0.5);
+        return [Rect.fromLTWH(half.left, half.top, half.width, look.handleBarHeight)];
+      case PanelStop.fullOpen:
+        return const [];
+    }
+  }
+
+  /// Sends [rects] after this frame if they differ from what Android has.
+  void _want(List<Rect> rects) {
+    _wantedRects = rects;
+    if (_sendScheduled) return;
+    _sendScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendScheduled = false;
+      if (!mounted || listEquals(_wantedRects, _sentRects)) return;
+      _sentRects = _wantedRects;
+      debugPrint('VOCAB: photo panel exclusion $_sentRects');
+      if (_sentRects.isEmpty) {
+        _exclusion.clear();
+      } else {
+        _exclusion.setRects(_sentRects, devicePixelRatio: _devicePixelRatio);
+      }
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   // Drawing.
@@ -596,10 +649,12 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayChildBuilder: (context, info) {
-        if (photos.isEmpty) return const SizedBox.shrink();
         final origin = MatrixUtils.transformPoint(info.childPaintTransform, Offset.zero);
         _page = origin & info.childSize;
         _overlay = info.overlaySize;
+        _devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+        _want(_exclusionFor(photos));
+        if (photos.isEmpty) return const SizedBox.shrink();
         return _buildOverlay(context, photos);
       },
       child: const SizedBox.expand(),
