@@ -392,22 +392,21 @@ Each top-3 goal from §1 expanded into full scenarios. Numbers are spec §6 verb
 
 ## 11. Risks and technical debt
 
-<!-- 🎯 Why: ⭐ collects EVERYTHING that can break — not only the technical. Without §11 risks get
-     discussed at standups and lost; debt lives only in the head of whoever accepted it.
-     📋 Write: a risk/debt table — severity — mitigation — owner. Accepted debt in its own block.
-     📌 The first risk is often a product risk, not a technical one. That's normal. -->
-
-<!-- Severity literals: Low / Medium / High for regular risks; "Open question" for rows created by
-     a Save-as-OQ resolution during the Socratic walk (see references/socratic.md). -->
-
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| <e.g. Worker lag may reach hours during a downstream outage> | Medium | <alert >10 min, on-call playbook, retry backoff> | <DevOps> |
-| <e.g. No event-schema versioning in v1> | Medium | <ADR-NNNN planned for v2, tolerate unknown fields> | <Backend> |
-| Open architectural decision: <decision-headline> | Open question | Resolve before <stage trigger or YYYY-MM-DD>; <inline rationale from the Save-as-OQ> | <owner> |
+| The main screen pager of #22 (T19) is not built yet, and this design assumes T19's shape: a `PageView` only with dialogues, the words page as page 1, physics and the page offset reachable from the main screen's `State`. | Medium | Building starts after #22 is merged (spec §1). Re-check T19's code before `tasks` and adjust only the mounting (ADR-0001). Without dialogues the panel works with no pager at all. | Maksym |
+| The overlay paints above the main screen's drawer, SnackBar and "Analyzing photo..." overlay, so a missed case would show the tab over the open drawer, over the RESTORE offer, or let it open while busy. | Medium | Explicit rules for each (ADR-0001), each pinned by a widget test: hidden while the drawer is open, touches ignored while busy, lowest position above the floating-button row and a SnackBar, closed before another route is pushed. | Maksym |
+| The gesture exclusion is native and cannot be seen in widget tests. A stale rectangle leaves the tab unprotected or blocks Back where no tab is shown. Android honours only 200 dp per edge, and phone makers may differ. | Medium | The send points of ADR-0002 are widget-tested against a mocked channel. Every look's tab is ≤ 200 dp (asserted). Device pass on an Android phone with gesture navigation. A Dart-only inset can be added later without removing the channel. | Maksym |
+| The jump in a long list of variable-height, lazily built rows may land short or take several frames. | Medium | Estimated offset first, then a bounded `ensureVisible` loop (§4). Widget test with 200 mixed-height rows against the 500 ms target. | Maksym |
+| `word_input_screen.dart` is already 1693 lines, and this feature adds a controller, a `ScrollController`, row keys, `PopScope` and the rows' touch rule to it. A regression on the main screen breaks CLAUDE.md rule 3. | Medium | All panel logic lives in `photo_panel/`, and the screen only mounts and wires it. `tool/test.sh changed` runs the existing main-screen tests. The owner's "Behaviour that must not change" walkthrough (refactoring-plan.md) runs before release. | Maksym |
+| Full-open decodes large photos, and the spec sets no memory target for full-open. | Low | Decode at screen size and keep only the shown photo and its neighbours (§4). Watch the memory profiler in the device pass. | Maksym |
+| The losing looks, the variant provider, the `photo_panel_variant` key or the Settings choice outlive the pick (AC-20). | Low | One pick task removes them all. A grep for `photo_panel_variant` and `PhotoPanelVariant` must come back empty before the release build. | Maksym |
+| Spec §8 open questions still shape the build: two or three variants (default three, before `sdd:screens`); pager or scrolling list in full-open (each variant chooses, at the pick); a way to step to the next highlighted row (default no, before `sdd:tasks`); whether the tab hides while scrolling (each variant chooses, at the pick). | Low | Each is a `PhotoPanelLook` choice or a small addition to the shared behaviour (ADR-0003), so none changes this architecture. Resolve per spec §8. | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
-- <e.g. the entity is immutable / unversioned — OK for v1, may need audit versioning in v2>
+- Three looks and a temporary Settings choice live in the code until the pick. They are removed before release (AC-20).
+- Previews are decoded from the 1600 px files every time the panel is built. Stored thumbnails can be added later behind `photo_preview.dart` if the start or memory targets are missed.
+- The main screen's parallel per-row lists stay as they are (architecture.md §3). The row keys added for the jump are one more list kept in step with them.
 
 ## 12. Glossary
 
