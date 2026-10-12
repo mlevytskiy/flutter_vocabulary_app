@@ -15,27 +15,23 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 1. Introduction and goals
 
-<!-- 🎯 Why: durable memory of «what + the three dominant qualities + who cares». A year from
-     now nobody recalls which three qualities were critical for this system.
-     📋 Write: 1 ¶ intent + 3 lines of top-3 quality goals + a stakeholders table.
-     ¶4 is the override slot — critic `Override` resolutions emit «Decision override: <headline>
-     — rationale: <reason>» bullets here so downstream skills see the deliberate choice. -->
-
-**Intent.** <One paragraph from spec §2 Goals — what we're building and for whom.>
+**Intent.** Let the learner see the photos behind the current session without leaving the main screen, and go from a photo to the word rows that came from it in one tap (spec §1, §2). On the main screen's words page, while the current session has at least one **photo with words**, a **photo tab** sits on the right side with mini previews of those photos. A tap or a short drag to the left opens the **photo panel** **half-open**: a column of small photos beside the still-visible word rows, where tapping a photo makes it the **selected photo**, scrolls the list to its first row and highlights all its rows. A longer drag, or the panel's expand control, opens it **full-open**: the photos large, starting at the selected photo, which can be zoomed with two fingers. Back, a drag back or a tap on the word list close it one step at a time. Two or three **design variants** share all this behaviour and differ only in look, in how full-open browses the large photos, and in whether the tab hides while the list scrolls. The owner picks one on a phone behind a temporary Settings switch, and the rest are removed before release (AC-19, AC-20). Without a photo with words, the main screen is exactly as today (AC-02).
 
 **Top-3 quality goals (1-liners; full scenarios in §10):**
 
-1. <e.g. "Availability under partial failure of a downstream module">
-2. <e.g. "Read performance for the dashboard under data-scale growth">
-3. <e.g. "Recoverability with <30 min RTO">
+1. **The tab is gesture-safe.** A drag that starts on the photo tab never sends the app to the background and never changes the page, and a tap opens the panel just as a drag does: 0 Back or page changes out of 20 drags started on the tab (spec §6 "Gesture safety"; AC-12, AC-13, AC-14).
+2. **Opening and jumping feel immediate and smooth.** Half-open is fully settled ≤ 300 ms after the tap, drags and settles drop ≤ 5 % of frames, and the first highlighted row is in view ≤ 500 ms after the tap in a session of 200 word rows (spec §6 "Opening from a tap", "Animation smoothness", "Jump to a photo's words"; AC-03, AC-04, AC-08).
+3. **The main screen stays as it is, and light.** With no photo with words nothing changes; with 50 photos with words the start grows by ≤ 100 ms and the tab and half-open panel use ≤ 30 MB of picture memory (spec §6 "Main screen start with many photos", "Memory for previews"; AC-02, AC-15).
 
 **Stakeholders.**
 
 | Role | Interest | Sign-off owner? |
 |---|---|---|
-| <author role from glossary> | <feature usage> | No |
-| <consumer role from glossary> | <read usage> | No |
-| Tech Lead | SAD approval | Yes |
+| learner | Sees the session's photos on the main screen, finds a photo's word rows, reads the photographed page large | No |
+| learner (the owner choosing the look) | Switches between the design variants on a phone, picks one, has the others removed (US-06) | No |
+| Tech Lead (Maksym) | SAD approval | Yes |
+
+Security review is N/A (spec §6.1): nothing new is stored beyond the tab's height and, during the review, the chosen variant, and nothing is sent.
 
 <!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
 
