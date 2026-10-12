@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -312,5 +313,97 @@ class SubtitleImportPrefsNotifier extends _$SubtitleImportPrefsNotifier {
   void _update(SubtitleImportPrefs next) {
     _setByLearner = true;
     state = next;
+  }
+}
+
+/// Short name used across the app and the design docs.
+final photoTabTopProvider = photoTabTopNotifierProvider;
+
+/// The photo tab's top, in logical pixels from the top of the main screen's
+/// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
+/// up or down and the height is kept across restarts (spec AC-14). A display
+/// preference: never on `Session`. Clamped on use by the tab ([clamp]).
+@Riverpod(keepAlive: true)
+class PhotoTabTopNotifier extends _$PhotoTabTopNotifier {
+  static const prefsKey = 'photo_tab_top';
+
+  /// Beside the first word rows (spec AC-01).
+  static const firstDefault = 40.0;
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  double build() {
+    loaded;
+    return firstDefault;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getDouble(prefsKey);
+    // A drag made before the stored value arrived wins over it.
+    if (_setByLearner || stored == null) return;
+    state = stored;
+  }
+
+  /// A failed write keeps the in-memory value (sad §8 "Error handling").
+  Future<void> set(double top) async {
+    _setByLearner = true;
+    state = top;
+    try {
+      await (await SharedPreferences.getInstance()).setDouble(prefsKey, top);
+    } catch (e) {
+      debugPrint('VOCAB: photo panel: tab height not saved: $e');
+    }
+  }
+
+  /// Keeps the tab between the top bar ([min]) and the floating-button row
+  /// ([max]); when the screen is too short for both, the top bar wins.
+  static double clamp(double top, {required double min, required double max}) =>
+      max < min ? min : top.clamp(min, max);
+}
+
+/// The photo panel's design variants, compared by the owner on a phone
+/// (side-bar-for-main-screen ADR-0003). Removed at the design pick (T20,
+/// spec AC-20) together with [photoPanelVariantProvider] and its key.
+enum PhotoPanelVariant { a, b, c }
+
+/// Short name used across the app and the design docs. Removed at the pick.
+final photoPanelVariantProvider = photoPanelVariantNotifierProvider;
+
+/// The review-only design variant, written by the temporary "Photo panel
+/// design" choice in Settings and read by the photo panel. Persisted like the
+/// word detail mode; starts at [PhotoPanelVariant.a]. Removed at the pick.
+@Riverpod(keepAlive: true)
+class PhotoPanelVariantNotifier extends _$PhotoPanelVariantNotifier {
+  static const prefsKey = 'photo_panel_variant';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  PhotoPanelVariant build() {
+    loaded;
+    return PhotoPanelVariant.a;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(prefsKey);
+    if (_setByLearner) return;
+    state = PhotoPanelVariant.values.where((v) => v.name == stored).firstOrNull ??
+        PhotoPanelVariant.a;
+  }
+
+  /// A failed write keeps the chosen variant in memory (sad §8).
+  Future<void> set(PhotoPanelVariant variant) async {
+    _setByLearner = true;
+    state = variant;
+    try {
+      await (await SharedPreferences.getInstance()).setString(prefsKey, variant.name);
+    } catch (e) {
+      debugPrint('VOCAB: photo panel: design variant not saved: $e');
+    }
   }
 }
