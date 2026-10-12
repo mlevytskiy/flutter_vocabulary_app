@@ -43,6 +43,8 @@ class PanelHost {
   final scroll = ScrollController();
   final selections = <String?>[];
   final tappedRows = <int>[];
+  final field = TextEditingController(text: 'half-typed');
+  final fieldFocus = FocusNode();
 
   Widget build({Key? key}) => ProviderScope(
         key: key,
@@ -61,14 +63,21 @@ class PanelHost {
             body: Stack(
               children: [
                 ListView.builder(
+                  key: const Key('host-list'),
                   controller: scroll,
                   itemCount: rows,
                   itemBuilder: (context, i) => SizedBox(
                     height: 60,
-                    child: InkWell(
-                      onTap: () => tappedRows.add(i),
-                      child: Text('row $i'),
-                    ),
+                    child: i == 0
+                        ? TextField(
+                            key: const Key('host-field'),
+                            controller: field,
+                            focusNode: fieldFocus,
+                          )
+                        : InkWell(
+                            onTap: () => tappedRows.add(i),
+                            child: Text('row $i'),
+                          ),
                   ),
                 ),
                 Positioned.fill(
@@ -104,4 +113,10 @@ Finder get tabFinder => find.byKey(PhotoPanel.tabKey);
 Rect tabRect(WidgetTester tester) => tester.getRect(tabFinder);
 
 /// The words page: below the AppBar, the whole width.
-Rect pageRect(WidgetTester tester) => tester.getRect(find.byType(ListView));
+Rect pageRect(WidgetTester tester) => tester.getRect(find.byKey(const Key('host-list')));
+
+Finder get panelFinder => find.byKey(PhotoPanel.panelKey);
+
+Rect panelRect(WidgetTester tester) => tester.getRect(panelFinder);
+
+Finder smallPhoto(String id) => find.byKey(PhotoPanel.smallPhotoKey(id));

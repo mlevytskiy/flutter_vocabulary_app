@@ -12,7 +12,7 @@
 | T5 | [Show a photo from the kept file at preview size, with a not-available placeholder](./T5-ui-photo-preview.md) | ui | Maksym | S | — | done |
 | T6 | [Define the PhotoPanelLook interface and build look A](./T6-ui-look-interface-and-look-a.md) | ui | Maksym | M | T3, T5 | done |
 | T7 | [Draw the photo tab in an overlay and let it be dragged up or down](./T7-ui-photo-panel-overlay-and-tab.md) | ui | Maksym | M | T2, T3, T6 | done |
-| T8 | [Open the panel half-open and full-open, settle at stops, and step back](./T8-ui-open-settle-and-close.md) | ui | Maksym | M | T1, T7 | todo |
+| T8 | [Open the panel half-open and full-open, settle at stops, and step back](./T8-ui-open-settle-and-close.md) | ui | Maksym | M | T1, T7 | done |
 | T9 | [Show the large photos in full-open with zoom and neighbour-only decoding](./T9-ui-full-open-viewer.md) | ui | Maksym | M | T8 | todo |
 | T10 | [Send the tab or handle rectangle to the gesture exclusion service at every change](./T10-wiring-gesture-exclusion-sends.md) | wiring | Maksym | S | T4, T8 | todo |
 | T11 | [Make every panel state reachable and closable with a screen reader](./T11-ui-panel-semantics.md) | ui | Maksym | S | T9 | todo |
