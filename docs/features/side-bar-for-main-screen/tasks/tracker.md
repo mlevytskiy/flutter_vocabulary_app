@@ -6,7 +6,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
 | T1 | [Add the pure settle rule and the photo panel controller](./T1-domain-settle-rule-and-controller.md) | domain | Maksym | S | — | done |
-| T2 | [Derive the current session's photos with words](./T2-app-photos-with-words.md) | app | Maksym | S | — | todo |
+| T2 | [Derive the current session's photos with words](./T2-app-photos-with-words.md) | app | Maksym | S | — | done |
 | T3 | [Keep the photo tab's height and the review-only design variant in preferences](./T3-infra-panel-preferences.md) | infra | Maksym | S | — | todo |
 | T4 | [Add the gesture exclusion service and its Android channel handler](./T4-infra-gesture-exclusion-bridge.md) | infra | Maksym | S | — | todo |
 | T5 | [Show a photo from the kept file at preview size, with a not-available placeholder](./T5-ui-photo-preview.md) | ui | Maksym | S | — | todo |
