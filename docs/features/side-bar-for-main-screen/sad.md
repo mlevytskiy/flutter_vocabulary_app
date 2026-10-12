@@ -302,25 +302,17 @@ Flow 2: a touch on the tab reaches the app because its area is excluded. If the 
 
 ## 7. Deployment view
 
-<!-- 🎯 Why: the TOPOLOGY DevOps must know without reading the deploy charts — how many replicas,
-     where the background worker lives, AT WHAT NUMBERS we scale.
-     📋 Write: 2–3 sentences on topology + monitoring + concrete threshold numbers.
-     📌 e.g. «500 authors → partition by quarter» (not «we'll think about scale later»).
-     🎯 N/A allowed for XS/S that reuses an existing deployment unit with no change.
-     Deployment-diagram scaffold → templates/deployment.md. -->
-
-<Topology in 2–3 sentences. Where it runs, replicas, scaling thresholds.>
+Nothing new is deployed. The feature ships inside the existing phone app, through the usual store build, on Android and iOS. It brings no Worker change, no migration and no new permission. The only platform addition is the gesture exclusion handler in the Android `MainActivity` (ADR-0002), which is a no-op before Android 10. iOS needs nothing. Two builds matter:
+- **The review build.** Built from the feature branch with all looks and the temporary "Photo panel design" choice in Settings. The owner compares the variants on their phone (AC-19).
+- **The release build.** Built only after the pick task has removed the losing looks, the choice and its stored key (AC-20).
 
 **Monitoring:**
-- <Metrics — e.g. `<metric_name>`>
-- <Alerts — e.g. «worker lag > 10 min → page on-call»>
-- <Tracing — e.g. spans on the request boundary>
+- No telemetry: the app sends nothing about the panel (spec §6.1). Debug logs follow the screen's `debugPrint('VOCAB: …')` style: the panel's stop changes, the photo count, and each exclusion rectangle sent.
+- The release gate is the owner's device pass on an Android phone with gesture navigation (spec §6, §7). It covers 20 drags on the tab with 0 Back or page changes, the timed opening and jump, the performance overlay for dropped frames, and the memory profiler with 50 photos with words.
 
 **Scaling thresholds:**
-- <e.g. comfortable in one table up to N rows/year>
-- <e.g. partition by quarter above N rows/year>
-
-<!-- For XS/S with no deployment change: <!-- N/A: reuses existing deployment unit, no infra change --> -->
+- The panel is built for the spec's sizes: up to 50 photos with words and 200 word rows. Previews are lazy and small, so a larger session costs more file reads but not more memory at once.
+- Above about 200 dp, a tab would lose its gesture protection (Android's limit), so every look keeps the tab at or below 200 dp (ADR-0002, ADR-0003).
 
 ## 8. Crosscutting concepts
 
