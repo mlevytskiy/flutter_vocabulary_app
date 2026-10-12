@@ -20,6 +20,11 @@ import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
+import 'photo_panel/looks/looks.dart';
+import 'photo_panel/photo_panel.dart';
+import 'photo_panel/photo_panel_controller.dart';
+import 'photo_panel/photos_with_words.dart';
+import 'photo_panel/row_jump.dart';
 import 'quizlet_import_flow.dart';
 import 'subtitle_import_flow.dart';
 import 'widgets/photo_source_dialog.dart';
@@ -142,6 +147,31 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     }
     return _rowKeys[index];
   }
+
+  /// Row [index]'s key, or null past the last row (for `jumpToRow`).
+  GlobalKey? _rowKeyOrNull(int index) =>
+      index < _wordPairs.length ? _rowKey(index) : null;
+
+  /// side-bar-for-main-screen: the photo panel's stop and selected photo
+  /// (sad §4 "State placement"); read for Back and the rows' highlight.
+  final PhotoPanelController _photoPanel = PhotoPanelController();
+
+  void _onPhotoPanelChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// A photo was selected in the half-open panel: the list scrolls as little
+  /// as needed to its first row in the list's current order (spec AC-04).
+  /// Unselecting never scrolls (spec AC-05).
+  void _onPhotoSelected(String? id) {
+    if (id == null) return;
+    final photo = ref
+        .read(photosWithWordsProvider)
+        .where((p) => p.source.id == id)
+        .firstOrNull;
+    if (photo == null || photo.rows.isEmpty) return;
+    jumpToRow(_listScroll, photo.rows.first, _rowKeyOrNull);
+  }
   bool _isRecoveringLostPhoto = false;
 
   /// Which session the rows on screen were built from. Tracked as an id rather
@@ -161,6 +191,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _photoPanel.addListener(_onPhotoPanelChanged);
     _pronunciation = ref.read(pronunciationServiceProvider);
     _addControllersForIndex(0);
     // Request focus on the first field after the first frame
@@ -1464,13 +1495,17 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       node.dispose();
     }
     _listScroll.dispose();
+    _photoPanel.dispose();
     super.dispose();
   }
 
   Widget _buildRowItem(int index,
-      {required bool isDragMode, required WordDetailMode detailMode}) {
+      {required bool isDragMode,
+      required WordDetailMode detailMode,
+      Decoration? highlight}) {
     return WordRowItem(
       key: _rowKey(index),
+      highlight: highlight,
       index: index,
       detailMode: detailMode,
       definitionController: _definitionControllers[index],
@@ -1511,6 +1546,17 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       onCloseTranslationOptions: () => _closeTranslationOptions(index),
       onSpeak: (accent) => _speak(index, accent),
     );
+  }
+
+  /// The selected photo's rows and the look's highlight for them (spec AC-04);
+  /// with nothing selected every row is today's row.
+  (Set<int>, Decoration?) _photoHighlight(List<PhotoWithWords> photos) {
+    final id = _photoPanel.selectedId;
+    if (id == null) return (const {}, null);
+    final rows = photos.where((p) => p.source.id == id).firstOrNull?.rows;
+    if (rows == null) return (const {}, null);
+    final look = lookFor(ref.watch(photoPanelVariantProvider));
+    return (rows.toSet(), look.rowHighlight(context));
   }
 
   /// Drops the keyboard as the dots popup opens, so its body gets the full
@@ -1575,7 +1621,24 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final isDragMode = ref.watch(dragModeProvider);
     final detailMode = ref.watch(wordDetailModeProvider);
 
-    return Scaffold(
+    // side-bar-for-main-screen: the panel follows the photos with words; a
+    // vanished selected photo is unselected, none left closes it (AC-15).
+    ref.listen(photosWithWordsProvider, (_, photos) {
+      _photoPanel.retain([for (final p in photos) p.source.id]);
+    });
+    final (highlightedRows, highlight) =
+        _photoHighlight(ref.watch(photosWithWordsProvider));
+    Decoration? highlightFor(int index) =>
+        highlightedRows.contains(index) ? highlight : null;
+
+    // Back steps the open photo panel back one stop and never leaves the
+    // screen while it is open (spec AC-10). Closed, Back is as before.
+    return PopScope(
+      canPop: !_photoPanel.isOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _photoPanel.stepBack();
+      },
+      child: Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: true,
         title: const Text('English Vocabulary'),
@@ -1635,7 +1698,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _wordPairs.length,
                 onReorder: _reorderItems,
-                itemBuilder: (context, index) => _buildRowItem(index, isDragMode: true, detailMode: detailMode),
+                itemBuilder: (context, index) => _buildRowItem(index,
+                    isDragMode: true, detailMode: detailMode, highlight: highlightFor(index)),
                 proxyDecorator: (child, index, animation) {
                   return Material(
                     color: Colors.transparent,
@@ -1647,8 +1711,22 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 controller: _listScroll,
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _wordPairs.length,
-                itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
+                itemBuilder: (context, index) => _buildRowItem(index,
+                    isDragMode: false, detailMode: detailMode, highlight: highlightFor(index)),
               ),
+          // The photo tab and panel paint above the route through an overlay;
+          // this child only marks the words page's place (ADR-0001).
+          Positioned.fill(
+            child: PhotoPanel(
+              controller: _photoPanel,
+              busy: _isAnalyzingPhoto,
+              // Kept free for the floating-button row, and the RESTORE
+              // SnackBar while it is up (spec AC-01).
+              bottomReserve: 80 + (_restoreSnackBarVisible ? 56 : 0),
+              scrollController: _listScroll,
+              onSelected: _onPhotoSelected,
+            ),
+          ),
           if (_isAnalyzingPhoto)
             Container(
               color: Colors.black45,
@@ -1704,6 +1782,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
           ],
         ),
+      ),
       ),
     );
   }
