@@ -13,7 +13,9 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    to the shared page; mnemonic-story added a settings button on the Words screen, the group line and group pager on the
    learn page, and the story, story runs and run details screens; get-words-from-subtitles-improvment added the "Get dialogues from
    subtitles" switch in Settings, the main screen pager with its dialogue pages, the dialogue pages and scene pictures on
-   the shared page, the "Dialogs from movie" exercise and its dialogue screen). Keep `popup_menu_2`, `flutter_speed_dial`,
+   the shared page, the "Dialogs from movie" exercise and its dialogue screen; side-bar-for-main-screen adds the photo tab
+   and photo panel on the main screen's words page, the highlighted word rows of a selected photo, and, until the design
+   pick, the "Photo panel design" choice in Settings). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models (approved: `Exercise` by learn-part-step-1; `WordGroup`, `StoryRun`, `StoryStep` and `WordPair.rowId` by mnemonic-story, ADR-0003; `FilmDialogue`, `WordGroup.dialogueId`,

@@ -4,7 +4,7 @@ owner: "Maksym (learner, app owner)"
 reviewers: ["Maksym (Tech Lead)"]
 updated_at: "2026-10-13"
 feature_size: "M"
-target_surfaces: []  # filled in §4 — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
+target_surfaces: [mobile-app]  # decided in §4 (inline: one surface) — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
 ---
 
 # Software Architecture Document — side-bar-for-main-screen
@@ -96,19 +96,51 @@ The context is deliberately small: one person, the app, and the phone's system n
 
 ## 4. Solution strategy
 
-<!-- 🎯 Why: the 3–4 STRATEGIC PILLARS every ADR grows from. Without §4 each ADR looks random —
-     there's no umbrella. ⭐ The densest section — the blast-radius gate fires almost always here
-     (decisions are irreversible + multi-module).
-     📋 Write: 3–4 choices; each a heading + 2–3 sentences of rationale.
-     📌 «Store content as a table of typed blocks» is a pillar — ADR-0001 grows from it. -->
-
 **Top strategic choices (the seeds for ADRs):**
 
-1. **<e.g. Module isolation through events>** — <2–3 sentences citing quality goals + constraints>.
-2. **<e.g. Single-store persistence>** — <2–3 sentences>.
-3. **<e.g. Server-rendered read side>** — <2–3 sentences>.
+1. **One surface: the phone app** (decided inline, below the ADR gate: one surface, and the alternatives are excluded by spec §3). `target_surfaces: [mobile-app]`. The feature lives entirely in the Flutter app, on the main screen's words page, plus one temporary Settings entry and one small Android channel handler. The Worker, the shared page, the words table, History and the dialogue pages are not touched (spec §3). This serves all three quality goals.
 
-Each tactical decision in later sections should trace to one of these seeds. Tactical decisions that *contradict* a strategic choice are red flags — surface them in §11.
+2. **The photo tab and panel are an overlay above the pager, driven by one openness value** ([ADR-0001](adr/0001-draw-the-photo-tab-and-panel-in-an-overlay-above-the-pager-driven-by-one-openness-value.md)).
+   - `PhotoPanel` paints through an `OverlayPortal` just above the main screen's route. Its state is one 0→1 value in one `AnimationController`, with a stop at half-open (0.5).
+   - A drag moves the value directly. On release, a pure rule settles at the nearest stop, or one further after a flick, and any drag to the left from closed opens at least half-open (AC-08). Each photo's rectangle is interpolated between its small and its large place, so the photos grow into full-open (AC-07).
+   - Because the overlay is hit-tested first, a touch on the tab never reaches the pager or the rows (AC-13, AC-14). In half-open only the panel is hit-testable, so the list beside it scrolls (AC-06).
+   - The overlay also paints above the main screen's drawer, SnackBar and "Analyzing photo..." overlay, so the panel handles each explicitly: it is hidden while the drawer is open, ignores touches while busy (AC-17), keeps its lowest position clear of the floating buttons and a SnackBar, and closes before another route is pushed.
+   - This serves quality goals 1 and 2.
+
+3. **The tab is excluded from the Android Back gesture through a platform channel** ([ADR-0002](adr/0002-exclude-the-photo-tab-from-the-android-back-gesture-through-a-platform-channel.md)).
+   - The tab may touch the right edge. `systemGestureExclusionProvider` sends the tab's rectangle to `MainActivity` over `MethodChannel('vocab/system_gesture_exclusion')`, which sets the window's gesture exclusion rectangles on Android 10 and later. While half-open, it sends the panel's handle rectangle instead.
+   - The rectangle is resent after every move and layout change, and cleared whenever no tab is shown. Every tab is at most 200 dp tall, Android's limit per edge.
+   - Swipes from the rest of the right edge stay Back (AC-12). With the panel open, an unexcluded system Back only steps the panel back through `PopScope` (AC-10).
+   - This serves quality goal 1.
+
+4. **One shared behaviour, one pluggable look per design variant** ([ADR-0003](adr/0003-share-one-panel-behaviour-and-plug-in-each-design-variants-look.md)).
+   - `PhotoPanel` owns all of AC-01 to AC-18. Each variant implements `PhotoPanelLook`, which covers only what AC-19 allows: the tab, the small and large photos and their places, how full-open browses, the row highlight, and whether the tab hides while scrolling.
+   - Three looks by default (spec §8). The choice is `photoPanelVariantProvider` (`shared_preferences`), set from a temporary Settings entry.
+   - The pick removes the losing looks, the provider and the entry (AC-20).
+   - This serves quality goals 1–3, because every variant runs the same tested behaviour.
+
+**Decided inline (below the ADR gate, from the assumptions ledger the owner accepted on 2026-10-13):**
+
+- **Mobile UI architecture: unchanged.** The app stays a cross-platform Flutter phone app with typed routes. The panel opens no route: closed, half-open and full-open are three states of one overlay over the words page (ux-flows "Platform decisions"). No new package.
+- **State placement (CLAUDE.md rule 2).**
+  - The screen's `State` owns a `PhotoPanelController` (a `ChangeNotifier`): the current stop and the selected photo. Both are transient and never saved (CONTEXT "selected photo").
+  - `PhotoPanel`'s own `State` owns the `AnimationController`, the drag in progress, and the preview futures.
+  - The screen reads the controller for `PopScope`, the rows' touch rule and the pager's physics.
+- **Photos with words** are derived, not stored. `photosWithWordsProvider` (in `photo_panel/photos_with_words.dart`) watches `wordInputNotifierProvider` and returns the current session's sources of kind photo that at least one word row links to by `sourceId`, each with those rows' ids, in the order of `Session.sources`, which is the order they were added (oldest first, AC-03). It updates on every session change, so the tab follows deletes and new photos at once (AC-15) and only ever shows the current session (AC-16).
+- **The tab's height is a persisted preference.** `photoTabTopProvider`, a keepAlive notifier in `lib/core/providers.dart` like `wordDetailModeProvider`, stores the tab's top in logical pixels from the top of the words page under `shared_preferences` key `photo_tab_top`. The first default puts the tab beside the first word rows (AC-01). A stored value is clamped on use so the tab stays fully on screen, below the AppBar and above the floating-button row (AC-14).
+- **The design variant is a persisted preference during the review only.** `photoPanelVariantProvider` (key `photo_panel_variant`) is written from a temporary "Photo panel design" choice in Settings, styled like the existing word detail mode choice. There is no build flag (CLAUDE.md rule 4): the choice exists on the branch until the pick task removes it (AC-20).
+- **Previews are decoded from the kept 1600 px files at preview size, with no stored thumbnails.**
+  - The tab and the half-open column decode with `cacheWidth` at the look's preview width times the device pixel ratio, as the words table's `_PhotoStack` does.
+  - Files are read lazily after the first frame. The tab draws at most three mini previews plus the count, and the half-open column is a lazy builder.
+  - Full-open decodes at screen size and keeps only the shown photo and its neighbours.
+  - An unreadable file (`SourcePhotoStore.read` returns `null`, or decoding fails) shows the "not available" placeholder, which still selects its rows (AC-09).
+- **Jump to a photo's rows.** The word list (both `ListView.builder` and the drag-mode `ReorderableListView.builder`) gets a `ScrollController`, and each row a key. A tap on a photo first jumps to an estimated offset (row index × the average height of the rows built so far), then calls `Scrollable.ensureVisible` on the first linked row in the list's current order, repeating for a bounded number of frames until that row is built and in view (AC-04). No package.
+- **Highlight.** `WordRowItem` gets an optional `highlight` decoration from the look. `null`, which is every row when nothing is selected, draws exactly today's row (CLAUDE.md rule 3). The highlight follows the selected photo's rows and survives scrolling and full-open browsing (AC-05, AC-06, AC-07b).
+- **Session change and keyboard.** When the current session's id changes (History, the drawer, RESTORE, a new session), the panel closes and the selection clears (AC-15b). Opening the panel unfocuses the focused field, and its text stays in its controller (AC-03).
+- **Zoom.** Full-open zooms with `InteractiveViewer`, as the story picture does. While a photo is zoomed, a drag pans it, and the drag back starts only on the panel's edge or handle (AC-07b, AC-10). Nothing is imported from the words table feature.
+- **Code home.** New code goes in `lib/features/word_input/photo_panel/`. Shared pieces the Settings screen also needs (the variant provider) and the gesture exclusion service go in `lib/core/`.
+
+Each tactical decision in later sections traces to one of these seeds. A decision that contradicts one is surfaced in §11.
 
 ## 5. Building block view
 
