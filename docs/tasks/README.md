@@ -79,16 +79,19 @@ because 11 is the task that owns the row's popup behaviour. Everything else is s
 
 ## How to check a task
 
+Which tests to run, and when, is in [`../testing.md`](../testing.md): `tool/test.sh smoke` while
+developing, `tool/test.sh changed` before a commit, the full regression only when the owner asks.
+
 This repo has two verification surfaces, and they are not symmetrical:
 
 | | Command | Notes |
 |---|---|---|
-| Flutter app | `flutter analyze` · `flutter test` | `test/session_store_test.dart` + `test/word_input_launch_rule_test.dart` (task-03 v2; they replaced `test/word_store_test.dart`; `test/session_publish_service_test.dart` from task-05 is plain `MockClient`, no Isar) each call `Isar.initializeIsarCore(download: true)` in `setUpAll` — **the first run needs network**, it fetches the native Isar library (`libisar.dylib` / `libisar.so` / `isar.dll`) into the **project root** — gitignored — and every run after that is offline. `TestWidgetsFlutterBinding` forces every HTTP request to 400, so both files lift `HttpOverrides.global` for the duration of that one download and put it straight back |
+| Flutter app | `flutter analyze` · `tool/test.sh changed` (full: `flutter test`) | `test/session_store_test.dart` + `test/word_input_launch_rule_test.dart` (task-03 v2; they replaced `test/word_store_test.dart`; `test/session_publish_service_test.dart` from task-05 is plain `MockClient`, no Isar) each call `Isar.initializeIsarCore(download: true)` in `setUpAll` — **the first run needs network**, it fetches the native Isar library (`libisar.dylib` / `libisar.so` / `isar.dll`) into the **project root** — gitignored — and every run after that is offline. `TestWidgetsFlutterBinding` forces every HTTP request to 400, so both files lift `HttpOverrides.global` for the duration of that one download and put it straight back |
 
 `flutter analyze` currently ends on 3 pre-existing `prefer_const_constructors` **infos** in
 `lib/features/word_input/widgets/word_row_item.dart` (they arrived with task-04 and are unrelated
 to task-03), so it exits 1. Treat "clean" as "no new issues" until someone clears those three.
-| Worker | `cd vocab-photo-api && npm run typecheck` | **no test runner is installed**; behaviour is checked with `curl` + `npx wrangler tail` |
+| Worker | `cd vocab-photo-api && npm run typecheck` · `npm test -- test/<file>.test.mjs` (full: `npm run test:full`) | `node --test` against a local `wrangler dev` (see `vocab-photo-api/README.md` § Tests); the deployed Worker is still checked with `curl` + `npx wrangler tail` |
 
 So an acceptance criterion here is one of: a command that exits clean, a `curl` whose response body
 is quoted, or an observation on a real device. Where a task says "on device", it means a real phone

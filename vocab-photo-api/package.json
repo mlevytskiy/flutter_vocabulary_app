@@ -9,6 +9,7 @@
     "tail": "wrangler tail",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.client.json",
     "test": "node scripts/test.mjs",
+    "test:full": "node scripts/test.mjs --full",
     "test:long": "VOCAB_API_LONG_TESTS=1 node scripts/test.mjs test/rows.test.mjs"
   },
   "devDependencies": {

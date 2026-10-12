@@ -173,7 +173,14 @@ async function twoPartnerSession({ durationMs, autofillCells }) {
   return statuses;
 }
 
-test("two partners on one network, with a column autofill at 3 saves a second, are never refused (short)", async () => {
+// The two paced sessions below are soak tests: they spend real minutes at a
+// real pace. The page write limit counts writes per address in a wall-clock
+// minute, and the test above already shows 300 writes in one minute all land,
+// which covers the ~220 these send in their busiest minute. So the full
+// regression skips them; `npm run test:long` runs both (docs/testing.md).
+const soak = { skip: !process.env.VOCAB_API_LONG_TESTS && "set VOCAB_API_LONG_TESTS=1 (npm run test:long)" };
+
+test("two partners on one network, with a column autofill at 3 saves a second, are never refused (short)", soak, async () => {
   // The busiest stretch of the 15-minute session: a full minute of autofill beside the other partner.
   const statuses = await twoPartnerSession({ durationMs: 65_000, autofillCells: 500 });
   assert.ok(statuses.length > 200, `only ${statuses.length} writes were sent`);
@@ -182,7 +189,7 @@ test("two partners on one network, with a column autofill at 3 saves a second, a
 
 test(
   "a 15-minute two-partner session with a 500-cell column autofill sees no 429 (AC-35)",
-  { skip: !process.env.VOCAB_API_LONG_TESTS && "set VOCAB_API_LONG_TESTS=1 (npm run test:long)", timeout: 17 * 60_000 },
+  { ...soak, timeout: 17 * 60_000 },
   async () => {
     const statuses = await twoPartnerSession({ durationMs: 15 * 60_000, autofillCells: 500 });
     assert.ok(statuses.length > 900, `only ${statuses.length} writes were sent`);

@@ -2,7 +2,9 @@
 // `wrangler dev` and passes its address, secrets file and local state dir in
 // the environment.
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 
 if (!process.env.VOCAB_API_BASE_URL) {
@@ -110,10 +112,36 @@ function wranglerLocal(args) {
   return res.stdout;
 }
 
-/** Runs SQL on the local D1 database and returns the rows of the last statement. */
+let localDb;
+
+/**
+ * The SQLite file `wrangler dev` keeps the local D1 database in, opened once
+ * per test file. Local D1 runs in WAL mode, so this connection and the
+ * Worker's see each other's committed writes -- the same thing
+ * `wrangler d1 execute --local` relies on, minus its ~3 s start per call.
+ * `null` when the file is not where miniflare keeps it today.
+ */
+function openLocalDb() {
+  if (localDb !== undefined) return localDb;
+  const dir = join(process.env.VOCAB_API_STATE_DIR, "v3", "d1", "miniflare-D1DatabaseObject");
+  const file = existsSync(dir) && readdirSync(dir).find((name) => name.endsWith(".sqlite") && name !== "metadata.sqlite");
+  localDb = file ? new DatabaseSync(join(dir, file)) : null;
+  localDb?.exec("PRAGMA busy_timeout = 5000");
+  return localDb;
+}
+
+/**
+ * Runs SQL on the local D1 database and returns the rows of the last statement.
+ * Falls back to `wrangler d1 execute` (slow) when the file cannot be found.
+ */
 export function d1(sql) {
-  const out = JSON.parse(wranglerLocal(["d1", "execute", "DB", "--json", "--command", sql]));
-  return out.at(-1).results;
+  const db = openLocalDb();
+  if (!db) return JSON.parse(wranglerLocal(["d1", "execute", "DB", "--json", "--command", sql])).at(-1).results;
+  // `prepare` takes the first statement only; `sourceSQL` says where it ended.
+  const stmt = db.prepare(sql);
+  const rows = stmt.all().map((row) => ({ ...row }));
+  const rest = sql.slice(stmt.sourceSQL.length);
+  return rest.trim().replace(/^;+$/, "") ? d1(rest) : rows;
 }
 
 /** Writes a value into the local `SESSIONS` KV namespace. */
@@ -129,8 +157,8 @@ export function kvDelete(key) {
 /**
  * Sends a request to the local Worker, retried once when the connection is
  * reset before any answer. `fetch` reuses keep-alive sockets, and after a test
- * pauses for a wrangler subprocess (`d1`, `kvPut`) its next request now and
- * then goes out on a socket the local server has just dropped -- the request
+ * pauses for a wrangler subprocess (`kvPut`, or `d1` on its fallback) its next
+ * request now and then goes out on a socket the local server has just dropped -- the request
  * never reaches the Worker, so sending it again is safe (and every write the
  * tests send is one a retry cannot harm: a publish makes a fresh link, a
  * repeated photo upload is a no-op).

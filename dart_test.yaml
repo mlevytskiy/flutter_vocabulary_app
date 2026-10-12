@@ -1,0 +1,7 @@
+# Test tiers (docs/testing.md).
+#   flutter test --tags smoke    the smoke tier: app_smoke_test.dart plus the core
+#                                files tagged @Tags(['smoke']) -- run it while developing
+#   flutter test test/x_test.dart  one feature's tests
+#   flutter test                 the full regression -- only when the owner asks
+tags:
+  smoke:
