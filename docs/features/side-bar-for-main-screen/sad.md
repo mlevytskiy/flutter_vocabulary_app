@@ -37,30 +37,30 @@ Security review is N/A (spec §6.1): nothing new is stored beyond the tab's heig
 
 ## 2. Constraints
 
-<!-- 🎯 Why: §4 strategy only works when §2 has fixed WHAT IS ALREADY FIXED — stack, versions,
-     deadline, regulatory. This is an input, not an output.
-     📋 Write: four blocks — Technical / Organisational / Conventions / Regulatory.
-     📌 Pin versions («<datastore> 18», not «<datastore>»); «Q3 deadline — hard», not «ideally».
-     Never N/A — every feature inherits at least Conventions + Technical. -->
-
 **Technical.**
-- <Language + version>
-- <Framework(s) + version>
-- <Datastore(s) + version>
-- <Architecture convention — e.g. the layering style from the project convention file>
+- App: Flutter 3.35.1, Dart SDK `>=3.0.0 <4.0.0`, phone only (Android and iOS, held upright). Typed routes in `lib/router/routes.dart` (`go_router` ^17.2.3 + `go_router_builder`), state with `flutter_riverpod` / `riverpod_annotation` ^2.6.1, preferences in `shared_preferences` ^2.5.5, storage in `isar_community` pinned to `3.3.0-dev.1` (architecture.md §2 rule 6). There is no gesture, sheet or drawer package beyond Material, and none may be added (CLAUDE.md rule 5).
+- Main screen today (`lib/features/word_input/word_input_screen.dart`, 1693 lines): the `Scaffold` body is a `Stack` of the word list (`ListView.builder`, or `ReorderableListView.builder` in drag mode, both with 16 px padding and **no `ScrollController`**) and the "Analyzing photo..." overlay shown while `_isAnalyzingPhoto`. Rows (`WordRowItem`, `widgets/word_row_item.dart`) have **variable height**, and their right edge carries the delete button, the lightning buttons and the translation / definition dots. The left drawer exists only when other sessions exist. The Settings button and the speed dial share the floating-button slot at the bottom, and rise above a SnackBar (the 7-second RESTORE offer). There is no `PopScope` on the screen.
+- Photos: `Session.sources` holds `SessionSource`s (`kind` photo or set, `id`, `fileName`, `takenAt`) in the order they were added; `WordPair.sourceId` links a row to its source. `SourcePhotoStore.read(source)` returns the bytes of the kept 1600 px file under `source_photos/`, or `null`, and never throws. No thumbnails are stored anywhere; the closest precedent is the words table's `_PhotoStack`, which decodes the kept file with `cacheWidth: 120`.
+- Zoom precedent: `InteractiveViewer` on the story picture (`mnemonic_story/story_screen.dart`) and the words table's `PhotoViewer` dialog (a `PageView` with pinch zoom). Neither may be imported across features (architecture.md §2 rule 3).
+- Android: `MainActivity` is a bare `FlutterActivity` (Kotlin, `com.unique.androidvocabularyapp2`). The app has no `MethodChannel` and no native code of its own yet. `minSdk` follows Flutter's default.
+- **Builds on the main screen pager of get-words-from-subtitles-improvment** (roadmap #22, task T19, still `todo` on 2026-10-13). As T19 is designed, the body becomes a `PageView` only when the current session has dialogues: page 1 is today's words page, then one read-only dialogue page per dialogue. Building this feature starts after #22 is merged (spec §1).
+- Verification: `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `tool/test.sh smoke` while developing, `tool/test.sh changed` before each commit, the CLAUDE.md greps. App tests are `flutter_test` widget and unit tests in the flat `test/` folder, with no golden tests. The §6 NFRs are measured by hand on the owner's phone.
 
 **Organisational.**
-- <Effort budget — e.g. 3 person-weeks>
-- <Deadline — e.g. 2026-Q3 hard>
-- <Team composition>
+- One owner (Maksym) builds, reviews and releases. No deadline. The app ships through the usual store build; there is no Worker change.
+- Size M (`.size`), route standard (`.route`).
+- The design pick is a step of this feature: the variants are built, the owner compares them on a phone, and the feature is released only after the others are removed (AC-20).
 
 **Conventions.**
-- <Link to the project's convention file>
-- <Naming, ID strategy, error-handling pattern>
+- [`CLAUDE.md`](../../../CLAUDE.md) rules 1–7 and [`docs/architecture.md`](../../architecture.md) §2: typed routes only (the panel opens no route), services and shared preferences from `lib/core/providers.dart`, screen data in `@riverpod` notifiers, transient state (animation controllers, the selected photo, drag offsets) in widget `State`, features share data only through `lib/core/`, one file ≈ one thing.
+- Spec-approved override of CLAUDE.md rule 3 ("do not change how anything looks"): the photo tab, the photo panel in its three states, the highlighted word rows, and the temporary design-variant switch in Settings (spec §1, AC-19). Recorded in CLAUDE.md rule 3 with the §4 commit. With no photo with words, the main screen must look and behave exactly as today (AC-02).
+- No new domain model (CLAUDE.md rule 5): the feature only reads `Session`, `SessionSource` and `WordPair`. The two new preference values are not domain models.
+- Logging follows the screen's existing `debugPrint('VOCAB: …')` lines.
 
 **Regulatory / external.**
-- <e.g. data-retention / deletion behaviour per ADR-NNNN>
-- <e.g. applicable compliance controls, or N/A with a reason>
+- Data classification (spec §6.1): internal. The photos are the learner's own pictures, already kept on the phone; nothing new is sent.
+- Security review: N/A (spec §6.1). The panel shows only the current session's photos with words and closes when the session changes (AC-15b, AC-16).
+- Platform rule: on Android with gesture navigation, the system takes inward swipes from the screen edges as Back unless the app excludes an area; Android honours at most 200 dp of excluded height per edge (ADR-0002).
 
 ## 3. Context and scope
 
