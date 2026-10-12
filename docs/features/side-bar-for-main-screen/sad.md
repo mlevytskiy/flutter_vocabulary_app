@@ -316,21 +316,22 @@ Nothing new is deployed. The feature ships inside the existing phone app, throug
 
 ## 8. Crosscutting concepts
 
-<!-- 🎯 Why: CROSS-CUTTING PATTERNS spanning several modules: logging, errors, authorization, ID
-     strategy, events, caching. ⭐ The second-densest section. A pattern inside one module is NOT
-     here; a project-wide convention belongs in the convention file.
-     📋 Write: a table — concept / convention / where defined. One row per concept.
-     📌 e.g. «sortable time-based IDs generated in the app layer» as a default from the convention file. -->
-
 | Concept | Convention | Where defined |
 |---|---|---|
-| Logging | <e.g. structured, fields `module=<name>`> | <convention file §X or here> |
-| Authentication | <e.g. token-based via middleware> | <convention file §X> |
-| Error handling | <e.g. domain sentinel → ports error mapping → JSON> | <convention file §X> |
-| ID strategy | <e.g. sortable time-based ID in the app layer> | <convention file §X> |
-| Internationalisation | <e.g. N/A, single language> | — |
-| Observability | <e.g. tracing on the request boundary> | — |
-| Events | <module-specific patterns, if any> | <here> |
+| Routing | No new route. The panel's three states are one overlay. Pushing another route closes the panel first. | architecture.md §2 rule 1; ADR-0001 |
+| State + DI | Session data from `wordInputNotifierProvider`. Derived photos in `photosWithWordsProvider`. Preferences and the gesture service in `lib/core/providers.dart`. The stop, the selection, the animation and drags stay in widget `State`. | CLAUDE.md rule 2; §4 |
+| Persistence | Two `shared_preferences` keys, read and written by keepAlive notifiers like `wordDetailModeProvider`: `photo_tab_top` (kept) and `photo_panel_variant` (removed at the pick). Nothing new in Isar. | §4; ADR-0003 |
+| Touch ownership | A touch that starts on the tab or the panel belongs to the panel only (the overlay is hit-tested first). While the panel is open, row content ignores touches and a tap on the list closes the panel and does nothing else, while the list still scrolls. The pager does not swipe while the panel is open. The tab ignores touches while the screen analyses a photo. | AC-06, AC-11, AC-13, AC-14, AC-17; ADR-0001 |
+| Drag direction | The first movement past the touch slop decides: up or down moves the tab, left opens the panel. In full-open, a drag on a large photo browses or pans a zoomed photo, and only a drag from the panel's edge or handle moves the panel. | ux-flows "Platform decisions"; AC-10, AC-14 |
+| Back | `PopScope` on the main screen: Back leaves only with the panel closed, otherwise it steps back one stop. | AC-10; ADR-0001 |
+| System edge gesture | Only the tab's rectangle (closed) or the panel's handle (half-open) is excluded, at most 200 dp tall. It is cleared whenever no tab is shown. | AC-12; ADR-0002 |
+| Error handling | `SourcePhotoStore` never throws: `null` or a failed decode shows the "not available" placeholder, which still selects its rows. The gesture service swallows platform errors. A failed preference write keeps the in-memory value. | AC-09; §5 |
+| Images and memory | Previews are decoded at preview width × device pixel ratio with `cacheWidth`, with no stored thumbnails. Full-open decodes at screen size and keeps only neighbours. | spec §6 "Memory for previews"; §4 |
+| Accessibility | The tab is one `Semantics` node, "Session photos, N", whose tap opens half-open. Half-open has labelled expand and close buttons, and each small photo is a selectable button. Full-open has a labelled control back to half-open. Every state closes without a drag (Back or a button). | AC-18 |
+| Look boundary | With no photo with words, nothing is drawn and the screen is unchanged. `WordRowItem` with a `null` highlight is today's row. Visible changes are only those approved in CLAUDE.md rule 3. | AC-02; CLAUDE.md rule 3; ADR-0003 |
+| Logging | `debugPrint('VOCAB: photo panel …')` for stop changes, the photo count and exclusion rectangles. | §7 |
+| Internationalisation | N/A: labels in English like the rest of the main screen. | — |
+| Testing | Unit tests for the settle rule and for photos with words. Widget tests for the panel with `tester.drag` / `tester.fling`, run once per look. Gesture insets set through `MediaQuery`. The channel is mocked through `TestDefaultBinaryMessengerBinding`. Time passes with `tester.pump`. The NFRs are a device pass. | docs/testing.md; §10 |
 
 ## 9. Architecture decisions
 
