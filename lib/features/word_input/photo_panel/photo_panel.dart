@@ -125,7 +125,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   @override
   void initState() {
     super.initState();
-    _openness = AnimationController(vsync: this, value: widget.controller.stop.openness);
+    _openness = AnimationController(
+        vsync: this, value: widget.controller.stop.openness);
     _exclusion = ref.read(systemGestureExclusionProvider);
     _portal.show();
     widget.controller.addListener(_onControllerChanged);
@@ -140,7 +141,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       widget.controller.addListener(_onControllerChanged);
       _onControllerChanged();
     }
-    if (oldWidget.scrollController != widget.scrollController) _watchScrolling();
+    if (oldWidget.scrollController != widget.scrollController)
+      _watchScrolling();
   }
 
   @override
@@ -168,7 +170,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   void _onScrolling() {
     final scrolling = _watchedPosition?.isScrollingNotifier.value ?? false;
-    if (scrolling != _listScrolling && mounted) setState(() => _listScrolling = scrolling);
+    if (scrolling != _listScrolling && mounted)
+      setState(() => _listScrolling = scrolling);
   }
 
   // The stop and the openness.
@@ -188,7 +191,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     if (_openness.value == 0 && target > 0) _unfocus();
     _animatingTo = target;
     _openness
-        .animateTo(target, duration: _settleDuration, curve: Curves.easeOutCubic)
+        .animateTo(target,
+            duration: _settleDuration, curve: Curves.easeOutCubic)
         .whenCompleteOrCancel(() => _animatingTo = null);
   }
 
@@ -311,7 +315,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   }
 
   int _startIndex(List<PhotoWithWords> photos) {
-    final i = photos.indexWhere((p) => p.source.id == widget.controller.selectedId);
+    final i =
+        photos.indexWhere((p) => p.source.id == widget.controller.selectedId);
     return i < 0 ? 0 : i;
   }
 
@@ -334,10 +339,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         if (look.hidesTabWhileScrolling && _listScrolling) return const [];
         final tab = tabSizeFor(look, photos.length);
         final top = _page.top + _tabTop(_page.size, tab);
-        return [Rect.fromLTWH(_page.right - tab.width, top, tab.width, tab.height)];
+        return [
+          Rect.fromLTWH(_page.right - tab.width, top, tab.width, tab.height)
+        ];
       case PanelStop.halfOpen:
         final half = _panelRect(0.5);
-        return [Rect.fromLTWH(half.left, half.top, half.width, look.handleBarHeight)];
+        return [
+          Rect.fromLTWH(half.left, half.top, half.width, look.handleBarHeight)
+        ];
       case PanelStop.fullOpen:
         return const [];
     }
@@ -364,7 +373,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   // Drawing.
 
-  Widget _preview(PhotoWithWords photo, double width, {BoxFit fit = BoxFit.cover}) =>
+  Widget _preview(PhotoWithWords photo, double width,
+          {BoxFit fit = BoxFit.cover}) =>
       PhotoPreview(
         key: ValueKey('photo-panel-preview-${photo.source.id}-$width'),
         source: photo.source,
@@ -374,19 +384,25 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       );
 
   Rect _panelRect(double t) {
-    final half = Rect.fromLTRB(_page.right - _halfWidth, _page.top, _page.right, _page.bottom);
+    final half = Rect.fromLTRB(
+        _page.right - _halfWidth, _page.top, _page.right, _page.bottom);
     if (t <= 0.5) {
-      return Rect.fromLTRB(_page.right - _widthOf(t), _page.top, _page.right, _page.bottom);
+      return Rect.fromLTRB(
+          _page.right - _widthOf(t), _page.top, _page.right, _page.bottom);
     }
     return Rect.lerp(half, Offset.zero & _overlay, (t - 0.5) / 0.5)!;
   }
 
   Widget _control(BuildContext context,
-          {required Key key, required String label, required Widget icon, required VoidCallback onTap}) =>
+          {required Key key,
+          required String label,
+          required Widget icon,
+          required VoidCallback onTap}) =>
       Semantics(
         button: true,
         label: label,
         excludeSemantics: true,
+        onTap: onTap,
         child: InkResponse(
           key: key,
           onTap: onTap,
@@ -431,14 +447,23 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
               itemCount: photos.length,
               itemBuilder: (context, i) {
                 final id = photos[i].source.id;
-                return GestureDetector(
-                  key: PhotoPanel.smallPhotoKey(id),
-                  behavior: HitTestBehavior.opaque,
+                // A selectable button for a screen reader (spec AC-18).
+                return Semantics(
+                  container: true,
+                  button: true,
+                  selected: id == selected,
+                  label: 'Photo ${i + 1} of ${photos.length}',
+                  excludeSemantics: true,
                   onTap: () => _select(id),
-                  child: look.buildSmallPhoto(
-                    context,
-                    _preview(photos[i], photoWidth),
-                    selected: id == selected,
+                  child: GestureDetector(
+                    key: PhotoPanel.smallPhotoKey(id),
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => _select(id),
+                    child: look.buildSmallPhoto(
+                      context,
+                      _preview(photos[i], photoWidth),
+                      selected: id == selected,
+                    ),
                   ),
                 );
               },
@@ -463,7 +488,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
             behavior: HitTestBehavior.opaque,
             onHorizontalDragStart: (_) => _beginPanelDrag(),
             onHorizontalDragUpdate: (d) => _panelDragBy(d.delta.dx),
-            onHorizontalDragEnd: (d) => _endPanelDrag(d.velocity.pixelsPerSecond.dx),
+            onHorizontalDragEnd: (d) =>
+                _endPanelDrag(d.velocity.pixelsPerSecond.dx),
             onHorizontalDragCancel: () => _endPanelDrag(0),
             child: SizedBox(
               height: look.handleBarHeight,
@@ -502,18 +528,22 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// photo and its neighbours are decoded, at the screen's width (sad §4).
   Widget _largePhoto(List<PhotoWithWords> photos, int i) {
     final id = photos[i].source.id;
-    if ((i - (_shown ?? 0)).abs() > 1) return SizedBox.expand(key: PhotoPanel.largePhotoKey(id));
+    if ((i - (_shown ?? 0)).abs() > 1)
+      return SizedBox.expand(key: PhotoPanel.largePhotoKey(id));
     return InteractiveViewer(
       key: PhotoPanel.largePhotoKey(id),
-      transformationController: _zooms.putIfAbsent(id, TransformationController.new),
+      transformationController:
+          _zooms.putIfAbsent(id, TransformationController.new),
       maxScale: 5,
-      child: SizedBox.expand(child: _preview(photos[i], _overlay.width, fit: BoxFit.contain)),
+      child: SizedBox.expand(
+          child: _preview(photos[i], _overlay.width, fit: BoxFit.contain)),
     );
   }
 
   /// On the way from half-open to full-open the start photo grows from its
   /// small place into its large one (spec AC-07).
-  Widget _growingPhoto(BuildContext context, List<PhotoWithWords> photos, Size panel, double p) {
+  Widget _growingPhoto(
+      BuildContext context, List<PhotoWithWords> photos, Size panel, double p) {
     final look = _look;
     final i = _startIndex(photos);
     final offset = _column.hasClients ? _column.offset : 0.0;
@@ -525,8 +555,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       look.halfOpenWidth - 16,
       look.smallPhotoExtent - 8,
     );
-    final large = Rect.fromLTWH(
-        0, top + look.handleBarHeight, panel.width, panel.height - top - look.handleBarHeight);
+    final large = Rect.fromLTWH(0, top + look.handleBarHeight, panel.width,
+        panel.height - top - look.handleBarHeight);
     return Positioned.fromRect(
       rect: Rect.lerp(small, large, Curves.easeInOut.transform(p))!,
       child: KeyedSubtree(
@@ -575,7 +605,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       content = GestureDetector(
         onHorizontalDragStart: (_) => _beginPanelDrag(),
         onHorizontalDragUpdate: (d) => _panelDragBy(d.delta.dx),
-        onHorizontalDragEnd: (d) => _endPanelDrag(d.velocity.pixelsPerSecond.dx),
+        onHorizontalDragEnd: (d) =>
+            _endPanelDrag(d.velocity.pixelsPerSecond.dx),
         onHorizontalDragCancel: () => _endPanelDrag(0),
         child: content,
       );
@@ -608,16 +639,29 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
             ignoring: hidden || (open && _tabDrag != _TabDrag.open),
             child: AbsorbPointer(
               absorbing: widget.busy,
-              child: GestureDetector(
-                key: PhotoPanel.tabKey,
-                behavior: HitTestBehavior.opaque,
-                onTap: () => _open(PanelStop.halfOpen),
-                onPanDown: _onTabPanDown,
-                onPanStart: (_) => _onTabPanStart(top),
-                onPanUpdate: _onTabPanUpdate,
-                onPanEnd: (d) => _onTabPanEnd(page.size, tabSize, d.velocity.pixelsPerSecond.dx),
-                onPanCancel: () => _onTabPanEnd(page.size, tabSize, 0),
-                child: look.buildTab(context, photos: photos, preview: _preview),
+              // One node for a screen reader: "Session photos, N", whose
+              // double-tap opens half-open, except while busy (spec AC-18).
+              child: Semantics(
+                container: true,
+                button: true,
+                label: 'Session photos, ${photos.length}',
+                excludeSemantics: true,
+                onTap: widget.busy || open
+                    ? null
+                    : () => _open(PanelStop.halfOpen),
+                child: GestureDetector(
+                  key: PhotoPanel.tabKey,
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => _open(PanelStop.halfOpen),
+                  onPanDown: _onTabPanDown,
+                  onPanStart: (_) => _onTabPanStart(top),
+                  onPanUpdate: _onTabPanUpdate,
+                  onPanEnd: (d) => _onTabPanEnd(
+                      page.size, tabSize, d.velocity.pixelsPerSecond.dx),
+                  onPanCancel: () => _onTabPanEnd(page.size, tabSize, 0),
+                  child:
+                      look.buildTab(context, photos: photos, preview: _preview),
+                ),
               ),
             ),
           ),
@@ -626,7 +670,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     );
   }
 
-  Widget _buildOverlay(BuildContext context, List<PhotoWithWords> photos) => AnimatedBuilder(
+  Widget _buildOverlay(BuildContext context, List<PhotoWithWords> photos) =>
+      AnimatedBuilder(
         animation: _openness,
         builder: (context, _) {
           final t = _openness.value;
@@ -635,9 +680,13 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
               // Kept in the tree during a drag that started on it, so the
               // drag is not cancelled when the tab fades out.
               if (t < 0.5 || _tabDrag == _TabDrag.open)
-                KeyedSubtree(key: const ValueKey('tab'), child: _tab(context, photos, t)),
+                KeyedSubtree(
+                    key: const ValueKey('tab'),
+                    child: _tab(context, photos, t)),
               if (t > 0)
-                KeyedSubtree(key: const ValueKey('panel'), child: _panel(context, photos, t)),
+                KeyedSubtree(
+                    key: const ValueKey('panel'),
+                    child: _panel(context, photos, t)),
             ],
           );
         },
@@ -649,7 +698,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayChildBuilder: (context, info) {
-        final origin = MatrixUtils.transformPoint(info.childPaintTransform, Offset.zero);
+        final origin =
+            MatrixUtils.transformPoint(info.childPaintTransform, Offset.zero);
         _page = origin & info.childSize;
         _overlay = info.overlaySize;
         _devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
