@@ -117,7 +117,13 @@ class WordRowItem extends StatelessWidget {
     required this.onFillWithAI,
     required this.onSelectTranslation,
     required this.onSpeak,
+    this.highlight,
   });
+
+  /// side-bar-for-main-screen: drawn over the row while its photo is the
+  /// selected photo, in the design variant's look (spec AC-04). Null — every
+  /// row when no photo is selected — draws exactly today's row.
+  final Decoration? highlight;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +162,7 @@ class WordRowItem extends StatelessWidget {
         color: const Color(0x57d9c1ff),
         borderRadius: BorderRadius.circular(12),
       ),
+      foregroundDecoration: highlight,
       child: LayoutBuilder(
         builder: (context, cardConstraints) {
           final dragHandleWidth = isDragMode ? dragHandleSlot : 0.0;

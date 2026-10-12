@@ -128,6 +128,20 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   // _popupControllers (same pruning), for the same package reasons.
   final Map<int, CustomPopupMenuController> _definitionPopupControllers = {};
   bool _isAnalyzingPhoto = false;
+
+  /// side-bar-for-main-screen: the word list's scroll position (both the
+  /// plain and the drag-mode list) and one key per row index, so the list can
+  /// jump to a photo's first row (spec AC-04). Keyed by index like the row's
+  /// former `ValueKey(index)`, so row identity is unchanged.
+  final ScrollController _listScroll = ScrollController();
+  final List<GlobalKey> _rowKeys = [];
+
+  GlobalKey _rowKey(int index) {
+    while (_rowKeys.length <= index) {
+      _rowKeys.add(GlobalKey(debugLabel: 'word row ${_rowKeys.length}'));
+    }
+    return _rowKeys[index];
+  }
   bool _isRecoveringLostPhoto = false;
 
   /// Which session the rows on screen were built from. Tracked as an id rather
@@ -1449,13 +1463,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     for (var node in _definitionFocusNodes) {
       node.dispose();
     }
+    _listScroll.dispose();
     super.dispose();
   }
 
   Widget _buildRowItem(int index,
       {required bool isDragMode, required WordDetailMode detailMode}) {
     return WordRowItem(
-      key: ValueKey(index),
+      key: _rowKey(index),
       index: index,
       detailMode: detailMode,
       definitionController: _definitionControllers[index],
@@ -1616,6 +1631,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         children: [
           isDragMode
             ? ReorderableListView.builder(
+                scrollController: _listScroll,
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _wordPairs.length,
                 onReorder: _reorderItems,
@@ -1628,6 +1644,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 },
               )
             : ListView.builder(
+                controller: _listScroll,
                 padding: const EdgeInsets.all(16.0),
                 itemCount: _wordPairs.length,
                 itemBuilder: (context, index) => _buildRowItem(index, isDragMode: false, detailMode: detailMode),
