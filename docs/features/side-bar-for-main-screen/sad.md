@@ -335,17 +335,13 @@ Nothing new is deployed. The feature ships inside the existing phone app, throug
 
 ## 9. Architecture decisions
 
-<!-- 🎯 Why: the REVERSE INDEX onto the adr/ folder. `ls adr/` gives the files; §9 gives the
-     semantics — why they exist, which SAD section they attach to, what status.
-     📋 Write: a 4-column table, one row per ADR. Mixed status is fine.
-     📌 e.g. «0001 | Store content as a table of typed blocks | Accepted | §4». -->
-
 | # | Title | Status | Section |
 |---|---|---|---|
-| <NNNN> | <imperative — e.g. "Use a sliding-window counter for rate limiting"> | Accepted | §<N> |
-| <NNNN> | <imperative — e.g. "Co-locate the worker in the API process"> | Accepted | §<N> |
+| [0001](adr/0001-draw-the-photo-tab-and-panel-in-an-overlay-above-the-pager-driven-by-one-openness-value.md) | Draw the photo tab and panel in an overlay above the pager, driven by one openness value | Accepted | §4 |
+| [0002](adr/0002-exclude-the-photo-tab-from-the-android-back-gesture-through-a-platform-channel.md) | Exclude the photo tab from the Android Back gesture through a platform channel | Accepted | §4 |
+| [0003](adr/0003-share-one-panel-behaviour-and-plug-in-each-design-variants-look.md) | Share one panel behaviour and plug in each design variant's look | Accepted | §4 |
 
-ADR files live under `docs/features/<slug>/adr/NNNN-<title>.md`.
+ADR files live under `docs/features/side-bar-for-main-screen/adr/NNNN-<title>.md`. Three ADRs is below the 5–12 usual for an M feature: the feature has one surface, no data or contract change, and every other decision was below the gate and is recorded inline in §4 (assumptions ledger accepted by the owner, 2026-10-13).
 
 ## 10. Quality requirements
 
