@@ -156,8 +156,23 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// (sad §4 "State placement"); read for Back and the rows' highlight.
   final PhotoPanelController _photoPanel = PhotoPanelController();
 
+  /// The drawer is open: the photo tab hides behind it (ADR-0001).
+  bool _drawerOpen = false;
+
   void _onPhotoPanelChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// While the photo panel is open the main screen is only for looking: a
+  /// touch on a row, the top bar or the floating buttons closes the panel
+  /// and does nothing else; the list still scrolls (spec AC-11). Closed,
+  /// [child] is exactly as before.
+  Widget _closesOpenPhotoPanel(Widget child) {
+    final open = _photoPanel.isOpen;
+    return GestureDetector(
+      onTap: open ? _photoPanel.close : null,
+      child: AbsorbPointer(absorbing: open, child: child),
+    );
   }
 
   /// A photo was selected in the half-open panel: the list scrolls as little
@@ -1503,8 +1518,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       {required bool isDragMode,
       required WordDetailMode detailMode,
       Decoration? highlight}) {
-    return WordRowItem(
+    // While the photo panel is open the rows ignore touches (spec AC-11).
+    return IgnorePointer(
       key: _rowKey(index),
+      ignoring: _photoPanel.isOpen,
+      child: WordRowItem(
       highlight: highlight,
       index: index,
       detailMode: detailMode,
@@ -1545,6 +1563,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       onOpenTranslationOptions: _onOpenTranslationOptions,
       onCloseTranslationOptions: () => _closeTranslationOptions(index),
       onSpeak: (accent) => _speak(index, accent),
+      ),
     );
   }
 
@@ -1598,6 +1617,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       next.whenData((session) {
         if (_restoredSessionId == session.sessionId) return;
         _restoredSessionId = session.sessionId;
+        // Another session: the photo panel closes and nothing stays
+        // selected (side-bar-for-main-screen, spec AC-15b).
+        _photoPanel.close();
         // Read before restoring: rebuilding the rows can itself mutate the
         // notifier, which clears this.
         final restorable = ref.read(wordInputNotifierProvider.notifier).restorableSessionId;
@@ -1639,7 +1661,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         if (!didPop) _photoPanel.stepBack();
       },
       child: Scaffold(
-      appBar: AppBar(
+      appBar: _photoPanelGuardedAppBar(AppBar(
         automaticallyImplyLeading: true,
         title: const Text('English Vocabulary'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -1657,7 +1679,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
           ),
         ],
-      ),
+      )),
+      // The drawer's edge swipe is off while the photo panel is open (AC-11).
+      drawerEnableOpenDragGesture: !_photoPanel.isOpen,
+      onDrawerChanged: (open) {
+        setState(() => _drawerOpen = open);
+        if (open) _photoPanel.close();
+      },
       drawer: hasOtherSessions
           ? Drawer(
               child: ListView(
@@ -1692,7 +1720,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           : null,
       body: Stack(
         children: [
-          isDragMode
+          // Open photo panel: a tap or a sideways swipe on the list closes it
+          // and does nothing else; a vertical drag still scrolls (AC-06, AC-11).
+          GestureDetector(
+            onTap: _photoPanel.isOpen ? _photoPanel.close : null,
+            onHorizontalDragStart:
+                _photoPanel.isOpen ? (_) => _photoPanel.close() : null,
+            child: isDragMode
             ? ReorderableListView.builder(
                 scrollController: _listScroll,
                 padding: const EdgeInsets.all(16.0),
@@ -1714,12 +1748,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                 itemBuilder: (context, index) => _buildRowItem(index,
                     isDragMode: false, detailMode: detailMode, highlight: highlightFor(index)),
               ),
+          ),
           // The photo tab and panel paint above the route through an overlay;
           // this child only marks the words page's place (ADR-0001).
           Positioned.fill(
             child: PhotoPanel(
               controller: _photoPanel,
               busy: _isAnalyzingPhoto,
+              hidden: _drawerOpen,
               // Kept free for the floating-button row, and the RESTORE
               // SnackBar while it is up (spec AC-01).
               bottomReserve: 80 + (_restoreSnackBarVisible ? 56 : 0),
@@ -1755,7 +1791,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // docs/roadmap.md), each 16px from its edge like endFloat's margin. The
       // gap between them is not hit-testable, so rows underneath stay tappable.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
+      floatingActionButton: _closesOpenPhotoPanel(Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1782,8 +1818,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
           ],
         ),
-      ),
+      )),
       ),
     );
   }
+
+  /// The top bar, which an open photo panel owns like the rest of the screen
+  /// (spec AC-11).
+  PreferredSizeWidget _photoPanelGuardedAppBar(AppBar appBar) => PreferredSize(
+        preferredSize: appBar.preferredSize,
+        child: _closesOpenPhotoPanel(appBar),
+      );
 }

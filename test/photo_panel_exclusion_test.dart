@@ -125,4 +125,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(sent.where((r) => r.isNotEmpty), isEmpty);
   });
+
+  testWidgets('a hidden panel (the drawer open) draws nothing and excludes nothing',
+      (tester) async {
+    dpr = tester.view.devicePixelRatio;
+    final host = PanelHost(hidden: true);
+    await host.pump(tester);
+    await tester.pumpAndSettle();
+    expect(tabFinder, findsNothing);
+    expect(sent.where((r) => r.isNotEmpty), isEmpty);
+  });
 }

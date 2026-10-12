@@ -25,6 +25,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
     super.key,
     required this.controller,
     this.busy = false,
+    this.hidden = false,
     this.bottomReserve = 0,
     this.scrollController,
     this.onSelected,
@@ -46,6 +47,9 @@ class PhotoPanel extends ConsumerStatefulWidget {
 
   /// The screen is analysing a photo: the tab ignores touches (spec AC-17).
   final bool busy;
+
+  /// Nothing is drawn, e.g. while the drawer is open (ADR-0001).
+  final bool hidden;
 
   /// Height kept free at the bottom of the words page for the floating
   /// buttons and a SnackBar; the tab never goes lower (spec AC-01).
@@ -334,7 +338,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// What Android should leave to the app now: the tab while closed, the
   /// handle while half-open, nothing in full-open or with no tab.
   List<Rect> _exclusionFor(List<PhotoWithWords> photos) {
-    if (photos.isEmpty) return const [];
+    if (photos.isEmpty || widget.hidden || !_routeIsCurrent) return const [];
     final look = _look;
     switch (widget.controller.stop) {
       case PanelStop.closed:
@@ -695,6 +699,21 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         },
       );
 
+  /// Whether the main screen's route is on top; under another route the tab
+  /// is covered, Android gets no rectangle and the panel closes (ADR-0001).
+  bool _routeIsCurrent = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _routeIsCurrent = ModalRoute.isCurrentOf(context) ?? true;
+    if (!_routeIsCurrent && widget.controller.isOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.controller.close();
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final photos = ref.watch(photosWithWordsProvider);
@@ -707,7 +726,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         _overlay = info.overlaySize;
         _devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
         _want(_exclusionFor(photos));
-        if (photos.isEmpty) return const SizedBox.shrink();
+        if (photos.isEmpty || widget.hidden) return const SizedBox.shrink();
         return _buildOverlay(context, photos);
       },
       child: const SizedBox.expand(),

@@ -57,14 +57,19 @@ void main() {
           ),
       ];
 
-  Future<Session> pumpMain(WidgetTester tester, {List<WordPair>? words, bool photos = true}) async {
+  Future<void> ensureStore() async {
+    if (dir != null) return;
+    SharedPreferences.setMockInitialValues({});
+    dir = Directory.systemTemp.createTempSync('main_screen_photo_panel_test');
+    store = await SessionStore.open(directory: dir!.path);
+  }
+
+  Future<Session> pumpMain(WidgetTester tester,
+      {List<WordPair>? words, bool photos = true, Session? otherSession}) async {
     SharedPreferences.setMockInitialValues({});
     late Session current;
     await tester.runAsync(() async {
-      if (dir == null) {
-        dir = Directory.systemTemp.createTempSync('main_screen_photo_panel_test');
-        store = await SessionStore.open(directory: dir!.path);
-      }
+      await ensureStore();
       final now = DateTime.now();
       current = Session.create()
         ..updatedAt = now
@@ -77,6 +82,8 @@ void main() {
     container = ProviderContainer(overrides: [
       sessionStoreProvider.overrideWith((ref) async => store),
       sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
+      if (otherSession != null)
+        nonEmptySessionsProvider.overrideWith((ref) => Stream.value([current, otherSession])),
     ]);
     await tester.runAsync(() async {
       await container.read(wordInputNotifierProvider.future);
@@ -99,12 +106,12 @@ void main() {
   }
 
   PanelStop stop(WidgetTester tester) {
-    final panel = tester.widget<PhotoPanel>(find.byType(PhotoPanel));
+    final panel = tester.widget<PhotoPanel>(find.byType(PhotoPanel, skipOffstage: false));
     return panel.controller.stop;
   }
 
   String? selected(WidgetTester tester) =>
-      tester.widget<PhotoPanel>(find.byType(PhotoPanel)).controller.selectedId;
+      tester.widget<PhotoPanel>(find.byType(PhotoPanel, skipOffstage: false)).controller.selectedId;
 
   /// Indices of the rows drawn with a highlight.
   Set<int> highlighted(WidgetTester tester) => {
@@ -222,6 +229,148 @@ void main() {
     expect(selected(tester), isNull);
     expect(find.byKey(PhotoPanel.smallPhotoKey('p2')), findsNothing);
     expect(stop(tester), PanelStop.halfOpen);
+    await tearDownMain(tester);
+  });
+
+  // T14: an open panel owns the main screen's touches (AC-11, AC-13, AC-15b).
+
+  Finder rowField(int index, String label) => find.descendant(
+      of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == index),
+      matching: find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == label));
+
+  testWidgets('with the panel open a tap on a row only closes it: no focus, no delete (AC-11)',
+      (tester) async {
+    await pumpMain(tester);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await openHalf(tester);
+    final rows = container.read(wordInputNotifierProvider).value!.words.length;
+
+    await tester.tap(rowField(1, 'Word'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
+
+    // The delete button sits at the row's right edge, under the half-open
+    // panel: a tap there belongs to the panel and deletes nothing (AC-14).
+    await openHalf(tester);
+    final delete = find.descendant(
+        of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == 1),
+        matching: find.byIcon(Icons.close));
+    await tester.tap(delete.first, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(container.read(wordInputNotifierProvider).value!.words.length, rows);
+
+    // Another field of the row: only closes the panel.
+    await tester.tap(rowField(2, 'Translation'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
+    expect(container.read(wordInputNotifierProvider).value!.words.length, rows);
+    await tearDownMain(tester);
+  });
+
+  testWidgets('with the panel open the top bar and the floating buttons only close it (AC-11)',
+      (tester) async {
+    await pumpMain(tester);
+    await openHalf(tester);
+    await tester.tap(find.text('Next'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(find.byType(WordInputScreen), findsOneWidget);
+    expect(find.text('Next').hitTestable(), findsOneWidget, reason: 'still on the main screen');
+
+    await openHalf(tester);
+    await tester.tap(find.byTooltip('Settings'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(find.byTooltip('Settings').hitTestable(), findsOneWidget, reason: 'Settings not opened');
+    await tearDownMain(tester);
+  });
+
+  testWidgets('the drawer does not open while the panel is open, and the tab hides behind it',
+      (tester) async {
+    await pumpMain(tester,
+        otherSession: Session.create()..words = [WordPair(word: 'older')]);
+    await tester.pump();
+    final scaffold = tester.state<ScaffoldState>(find.byType(Scaffold).first);
+    expect(scaffold.hasDrawer, isTrue);
+
+    await openHalf(tester);
+    await tester.dragFrom(const Offset(2, 300), const Offset(300, 0));
+    await tester.pumpAndSettle();
+    expect(scaffold.isDrawerOpen, isFalse);
+    expect(stop(tester), PanelStop.closed, reason: 'the edge swipe only closed the panel');
+
+    scaffold.openDrawer();
+    await tester.pumpAndSettle();
+    expect(find.byKey(PhotoPanel.tabKey), findsNothing);
+    scaffold.closeDrawer();
+    await tester.pumpAndSettle();
+    expect(find.byKey(PhotoPanel.tabKey), findsOneWidget);
+    await tearDownMain(tester);
+  });
+
+  testWidgets('a new current session closes the panel and clears the selection (AC-15b)',
+      (tester) async {
+    late Session other;
+    await tester.runAsync(() async {
+      await ensureStore();
+      other = Session.create()
+        ..updatedAt = DateTime(2026, 9, 2)
+        ..lastLocalModifiedAt = DateTime(2026, 9, 2)
+        ..words = [WordPair(word: 'from', sourceId: 'q1')]
+        ..sources = [photo('q1', 5)];
+      await store.put(other);
+    });
+    await pumpMain(tester);
+    await openHalf(tester);
+    await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p1')));
+    await tester.pumpAndSettle();
+
+    await tester.runAsync(() =>
+        container.read(wordInputNotifierProvider.notifier).switchTo(other.sessionId));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(selected(tester), isNull);
+    // The tab now shows only the new session's photo (AC-16).
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    await tester.pumpAndSettle();
+    expect(find.byKey(PhotoPanel.smallPhotoKey('q1')), findsOneWidget);
+    expect(find.byKey(PhotoPanel.smallPhotoKey('p1')), findsNothing);
+    await tearDownMain(tester);
+  });
+
+  testWidgets('another route on top closes the panel first', (tester) async {
+    await pumpMain(tester);
+    await openHalf(tester);
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
+    navigator.push(PageRouteBuilder<void>(pageBuilder: (_, __, ___) => const Scaffold()));
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    navigator.pop();
+    await tester.pumpAndSettle();
+    expect(find.byKey(PhotoPanel.tabKey).hitTestable(), findsOneWidget);
+    await tearDownMain(tester);
+  });
+
+  testWidgets('background and back with the same session keeps the stop and the selection',
+      (tester) async {
+    await pumpMain(tester);
+    await openHalf(tester);
+    await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p1')));
+    await tester.pumpAndSettle();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    await tester.pump();
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.halfOpen);
+    expect(selected(tester), 'p1');
     await tearDownMain(tester);
   });
 }

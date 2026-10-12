@@ -29,6 +29,7 @@ class PanelHost {
   PanelHost({
     List<PhotoWithWords>? photos,
     this.busy = false,
+    this.hidden = false,
     this.bottomReserve = 80,
     this.look,
     this.rows = 50,
@@ -36,6 +37,7 @@ class PanelHost {
 
   final ValueNotifier<List<PhotoWithWords>> photos;
   final bool busy;
+  final bool hidden;
   final double bottomReserve;
   final PhotoPanelLook? look;
   final int rows;
@@ -84,6 +86,7 @@ class PanelHost {
                   child: PhotoPanel(
                     controller: controller,
                     busy: busy,
+                    hidden: hidden,
                     bottomReserve: bottomReserve,
                     scrollController: scroll,
                     look: look,
