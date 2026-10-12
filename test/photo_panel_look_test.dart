@@ -5,11 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_a.dart';
+import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_b.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/looks.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
+import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_preview.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photos_with_words.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'photo_panel_test_host.dart';
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
 
 /// A look whose tab is taller than Android's 200 dp per-edge limit.
@@ -33,8 +39,16 @@ List<PhotoWithWords> photos(int n) => [
 /// spec AC-19; ADR-0002 for the 200 dp limit).
 void main() {
   group('registry', () {
-    test('variant a is look A', () {
+    test('variant a is look A, b is look B', () {
       expect(lookFor(PhotoPanelVariant.a), isA<LookA>());
+      expect(lookFor(PhotoPanelVariant.b), isA<LookB>());
+    });
+
+    test('the looks differ where AC-19 allows: B hides the tab while scrolling, A does not', () {
+      expect(lookFor(PhotoPanelVariant.a).hidesTabWhileScrolling, isFalse);
+      expect(lookFor(PhotoPanelVariant.b).hidesTabWhileScrolling, isTrue);
+      final hides = {for (final v in PhotoPanelVariant.values) lookFor(v).hidesTabWhileScrolling};
+      expect(hides, {true, false});
     });
     test('every variant has a look', () {
       for (final v in PhotoPanelVariant.values) {
@@ -51,6 +65,30 @@ void main() {
           expect(tabSizeFor(look, n).height, lessThanOrEqualTo(PhotoPanelLook.maxTabHeight));
         }
       });
+      testWidgets('$v: tab, half-open, full-open and browsing draw without errors',
+          (tester) async {
+        SharedPreferences.setMockInitialValues({});
+        final host = PanelHost(photos: fakePhotos(4), look: look);
+        await host.pump(tester);
+        expect(find.byType(PhotoPreview).evaluate().length, lessThanOrEqualTo(3),
+            reason: 'at most three mini previews');
+        await tester.tap(tabFinder);
+        await tester.pumpAndSettle();
+        expect(host.controller.stop, PanelStop.halfOpen);
+        await tester.tap(smallPhoto('p1'));
+        await tester.pump();
+        await tester.tap(find.byKey(PhotoPanel.expandKey));
+        await tester.pumpAndSettle();
+        expect(host.controller.stop, PanelStop.fullOpen);
+        expect(find.byKey(PhotoPanel.largePhotoKey('p1')), findsOneWidget);
+        // Browse to another photo, the look's way; the selection stays.
+        final browser = tester.getRect(find.byKey(PhotoPanel.largeBrowserKey));
+        await tester.flingFrom(browser.center, const Offset(-300, -300), 2000);
+        await tester.pumpAndSettle();
+        expect(host.controller.selectedId, 'p1');
+        expect(tester.takeException(), isNull);
+      });
+
       testWidgets('$v: the row highlight is non-null', (tester) async {
         late Decoration highlight;
         await tester.pumpWidget(MaterialApp(
