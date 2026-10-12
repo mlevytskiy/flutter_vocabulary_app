@@ -64,38 +64,35 @@ Security review is N/A (spec §6.1): nothing new is stored beyond the tab's heig
 
 ## 3. Context and scope
 
-<!-- 🎯 Why: draws the SYSTEM BOUNDARY — who talks to it from outside, where the trust zone ends.
-     Without §3, §5 and §8 (authorization) blur — unclear what's «inside» vs «outside».
-     📋 Write: 2–3 sentences of business context + an external-systems table + a C4Context block.
-     📌 «External: none (deliberate, no third-party in v1)» is itself a decision worth stating.
-     Trust boundary — the line past which you don't trust data without checking it.
-     Never N/A — greenfield still draws the planned actors + external systems. -->
+The learner takes photos, for example of a book page, and the app turns them into word rows of the current session; every such row remembers its photo. This feature lets the learner look at those photos again from the main screen's words page and jump from a photo to its rows. Everything happens on the phone, with photos the app already keeps: no server, no shared page and no other screen is touched (spec §3). The one outside party is the phone's own system navigation, whose edge swipe means Back.
 
-<Business context in 2–3 sentences. What the system does for whom.>
-
-<!-- brownfield: <one-line scan summary> (or «N/A — greenfield repo» if no source existed) -->
+<!-- brownfield: Flutter phone app (lib/, go_router typed routes + Riverpod, Isar session store, source photos as 1600 px files under source_photos/, main screen = word_input_screen.dart with a Stack-hosted ListView and no ScrollController); the main screen pager of get-words-from-subtitles-improvment is designed (T19) but not built yet; Android MainActivity is a bare FlutterActivity. Read from docs/architecture.md, CLAUDE.md, the #22 SAD and task T19, and an explorer scan of the code — no docs/architecture-map.md exists (run /sdd:survey to persist one) -->
 
 **External systems (in / out):**
 
 | Actor or system | Type | Interaction |
 |---|---|---|
-| <author role> | Person | <what they do> |
-| <external service> | System (internal/external) | <interaction> |
-| <identity provider> | System (external) | <provides auth tokens> |
+| learner | Person | Opens the photo tab and panel on the main screen's words page, selects photos, reads them large, closes the panel; as the owner, switches design variants in Settings |
+| Vocabulary app | System (ours) | Shows the photo tab and panel over the words page, reads the current session's photos with words, highlights a photo's rows, keeps the tab's height |
+| Android system navigation | System (external) | Takes inward edge swipes as Back on phones with gesture navigation; told by the app which area of the right edge the photo tab covers (ADR-0002) |
+| vocab-photo-api Worker, shared page | System (ours) | Not touched by this feature (spec §3); listed only to state the boundary |
 
-**C4 Context (L1):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. -->
+**C4 Context (L1):**
 
 ```mermaid
 C4Context
-    title <feature> — System Context
+    title side-bar-for-main-screen — System Context
 
-    Person(actor, "<Actor role>", "<intent>")
-    System(app, "<Our system>", "<one-sentence description>")
-    System_Ext(ext, "<External system>", "<one-sentence description>")
+    Person(learner, "learner", "Looks at the session's photos and jumps to their word rows")
+    System(app, "Vocabulary app", "Flutter phone app: main screen words page with the photo tab and photo panel")
+    System_Ext(android, "Android system navigation", "Edge swipe means Back on phones with gesture navigation")
 
-    Rel(actor, app, "<interaction>", "<protocol>")
-    Rel(app, ext, "<interaction>", "<protocol>")
+    Rel(learner, app, "Taps or drags the photo tab, selects photos, zooms, closes", "touch, screen reader")
+    Rel(app, android, "Excludes the photo tab's area of the right edge from the Back gesture", "platform channel")
+    Rel(android, app, "Delivers Back and the touches outside the excluded area")
 ```
+
+The context is deliberately small: one person, the app, and the phone's system navigation. The learner touches only the app. The app tells Android which part of the right edge the photo tab covers, so a drag that starts there stays in the app, while Android keeps delivering Back for every other edge swipe and for the Back button. No network system is involved.
 
 ## 4. Solution strategy
 
