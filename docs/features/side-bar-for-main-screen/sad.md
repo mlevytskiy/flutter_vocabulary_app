@@ -410,13 +410,21 @@ Each top-3 goal from §1 expanded into full scenarios. Numbers are spec §6 verb
 
 ## 12. Glossary
 
-<!-- 🎯 Why: ⭐ the DOMAIN GLOSSARY that ends arguments a year later («checkpoint — weekly or
-     biweekly? quarter — calendar or fiscal?»).
-     📋 Write: a term / meaning table. Business + technical terms mixed.
-     📌 e.g. «Lesson | a unit inside a course made of blocks (text, video)». -->
+Domain terms from [`CONTEXT.md`](./CONTEXT.md) and the repo-root [`CONTEXT.md`](../../../CONTEXT.md). Terms marked *(design)* are introduced by this SAD.
 
 | Term | Meaning |
 |---|---|
-| <e.g. domain object A> | <its meaning in this domain> |
-| <e.g. domain object B> | <its meaning> |
-| <e.g. domain invariant name> | <the rule, in plain language> |
+| learner | The phone owner who collects words into sessions; here also the owner who picks the design variant. |
+| current session | The one session the main screen is editing; the panel shows only its photos. |
+| word row | One line of a session: an English word with its details; a row from a photo remembers that photo (`WordPair.sourceId`). |
+| photo tab | The small handle on the right side of the words page with mini previews of the photos with words. It stays at its height while the list scrolls, can be dragged up or down (the height is kept), and a tap or a drag to the left opens the photo panel. |
+| photo panel | The panel over the main screen's words page that shows the current session's photos with words; closed, half-open or full-open. |
+| half-open | The panel state with a column of small photos beside the still-visible word rows; tapping a photo selects it. |
+| full-open | The panel state that covers the word rows and shows the photos large, starting at the selected photo; a large photo can be zoomed. |
+| photo with words | A photo of the current session from which at least one word row still comes. Not a Quizlet set. |
+| selected photo | The one photo in half-open whose rows are highlighted; never saved; cleared when the panel closes. |
+| design variant | One of the two or three looks built for the tab and panel so the owner can compare them; all but one are removed before release. |
+| openness *(design)* | The one value from 0 (closed) through 0.5 (half-open) to 1 (full-open) that drives the panel's position and the growth of the photos (ADR-0001). |
+| stop *(design)* | One of closed, half-open and full-open; a released drag always settles at a stop (AC-08). |
+| look *(design)* | The drawing part of a design variant: an implementation of `PhotoPanelLook` (ADR-0003). |
+| gesture exclusion rectangle *(design)* | The area of the right screen edge the app asks Android to leave to the app, so a drag started there is not taken as Back (ADR-0002). |
