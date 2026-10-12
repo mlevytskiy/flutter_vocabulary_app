@@ -9,6 +9,7 @@ const revsOf = (row) => ({ word: row.word_rev, translation: row.translation_rev,
 
 const IDS = [
   "mnemonic-story",
+  "dialogs-from-movie",
   "match-synonyms",
   "match-antonyms",
   "match-definitions",
@@ -36,7 +37,7 @@ function inputOf(html, exerciseId) {
   return m[0];
 }
 
-test("AC-04, AC-08: the learn page shows the word count, three steps and the eleven exercises in order", async () => {
+test("AC-04, AC-08: the learn page shows the word count, three steps and the twelve exercises in order", async () => {
   const { id } = await publish({
     entries: [
       { word: "apple", translation: "яблуко" },
@@ -58,15 +59,34 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the ele
   const positions = IDS.map((x) => html.indexOf(`value="${x}"`));
   assert.ok(positions.every((p) => p > 0), "every exercise is listed");
   assert.deepEqual([...positions].sort((a, b) => a - b), positions, "plan order");
-  assert.ok(html.indexOf("Step 1") < positions[0] && positions[3] < html.indexOf("Step 2"));
-  assert.ok(positions[4] < html.indexOf("Step 3") && html.indexOf("Step 3") < positions[7]);
+  assert.ok(html.indexOf("Step 1") < positions[0] && positions[4] < html.indexOf("Step 2"));
+  assert.ok(positions[5] < html.indexOf("Step 3") && html.indexOf("Step 3") < positions[8]);
 
   assert.doesNotMatch(inputOf(html, "mnemonic-story"), /disabled/);
-  for (const x of IDS.slice(1)) assert.match(inputOf(html, x), /disabled/);
+  assert.doesNotMatch(inputOf(html, "dialogs-from-movie"), /disabled/);
+  for (const x of IDS.slice(2)) assert.match(inputOf(html, x), /disabled/);
   assert.equal((html.match(/Coming soon/g) ?? []).length, 10);
   assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 10);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
+});
+
+test("AC-16, AC-22: Dialogs from movie can be ticked, and Start leads to the coming-soon page", async () => {
+  const { id } = await publish();
+
+  const ticked = (await learn(id, "?pick=dialogs-from-movie")).html;
+  assert.match(inputOf(ticked, "dialogs-from-movie"), /\bchecked\b/);
+  assert.equal((ticked.match(/\bchecked\b/g) ?? []).length, 1);
+  const href = `/s/${id}/learn/dialogs-from-movie\\?pick=dialogs-from-movie`;
+  assert.match(ticked, new RegExp(`class="btn start"[^>]*href="${href}"|href="${href}"[^>]*class="btn start"`));
+
+  const res = await get(`/s/${id}/learn/dialogs-from-movie?pick=dialogs-from-movie`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Dialogs from movie<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
+  assert.match(html, new RegExp(`href="/s/${id}/learn\\?pick=dialogs-from-movie"`));
+  assert.doesNotMatch(html, /<button|<input|<form/);
 });
 
 test("AC-04: one word reads '1 word'", async () => {

@@ -4,11 +4,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { EXERCISES, findAvailable, isWordToLearn } from "../src/learn/exercises.ts";
 
-test("the plan has the eleven exercises of AC-04 in order, with their stages and names", () => {
+test("the plan has the twelve exercises in order, with their stages and names", () => {
   assert.deepEqual(
     EXERCISES.map((e) => [e.id, e.name, e.stage]),
     [
       ["mnemonic-story", "Mnemonic story", 1],
+      ["dialogs-from-movie", "Dialogs from movie", 1],
       ["match-synonyms", "Match synonyms", 1],
       ["match-antonyms", "Match antonyms", 1],
       ["match-definitions", "Match word and definition", 1],
@@ -29,9 +30,10 @@ test("every entry has exactly id, name, stage and available", () => {
   }
 });
 
-test("only mnemonic-story is available", () => {
-  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story"]);
+test("only mnemonic-story and dialogs-from-movie are available", () => {
+  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie"]);
   assert.equal(findAvailable("mnemonic-story")?.name, "Mnemonic story");
+  assert.equal(findAvailable("dialogs-from-movie")?.name, "Dialogs from movie");
   assert.equal(findAvailable("match-synonyms"), undefined);
   assert.equal(findAvailable("nope"), undefined);
 });

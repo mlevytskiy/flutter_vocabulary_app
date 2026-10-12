@@ -1,4 +1,4 @@
-/// The learn plan: eleven exercises in three stages, in plan order.
+/// The learn plan: twelve exercises in three stages, in plan order.
 /// Source of truth is vocab-photo-api/src/learn/exercises.json; the test in
 /// test/learn_exercises_test.dart keeps this copy identical (ADR-0003).
 class Exercise {
@@ -17,6 +17,7 @@ class Exercise {
 
 const exercises = <Exercise>[
   Exercise(id: 'mnemonic-story', name: 'Mnemonic story', stage: 1, available: true),
+  Exercise(id: 'dialogs-from-movie', name: 'Dialogs from movie', stage: 1, available: true),
   Exercise(id: 'match-synonyms', name: 'Match synonyms', stage: 1, available: false),
   Exercise(id: 'match-antonyms', name: 'Match antonyms', stage: 1, available: false),
   Exercise(id: 'match-definitions', name: 'Match word and definition', stage: 1, available: false),
