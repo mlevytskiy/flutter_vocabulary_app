@@ -93,6 +93,28 @@ final sourcePhotoStoreProvider = Provider<SourcePhotoStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SourcePhotoStoreRef = ProviderRef<SourcePhotoStore>;
+String _$systemGestureExclusionHash() =>
+    r'6e5cfd25b75fb8acad89848713fcd6222249a31f';
+
+/// The Android Back-gesture exclusion for the photo tab
+/// (side-bar-for-main-screen ADR-0002).
+///
+/// Copied from [systemGestureExclusion].
+@ProviderFor(systemGestureExclusion)
+final systemGestureExclusionProvider =
+    Provider<SystemGestureExclusion>.internal(
+  systemGestureExclusion,
+  name: r'systemGestureExclusionProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$systemGestureExclusionHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SystemGestureExclusionRef = ProviderRef<SystemGestureExclusion>;
 String _$storyRunStoreHash() => r'1baae4ddf9fdf660adf336fb38e2b2a162325378';
 
 /// The story runs, kept in the same database as the sessions (ADR-0003).

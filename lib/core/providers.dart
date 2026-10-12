@@ -21,6 +21,7 @@ import 'services/story_api_service.dart';
 import 'services/story_picture_store.dart';
 import 'services/story_run_store.dart';
 import 'services/subtitle_words_service.dart';
+import 'services/system_gesture_exclusion.dart';
 import 'services/vocab_photo_service.dart';
 
 part 'providers.g.dart';
@@ -42,6 +43,11 @@ Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
 @Riverpod(keepAlive: true)
 SourcePhotoStore sourcePhotoStore(Ref ref) => SourcePhotoStore();
+
+/// The Android Back-gesture exclusion for the photo tab
+/// (side-bar-for-main-screen ADR-0002).
+@Riverpod(keepAlive: true)
+SystemGestureExclusion systemGestureExclusion(Ref ref) => SystemGestureExclusion();
 
 /// The story runs, kept in the same database as the sessions (ADR-0003).
 @Riverpod(keepAlive: true)
