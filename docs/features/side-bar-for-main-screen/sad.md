@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Final
 owner: "Maksym (learner, app owner)"
 reviewers: ["Maksym (Tech Lead)"]
 updated_at: "2026-10-13"
@@ -33,7 +33,10 @@ target_surfaces: [mobile-app]  # decided in §4 (inline: one surface) — subset
 
 Security review is N/A (spec §6.1): nothing new is stored beyond the tab's height and, during the review, the chosen variant, and nothing is sent.
 
-<!-- Decision overrides (¶4) — populated by the critic resolution loop, empty otherwise. -->
+**Decision overrides.**
+- Decision override: the photo tab stays on screen on every page of the main screen pager, at its place, and does not move with a page swipe; opening the panel from a dialogue page (tap, drag or screen-reader double-tap) first returns the pager to the words page, then opens it there — rationale: owner decision at the critic pass, 2026-10-13, replacing "the tab slides away with the words page". This contradicts spec AC-13 ("the tab is never shown on a dialogue page"), §3 Non-goals (the tab on the dialogue pages), the CONTEXT "photo tab" entry and ux-flows SCR-04; they are to be aligned by the clarify pass that follows this design (§11).
+
+**Critic resolutions (2026-10-13):** four findings — the dialogue-page rule (override above, carried into §4, §5, §8, §10 and ADR-0001/0002), the leftover gesture-inset test setup (removed from §8), the 200 dp limit narrowed to the tab (§8), and ADR-0001 option 3 kept with the reason it was a real alternative.
 
 ## 2. Constraints
 
@@ -104,6 +107,7 @@ The context is deliberately small: one person, the app, and the phone's system n
    - `PhotoPanel` paints through an `OverlayPortal` just above the main screen's route. Its state is one 0→1 value in one `AnimationController`, with a stop at half-open (0.5).
    - A drag moves the value directly. On release, a pure rule settles at the nearest stop, or one further after a flick, and any drag to the left from closed opens at least half-open (AC-08). Each photo's rectangle is interpolated between its small and its large place, so the photos grow into full-open (AC-07).
    - Because the overlay is hit-tested first, a touch on the tab never reaches the pager or the rows (AC-13, AC-14). In half-open only the panel is hit-testable, so the list beside it scrolls (AC-06).
+   - The tab stays at its place on every page of the pager and does not move with a swipe. Opening the panel from a dialogue page first returns the pager to the words page, so selecting a photo always has rows to highlight (§1 Decision override).
    - The overlay also paints above the main screen's drawer, SnackBar and "Analyzing photo..." overlay, so the panel handles each explicitly: it is hidden while the drawer is open, ignores touches while busy (AC-17), keeps its lowest position clear of the floating buttons and a SnackBar, and closes before another route is pushed.
    - This serves quality goals 1 and 2.
 
@@ -167,7 +171,7 @@ lib/
                                   row, in Session.sources order, with their row ids
         photo_panel_controller.dart   PhotoPanelController (ChangeNotifier): stop, selected photo
         photo_panel.dart          PhotoPanel: OverlayPortal, the openness AnimationController, drags and their
-                                  direction, Back step, busy / drawer / session-change rules, gesture exclusion
+                                  direction, Back step, return to the words page, busy / drawer / session-change rules, gesture exclusion
                                   calls, Semantics labels and actions
         photo_panel_stops.dart    pure: settle(openness, velocity) → closed | half-open | full-open (AC-08)
         photo_preview.dart        reads a source through SourcePhotoStore, decodes at a given width, shows the
@@ -321,17 +325,17 @@ Nothing new is deployed. The feature ships inside the existing phone app, throug
 | Routing | No new route. The panel's three states are one overlay. Pushing another route closes the panel first. | architecture.md §2 rule 1; ADR-0001 |
 | State + DI | Session data from `wordInputNotifierProvider`. Derived photos in `photosWithWordsProvider`. Preferences and the gesture service in `lib/core/providers.dart`. The stop, the selection, the animation and drags stay in widget `State`. | CLAUDE.md rule 2; §4 |
 | Persistence | Two `shared_preferences` keys, read and written by keepAlive notifiers like `wordDetailModeProvider`: `photo_tab_top` (kept) and `photo_panel_variant` (removed at the pick). Nothing new in Isar. | §4; ADR-0003 |
-| Touch ownership | A touch that starts on the tab or the panel belongs to the panel only (the overlay is hit-tested first). While the panel is open, row content ignores touches and a tap on the list closes the panel and does nothing else, while the list still scrolls. The pager does not swipe while the panel is open. The tab ignores touches while the screen analyses a photo. | AC-06, AC-11, AC-13, AC-14, AC-17; ADR-0001 |
+| Touch ownership | A touch that starts on the tab or the panel belongs to the panel only (the overlay is hit-tested first). While the panel is open, row content ignores touches and a tap on the list closes the panel and does nothing else, while the list still scrolls. The pager does not swipe while the panel is open. The tab is shown on every page of the pager; opening the panel from a dialogue page first returns the pager to the words page. The tab ignores touches while the screen analyses a photo. | AC-06, AC-11, AC-13, AC-14, AC-17; ADR-0001; §1 Decision override |
 | Drag direction | The first movement past the touch slop decides: up or down moves the tab, left opens the panel. In full-open, a drag on a large photo browses or pans a zoomed photo, and only a drag from the panel's edge or handle moves the panel. | ux-flows "Platform decisions"; AC-10, AC-14 |
 | Back | `PopScope` on the main screen: Back leaves only with the panel closed, otherwise it steps back one stop. | AC-10; ADR-0001 |
-| System edge gesture | Only the tab's rectangle (closed) or the panel's handle (half-open) is excluded, at most 200 dp tall. It is cleared whenever no tab is shown. | AC-12; ADR-0002 |
+| System edge gesture | Only the tab's rectangle (closed) or the panel's handle (half-open) is excluded. The tab is at most 200 dp tall (Android's per-edge limit, asserted by the look interface); the handle is excluded as far as Android allows. It is cleared whenever no tab is shown. | AC-12; ADR-0002 |
 | Error handling | `SourcePhotoStore` never throws: `null` or a failed decode shows the "not available" placeholder, which still selects its rows. The gesture service swallows platform errors. A failed preference write keeps the in-memory value. | AC-09; §5 |
 | Images and memory | Previews are decoded at preview width × device pixel ratio with `cacheWidth`, with no stored thumbnails. Full-open decodes at screen size and keeps only neighbours. | spec §6 "Memory for previews"; §4 |
 | Accessibility | The tab is one `Semantics` node, "Session photos, N", whose tap opens half-open. Half-open has labelled expand and close buttons, and each small photo is a selectable button. Full-open has a labelled control back to half-open. Every state closes without a drag (Back or a button). | AC-18 |
 | Look boundary | With no photo with words, nothing is drawn and the screen is unchanged. `WordRowItem` with a `null` highlight is today's row. Visible changes are only those approved in CLAUDE.md rule 3. | AC-02; CLAUDE.md rule 3; ADR-0003 |
 | Logging | `debugPrint('VOCAB: photo panel …')` for stop changes, the photo count and exclusion rectangles. | §7 |
 | Internationalisation | N/A: labels in English like the rest of the main screen. | — |
-| Testing | Unit tests for the settle rule and for photos with words. Widget tests for the panel with `tester.drag` / `tester.fling`, run once per look. Gesture insets set through `MediaQuery`. The channel is mocked through `TestDefaultBinaryMessengerBinding`. Time passes with `tester.pump`. The NFRs are a device pass. | docs/testing.md; §10 |
+| Testing | Unit tests for the settle rule and for photos with words. Widget tests for the panel with `tester.drag` / `tester.fling`, run once per look. The channel is mocked through `TestDefaultBinaryMessengerBinding`. Time passes with `tester.pump`. The NFRs are a device pass. | docs/testing.md; §10 |
 
 ## 9. Architecture decisions
 
@@ -352,7 +356,7 @@ Each top-3 goal from §1 expanded into full scenarios. Numbers are spec §6 verb
 - **Then:** 0 Back or page changes out of 20 drags started on the tab. A swipe in from the right edge that does not start on the tab still works as Back (AC-12). A tap on the tab presses no row control under it (AC-14).
 - **How verify:**
   - Device pass on an Android phone with gesture navigation (spec §6), repeated for each look.
-  - Widget tests: a drag on the tab leaves `PageController.page` unchanged; a tap on the tab over a row does not call its delete, lightning or dots handlers; after every layout and move, the rectangle sent on the mocked `vocab/system_gesture_exclusion` channel equals the tab's on-screen rectangle; and it is empty with the panel full-open, on a dialogue page and with the drawer open.
+  - Widget tests: a drag on the tab on the words page leaves `PageController.page` unchanged; opening the panel from a dialogue page returns the pager to the words page first; a tap on the tab over a row does not call its delete, lightning or dots handlers; after every layout and move, the rectangle sent on the mocked `vocab/system_gesture_exclusion` channel equals the tab's on-screen rectangle; and it is empty with the panel full-open and with the drawer open.
 
 **QG-2a. Opening from a tap**
 - **When:** the learner taps the photo tab.
@@ -401,6 +405,7 @@ Each top-3 goal from §1 expanded into full scenarios. Numbers are spec §6 verb
 | `word_input_screen.dart` is already 1693 lines, and this feature adds a controller, a `ScrollController`, row keys, `PopScope` and the rows' touch rule to it. A regression on the main screen breaks CLAUDE.md rule 3. | Medium | All panel logic lives in `photo_panel/`, and the screen only mounts and wires it. `tool/test.sh changed` runs the existing main-screen tests. The owner's "Behaviour that must not change" walkthrough (refactoring-plan.md) runs before release. | Maksym |
 | Full-open decodes large photos, and the spec sets no memory target for full-open. | Low | Decode at screen size and keep only the shown photo and its neighbours (§4). Watch the memory profiler in the device pass. | Maksym |
 | The losing looks, the variant provider, the `photo_panel_variant` key or the Settings choice outlive the pick (AC-20). | Low | One pick task removes them all. A grep for `photo_panel_variant` and `PhotoPanelVariant` must come back empty before the release build. | Maksym |
+| Spec AC-13, §3 Non-goals, the CONTEXT "photo tab" entry and ux-flows SCR-04 still say the tab is never shown on a dialogue page, which the §1 Decision override reverses. | Medium | Align them in the clarify pass that follows this design, before `sequences`. | Maksym |
 | Spec §8 open questions still shape the build: two or three variants (default three, before `sdd:screens`); pager or scrolling list in full-open (each variant chooses, at the pick); a way to step to the next highlighted row (default no, before `sdd:tasks`); whether the tab hides while scrolling (each variant chooses, at the pick). | Low | Each is a `PhotoPanelLook` choice or a small addition to the shared behaviour (ADR-0003), so none changes this architecture. Resolve per spec §8. | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
