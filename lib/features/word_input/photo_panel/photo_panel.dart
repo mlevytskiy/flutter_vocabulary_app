@@ -35,7 +35,9 @@ class PhotoPanel extends ConsumerStatefulWidget {
   static const closeKey = Key('photo-panel-close');
   static const backKey = Key('photo-panel-back');
   static const growingPhotoKey = Key('photo-panel-growing-photo');
+  static const largeBrowserKey = Key('photo-panel-large-browser');
   static Key smallPhotoKey(String id) => ValueKey('photo-panel-small-$id');
+  static Key largePhotoKey(String id) => ValueKey('photo-panel-large-$id');
 
   final PhotoPanelController controller;
 
@@ -96,6 +98,11 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// The half-open column of small photos.
   final _column = ScrollController();
 
+  /// Full-open: the large photo shown now (null outside full-open) and each
+  /// large photo's zoom, kept while full-open lasts.
+  int? _shown;
+  final _zooms = <String, TransformationController>{};
+
   /// The last layout: the words page and the whole overlay, in overlay
   /// coordinates. Set while the overlay child is laid out.
   Rect _page = Rect.zero;
@@ -130,6 +137,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     _watchedPosition?.isScrollingNotifier.removeListener(_onScrolling);
     _openness.dispose();
     _column.dispose();
+    _disposeZooms();
     super.dispose();
   }
 
@@ -294,6 +302,13 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     return i < 0 ? 0 : i;
   }
 
+  void _disposeZooms() {
+    for (final z in _zooms.values) {
+      z.dispose();
+    }
+    _zooms.clear();
+  }
+
   // Drawing.
 
   Widget _preview(PhotoWithWords photo, double width, {BoxFit fit = BoxFit.cover}) =>
@@ -385,6 +400,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// large photos browsed the look's way (spec AC-07b).
   Widget _fullContent(BuildContext context, List<PhotoWithWords> photos) {
     final look = _look;
+    final shown = _shown ??= _startIndex(photos);
     return SafeArea(
       bottom: false,
       child: Column(
@@ -412,17 +428,33 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
             ),
           ),
           Expanded(
-            child: look.buildLargeBrowser(
-              context,
-              count: photos.length,
-              initialIndex: _startIndex(photos),
-              itemBuilder: (context, i) =>
-                  _preview(photos[i], _overlay.width, fit: BoxFit.contain),
-              onShown: (_) {},
+            child: KeyedSubtree(
+              key: PhotoPanel.largeBrowserKey,
+              child: look.buildLargeBrowser(
+                context,
+                count: photos.length,
+                initialIndex: shown,
+                itemBuilder: (context, i) => _largePhoto(photos, i),
+                // Browsing never changes the selected photo (spec AC-07b).
+                onShown: (i) => setState(() => _shown = i),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// One large photo, zoomable with two fingers (spec AC-07b). Only the shown
+  /// photo and its neighbours are decoded, at the screen's width (sad §4).
+  Widget _largePhoto(List<PhotoWithWords> photos, int i) {
+    final id = photos[i].source.id;
+    if ((i - (_shown ?? 0)).abs() > 1) return SizedBox.expand(key: PhotoPanel.largePhotoKey(id));
+    return InteractiveViewer(
+      key: PhotoPanel.largePhotoKey(id),
+      transformationController: _zooms.putIfAbsent(id, TransformationController.new),
+      maxScale: 5,
+      child: SizedBox.expand(child: _preview(photos[i], _overlay.width, fit: BoxFit.contain)),
     );
   }
 
@@ -456,6 +488,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     final rect = _panelRect(t);
     final p = t <= 0.5 ? 0.0 : (t - 0.5) / 0.5;
     final half = p < 1;
+    if (half && _shown != null) {
+      _shown = null;
+      _disposeZooms();
+    }
     Widget content = Material(
       color: Color.lerp(look.panelColor(context, fullOpen: false),
           look.panelColor(context, fullOpen: true), p),
