@@ -345,29 +345,50 @@ ADR files live under `docs/features/side-bar-for-main-screen/adr/NNNN-<title>.md
 
 ## 10. Quality requirements
 
-<!-- 🎯 Why: the QUALITY TREE — take a goal from §1 and break it into concrete leaves: tests,
-     metrics, configs, drills. ⭐ Without §10, §1 is a manifesto. With §10 each declaration maps
-     to something PROVABLE.
-     📋 Write: per §1 goal — When / Then / How-verify. Numbers from spec §6 NFR VERBATIM (don't
-     round ≤250ms to ≤300ms — that's a critic F6 hit).
-     📌 e.g. «p95 ≤ 500 ms on a block update, verified by a 100 req/s load test». -->
+Each top-3 goal from §1 expanded into full scenarios. Numbers are spec §6 verbatim. Every scenario holds for every design variant during the review (AC-19).
 
-Each top-3 goal from §1 expanded into a full scenario:
+**QG-1. Gesture safety**
+- **When:** the learner starts 20 drags on the photo tab, to the left and up or down, on an Android phone with gesture navigation, with and without the main screen's dialogue pages.
+- **Then:** 0 Back or page changes out of 20 drags started on the tab. A swipe in from the right edge that does not start on the tab still works as Back (AC-12). A tap on the tab presses no row control under it (AC-14).
+- **How verify:**
+  - Device pass on an Android phone with gesture navigation (spec §6), repeated for each look.
+  - Widget tests: a drag on the tab leaves `PageController.page` unchanged; a tap on the tab over a row does not call its delete, lightning or dots handlers; after every layout and move, the rectangle sent on the mocked `vocab/system_gesture_exclusion` channel equals the tab's on-screen rectangle; and it is empty with the panel full-open, on a dialogue page and with the drawer open.
 
-**QG-1. <quality attribute>**
-- **When:** <trigger condition>
-- **Then:** <expected behaviour with numbers from spec §6 NFR>
-- **How verify:** <test / chaos drill / load test / metric>
+**QG-2a. Opening from a tap**
+- **When:** the learner taps the photo tab.
+- **Then:** half-open is fully settled ≤ 300 ms after the tap.
+- **How verify:** owner's phone, screen recording, 10 taps. Widget test: after a tap, `pump(300 ms)` leaves the panel at the half-open stop with no animation running.
 
-**QG-2. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-2b. Animation smoothness (drag, settle, half-open to full-open)**
+- **When:** the learner drags the panel, lets it settle, and goes from half-open to full-open with the small photos growing into the large ones.
+- **Then:** ≤ 5 % dropped frames.
+- **How verify:** performance overlay on the owner's Android phone, profile build, 10 runs.
 
-**QG-3. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-2c. Jump to a photo's words**
+- **When:** in a session of 200 word rows, the learner taps a photo in half-open whose first row is far down the list.
+- **Then:** the first highlighted row is in view ≤ 500 ms after the tap, in a session of 200 word rows.
+- **How verify:**
+  - Screen recording on the owner's phone.
+  - Widget test with 200 rows of mixed heights: after the tap and `pump(500 ms)`, the first linked row (in the list's current order) is inside the viewport and every linked row has the look's highlight.
+
+**QG-3a. Main screen start with many photos**
+- **When:** the app starts on a current session with 50 photos with words.
+- **Then:** start to first word row visible grows by ≤ 100 ms with 50 photos with words, compared with the same session today.
+- **How verify:**
+  - Timed start, 5 runs each, owner's phone (today's build against the feature build).
+  - Design support: previews are read only after the first frame, and `photosWithWordsProvider` is a single pass over the rows.
+
+**QG-3b. Memory for previews**
+- **When:** the tab and the half-open panel show a session with 50 photos with words.
+- **Then:** the tab and the half-open panel together use ≤ 30 MB of picture memory with 50 photos with words.
+- **How verify:** memory profiler, owner's phone. Design support: `cacheWidth` decoding at preview size, at most three previews on the tab, and a lazy half-open column.
+
+**QG-3c. Nothing changes without photos**
+- **When:** the current session has no photo with words (typed by hand, only from a Quizlet set, or all its photo rows deleted).
+- **Then:** no photo tab is shown, and nothing on the screen changes from today (AC-02). The tab disappears at once when the last photo's last row is deleted (AC-15).
+- **How verify:** widget tests (no `PhotoPanel` overlay child and no `PopScope` interception in such a session; the tab gone after deleting the last linked row). `test/app_smoke_test.dart` and `test/word_row_layout_test.dart` stay green unchanged.
+
+**KPI check (spec §7).** In the owner's device pass before release, 100 % of taps that select a photo in half-open highlight at least one word row. `photosWithWordsProvider` lists only photos with a linked row, so a selectable photo always has one.
 
 ## 11. Risks and technical debt
 
