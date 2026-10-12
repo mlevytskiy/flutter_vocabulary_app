@@ -231,31 +231,74 @@ The container view has one surface, the phone app, drawn as its logical modules.
 
 ## 6. Runtime view
 
-<!-- 🎯 Why: the RUNTIME FLOW of 1–2 critical scenarios — who talks to whom, when, in what order.
-     Without §6, §5 is just boxes with no life.
-     📋 Write: a Mermaid sequenceDiagram. Participants are names from §5 (don't invent new ones).
-     Messages are semantic («saves a draft»), NO HTTP verbs / paths / status codes — endpoint-level
-     sequences arrive at the `api` stage.
-     📌 e.g. «author → web: composes draft → web → content API: save». Seed the primary flow(s) here;
-     the `sequences` stage then covers every §5 AC (no cap). Never N/A for M+; XS/S keeps ≥1 happy-path flow. -->
+Participants are the §5 containers. The `sequences` stage adds the flows for every remaining AC.
 
-**Critical flow 1: <flow name>**
+**Critical flow 1: open half-open from the tab and jump to a photo's rows** (AC-01, AC-03, AC-04, AC-09, AC-17)
 
 ```mermaid
 sequenceDiagram
-    actor Actor
-    participant Web
-    participant Service
-    participant Store
-    Actor->>Web: <action>
-    Web->>Service: <call>
-    Service->>Store: <write>
-    Store-->>Service: ok
-    Service-->>Web: result
-    Web-->>Actor: confirmation
+    actor Learner as learner
+    participant Screen as Main screen
+    participant Panel as Photo panel
+    participant Photos as Photos with words
+    participant Files as Source photo files
+    participant Bridge as Gesture exclusion bridge
+    Photos-->>Panel: photos with words of the current session, in order added
+    Panel->>Files: read the first previews after the first frame
+    alt picture can be read
+        Files-->>Panel: bytes, decoded at preview size
+    else file missing or decode fails
+        Files-->>Panel: nothing, show the not available placeholder
+    end
+    Panel->>Bridge: exclude the tab rectangle from the Back gesture
+    Learner->>Panel: tap on the photo tab
+    alt screen busy analysing a photo
+        Panel-->>Learner: touch ignored, panel stays closed
+    else not busy
+        Panel->>Screen: unfocus the field being edited, text kept
+        Panel->>Bridge: exclude the panel handle instead of the tab
+        Panel-->>Learner: settles half-open, small photos oldest first
+        Learner->>Panel: tap a photo
+        Panel->>Screen: select it, highlight its rows, scroll to its first row
+        Screen->>Screen: jump to an estimated offset, then ensure the row is visible
+        Screen-->>Learner: first highlighted row in view
+    end
 ```
 
-**Critical flow 2: <e.g. async event propagation>** — <if applicable, otherwise N/A>.
+**Critical flow 2: drag on the tab with gesture navigation, then step back** (AC-08, AC-10, AC-12, AC-13, AC-14)
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant Android as Android system navigation
+    participant Screen as Main screen
+    participant Panel as Photo panel
+    participant Prefs as Panel preferences
+    participant Bridge as Gesture exclusion bridge
+    Learner->>Android: finger down on the tab at the right edge
+    Android->>Panel: touch delivered, the tab area is excluded
+    alt finger first moves up or down
+        Panel-->>Learner: tab follows the finger
+        Panel->>Prefs: keep the new tab height
+        Panel->>Bridge: exclude the tab at its new place
+    else finger first moves left
+        Panel->>Screen: panel opening, pager physics off, rows ignore touches
+        Panel-->>Learner: panel follows the finger
+        Learner->>Panel: lets go
+        Panel->>Panel: settle at the nearest stop, one further after a flick
+        Panel-->>Learner: half-open or full-open
+        Learner->>Android: Back
+        Android->>Screen: Back
+        Screen->>Panel: panel is open, step back one stop
+        Panel-->>Learner: full-open to half-open, or half-open to closed
+    end
+    Learner->>Android: swipe in from the right edge away from the tab
+    Android-->>Learner: system Back as before
+```
+
+Flow 1: once the main screen shows, the photo panel gets the current session's photos with words and reads the first previews from the kept files. A photo it cannot read shows the "not available" placeholder. It then tells Android to exclude the tab's area from the Back gesture. A tap on the tab is ignored while the screen is analysing a photo. Otherwise the panel closes the keyboard (keeping the text), moves the excluded area to its handle, and settles half-open. A tap on a photo selects it, highlights its rows, and has the main screen scroll to the first of them.
+
+Flow 2: a touch on the tab reaches the app because its area is excluded. If the finger first moves up or down, the tab moves, its new height is kept, and the excluded area follows. If it first moves left, the panel turns off the pager's swipe and the rows' touches, follows the finger, and settles at the nearest stop (or one further after a flick). Back then steps the panel back one stop. A swipe from the edge away from the tab is still system Back.
 
 ## 7. Deployment view
 
