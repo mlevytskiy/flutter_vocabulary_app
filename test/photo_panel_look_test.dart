@@ -6,6 +6,7 @@ import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_a.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_b.dart';
+import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_c.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/looks.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
@@ -39,9 +40,15 @@ List<PhotoWithWords> photos(int n) => [
 /// spec AC-19; ADR-0002 for the 200 dp limit).
 void main() {
   group('registry', () {
-    test('variant a is look A, b is look B', () {
+    test('variant a is look A, b is look B, c is look C', () {
       expect(lookFor(PhotoPanelVariant.a), isA<LookA>());
       expect(lookFor(PhotoPanelVariant.b), isA<LookB>());
+      expect(lookFor(PhotoPanelVariant.c), isA<LookC>());
+    });
+
+    test('look C chooses differently from look B on hiding the tab', () {
+      expect(lookFor(PhotoPanelVariant.c).hidesTabWhileScrolling,
+          isNot(lookFor(PhotoPanelVariant.b).hidesTabWhileScrolling));
     });
 
     test('the looks differ where AC-19 allows: B hides the tab while scrolling, A does not', () {
