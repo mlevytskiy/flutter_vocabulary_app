@@ -141,8 +141,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       widget.controller.addListener(_onControllerChanged);
       _onControllerChanged();
     }
-    if (oldWidget.scrollController != widget.scrollController)
+    if (oldWidget.scrollController != widget.scrollController) {
       _watchScrolling();
+    }
   }
 
   @override
@@ -170,8 +171,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   void _onScrolling() {
     final scrolling = _watchedPosition?.isScrollingNotifier.value ?? false;
-    if (scrolling != _listScrolling && mounted)
+    if (scrolling != _listScrolling && mounted) {
       setState(() => _listScrolling = scrolling);
+    }
   }
 
   // The stop and the openness.
@@ -528,8 +530,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// photo and its neighbours are decoded, at the screen's width (sad §4).
   Widget _largePhoto(List<PhotoWithWords> photos, int i) {
     final id = photos[i].source.id;
-    if ((i - (_shown ?? 0)).abs() > 1)
+    if ((i - (_shown ?? 0)).abs() > 1) {
       return SizedBox.expand(key: PhotoPanel.largePhotoKey(id));
+    }
     return InteractiveViewer(
       key: PhotoPanel.largePhotoKey(id),
       transformationController:
