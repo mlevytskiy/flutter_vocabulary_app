@@ -19,11 +19,11 @@
 | T12 | [Give the word list a ScrollController, row keys, a row highlight and the jump to a row](./T12-ui-row-highlight-and-jump.md) | ui | Maksym | M | — | done |
 | T13 | [Mount the photo panel on the main screen with Back stepping, highlight and jump](./T13-wiring-mount-panel-on-main-screen.md) | wiring | Maksym | M | T8, T12 | done |
 | T14 | [Make an open panel own the main screen's touches and close on a session change](./T14-wiring-touch-ownership-and-session-change.md) | wiring | Maksym | M | T13 | done |
-| T15 | [Keep the tab on every pager page and open the panel only over the words page](./T15-ui-pager-integration.md) | ui | Maksym | M | T14 · roadmap #22 merged | todo |
+| T15 | [Keep the tab on every pager page and open the panel only over the words page](./T15-ui-pager-integration.md) | ui | Maksym | M | T14 · roadmap #22 merged | blocked |
 | T16 | [Build design variant B](./T16-ui-look-b.md) | ui | Maksym | M | T11 | done |
 | T17 | [Build design variant C](./T17-ui-look-c.md) | ui | Maksym | M | T11 | done |
 | T18 | [Add the temporary "Photo panel design" choice to Settings](./T18-ui-settings-design-choice.md) | ui | Maksym | S | T3 | done |
-| T19 | [Run the panel behaviour suite against every look and write the device-pass checklist](./T19-tests-all-looks-suite-and-device-pass.md) | tests | Maksym | M | T10, T15, T16, T17, T18 | todo |
-| T20 | [Keep the picked look and remove the others, the variant choice and its key](./T20-wiring-design-pick-cleanup.md) | wiring | Maksym | S | T19 · owner's design pick | todo |
+| T19 | [Run the panel behaviour suite against every look and write the device-pass checklist](./T19-tests-all-looks-suite-and-device-pass.md) | tests | Maksym | M | T10, T15, T16, T17, T18 | blocked |
+| T20 | [Keep the picked look and remove the others, the variant choice and its key](./T20-wiring-design-pick-cleanup.md) | wiring | Maksym | S | T19 · owner's design pick | blocked |
 
 **Total:** 20 tasks, ~15.5 person-days.
