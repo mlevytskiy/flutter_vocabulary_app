@@ -1536,14 +1536,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       required WordDetailMode detailMode,
       Decoration? highlight}) {
     // While the photo panel is open the rows ignore touches (spec AC-11),
-    // and each one turns into its one line, "word — translation".
+    // and each one turns into its one line, "word — translation", as the
+    // panel slides in.
     final compact = _photoPanel.isOpen;
     return IgnorePointer(
       key: _rowKey(index),
       ignoring: compact,
       child: WordRowMorph(
       index: index,
-      compact: compact,
+      openness: _photoPanel.openness,
       line: (reveal) => CompactWordLine(
         index: index,
         word: _wordControllers[index].text,

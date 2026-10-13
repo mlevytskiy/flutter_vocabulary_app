@@ -174,6 +174,49 @@ void main() {
     await tearDownMain(tester);
   });
 
+  testWidgets('the rows morph with the panel: under the finger on a drag, along on a tap',
+      (tester) async {
+    await pumpMain(tester);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final tab = tester.getCenter(find.byKey(PhotoPanel.tabKey));
+
+    // A drag that opens: the rows start turning into lines before it ends.
+    final gesture = await tester.startGesture(tab);
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(-12, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(stop(tester), PanelStop.closed, reason: 'the finger is still down');
+    expect(find.byType(CompactWordLine), findsWidgets, reason: 'the top rows are under way');
+    expect(find.byType(WordRowItem), findsWidgets, reason: 'and not done yet');
+
+    // Dragged back to closed, the rows come back with it.
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(12, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(find.byType(CompactWordLine), findsNothing);
+
+    // A tap: halfway through the slide the rows are halfway too, and both
+    // are done together.
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    expect(find.byType(CompactWordLine), findsWidgets);
+    await tester.pump(const Duration(milliseconds: 260));
+    final panel = tester.widget<PhotoPanel>(find.byType(PhotoPanel, skipOffstage: false));
+    expect(panel.controller.openness.value, 0.5, reason: 'the panel is settled');
+    expect(find.byType(WordRowItem), findsNothing, reason: 'and so is every row');
+    for (final line in tester.widgetList<CompactWordLine>(find.byType(CompactWordLine))) {
+      expect(line.reveal, 1);
+    }
+    await tearDownMain(tester);
+  });
+
   testWidgets('the glass slides and is covered, never resized or refaded (Android cost)',
       (tester) async {
     await pumpMain(tester);

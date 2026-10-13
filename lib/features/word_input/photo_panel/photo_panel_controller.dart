@@ -1,3 +1,4 @@
+import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 
 import 'photo_panel_stops.dart';
@@ -14,6 +15,17 @@ class PhotoPanelController extends ChangeNotifier {
   String? get selectedId => _selectedId;
 
   bool get isOpen => _stop != PanelStop.closed;
+
+  /// How open the panel is drawn this frame, 0 closed to 1 full-open, as it
+  /// slides or follows a drag ([stop] is where it is going). The word rows
+  /// morph along with it, so both move together on a tap and on a drag.
+  Animation<double> get openness => _openness;
+  final _openness = ProxyAnimation(kAlwaysDismissedAnimation);
+
+  /// The panel hands in its openness while it is mounted; null keeps the
+  /// last value.
+  void attachOpenness(Animation<double>? openness) =>
+      _openness.parent = openness;
 
   /// Moves to [stop]; closed clears the selection (spec AC-05).
   void setStop(PanelStop stop) {

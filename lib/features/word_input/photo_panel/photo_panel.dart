@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -78,7 +80,11 @@ class PhotoPanel extends ConsumerStatefulWidget {
 
 class _PhotoPanelState extends ConsumerState<PhotoPanel>
     with SingleTickerProviderStateMixin {
-  static const _settleDuration = Duration(milliseconds: 250);
+  /// How long a whole slide takes between closed and half-open, and between
+  /// half-open and full-open; a part of one takes its share. Half-open is
+  /// settled within 300 ms of a tap (spec NFR), word rows' morph included.
+  static const _halfOpenDuration = Duration(milliseconds: 280);
+  static const _fullOpenDuration = Duration(milliseconds: 250);
 
   final _portal = OverlayPortalController();
 
@@ -111,8 +117,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// The half-open column of small photos.
   final _column = ScrollController();
 
-  /// The tab's and the panel's glass share one read of the screen behind
-  /// them per frame (Impeller); one key for the panel's life.
+  /// The tab's and the panel's frosted glass (Android) share one read of
+  /// the screen behind them per frame; one key for the panel's life.
   final _backdropKey = BackdropKey();
 
   /// Full-open: the large photo shown now (null outside full-open) and each
@@ -141,6 +147,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     super.initState();
     _openness = AnimationController(
         vsync: this, value: widget.controller.stop.openness);
+    widget.controller.attachOpenness(_openness);
     _exclusion = ref.read(systemGestureExclusionProvider);
     _portal.show();
     widget.controller.addListener(_onControllerChanged);
@@ -152,7 +159,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_onControllerChanged);
+      oldWidget.controller.attachOpenness(null);
       widget.controller.addListener(_onControllerChanged);
+      widget.controller.attachOpenness(_openness);
       _onControllerChanged();
     }
     if (oldWidget.scrollController != widget.scrollController) {
@@ -166,6 +175,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   @override
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
+    widget.controller.attachOpenness(null);
     if (_sentRects.isNotEmpty) _exclusion.clear();
     _watchedPosition?.isScrollingNotifier.removeListener(_onScrolling);
     _openness.dispose();
@@ -211,8 +221,19 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     _animatingTo = target;
     _openness
         .animateTo(target,
-            duration: _settleDuration, curve: Curves.easeOutCubic)
+            duration: _slideDuration(_openness.value, target),
+            curve: Curves.easeOutCubic)
         .whenCompleteOrCancel(() => _animatingTo = null);
+  }
+
+  /// The slide from openness [from] to [to]: each half of the way takes its
+  /// share of that half's duration, so the rest of a drag is not slow.
+  static Duration _slideDuration(double from, double to) {
+    double part(double lo, double hi) =>
+        (from.clamp(lo, hi) - to.clamp(lo, hi)).abs() / 0.5;
+    final us = part(0, 0.5) * _halfOpenDuration.inMicroseconds +
+        part(0.5, 1) * _fullOpenDuration.inMicroseconds;
+    return Duration(microseconds: math.max(us.round(), 100000));
   }
 
   /// Opening closes the keyboard; the field keeps its text (spec AC-03).

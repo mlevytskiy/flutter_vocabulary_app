@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
@@ -31,7 +32,7 @@ class CompactWordLine extends StatelessWidget {
     required this.detail,
     this.highlight,
     this.endInset = 0,
-    this.reveal = false,
+    this.reveal = 1,
   });
 
   static const separator = ' — ';
@@ -49,9 +50,9 @@ class CompactWordLine extends StatelessWidget {
   /// panel instead of under it.
   final double endInset;
 
-  /// The line has just replaced the full row: the text glides in and the
-  /// part after the dash follows it.
-  final bool reveal;
+  /// How far the text has come in, 0 to 1, as the line replaces the full
+  /// row: it glides in and the part after the dash follows it.
+  final double reveal;
 
   /// The whole line, as a screen reader and a test read it.
   String get text {
@@ -73,14 +74,7 @@ class CompactWordLine extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       foregroundDecoration: highlight,
-      child: reveal
-          ? TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: const Duration(milliseconds: 560),
-              curve: Curves.easeOutCubic,
-              builder: (context, v, _) => _line(base, v),
-            )
-          : _line(base, 1),
+      child: _line(base, Curves.easeOutCubic.transform(reveal)),
     );
   }
 
@@ -118,188 +112,164 @@ class CompactWordLine extends StatelessWidget {
   }
 }
 
-/// A word row that turns into its one line ([line]) while [compact], and
-/// back into the full row ([full]) after. The card's height glides between
-/// the two while one fades and scales into the other, and the rows change
-/// one after another from the top of the screen down, like a wave.
+/// A word row that turns into its one line ([line]) as the photo panel
+/// opens, and back into the full row ([full]) as it closes, following the
+/// panel's [openness] frame by frame: on a tap they move together, and on a
+/// drag the rows follow the finger. The card's height glides between the two
+/// while one fades and scales into the other, and the rows change one after
+/// another from the top of the screen down, like a wave (back up on close).
 class WordRowMorph extends StatefulWidget {
   const WordRowMorph({
     super.key,
     required this.index,
-    required this.compact,
+    required this.openness,
     required this.full,
     required this.line,
   });
 
-  static const duration = Duration(milliseconds: 420);
-
-  /// The delay of a row at the bottom of the screen; a row at the top starts
-  /// at once.
-  static const maxStagger = Duration(milliseconds: 240);
+  /// The share of the panel's slide to half-open by which a row at the
+  /// bottom of the screen starts after one at the top.
+  static const stagger = 0.3;
 
   final int index;
-  final bool compact;
+
+  /// The photo panel's openness: 0 closed, 0.5 half-open and beyond.
+  final Animation<double> openness;
   final Widget full;
 
-  /// Builds the one line; `reveal` is true when it replaces the full row.
-  final Widget Function(bool reveal) line;
+  /// Builds the one line; `reveal` is how far its text has come in, 0 to 1.
+  final Widget Function(double reveal) line;
 
   @override
   State<WordRowMorph> createState() => _WordRowMorphState();
 }
 
-class _WordRowMorphState extends State<WordRowMorph>
-    with TickerProviderStateMixin {
-  /// What is shown now; follows [WordRowMorph.compact] after the row's turn
-  /// in the wave. A row first built while compact is a line at once.
-  late bool _compact = widget.compact;
+class _WordRowMorphState extends State<WordRowMorph> {
+  /// 0 the full row, 1 the line.
+  late double _t;
 
-  /// The line replaced the full row (rather than being built as a line).
-  bool _morphed = false;
-
-  /// Runs out the row's turn in the wave. A ticker, not a timer, so the
-  /// wait is a frame-driven animation like the morph itself.
-  late final AnimationController _wait;
-
-  /// The card's glide from [_fromHeight] to the shown child's height.
-  late final AnimationController _morph;
-  double? _fromHeight;
+  /// The row's turn in the wave, a share of the slide; measured when the
+  /// panel starts to move and kept until it rests closed or open.
+  double? _turn;
 
   @override
   void initState() {
     super.initState();
-    _wait = AnimationController(vsync: this);
-    _morph = AnimationController(
-        vsync: this, duration: WordRowMorph.duration, value: 1);
+    _t = _progress(widget.openness.value);
+    widget.openness.addListener(_onOpenness);
   }
 
   @override
   void didUpdateWidget(WordRowMorph oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.compact == oldWidget.compact) return;
-    _wait.stop();
-    final target = widget.compact;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || widget.compact != target) return;
-      _wait.duration = _turn();
-      _wait.forward(from: 0).then((_) {
-        if (!mounted || widget.compact != target || _compact == target) return;
-        // The card's height as last laid out; it may be marked dirty
-        // already, which `context.size` refuses.
-        final box = context.findRenderObject();
-        final from = box is RenderBox && box.hasSize ? box.size.height : null;
-        setState(() {
-          _fromHeight = from;
-          _compact = target;
-          _morphed = true;
-        });
-        _morph.forward(from: 0);
-      });
-    });
-  }
-
-  /// The row's turn: how far down the screen it is, as a share of
-  /// [WordRowMorph.maxStagger].
-  Duration _turn() {
-    final box = context.findRenderObject();
-    final screen = MediaQuery.sizeOf(context).height;
-    if (box is! RenderBox || !box.hasSize || !box.attached || screen <= 0) {
-      return Duration.zero;
+    if (oldWidget.openness != widget.openness) {
+      oldWidget.openness.removeListener(_onOpenness);
+      widget.openness.addListener(_onOpenness);
+      _t = _progress(widget.openness.value);
     }
-    final y = box.localToGlobal(Offset.zero).dy;
-    return WordRowMorph.maxStagger * (y / screen).clamp(0.0, 1.0);
   }
 
   @override
   void dispose() {
-    _wait.dispose();
-    _morph.dispose();
+    widget.openness.removeListener(_onOpenness);
     super.dispose();
   }
 
+  void _onOpenness() {
+    final t = _progress(widget.openness.value);
+    if (t != _t) setState(() => _t = t);
+  }
+
+  /// The row's morph at panel [openness]: its part of the way to half-open.
+  double _progress(double openness) {
+    final half = (openness / 0.5).clamp(0.0, 1.0);
+    if (half == 0 || half == 1) {
+      _turn = null;
+      return half;
+    }
+    final turn = _turn ??= _measureTurn();
+    return ((half - turn) / (1 - WordRowMorph.stagger)).clamp(0.0, 1.0);
+  }
+
+  /// How far down the screen the row is, as a share of the stagger; a row
+  /// not laid out yet goes first.
+  double _measureTurn() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return 0;
+    final screen = MediaQuery.maybeSizeOf(context)?.height ?? 0;
+    if (screen <= 0) return 0;
+    final y = box.localToGlobal(Offset.zero).dy;
+    return WordRowMorph.stagger * (y / screen).clamp(0.0, 1.0);
+  }
+
+  static const _fade = Interval(0.25, 1, curve: Curves.easeOut);
+
   @override
   Widget build(BuildContext context) {
-    final switcher = AnimatedSwitcher(
-      duration: WordRowMorph.duration,
-      // Only the shown child sizes the row; the leaving one is laid over it
-      // from the top and clipped as the card glides to the new height.
-      layoutBuilder: (current, previous) => Stack(
-        fit: StackFit.passthrough,
-        clipBehavior: Clip.none,
-        alignment: Alignment.topLeft,
-        children: [
-          for (final child in previous)
-            Positioned(left: 0, right: 0, top: 0, child: child),
-          if (current != null) current,
-        ],
-      ),
-      transitionBuilder: (child, animation) {
-        final line = child.key == const ValueKey('line');
-        final fade = CurvedAnimation(
-          parent: animation,
-          curve: const Interval(0.25, 1, curve: Curves.easeOut),
-        );
-        final scale = Tween<double>(begin: line ? 0.92 : 0.97, end: 1)
-            .animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutBack));
-        return FadeTransition(
-          opacity: fade,
-          child: ScaleTransition(
-            scale: scale,
-            alignment: line ? Alignment.centerLeft : Alignment.topCenter,
-            // The scale repaints every frame; behind a boundary the row's
-            // fields and text are recorded once and only moved.
+    final t = _t;
+    // Each child as AnimatedSwitcher drew it: the one coming in fades in
+    // late and scales up with a little overshoot; the one leaving does the
+    // same backwards. Behind a boundary the row's fields and text are
+    // recorded once and only moved.
+    Widget part(Widget child, double v, double from, Alignment alignment) =>
+        Opacity(
+          opacity: _fade.transform(v),
+          child: Transform.scale(
+            scale: from + (1 - from) * Curves.easeOutBack.transform(v),
+            alignment: alignment,
             child: RepaintBoundary(child: child),
           ),
         );
-      },
-      child: _compact
-          ? KeyedSubtree(
-              key: const ValueKey('line'), child: widget.line(_morphed))
-          : KeyedSubtree(key: const ValueKey('full'), child: widget.full),
-    );
-    return AnimatedBuilder(
-      animation: _morph,
-      builder: (context, child) => _GlideHeight(
-        from: _fromHeight,
-        t: Curves.easeInOutCubic.transform(_morph.value),
-        child: child,
-      ),
-      child: switcher,
+    return _Morph(
+      t: Curves.easeInOutCubic.transform(t),
+      full: t < 1
+          ? part(KeyedSubtree(key: const ValueKey('full'), child: widget.full),
+              1 - t, 0.97, Alignment.topCenter)
+          : null,
+      line: t > 0
+          ? part(
+              KeyedSubtree(key: const ValueKey('line'), child: widget.line(t)),
+              t,
+              0.92,
+              Alignment.centerLeft)
+          : null,
     );
   }
 }
 
-/// Sizes its child's width as the child, and its height between [from] and
-/// the child's own height at [t], clipping what is below while it glides.
-/// With [from] null, or at [t] 1, it is exactly the child.
-class _GlideHeight extends SingleChildRenderObjectWidget {
-  const _GlideHeight({required this.from, required this.t, super.child});
+enum _Part { full, line }
 
-  final double? from;
+/// The full row and its line laid over each other from the top; the card is
+/// the full row's height at [t] 0 and the line's at 1, clipping what hangs
+/// below while it glides. Either child may be missing.
+class _Morph extends SlottedMultiChildRenderObjectWidget<_Part, RenderBox> {
+  const _Morph({required this.t, this.full, this.line});
+
   final double t;
+  final Widget? full;
+  final Widget? line;
 
   @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderGlideHeight(from, t);
+  Iterable<_Part> get slots => _Part.values;
 
   @override
-  void updateRenderObject(BuildContext context, _RenderGlideHeight renderObject) {
-    renderObject
-      ..from = from
-      ..t = t;
+  Widget? childForSlot(_Part slot) => switch (slot) {
+        _Part.full => full,
+        _Part.line => line,
+      };
+
+  @override
+  _RenderMorph createRenderObject(BuildContext context) => _RenderMorph(t);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderMorph renderObject) {
+    renderObject.t = t;
   }
 }
 
-class _RenderGlideHeight extends RenderProxyBox {
-  _RenderGlideHeight(this._from, this._t);
-
-  double? _from;
-  set from(double? value) {
-    if (value == _from) return;
-    _from = value;
-    markNeedsLayout();
-  }
+class _RenderMorph extends RenderBox
+    with SlottedContainerRenderObjectMixin<_Part, RenderBox> {
+  _RenderMorph(this._t);
 
   double _t;
   set t(double value) {
@@ -308,32 +278,63 @@ class _RenderGlideHeight extends RenderProxyBox {
     markNeedsLayout();
   }
 
+  RenderBox? get _full => childForSlot(_Part.full);
+  RenderBox? get _line => childForSlot(_Part.line);
+
   final _clip = LayerHandle<ClipRectLayer>();
+
+  bool get _gliding => _full != null && _line != null;
+
+  /// The card for children of sizes [full] and [line] (either may be null).
+  Size _sizeFor(BoxConstraints constraints, Size? full, Size? line) {
+    final width = math.max(full?.width ?? 0, line?.width ?? 0);
+    final height = full != null && line != null
+        ? lerpDouble(full.height, line.height, _t)!
+        : (full ?? line)?.height ?? 0;
+    return constraints.constrain(Size(width, height));
+  }
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) => _sizeFor(constraints,
+      _full?.getDryLayout(constraints), _line?.getDryLayout(constraints));
 
   @override
   void performLayout() {
-    final child = this.child!;
-    child.layout(constraints, parentUsesSize: true);
-    final height = child.size.height;
-    final from = _from;
-    size = constraints.constrain(Size(child.size.width,
-        from == null || _t >= 1 ? height : lerpDouble(from, height, _t)!));
+    // Laid out again with the same constraints, a child that has not
+    // changed returns at once: only the card's height moves.
+    final full = _full;
+    final line = _line;
+    full?.layout(constraints, parentUsesSize: true);
+    line?.layout(constraints, parentUsesSize: true);
+    size = _sizeFor(constraints, full?.size, line?.size);
   }
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    final child = this.child;
-    if (child == null) return;
-    // Settled, the child is drawn as it is; while gliding, the leaving
-    // child hangs below the shown one and is clipped at the card's height.
-    if (_t >= 1 || _from == null) {
+    void paintChildren(PaintingContext context, Offset offset) {
+      if (_full case final full?) context.paintChild(full, offset);
+      if (_line case final line?) context.paintChild(line, offset);
+    }
+
+    if (!_gliding) {
       _clip.layer = null;
-      context.paintChild(child, offset);
+      paintChildren(context, offset);
       return;
     }
     _clip.layer = context.pushClipRect(
-        needsCompositing, offset, Offset.zero & size, super.paint,
+        needsCompositing, offset, Offset.zero & size, paintChildren,
         oldLayer: _clip.layer);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    // The full row first: it is what a closing row becomes.
+    for (final child in [_full, _line]) {
+      if (child != null && child.hitTest(result, position: position)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   @override

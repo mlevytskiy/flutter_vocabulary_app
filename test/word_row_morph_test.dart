@@ -73,8 +73,11 @@ void main() {
   group('WordRowMorph', () {
     const fullKey = Key('test-full-row');
     const lineKey = Key('test-line');
+    late AnimationController openness;
+    setUp(() => openness = AnimationController(vsync: const TestVSync()));
+    tearDown(() => openness.dispose());
 
-    Widget host({required bool compact, double top = 0}) => MaterialApp(
+    Widget host({double top = 0}) => MaterialApp(
           home: Scaffold(
             body: Padding(
               padding: EdgeInsets.only(top: top),
@@ -82,7 +85,7 @@ void main() {
                 alignment: Alignment.topCenter,
                 child: WordRowMorph(
                   index: 0,
-                  compact: compact,
+                  openness: openness,
                   full: const SizedBox(key: fullKey, height: 140),
                   line: (reveal) => CompactWordLine(
                       key: lineKey, index: 0, word: 'run', detail: 'бігти', reveal: reveal),
@@ -94,32 +97,36 @@ void main() {
 
     double height(WidgetTester tester) => tester.getSize(find.byType(WordRowMorph)).height;
 
-    testWidgets('glides from the full row to its line and back', (tester) async {
-      await tester.pumpWidget(host(compact: false));
+    testWidgets('follows the panel from the full row to its line and back', (tester) async {
+      await tester.pumpWidget(host());
       expect(find.byKey(fullKey), findsOneWidget);
       expect(find.byKey(lineKey), findsNothing);
       expect(height(tester), 140);
 
-      await tester.pumpWidget(host(compact: true));
-      await tester.pump(); // the row's turn starts after this frame
-      await tester.pump(); // a row at the top has no wait
-      await tester.pump(const Duration(milliseconds: 200));
+      openness.value = 0.2;
+      await tester.pump();
       expect(find.byKey(fullKey), findsOneWidget, reason: 'the full row fades out');
       expect(find.byKey(lineKey), findsOneWidget, reason: 'the line fades in');
       expect(height(tester), inExclusiveRange(56, 140), reason: 'the card glides');
+      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal,
+          inExclusiveRange(0, 1));
 
-      await tester.pumpAndSettle();
+      openness.value = 0.5;
+      await tester.pump();
       expect(find.byKey(fullKey), findsNothing);
-      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal, isTrue);
+      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal, 1);
       final lineHeight = height(tester);
       expect(lineHeight, lessThan(70));
 
-      await tester.pumpWidget(host(compact: false));
+      openness.value = 0.8; // on to full-open: still the line
       await tester.pump();
+      expect(height(tester), lineHeight);
+
+      openness.value = 0.2;
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 200));
       expect(height(tester), inExclusiveRange(lineHeight, 140));
-      await tester.pumpAndSettle();
+      openness.value = 0;
+      await tester.pump();
       expect(find.byKey(fullKey), findsOneWidget);
       expect(find.byKey(lineKey), findsNothing);
       expect(height(tester), 140);
@@ -131,27 +138,20 @@ void main() {
       final focus = FocusNode();
       addTearDown(controller.dispose);
       addTearDown(focus.dispose);
-      Widget withField(bool compact) => MaterialApp(
-            home: Scaffold(
-              body: WordRowMorph(
-                index: 0,
-                compact: compact,
-                full: TextField(controller: controller, focusNode: focus),
-                line: (reveal) =>
-                    CompactWordLine(index: 0, word: 'run', detail: '', reveal: reveal),
-              ),
-            ),
-          );
-      await tester.pumpWidget(withField(false));
-      await tester.pumpWidget(withField(true));
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: WordRowMorph(
+            index: 0,
+            openness: openness,
+            full: TextField(controller: controller, focusNode: focus),
+            line: (reveal) => CompactWordLine(index: 0, word: 'run', detail: '', reveal: reveal),
+          ),
+        ),
+      ));
+      openness.value = 0.15;
       await tester.pump();
+      openness.value = 0;
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pumpWidget(withField(false));
-      await tester.pump();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
       expect(find.byType(TextField), findsOneWidget);
       expect(find.byType(CompactWordLine), findsNothing);
@@ -160,27 +160,35 @@ void main() {
       expect(focus.hasFocus, isTrue);
     });
 
-    testWidgets('built while compact, it is a line at once, with no reveal', (tester) async {
-      await tester.pumpWidget(host(compact: true));
+    testWidgets('built while open, it is the whole line at once', (tester) async {
+      openness.value = 0.5;
+      await tester.pumpWidget(host());
       expect(find.byKey(lineKey), findsOneWidget);
       expect(find.byKey(fullKey), findsNothing);
-      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal, isFalse);
+      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal, 1);
     });
 
     testWidgets('a rebuild that changes nothing does not animate', (tester) async {
-      await tester.pumpWidget(host(compact: true));
-      await tester.pumpWidget(host(compact: true));
+      openness.value = 0.5;
+      await tester.pumpWidget(host());
+      await tester.pumpWidget(host());
       expect(tester.binding.hasScheduledFrame, isFalse);
-      expect(await tester.pumpAndSettle(), 1);
     });
 
     testWidgets('a row lower on the screen takes its turn later (the wave)', (tester) async {
-      await tester.pumpWidget(host(compact: false, top: 500));
-      await tester.pumpWidget(host(compact: true, top: 500));
+      await tester.pumpWidget(host(top: 500));
+      openness.value = 0.1;
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 60));
       expect(find.byKey(lineKey), findsNothing, reason: 'still waiting for its turn');
-      await tester.pumpAndSettle();
+      openness.value = 0.4;
+      await tester.pump();
+      expect(find.byKey(lineKey), findsOneWidget);
+    });
+
+    testWidgets('a row at the top starts at once', (tester) async {
+      await tester.pumpWidget(host());
+      openness.value = 0.1;
+      await tester.pump();
       expect(find.byKey(lineKey), findsOneWidget);
     });
   });
