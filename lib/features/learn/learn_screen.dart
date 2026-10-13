@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/models/session.dart';
 import '../../core/providers.dart';
@@ -79,17 +80,30 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
         curve: Curves.easeInOut,
       );
 
-  /// Opens the first ticked exercise: Mnemonic story opens the story of the
-  /// selected group (AC-06); the others are still coming soon.
-  void _start() {
-    final id = exercises.firstWhere((e) => _ticked.contains(e.id)).id;
-    final group =
-        ref.read(wordGroupsNotifierProvider(widget.sessionId)).selectedGroupId;
-    if (id == 'mnemonic-story' && group != null) {
-      StoryRoute(sessionId: widget.sessionId, groupId: group)
-          .push<void>(context);
-    } else {
-      ComingSoonRoute(exercise: id).push<void>(context);
+  /// Opens the ticked exercises one after the other, in list order
+  /// (get-words-from-subtitles-improvment AC-13): Mnemonic story opens the
+  /// story of the selected group (AC-06); Dialogs from movie opens the
+  /// dialogue of a dialogue group, or the story of any other group; the
+  /// others are still coming soon. A screen already shown is not shown again.
+  Future<void> _start() async {
+    final grouping = ref.read(wordGroupsNotifierProvider(widget.sessionId));
+    final groupId = grouping.selectedGroupId;
+    final group = grouping.groups.where((g) => g.id == groupId).firstOrNull;
+    final opened = <String>{};
+    for (final exercise in exercises.where((e) => _ticked.contains(e.id))) {
+      final GoRouteData route;
+      if (exercise.id == 'mnemonic-story' && groupId != null) {
+        route = StoryRoute(sessionId: widget.sessionId, groupId: groupId);
+      } else if (exercise.id == 'dialogs-from-movie' && group != null) {
+        route = group.dialogueId != null
+            ? ComingSoonRoute(exercise: exercise.id)
+            : StoryRoute(sessionId: widget.sessionId, groupId: group.id);
+      } else {
+        route = ComingSoonRoute(exercise: exercise.id);
+      }
+      if (!opened.add(route.location)) continue;
+      await route.push<void>(context);
+      if (!mounted) return;
     }
   }
 
@@ -131,7 +145,14 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
 
   bool _canStart(WordGroupsState grouping) =>
       _ticked.isNotEmpty &&
-      !(_ticked.contains('mnemonic-story') && grouping.selectedGroupId == null);
+      !((_ticked.contains('mnemonic-story') ||
+              _ticked.contains('dialogs-from-movie')) &&
+          grouping.selectedGroupId == null);
+
+  /// Dialogs from movie can be ticked only in a session with film dialogues
+  /// (get-words-from-subtitles-improvment AC-16).
+  bool get _hasDialogues =>
+      _session?.dialogues.any((d) => !d.hidden) ?? false;
 
   /// The session whose words the groups name.
   Session? get _session => widget.sessionId == null
@@ -158,11 +179,23 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
           child: const Text('Try again'),
         ),
       ],
-      if (grouping.groups.length >= 2) ...[
-        line('We grouped your words into sets of up to 19 words. '
-            'Please select one group to learn.'),
+      // With a dialogue group the pager always shows: dialogue cards first,
+      // then "Other words", then topic groups (get-words-from-subtitles-
+      // improvment AC-13, AC-25).
+      if (grouping.groups.length >= 2 || grouping.hasDialogueGroups) ...[
+        line(grouping.hasDialogueGroups
+            ? 'Your words are grouped by the dialogues from the film. '
+                'Please select one group to learn.'
+            : 'We grouped your words into sets of up to 19 words. '
+                'Please select one group to learn.'),
         GroupPager(
-          groups: grouping.groups,
+          groups: [
+            ...grouping.groups.where((g) => g.dialogueId != null),
+            ...grouping.groups
+                .where((g) => g.dialogueId == null && g.name == otherWordsName),
+            ...grouping.groups
+                .where((g) => g.dialogueId == null && g.name != otherWordsName),
+          ],
           wordsByRowId: {
             for (final w in wordsToLearn(_session ?? Session.create()))
               w.rowId: w.word.trim(),
@@ -293,6 +326,20 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
                   children: [
                     for (final exercise
                         in exercises.where((e) => e.stage == stage))
+                      if (exercise.id == 'dialogs-from-movie' && !_hasDialogues)
+                        CheckboxListTile(
+                          value: false,
+                          enabled: false,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding:
+                              const EdgeInsets.symmetric(horizontal: 8),
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          title: Text(exercise.name),
+                          subtitle: const Text('Needs dialogues from subtitles'),
+                          onChanged: null,
+                        )
+                      else
                       CheckboxListTile(
                         value: _ticked.contains(exercise.id),
                         enabled: exercise.available,
