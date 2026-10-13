@@ -217,6 +217,72 @@ void main() {
     await tearDownMain(tester);
   });
 
+  testWidgets('the top row stays on top while the rows morph, and the list comes back on close',
+      (tester) async {
+    await pumpMain(tester);
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    final list = listRect(tester);
+
+    /// The row cut by the list's top, and the share of it above the top.
+    (int, double) topRow() {
+      for (var i = 0; i < 21; i++) {
+        final r = row(i);
+        if (!tester.any(r)) continue;
+        final rect = tester.getRect(r);
+        if (rect.bottom > list.top) return (i, (list.top - rect.top) / rect.height);
+      }
+      throw StateError('no row on screen');
+    }
+
+    // Row 4 on top, a third of it above the top of the list.
+    final position = listPosition(tester);
+    position.jumpTo(0);
+    await tester.pump();
+    final row4 = tester.getRect(row(4));
+    position.jumpTo(row4.top - list.top + row4.height / 3);
+    await tester.pump();
+    final (first, share) = topRow();
+    expect(first, 4);
+    final pixels = position.pixels;
+
+    Future<void> watchMorph(String what) async {
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final (index, now) = topRow();
+        expect(index, 4, reason: '$what, frame $i');
+        expect(now, closeTo(share, 0.02), reason: '$what, frame $i');
+      }
+    }
+
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    await watchMorph('opening');
+    await tester.pumpAndSettle();
+    expect(find.byType(WordRowItem), findsNothing, reason: 'every row is a line');
+    expect(position.pixels, lessThan(pixels), reason: 'the rows above shrank');
+
+    await tester.tap(find.byKey(PhotoPanel.closeKey));
+    await watchMorph('closing');
+    await tester.pumpAndSettle();
+    // Back where the list was: the same row on top, cut the same.
+    expect(topRow().$1, 4);
+    expect(topRow().$2, closeTo(share, 0.02));
+    expect(tester.getRect(row(4)).height, row4.height, reason: 'a full row again');
+
+    // A drag does the same.
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(PhotoPanel.tabKey)));
+    for (var i = 0; i < 8; i++) {
+      await gesture.moveBy(const Offset(-10, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(topRow().$1, 4, reason: 'dragging, frame $i');
+      expect(topRow().$2, closeTo(share, 0.02), reason: 'dragging, frame $i');
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(topRow().$1, 4);
+    await tearDownMain(tester);
+  });
+
   testWidgets('the glass slides and is covered, never resized or refaded (Android cost)',
       (tester) async {
     await pumpMain(tester);

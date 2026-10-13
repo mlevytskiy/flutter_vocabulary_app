@@ -35,6 +35,7 @@ import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
+import 'widgets/anchored_scroll_controller.dart';
 import 'widgets/word_row_morph.dart';
 import 'word_input_notifier.dart';
 
@@ -146,8 +147,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   /// side-bar-for-main-screen: the word list's scroll position (both the
   /// plain and the drag-mode list) and one key per row index, so the list can
   /// jump to a photo's first row (spec AC-04). Keyed by index like the row's
-  /// former `ValueKey(index)`, so row identity is unchanged.
-  final ScrollController _listScroll = ScrollController();
+  /// former `ValueKey(index)`, so row identity is unchanged. While the rows
+  /// morph with the photo panel it keeps the top row in place.
+  final AnchoredScrollController _listScroll = AnchoredScrollController();
   final List<GlobalKey> _rowKeys = [];
 
   GlobalKey _rowKey(int index) {
@@ -174,6 +176,22 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
   void _onPhotoPanelChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// The rows morph while the panel is between closed and half-open; the
+  /// list keeps the row on top in place from the first frame of a move until
+  /// the panel rests (or the list is scrolled by hand).
+  bool _rowsResting = true;
+  void _onPhotoPanelOpenness() {
+    final t = _photoPanel.openness.value;
+    final resting = t <= 0 || t >= 0.5;
+    if (resting == _rowsResting) return;
+    _rowsResting = resting;
+    if (resting) {
+      _listScroll.release();
+    } else {
+      _listScroll.holdTopItem();
+    }
   }
 
   /// While the photo panel is open the main screen is only for looking: a
@@ -220,6 +238,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _photoPanel.addListener(_onPhotoPanelChanged);
+    _photoPanel.openness.addListener(_onPhotoPanelOpenness);
     _pronunciation = ref.read(pronunciationServiceProvider);
     _addControllersForIndex(0);
     // Request focus on the first field after the first frame
@@ -1527,6 +1546,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       node.dispose();
     }
     _listScroll.dispose();
+    _photoPanel.openness.removeListener(_onPhotoPanelOpenness);
     _photoPanel.dispose();
     super.dispose();
   }
