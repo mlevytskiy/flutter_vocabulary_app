@@ -2,6 +2,10 @@ import 'package:isar_community/isar.dart';
 
 part 'story_run.g.dart';
 
+/// What a [StoryRun] made. Stored as the ordinal: keep `story` first so runs
+/// saved before `kind` existed read back as mnemonic stories.
+enum StoryRunKind { story, scene }
+
 /// One mnemonic story run (mnemonic-story, ADR-0003): a record of what the AIs
 /// did for a group's words. Listed across all sessions, newest first, and
 /// never removed — not by a newer story, not by a changed group (AC-14,
@@ -40,6 +44,15 @@ class StoryRun {
   /// True once the app has copied the Worker's results (picture included) to
   /// the phone.
   bool collected = false;
+
+  /// A mnemonic story, or a scene picture of a film dialogue: picture prompt
+  /// then picture, no story step (get-words-from-subtitles-improvment,
+  /// ADR-0004).
+  @enumerated
+  StoryRunKind kind = StoryRunKind.story;
+
+  /// A scene run's dialogue, shown where a story run shows its story (AC-14).
+  String? sceneText;
 
   StoryRun();
 }

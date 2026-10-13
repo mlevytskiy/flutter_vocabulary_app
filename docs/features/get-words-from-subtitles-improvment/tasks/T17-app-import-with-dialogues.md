@@ -34,3 +34,4 @@ status: "todo"
 ## Notes
 
 - Shares `word_input_notifier.dart` with T18 (one lane).
+- As built (implement, 2026-10-13): the words still go in through the screen's `_addWordsFromPhoto` (it owns the row controllers), and the dialogues right after through `WordInputNotifier.addImportDialogues(dialogues, keptCount)`, which links them to the last `keptCount` rows. Both changes are synchronous, so the one debounced write saves them together. Feature tests: `subtitle_import_dialogues_test.dart`, `subtitle_words_service_test.dart`, `subtitle_import_flow_test.dart`.

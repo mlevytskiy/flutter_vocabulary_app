@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/learn_screen.dart';
@@ -25,6 +26,7 @@ part 'routes.g.dart';
           routes: [
             TypedGoRoute<ComingSoonRoute>(path: 'soon'),
             TypedGoRoute<StoryRoute>(path: 'story'),
+            TypedGoRoute<DialogueRoute>(path: 'dialogue'),
           ],
         ),
         TypedGoRoute<WordsSettingsRoute>(
@@ -99,6 +101,19 @@ class StoryRoute extends GoRouteData with _$StoryRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       StoryScreen(sessionId: sessionId, groupId: groupId);
+}
+
+/// "Dialogs from movie" for one dialogue group (get-words-from-subtitles-
+/// improvment, SCR-07), pushed from Start like [StoryRoute]. Ids only (rule 1).
+class DialogueRoute extends GoRouteData with _$DialogueRoute {
+  const DialogueRoute({this.sessionId, required this.groupId});
+
+  final String? sessionId;
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      DialogueScreen(sessionId: sessionId, groupId: groupId);
 }
 
 /// Words settings (mnemonic-story, SCR-05): the AI for each step of a story

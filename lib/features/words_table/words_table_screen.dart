@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/dialogues/dialogue_rules.dart' show afterPublish;
 import '../../core/models/session.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
@@ -223,7 +224,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                   if (includePhotos || source.kind == SourceKind.set) source,
               ],
               publishedId: session?.publishedId,
-              editToken: session?.editToken);
+              editToken: session?.editToken,
+              dialogues: session?.dialogues ?? const []);
       // Never awaited: the link dialog does not wait for photos (AC-37).
       ref
           .read(photoUploadServiceProvider)
@@ -310,8 +312,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         ? ref.read(wordInputNotifierProvider).valueOrNull
         : null;
     if (sessionId == null || current?.sessionId == sessionId) {
-      await ref.read(wordInputNotifierProvider.notifier).markShared(
+      final notifier = ref.read(wordInputNotifierProvider.notifier);
+      await notifier.markShared(
           publishedId: published.id, editToken: published.editToken);
+      await notifier.markDialoguesPublished(
+          {for (final d in published.declaredDialogues) d.id});
       return;
     }
     // The link dialog does not wait for opening the store.
@@ -326,7 +331,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       if (stored == null) return;
       stored
         ..publishedId = published.id
-        ..editToken = published.editToken;
+        ..editToken = published.editToken
+        ..dialogues = afterPublish(stored.dialogues,
+            sent: {for (final d in published.declaredDialogues) d.id});
       await store.put(stored);
       ref.invalidate(sessionByIdProvider(sessionId));
     } catch (_) {

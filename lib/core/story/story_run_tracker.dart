@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/word_input/word_input_notifier.dart';
+import '../models/film_dialogue.dart';
 import '../models/offered_ai.dart';
 import '../models/session.dart';
 import '../models/story_run.dart';
@@ -155,6 +156,69 @@ class StoryRunTracker extends _$StoryRunTracker {
             storyModel: choice.story,
             promptModel: choice.prompt,
             pictureModel: choice.picture,
+          );
+    } catch (_) {
+      await _notStarted(run, const StoryStartRefusal(StoryRefusal.unavailable));
+      return null;
+    }
+    if (result is StoryRefused) {
+      await _notStarted(run, await _refusal(result, run.models, offered));
+      return null;
+    }
+    _wake();
+    return run.runId;
+  }
+
+  /// Starts a scene run for the film dialogue of [group], a dialogue group of
+  /// [sessionId] (get-words-from-subtitles-improvment ADR-0004): the picture
+  /// prompt writer and the picture maker of the AI choice, drawing the
+  /// dialogue. Returns its id; null when none started: the dialogue already
+  /// has its picture (AC-14), a scene run for it is going, or it has no lines.
+  Future<String?> startScene(String sessionId, WordGroup group) async {
+    try {
+      return await _startScene(sessionId, group);
+    } catch (e) {
+      debugPrint('VOCAB: starting a scene run failed: $e');
+      return null;
+    }
+  }
+
+  Future<String?> _startScene(String sessionId, WordGroup group) async {
+    final session = await _session(sessionId);
+    if (session == null || _disposed) return null;
+    final dialogue = session.dialogues.where((d) => d.id == group.dialogueId).firstOrNull;
+    if (dialogue == null || dialogue.lines.isEmpty || dialogue.scenePictureRunId != null) return null;
+    final runStore = await ref.read(storyRunStoreProvider.future);
+    for (final r in await runStore.newestFirst()) {
+      if (r.sessionId == sessionId && r.groupId == group.id && r.kind == StoryRunKind.scene && r.outcome == 'running') {
+        return null;
+      }
+    }
+
+    final offered = await ref.read(offeredAisProvider.future);
+    final choice = await _resolvedChoice(offered);
+    final run = StoryRun()
+      ..runId = uuidV4()
+      ..sessionId = sessionId
+      ..groupId = group.id
+      ..groupName = group.name
+      ..startedAt = DateTime.now()
+      // The story slot stays empty, so a refusal still finds its role.
+      ..models = ['', choice.prompt, choice.picture]
+      ..kind = StoryRunKind.scene
+      ..sceneText = dialogue.lines.join('\n');
+    await runStore.put(run);
+    _clearRefusal(group.id);
+
+    final StoryActionResult result;
+    try {
+      result = await ref.read(storyApiServiceProvider).startRun(
+            runId: run.runId,
+            words: const [],
+            storyModel: '',
+            promptModel: choice.prompt,
+            pictureModel: choice.picture,
+            sceneText: run.sceneText,
           );
     } catch (_) {
       await _notStarted(run, const StoryStartRefusal(StoryRefusal.unavailable));
@@ -347,7 +411,7 @@ class StoryRunTracker extends _$StoryRunTracker {
         return byRole != 0 ? byRole : a.attempt.compareTo(b.attempt);
       });
     run.steps = steps;
-    run.outcome = _outcomeOf(steps);
+    run.outcome = _outcomeOf(steps, run.kind);
 
     if (run.outcome == 'done') {
       final picture = steps.where((s) => s.role == 'picture').last;
@@ -390,6 +454,7 @@ class StoryRunTracker extends _$StoryRunTracker {
   }
 
   Future<void> _makeGroupStory(StoryRun run) async {
+    if (run.kind == StoryRunKind.scene) return _makeScenePicture(run);
     final session = await _session(run.sessionId);
     if (session == null) return;
     final group = session.groups.where((g) => g.id == run.groupId).firstOrNull;
@@ -401,6 +466,27 @@ class StoryRunTracker extends _$StoryRunTracker {
     final current = ref.read(wordInputNotifierProvider).valueOrNull?.sessionId == run.sessionId;
     final groups = wordGroupsNotifierProvider(current ? null : run.sessionId);
     if (ref.exists(groups)) await ref.read(groups.notifier).reload();
+  }
+
+  /// A drawn scene becomes its dialogue's picture, shown from then on and
+  /// never drawn again (AC-14). The dialogue is found through its group.
+  Future<void> _makeScenePicture(StoryRun run) async {
+    final session = await _session(run.sessionId);
+    if (session == null) return;
+    final dialogueId = session.groups.where((g) => g.id == run.groupId).firstOrNull?.dialogueId;
+    if (dialogueId == null) return;
+    final current = ref.read(wordInputNotifierProvider).valueOrNull?.sessionId == run.sessionId;
+    if (current) {
+      await ref.read(wordInputNotifierProvider.notifier).setScenePicture(dialogueId, run.runId);
+      return;
+    }
+    final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+    if (dialogue == null) return;
+    dialogue.scenePictureRunId = run.runId;
+    if (session.publishedId != null && session.editToken != null) {
+      dialogue.picturePushState = PushState.pending;
+    }
+    await (await ref.read(sessionStoreProvider.future)).put(session);
   }
 
   // --- helpers ------------------------------------------------------------
@@ -472,9 +558,11 @@ class StoryRunTracker extends _$StoryRunTracker {
   static String _signatureOfWorker(StepStatus s) => '${s.outcome}|${s.priceUsd}|${s.ms}|${s.text}';
 
   /// Where the run stands, from its story, its prompt and its latest picture.
-  static String _outcomeOf(List<StoryStep> steps) {
+  /// A scene run has no story (ADR-0004).
+  static String _outcomeOf(List<StoryStep> steps, StoryRunKind kind) {
     StoryStep? last(String role) => steps.where((s) => s.role == role).lastOrNull;
-    for (final role in const ['story', 'prompt', 'picture']) {
+    final roles = kind == StoryRunKind.scene ? const ['prompt', 'picture'] : const ['story', 'prompt', 'picture'];
+    for (final role in roles) {
       final s = last(role);
       if (s == null || s.outcome == 'running') return 'running';
       if (s.outcome == 'failed') return 'failed';

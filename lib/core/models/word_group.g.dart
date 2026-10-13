@@ -13,28 +13,33 @@ const WordGroupSchema = Schema(
   name: r'WordGroup',
   id: 37918027344503853,
   properties: {
-    r'id': PropertySchema(
+    r'dialogueId': PropertySchema(
       id: 0,
+      name: r'dialogueId',
+      type: IsarType.string,
+    ),
+    r'id': PropertySchema(
+      id: 1,
       name: r'id',
       type: IsarType.string,
     ),
     r'name': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'name',
       type: IsarType.string,
     ),
     r'rowIds': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'rowIds',
       type: IsarType.stringList,
     ),
     r'storyRunId': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'storyRunId',
       type: IsarType.string,
     ),
     r'storyWords': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'storyWords',
       type: IsarType.stringList,
     )
@@ -51,6 +56,12 @@ int _wordGroupEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.dialogueId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.id.length * 3;
   bytesCount += 3 + object.name.length * 3;
   bytesCount += 3 + object.rowIds.length * 3;
@@ -82,11 +93,12 @@ void _wordGroupSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.id);
-  writer.writeString(offsets[1], object.name);
-  writer.writeStringList(offsets[2], object.rowIds);
-  writer.writeString(offsets[3], object.storyRunId);
-  writer.writeStringList(offsets[4], object.storyWords);
+  writer.writeString(offsets[0], object.dialogueId);
+  writer.writeString(offsets[1], object.id);
+  writer.writeString(offsets[2], object.name);
+  writer.writeStringList(offsets[3], object.rowIds);
+  writer.writeString(offsets[4], object.storyRunId);
+  writer.writeStringList(offsets[5], object.storyWords);
 }
 
 WordGroup _wordGroupDeserialize(
@@ -96,11 +108,12 @@ WordGroup _wordGroupDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = WordGroup();
-  object.id = reader.readString(offsets[0]);
-  object.name = reader.readString(offsets[1]);
-  object.rowIds = reader.readStringList(offsets[2]) ?? [];
-  object.storyRunId = reader.readStringOrNull(offsets[3]);
-  object.storyWords = reader.readStringList(offsets[4]) ?? [];
+  object.dialogueId = reader.readStringOrNull(offsets[0]);
+  object.id = reader.readString(offsets[1]);
+  object.name = reader.readString(offsets[2]);
+  object.rowIds = reader.readStringList(offsets[3]) ?? [];
+  object.storyRunId = reader.readStringOrNull(offsets[4]);
+  object.storyWords = reader.readStringList(offsets[5]) ?? [];
   return object;
 }
 
@@ -112,14 +125,16 @@ P _wordGroupDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
       return (reader.readStringList(offset) ?? []) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -128,6 +143,157 @@ P _wordGroupDeserializeProp<P>(
 
 extension WordGroupQueryFilter
     on QueryBuilder<WordGroup, WordGroup, QFilterCondition> {
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'dialogueId',
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition>
+      dialogueIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'dialogueId',
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dialogueId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition>
+      dialogueIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'dialogueId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'dialogueId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'dialogueId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition>
+      dialogueIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'dialogueId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'dialogueId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'dialogueId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> dialogueIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'dialogueId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition>
+      dialogueIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'dialogueId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition>
+      dialogueIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'dialogueId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<WordGroup, WordGroup, QAfterFilterCondition> idEqualTo(
     String value, {
     bool caseSensitive = true,

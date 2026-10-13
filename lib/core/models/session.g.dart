@@ -17,60 +17,66 @@ const SessionSchema = CollectionSchema(
   name: r'Session',
   id: 4817823809690647594,
   properties: {
-    r'editToken': PropertySchema(
+    r'dialogues': PropertySchema(
       id: 0,
+      name: r'dialogues',
+      type: IsarType.objectList,
+      target: r'FilmDialogue',
+    ),
+    r'editToken': PropertySchema(
+      id: 1,
       name: r'editToken',
       type: IsarType.string,
     ),
     r'groupedWordsKey': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'groupedWordsKey',
       type: IsarType.string,
     ),
     r'groups': PropertySchema(
-      id: 2,
+      id: 3,
       name: r'groups',
       type: IsarType.objectList,
       target: r'WordGroup',
     ),
     r'isShared': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'isShared',
       type: IsarType.bool,
     ),
     r'lastLocalModifiedAt': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'lastLocalModifiedAt',
       type: IsarType.dateTime,
     ),
     r'publishedId': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'publishedId',
       type: IsarType.string,
     ),
     r'selectedGroupId': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'selectedGroupId',
       type: IsarType.string,
     ),
     r'sessionId': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'sources': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'sources',
       type: IsarType.objectList,
       target: r'SourcePhoto',
     ),
     r'updatedAt': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -100,7 +106,8 @@ const SessionSchema = CollectionSchema(
   embeddedSchemas: {
     r'WordPair': WordPairSchema,
     r'SourcePhoto': SessionSourceSchema,
-    r'WordGroup': WordGroupSchema
+    r'WordGroup': WordGroupSchema,
+    r'FilmDialogue': FilmDialogueSchema
   },
   getId: _sessionGetId,
   getLinks: _sessionGetLinks,
@@ -114,6 +121,14 @@ int _sessionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.dialogues.length * 3;
+  {
+    final offsets = allOffsets[FilmDialogue]!;
+    for (var i = 0; i < object.dialogues.length; i++) {
+      final value = object.dialogues[i];
+      bytesCount += FilmDialogueSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
   {
     final value = object.editToken;
     if (value != null) {
@@ -173,28 +188,34 @@ void _sessionSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.editToken);
-  writer.writeString(offsets[1], object.groupedWordsKey);
+  writer.writeObjectList<FilmDialogue>(
+    offsets[0],
+    allOffsets,
+    FilmDialogueSchema.serialize,
+    object.dialogues,
+  );
+  writer.writeString(offsets[1], object.editToken);
+  writer.writeString(offsets[2], object.groupedWordsKey);
   writer.writeObjectList<WordGroup>(
-    offsets[2],
+    offsets[3],
     allOffsets,
     WordGroupSchema.serialize,
     object.groups,
   );
-  writer.writeBool(offsets[3], object.isShared);
-  writer.writeDateTime(offsets[4], object.lastLocalModifiedAt);
-  writer.writeString(offsets[5], object.publishedId);
-  writer.writeString(offsets[6], object.selectedGroupId);
-  writer.writeString(offsets[7], object.sessionId);
+  writer.writeBool(offsets[4], object.isShared);
+  writer.writeDateTime(offsets[5], object.lastLocalModifiedAt);
+  writer.writeString(offsets[6], object.publishedId);
+  writer.writeString(offsets[7], object.selectedGroupId);
+  writer.writeString(offsets[8], object.sessionId);
   writer.writeObjectList<SessionSource>(
-    offsets[8],
+    offsets[9],
     allOffsets,
     SessionSourceSchema.serialize,
     object.sources,
   );
-  writer.writeDateTime(offsets[9], object.updatedAt);
+  writer.writeDateTime(offsets[10], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[10],
+    offsets[11],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -208,31 +229,38 @@ Session _sessionDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Session();
-  object.editToken = reader.readStringOrNull(offsets[0]);
-  object.groupedWordsKey = reader.readStringOrNull(offsets[1]);
+  object.dialogues = reader.readObjectList<FilmDialogue>(
+        offsets[0],
+        FilmDialogueSchema.deserialize,
+        allOffsets,
+        FilmDialogue(),
+      ) ??
+      [];
+  object.editToken = reader.readStringOrNull(offsets[1]);
+  object.groupedWordsKey = reader.readStringOrNull(offsets[2]);
   object.groups = reader.readObjectList<WordGroup>(
-        offsets[2],
+        offsets[3],
         WordGroupSchema.deserialize,
         allOffsets,
         WordGroup(),
       ) ??
       [];
   object.id = id;
-  object.isShared = reader.readBool(offsets[3]);
-  object.lastLocalModifiedAt = reader.readDateTime(offsets[4]);
-  object.publishedId = reader.readStringOrNull(offsets[5]);
-  object.selectedGroupId = reader.readStringOrNull(offsets[6]);
-  object.sessionId = reader.readString(offsets[7]);
+  object.isShared = reader.readBool(offsets[4]);
+  object.lastLocalModifiedAt = reader.readDateTime(offsets[5]);
+  object.publishedId = reader.readStringOrNull(offsets[6]);
+  object.selectedGroupId = reader.readStringOrNull(offsets[7]);
+  object.sessionId = reader.readString(offsets[8]);
   object.sources = reader.readObjectList<SessionSource>(
-        offsets[8],
+        offsets[9],
         SessionSourceSchema.deserialize,
         allOffsets,
         SessionSource(),
       ) ??
       [];
-  object.updatedAt = reader.readDateTime(offsets[9]);
+  object.updatedAt = reader.readDateTime(offsets[10]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[10],
+        offsets[11],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -249,10 +277,18 @@ P _sessionDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readObjectList<FilmDialogue>(
+            offset,
+            FilmDialogueSchema.deserialize,
+            allOffsets,
+            FilmDialogue(),
+          ) ??
+          []) as P;
     case 1:
       return (reader.readStringOrNull(offset)) as P;
     case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
       return (reader.readObjectList<WordGroup>(
             offset,
             WordGroupSchema.deserialize,
@@ -260,17 +296,17 @@ P _sessionDeserializeProp<P>(
             WordGroup(),
           ) ??
           []) as P;
-    case 3:
-      return (reader.readBool(offset)) as P;
     case 4:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 5:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readObjectList<SessionSource>(
             offset,
             SessionSourceSchema.deserialize,
@@ -278,9 +314,9 @@ P _sessionDeserializeProp<P>(
             SessionSource(),
           ) ??
           []) as P;
-    case 9:
-      return (reader.readDateTime(offset)) as P;
     case 10:
+      return (reader.readDateTime(offset)) as P;
+    case 11:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -482,6 +518,91 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
 
 extension SessionQueryFilter
     on QueryBuilder<Session, Session, QFilterCondition> {
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      dialoguesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1636,6 +1757,13 @@ extension SessionQueryFilter
 
 extension SessionQueryObject
     on QueryBuilder<Session, Session, QFilterCondition> {
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesElement(
+      FilterQuery<FilmDialogue> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'dialogues');
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> groupsElement(
       FilterQuery<WordGroup> q) {
     return QueryBuilder.apply(this, (query) {
@@ -1933,6 +2061,13 @@ extension SessionQueryProperty
   QueryBuilder<Session, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
+    });
+  }
+
+  QueryBuilder<Session, List<FilmDialogue>, QQueryOperations>
+      dialoguesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'dialogues');
     });
   }
 

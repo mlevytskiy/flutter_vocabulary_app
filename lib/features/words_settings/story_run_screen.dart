@@ -44,11 +44,29 @@ class StoryRunScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Text(run.groupName, style: theme.textTheme.titleLarge),
-          Text('${formatRunDate(run.startedAt)} · ${run.words.length} words', style: small),
+          Text(
+              run.kind == StoryRunKind.scene
+                  ? '${formatRunDate(run.startedAt)} · Scene picture'
+                  : '${formatRunDate(run.startedAt)} · ${run.words.length} words',
+              style: small),
           const SizedBox(height: 4),
           Text(runStatusLine(run)),
           if (stepsTotals(run.steps).isNotEmpty) Text('Total: ${stepsTotals(run.steps)}'),
           const Divider(height: 24),
+          // A scene picture shows its dialogue where a story run shows its
+          // story (get-words-from-subtitles-improvment AC-14).
+          if (run.kind == StoryRunKind.scene && run.sceneText != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Dialogue', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 6),
+                  Text(run.sceneText!, style: theme.textTheme.bodyMedium),
+                ],
+              ),
+            ),
           for (final step in steps) _StepCard(runId: run.runId, step: step),
         ],
       );

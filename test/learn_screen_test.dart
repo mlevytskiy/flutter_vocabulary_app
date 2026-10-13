@@ -95,7 +95,7 @@ void main() {
       (tester) async {
     await pump(tester);
     expect(find.widgetWithText(AppBar, 'Learn'), findsOneWidget);
-    expect(exercises.length, 11);
+    expect(exercises.length, 12);
     for (final stage in const [1, 2, 3]) {
       expect(find.text('Step $stage'), findsOneWidget); // in the progress
       expect(currentStep(tester), stage);

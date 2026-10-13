@@ -480,6 +480,28 @@ final nonEmptySessionsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef NonEmptySessionsRef = AutoDisposeStreamProviderRef<List<Session>>;
+String _$dialoguePushServiceHash() =>
+    r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
+
+/// Adds an import's rows and dialogues, and scene pictures, to a published
+/// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
+/// uses it is `dialoguePushProvider`.
+///
+/// Copied from [dialoguePushService].
+@ProviderFor(dialoguePushService)
+final dialoguePushServiceProvider = Provider<DialoguePushService>.internal(
+  dialoguePushService,
+  name: r'dialoguePushServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$dialoguePushServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef DialoguePushServiceRef = ProviderRef<DialoguePushService>;
 String _$aiChoiceNotifierHash() => r'56fb292859c4632c546aa2450c049a959ad528bc';
 
 /// The learner's saved AI for each step of a story run (AC-12). Persisted like
@@ -542,6 +564,28 @@ final wordDetailModeNotifierProvider =
 );
 
 typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+String _$dialoguesSettingNotifierHash() =>
+    r'79a0b0141cc70e6d14eb3a468af48a9fb1300bb6';
+
+/// The "Get dialogues from subtitles" switch in Settings
+/// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
+/// also asks for film dialogues. Persisted like the word detail mode; off
+/// until the stored value is read ([loaded]).
+///
+/// Copied from [DialoguesSettingNotifier].
+@ProviderFor(DialoguesSettingNotifier)
+final dialoguesSettingNotifierProvider =
+    NotifierProvider<DialoguesSettingNotifier, bool>.internal(
+  DialoguesSettingNotifier.new,
+  name: r'dialoguesSettingNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$dialoguesSettingNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$DialoguesSettingNotifier = Notifier<bool>;
 String _$subtitleImportPrefsNotifierHash() =>
     r'1c51c1bcfd4b6dd54478eb525338c3ba7fd99fc1';
 

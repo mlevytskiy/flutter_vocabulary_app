@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
+import '../dialogues/dialogue_rules.dart' show ImportedDialogue;
 import '../models/subtitle_import_options.dart';
 import '../models/vocab_word.dart';
 
@@ -39,12 +40,18 @@ class SubtitleWordsResult {
   final int inputTokens;
   final int outputTokens;
 
+  /// The film dialogues the Worker kept, each with the returned words it
+  /// holds (get-words-from-subtitles-improvment); empty when none were asked
+  /// for or none qualified.
+  final List<ImportedDialogue> dialogues;
+
   SubtitleWordsResult({
     required this.words,
     required this.model,
     required this.aiDuration,
     required this.inputTokens,
     required this.outputTokens,
+    this.dialogues = const [],
   });
 }
 
@@ -69,6 +76,7 @@ class SubtitleWordsService {
     required int maximum,
     required SubtitleModel model,
     required List<String> sessionWords,
+    bool dialogues = false,
   }) async {
     http.Response response;
     try {
@@ -86,6 +94,8 @@ class SubtitleWordsService {
               'maximum': maximum,
               'model': model.id,
               'sessionWords': sessionWords,
+              // Off sends today's body: no key at all (AC-01).
+              if (dialogues) 'dialogues': true,
             }),
           )
           .timeout(_timeout);
@@ -119,6 +129,15 @@ class SubtitleWordsService {
         aiDuration: Duration(milliseconds: (decoded['timings'] as Map<String, dynamic>)['aiMs'] as int),
         inputTokens: usage['inputTokens'] as int,
         outputTokens: usage['outputTokens'] as int,
+        // An older Worker sends none (AC-07); a cut-off list fails the whole
+        // reply (AC-08).
+        dialogues: [
+          for (final item in decoded['dialogues'] as List<dynamic>? ?? const [])
+            (
+              lines: [...((item as Map<String, dynamic>)['lines'] as List<dynamic>).cast<String>()],
+              words: [...(item['words'] as List<dynamic>).cast<String>()],
+            ),
+        ],
       );
     } catch (e) {
       throw SubtitleWordsException(SubtitleWordsError.notPicked, 'unexpected answer: $e');

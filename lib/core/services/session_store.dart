@@ -134,7 +134,8 @@ class SessionStore {
           ..editToken = s.editToken
           ..groups = [for (final g in s.groups) g.copy()]
           ..selectedGroupId = s.selectedGroupId
-          ..groupedWordsKey = s.groupedWordsKey;
+          ..groupedWordsKey = s.groupedWordsKey
+          ..dialogues = [for (final d in s.dialogues) d.copy()];
         s.id = await _isar.sessions.put(toWrite);
       });
     } catch (_) {

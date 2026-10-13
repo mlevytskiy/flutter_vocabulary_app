@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
+import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -342,6 +343,56 @@ void main() {
       final published =
           await service.publish([WordPair(word: 'tea', translation: 'чай')]);
       expect(published.editToken, isNull);
+    });
+  });
+
+  group('dialogues (get-words-from-subtitles-improvment T23)', () {
+    WordPair pair(String id, String word) => WordPair(word: word, translation: 'т', rowId: id);
+    FilmDialogue dialogue(String id, List<String> rowIds) => FilmDialogue()
+      ..id = id
+      ..lines = ['$id line']
+      ..wordRowIds = rowIds;
+
+    test('a session without dialogues publishes the same body as before', () async {
+      final service = serviceAnswering(200, answer);
+      final published = await service.publish([pair('r1', 'fog')], dialogues: const []);
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes)) as Map;
+      expect(body.keys, ['detail', 'entries']);
+      expect(published.declaredDialogues, isEmpty);
+    });
+
+    test('sends visible dialogues with their rows\' positions in entries and declared pictures', () async {
+      final service = serviceAnswering(200, answer);
+      final published = await service.publish([
+        pair('r1', 'fog'),
+        WordPair(word: '', translation: ''),
+        pair('r2', 'attic'),
+        pair('r3', 'dusty'),
+      ], dialogues: [
+        dialogue('d1', ['r3', 'r1'])
+          ..importId = 'imp-1'
+          ..scenePictureRunId = 'run-1',
+        dialogue('d2', ['r2']),
+        dialogue('d3', [])..hidden = true,
+        dialogue('d4', ['gone']),
+      ]);
+
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes)) as Map;
+      expect(body['dialogues'], [
+        {
+          'id': 'd1',
+          'lines': ['d1 line'],
+          'entries': [2, 0],
+          'importId': 'imp-1',
+          'picture': {'mediaType': 'image/jpeg'},
+        },
+        {
+          'id': 'd2',
+          'lines': ['d2 line'],
+          'entries': [1],
+        },
+      ]);
+      expect(published.declaredDialogues.map((d) => d.id), ['d1', 'd2']);
     });
   });
 }

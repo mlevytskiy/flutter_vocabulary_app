@@ -9,7 +9,9 @@ import '../../core/providers.dart';
 /// `IconButton` in the input screen's AppBar (task-13, reversing part of
 /// task-10), the word detail mode — translation, definition or both
 /// (definition-mode), and the subtitle import values, the "Update with each
-/// import" switch and the subtitle model (words-from-subtitles, SCR-06).
+/// import" switch and the subtitle model (words-from-subtitles, SCR-06), and
+/// the "Get dialogues from subtitles" switch (get-words-from-subtitles-improvment,
+/// SCR-03).
 ///
 /// The mode itself is not stored here -- it is `dragModeProvider`, read by the
 /// input screen and written by this switch, so the two screens cannot disagree
@@ -24,6 +26,7 @@ class SettingsScreen extends ConsumerWidget {
     final photoPanelVariant = ref.watch(photoPanelVariantProvider);
     final subtitle = ref.watch(subtitleImportPrefsProvider);
     final subtitleNotifier = ref.read(subtitleImportPrefsProvider.notifier);
+    final dialogues = ref.watch(dialoguesSettingProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -164,6 +167,11 @@ class SettingsScreen extends ConsumerWidget {
                   DropdownMenuItem(value: model, child: Text(model.label)),
               ],
             ),
+          ),
+          SwitchListTile(
+            title: const Text('Get dialogues from subtitles'),
+            value: dialogues,
+            onChanged: ref.read(dialoguesSettingProvider.notifier).set,
           ),
         ],
       ),

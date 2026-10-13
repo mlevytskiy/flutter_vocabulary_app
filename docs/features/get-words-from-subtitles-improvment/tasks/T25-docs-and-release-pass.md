@@ -33,3 +33,4 @@ status: "todo"
 ## Notes
 
 - Deploy and secrets wait for the owner, as in mnemonic-story.
+- Implement, 2026-10-13: docs done (`docs/architecture.md`, `vocab-photo-api/README.md` routes, scene runs, change feed, migration 0005 and a deploy checklist; spec §1 and AC-20 and CONTEXT.md aligned with ADR-0005; scene run, import id and pending delivery added to CONTEXT.md). Blocked on the owner: `wrangler d1 migrations apply`, `wrangler deploy`, the app build, and the spec §6 device pass, whose results go in the tracker.

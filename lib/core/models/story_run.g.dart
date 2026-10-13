@@ -32,39 +32,50 @@ const StoryRunSchema = CollectionSchema(
       name: r'groupName',
       type: IsarType.string,
     ),
-    r'models': PropertySchema(
+    r'kind': PropertySchema(
       id: 3,
+      name: r'kind',
+      type: IsarType.byte,
+      enumMap: _StoryRunkindEnumValueMap,
+    ),
+    r'models': PropertySchema(
+      id: 4,
       name: r'models',
       type: IsarType.stringList,
     ),
     r'outcome': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'outcome',
       type: IsarType.string,
     ),
     r'runId': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'runId',
       type: IsarType.string,
     ),
+    r'sceneText': PropertySchema(
+      id: 7,
+      name: r'sceneText',
+      type: IsarType.string,
+    ),
     r'sessionId': PropertySchema(
-      id: 6,
+      id: 8,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'startedAt': PropertySchema(
-      id: 7,
+      id: 9,
       name: r'startedAt',
       type: IsarType.dateTime,
     ),
     r'steps': PropertySchema(
-      id: 8,
+      id: 10,
       name: r'steps',
       type: IsarType.objectList,
       target: r'StoryStep',
     ),
     r'words': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'words',
       type: IsarType.stringList,
     )
@@ -127,6 +138,12 @@ int _storyRunEstimateSize(
   }
   bytesCount += 3 + object.outcome.length * 3;
   bytesCount += 3 + object.runId.length * 3;
+  {
+    final value = object.sceneText;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.sessionId.length * 3;
   bytesCount += 3 + object.steps.length * 3;
   {
@@ -155,18 +172,20 @@ void _storyRunSerialize(
   writer.writeBool(offsets[0], object.collected);
   writer.writeString(offsets[1], object.groupId);
   writer.writeString(offsets[2], object.groupName);
-  writer.writeStringList(offsets[3], object.models);
-  writer.writeString(offsets[4], object.outcome);
-  writer.writeString(offsets[5], object.runId);
-  writer.writeString(offsets[6], object.sessionId);
-  writer.writeDateTime(offsets[7], object.startedAt);
+  writer.writeByte(offsets[3], object.kind.index);
+  writer.writeStringList(offsets[4], object.models);
+  writer.writeString(offsets[5], object.outcome);
+  writer.writeString(offsets[6], object.runId);
+  writer.writeString(offsets[7], object.sceneText);
+  writer.writeString(offsets[8], object.sessionId);
+  writer.writeDateTime(offsets[9], object.startedAt);
   writer.writeObjectList<StoryStep>(
-    offsets[8],
+    offsets[10],
     allOffsets,
     StoryStepSchema.serialize,
     object.steps,
   );
-  writer.writeStringList(offsets[9], object.words);
+  writer.writeStringList(offsets[11], object.words);
 }
 
 StoryRun _storyRunDeserialize(
@@ -180,19 +199,22 @@ StoryRun _storyRunDeserialize(
   object.groupId = reader.readString(offsets[1]);
   object.groupName = reader.readString(offsets[2]);
   object.id = id;
-  object.models = reader.readStringList(offsets[3]) ?? [];
-  object.outcome = reader.readString(offsets[4]);
-  object.runId = reader.readString(offsets[5]);
-  object.sessionId = reader.readString(offsets[6]);
-  object.startedAt = reader.readDateTime(offsets[7]);
+  object.kind = _StoryRunkindValueEnumMap[reader.readByteOrNull(offsets[3])] ??
+      StoryRunKind.story;
+  object.models = reader.readStringList(offsets[4]) ?? [];
+  object.outcome = reader.readString(offsets[5]);
+  object.runId = reader.readString(offsets[6]);
+  object.sceneText = reader.readStringOrNull(offsets[7]);
+  object.sessionId = reader.readString(offsets[8]);
+  object.startedAt = reader.readDateTime(offsets[9]);
   object.steps = reader.readObjectList<StoryStep>(
-        offsets[8],
+        offsets[10],
         StoryStepSchema.deserialize,
         allOffsets,
         StoryStep(),
       ) ??
       [];
-  object.words = reader.readStringList(offsets[9]) ?? [];
+  object.words = reader.readStringList(offsets[11]) ?? [];
   return object;
 }
 
@@ -210,16 +232,21 @@ P _storyRunDeserializeProp<P>(
     case 2:
       return (reader.readString(offset)) as P;
     case 3:
-      return (reader.readStringList(offset) ?? []) as P;
+      return (_StoryRunkindValueEnumMap[reader.readByteOrNull(offset)] ??
+          StoryRunKind.story) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 5:
       return (reader.readString(offset)) as P;
     case 6:
       return (reader.readString(offset)) as P;
     case 7:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readDateTime(offset)) as P;
+    case 10:
       return (reader.readObjectList<StoryStep>(
             offset,
             StoryStepSchema.deserialize,
@@ -227,12 +254,21 @@ P _storyRunDeserializeProp<P>(
             StoryStep(),
           ) ??
           []) as P;
-    case 9:
+    case 11:
       return (reader.readStringList(offset) ?? []) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
   }
 }
+
+const _StoryRunkindEnumValueMap = {
+  'story': 0,
+  'scene': 1,
+};
+const _StoryRunkindValueEnumMap = {
+  0: StoryRunKind.story,
+  1: StoryRunKind.scene,
+};
 
 Id _storyRunGetId(StoryRun object) {
   return object.id;
@@ -843,6 +879,59 @@ extension StoryRunQueryFilter
     });
   }
 
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> kindEqualTo(
+      StoryRunKind value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'kind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> kindGreaterThan(
+    StoryRunKind value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'kind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> kindLessThan(
+    StoryRunKind value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'kind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> kindBetween(
+    StoryRunKind lower,
+    StoryRunKind upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'kind',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
   QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> modelsElementEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1317,6 +1406,153 @@ extension StoryRunQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'runId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'sceneText',
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'sceneText',
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sceneText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'sceneText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'sceneText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'sceneText',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'sceneText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'sceneText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'sceneText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'sceneText',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sceneTextIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'sceneText',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition>
+      sceneTextIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'sceneText',
         value: '',
       ));
     });
@@ -1861,6 +2097,18 @@ extension StoryRunQuerySortBy on QueryBuilder<StoryRun, StoryRun, QSortBy> {
     });
   }
 
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortByKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'kind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortByKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'kind', Sort.desc);
+    });
+  }
+
   QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortByOutcome() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'outcome', Sort.asc);
@@ -1882,6 +2130,18 @@ extension StoryRunQuerySortBy on QueryBuilder<StoryRun, StoryRun, QSortBy> {
   QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortByRunIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'runId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortBySceneText() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sceneText', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortBySceneTextDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sceneText', Sort.desc);
     });
   }
 
@@ -1960,6 +2220,18 @@ extension StoryRunQuerySortThenBy
     });
   }
 
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenByKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'kind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenByKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'kind', Sort.desc);
+    });
+  }
+
   QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenByOutcome() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'outcome', Sort.asc);
@@ -1981,6 +2253,18 @@ extension StoryRunQuerySortThenBy
   QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenByRunIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'runId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenBySceneText() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sceneText', Sort.asc);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenBySceneTextDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'sceneText', Sort.desc);
     });
   }
 
@@ -2031,6 +2315,12 @@ extension StoryRunQueryWhereDistinct
     });
   }
 
+  QueryBuilder<StoryRun, StoryRun, QDistinct> distinctByKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'kind');
+    });
+  }
+
   QueryBuilder<StoryRun, StoryRun, QDistinct> distinctByModels() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'models');
@@ -2048,6 +2338,13 @@ extension StoryRunQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'runId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<StoryRun, StoryRun, QDistinct> distinctBySceneText(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'sceneText', caseSensitive: caseSensitive);
     });
   }
 
@@ -2097,6 +2394,12 @@ extension StoryRunQueryProperty
     });
   }
 
+  QueryBuilder<StoryRun, StoryRunKind, QQueryOperations> kindProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'kind');
+    });
+  }
+
   QueryBuilder<StoryRun, List<String>, QQueryOperations> modelsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'models');
@@ -2112,6 +2415,12 @@ extension StoryRunQueryProperty
   QueryBuilder<StoryRun, String, QQueryOperations> runIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'runId');
+    });
+  }
+
+  QueryBuilder<StoryRun, String?, QQueryOperations> sceneTextProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'sceneText');
     });
   }
 

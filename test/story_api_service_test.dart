@@ -211,6 +211,25 @@ void main() {
       expect(result, isA<StoryStarted>());
     });
 
+    test('a scene run sends its dialogue and only its two AIs (get-words-from-subtitles-improvment ADR-0004)',
+        () async {
+      await answering(200, {'started': true}).startRun(
+        runId: 'run-2',
+        words: const [],
+        storyModel: '',
+        promptModel: 'claude-sonnet-5-5',
+        pictureModel: 'grok-imagine-image',
+        sceneText: '- Where is it?\n- In the attic.',
+      );
+      expect(jsonDecode(requests.single.body), {
+        'runId': 'run-2',
+        'kind': 'scene',
+        'sceneText': '- Where is it?\n- In the attic.',
+        'promptModel': 'claude-sonnet-5-5',
+        'pictureModel': 'grok-imagine-image',
+      });
+    });
+
     test('422 not_offered carries the model', () async {
       final result = await start(answering(
           422, {'error': 'x', 'code': 'not_offered', 'model': 'gpt-old'}));

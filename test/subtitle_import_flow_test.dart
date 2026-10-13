@@ -29,6 +29,7 @@ class FakeSubtitleWords extends SubtitleWordsService {
     required int maximum,
     required SubtitleModel model,
     required List<String> sessionWords,
+    bool dialogues = false,
   }) {
     calls.add({'lines': lines, 'purpose': purpose, 'level': level, 'maximum': maximum, 'model': model, 'sessionWords': sessionWords});
     pending = Completer();
