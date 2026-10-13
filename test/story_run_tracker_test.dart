@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart' as ft show group;
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/offered_ai.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
@@ -47,6 +48,7 @@ class FakeStoryApi extends StoryApiService {
     required String storyModel,
     required String promptModel,
     required String pictureModel,
+    String? sceneText,
   }) async {
     starts.add({
       'runId': runId,
@@ -54,6 +56,7 @@ class FakeStoryApi extends StoryApiService {
       'story': storyModel,
       'prompt': promptModel,
       'picture': pictureModel,
+      if (sceneText != null) 'sceneText': sceneText,
     });
     if (startThrows != null) throw startThrows!;
     if (startResult is StoryStarted) worker[runId] = [];
@@ -601,6 +604,120 @@ void main() {
       api.statusThrows = StoryApiException(StoryApiError.network, 'offline');
       await tracker().poll();
       expect((await runStore.byId(run.runId))!.outcome, 'running');
+    });
+  });
+
+  ft.group('scene runs (get-words-from-subtitles-improvment T20, ADR-0004)', () {
+    late WordGroup dialogueGroup;
+
+    Future<void> bootWithDialogue() async {
+      await boot();
+      session.dialogues = [
+        FilmDialogue()
+          ..id = 'd1'
+          ..lines = ['- Where is w1?', '- Up in the w2.']
+          ..wordRowIds = ['r1', 'r2'],
+      ];
+      dialogueGroup = WordGroup()
+        ..id = 'dialogue-d1'
+        ..name = 'Where is w1?'
+        ..rowIds = ['r1', 'r2']
+        ..dialogueId = 'd1';
+      session.groups = [dialogueGroup, group];
+      await store.put(session);
+    }
+
+    void workerDraws(String runId, {int attempt = 1}) {
+      api.worker[runId] = [
+        step('prompt', text: 'Two people in an attic'),
+        step('picture', attempt: attempt, modelId: 'grok-imagine-image', price: 0.02),
+      ];
+      api.pictures['$runId:$attempt'] = bytes;
+    }
+
+    test('startScene saves a scene run with the dialogue and starts it with two AIs (AC-14)', () async {
+      await bootWithDialogue();
+      final id = await tracker().startScene(session.sessionId, dialogueGroup);
+      expect(id, isNotNull);
+
+      final run = (await runStore.byId(id!))!;
+      expect(run.kind, StoryRunKind.scene);
+      expect(run.sceneText, '- Where is w1?\n- Up in the w2.');
+      expect(run.groupId, 'dialogue-d1');
+      expect(run.groupName, 'Where is w1?');
+      expect(run.models.first, '');
+      expect(run.outcome, 'running');
+      expect(api.starts.single['sceneText'], '- Where is w1?\n- Up in the w2.');
+      expect(api.starts.single['story'], '');
+    });
+
+    test('a drawn scene is collected in two steps and becomes the dialogue\'s picture (AC-14)', () async {
+      await bootWithDialogue();
+      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      workerDraws(id);
+      await tracker().poll();
+
+      final run = (await runStore.byId(id))!;
+      expect(run.outcome, 'done');
+      expect(run.collected, isTrue);
+      expect(run.steps.map((s) => s.role), ['prompt', 'picture']);
+      expect(run.steps.last.picturePath, isNotNull);
+      final after = await saved();
+      expect(after.dialogues.single.scenePictureRunId, id);
+      expect(after.groups.first.storyRunId, isNull, reason: 'a scene is not the group\'s story');
+    });
+
+    test('a dialogue with a picture is never drawn again (AC-14)', () async {
+      await bootWithDialogue();
+      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      workerDraws(id);
+      await tracker().poll();
+
+      expect(await tracker().startScene(session.sessionId, dialogueGroup), isNull);
+      expect(api.starts, hasLength(1));
+    });
+
+    test('a scene run going is not started twice', () async {
+      await bootWithDialogue();
+      await tracker().startScene(session.sessionId, dialogueGroup);
+      expect(await tracker().startScene(session.sessionId, dialogueGroup), isNull);
+      expect(api.starts, hasLength(1));
+    });
+
+    test('a failed prompt stops the run; Try again redoes it (AC-18)', () async {
+      await bootWithDialogue();
+      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      api.worker[id] = [step('prompt', outcome: 'failed')];
+      await tracker().poll();
+      expect((await runStore.byId(id))!.outcome, 'failed');
+
+      final result = await tracker().redoPrompt(id);
+      expect(result, isA<StoryStarted>());
+      expect(api.redos.single, {'runId': id, 'step': 'prompt', 'pictureModel': null});
+      expect((await runStore.byId(id))!.outcome, 'running');
+    });
+
+    test('a failed picture can be drawn again (AC-18)', () async {
+      await bootWithDialogue();
+      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      api.worker[id] = [step('prompt'), step('picture', outcome: 'failed')];
+      await tracker().poll();
+      expect((await runStore.byId(id))!.outcome, 'failed');
+
+      api.redoResult = const StoryStarted(attempt: 2);
+      expect(await tracker().drawAgain(id), isA<StoryStarted>());
+      workerDraws(id, attempt: 2);
+      api.worker[id] = [step('prompt'), step('picture', outcome: 'failed'), ...api.worker[id]!.skip(1)];
+      await tracker().poll();
+      expect((await runStore.byId(id))!.outcome, 'done');
+      expect((await saved()).dialogues.single.scenePictureRunId, id);
+    });
+
+    test('the day limit is recorded for the dialogue group (AC-19)', () async {
+      await bootWithDialogue();
+      api.startResult = const StoryRefused(StoryRefusal.dayLimit);
+      expect(await tracker().startScene(session.sessionId, dialogueGroup), isNull);
+      expect(container.read(storyRunTrackerProvider).refusals['dialogue-d1']?.reason, StoryRefusal.dayLimit);
     });
   });
 }

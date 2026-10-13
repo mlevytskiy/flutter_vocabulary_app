@@ -295,6 +295,21 @@ class WordInputNotifier extends _$WordInputNotifier {
     _scheduleSave();
   }
 
+  /// Records that a scene run drew the picture of the dialogue [dialogueId]
+  /// (get-words-from-subtitles-improvment AC-14). Not an edit of the words:
+  /// the timestamps stay and the write goes straight to the store, as in
+  /// [markShared].
+  Future<void> setScenePicture(String dialogueId, String runId) async {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+    if (dialogue == null || dialogue.scenePictureRunId == runId) return;
+    dialogue.scenePictureRunId = runId;
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
+  }
+
   /// Records a photo just kept for this session (good-looking-web T17). The
   /// screen calls it before adding the rows recognised from it, so the rows
   /// never point at a photo the session does not list.

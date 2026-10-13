@@ -69,6 +69,32 @@ final _stopped = _run(
 final _notStarted =
     _run('r-none', 'Old group', DateTime(2026, 10, 1), [], outcome: 'failed');
 
+// A scene picture of a film dialogue: two steps, no story
+// (get-words-from-subtitles-improvment AC-14).
+final _scene = _run(
+  'r-scene',
+  'Where is it?',
+  DateTime(2026, 10, 8, 10),
+  [
+    _step('prompt', 'Prompter', price: 0.002, ms: 2000, text: 'Two people, attic'),
+    _step('picture', 'Painter', price: 0.02, ms: 9000),
+  ],
+)
+  ..models = ['', 'Prompter', 'Painter']
+  ..kind = StoryRunKind.scene
+  ..sceneText = '- Where is it?\n- In the attic.';
+
+final _sceneStopped = _run(
+  'r-scene-2',
+  'Fine.',
+  DateTime(2026, 10, 8, 11),
+  [_step('prompt', 'Prompter', outcome: 'failed', price: 0.002, ms: 2000)],
+  outcome: 'failed',
+)
+  ..models = ['', 'Prompter', 'Painter']
+  ..kind = StoryRunKind.scene
+  ..sceneText = 'Fine.';
+
 void main() {
   Future<void> pumpList(WidgetTester tester, List<StoryRun> runs,
       {void Function(String)? onOpen}) async {
@@ -204,5 +230,28 @@ void main() {
   testWidgets('details of an unknown run say it is not there', (tester) async {
     await pumpDetails(tester, [_finished], 'nope');
     expect(find.text('This story run is not on this phone'), findsOneWidget);
+  });
+
+  group('scene runs (get-words-from-subtitles-improvment AC-14)', () {
+    testWidgets('are listed as two-step runs: their two AIs and where they stopped',
+        (tester) async {
+      await pumpList(tester, [_sceneStopped, _scene]);
+      expect(find.text('Where is it?'), findsOneWidget);
+      expect(find.text('Prompter · Painter'), findsNWidgets(2));
+      expect(find.text('Finished'), findsOneWidget);
+      expect(find.text('Stopped at the picture prompt'), findsOneWidget);
+    });
+
+    testWidgets('details show the dialogue in place of a story, then the two steps',
+        (tester) async {
+      await pumpDetails(tester, [_scene], 'r-scene');
+      expect(find.textContaining('Scene picture'), findsOneWidget);
+      expect(find.textContaining('words'), findsNothing);
+      expect(find.text('Dialogue'), findsOneWidget);
+      expect(find.text('- Where is it?\n- In the attic.'), findsOneWidget);
+      expect(find.byKey(const ValueKey('step-story-1')), findsNothing);
+      expect(find.byKey(const ValueKey('step-prompt-1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('step-picture-1')), findsOneWidget);
+    });
   });
 }

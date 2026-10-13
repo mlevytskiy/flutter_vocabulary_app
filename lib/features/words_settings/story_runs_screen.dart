@@ -54,7 +54,9 @@ String runStatusLine(StoryRun run) {
     'prompt': 'Stopped at the picture prompt',
     'picture': 'Stopped at the picture',
   };
-  for (final role in const ['story', 'prompt', 'picture']) {
+  // A scene picture has no story (get-words-from-subtitles-improvment).
+  final roles = run.kind == StoryRunKind.scene ? const ['prompt', 'picture'] : const ['story', 'prompt', 'picture'];
+  for (final role in roles) {
     if (lastStep(run, role)?.outcome != 'done') return stops[role]!;
   }
   return 'Finished';

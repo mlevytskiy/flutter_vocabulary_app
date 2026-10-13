@@ -228,24 +228,35 @@ class StoryApiService {
     }
   }
 
-  /// POST /story/runs.
+  /// POST /story/runs. With [sceneText] it starts a scene run of a film
+  /// dialogue instead: no words and no story AI (get-words-from-subtitles-
+  /// improvment ADR-0004).
   Future<StoryActionResult> startRun({
     required String runId,
     required List<String> words,
     required String storyModel,
     required String promptModel,
     required String pictureModel,
+    String? sceneText,
   }) async {
     final response = await _send(() => _client.post(
           _uri('/story/runs'),
           headers: _headers,
-          body: jsonEncode({
-            'runId': runId,
-            'words': words,
-            'storyModel': storyModel,
-            'promptModel': promptModel,
-            'pictureModel': pictureModel,
-          }),
+          body: jsonEncode(sceneText != null
+              ? {
+                  'runId': runId,
+                  'kind': 'scene',
+                  'sceneText': sceneText,
+                  'promptModel': promptModel,
+                  'pictureModel': pictureModel,
+                }
+              : {
+                  'runId': runId,
+                  'words': words,
+                  'storyModel': storyModel,
+                  'promptModel': promptModel,
+                  'pictureModel': pictureModel,
+                }),
         ));
     return _action(response);
   }
