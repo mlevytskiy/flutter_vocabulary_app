@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +13,7 @@ import '../../core/story/word_groups_notifier.dart';
 import '../learn/learn_screen.dart' show storyDayLimitMessage;
 import '../word_input/word_input_notifier.dart';
 import 'widgets/new_story_dialog.dart';
+import 'widgets/story_picture.dart';
 
 /// Every story run of one group, newest first, re-emitted after each write
 /// (the tracker saves the run as it moves on).
@@ -311,28 +311,7 @@ class _StoryView extends ConsumerWidget {
     return Column(
       children: [
         if (picture != null)
-          SizedBox(
-            height: MediaQuery.sizeOf(context).height * 0.4,
-            width: double.infinity,
-            child: ClipRect(
-              child: InteractiveViewer(
-                minScale: 1,
-                maxScale: 4,
-                child: FutureBuilder<Uint8List?>(
-                  future: ref
-                      .read(storyPictureStoreProvider)
-                      .read(run.runId, picture.attempt),
-                  builder: (context, snapshot) {
-                    final bytes = snapshot.data;
-                    return bytes == null
-                        ? const SizedBox.expand()
-                        : Image.memory(bytes,
-                            fit: BoxFit.contain, width: double.infinity);
-                  },
-                ),
-              ),
-            ),
-          ),
+          StoryPicture(runId: run.runId, attempt: picture.attempt),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16),
