@@ -1,0 +1,508 @@
+{
+  "slug": "get-words-from-subtitles-improvment",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add scene-run columns and the published-dialogue tables to D1",
+      "layer": "migration",
+      "deps": [],
+      "acs": [
+        "AC-10",
+        "AC-14",
+        "AC-20"
+      ],
+      "dod": "`0005_film_dialogues.sql` adds the two `story_runs` columns and the three dialogue tables, applies on the `npm test` SQLite D1 stand-in, existing story runs read as `kind = 'story'`, and the down file reverts it.",
+      "files_hint": [
+        "docs/features/get-words-from-subtitles-improvment/migrations/01_film_dialogues.up.sql",
+        "docs/features/get-words-from-subtitles-improvment/migrations/01_film_dialogues.down.sql",
+        "vocab-photo-api/migrations/0005_film_dialogues.sql",
+        "vocab-photo-api/migrations/down/0005_film_dialogues.sql"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Return where each word appears from the word check, and pin the rule with a shared case file",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-11"
+      ],
+      "dod": "`matchPlaces` returns the expected ranges for every case in `match-cases.json`, and the existing story word-check tests still pass.",
+      "files_hint": [
+        "vocab-photo-api/src/story/word-check.ts",
+        "vocab-photo-api/src/story/match-cases.json",
+        "vocab-photo-api/test/story-word-check.test.mjs"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Ask for dialogues in the subtitle prompt and check them in the reply",
+      "layer": "domain",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-05",
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "With `dialogues: false` the request equals a snapshot of today's `buildSubtitleRequest`, and `checkDialogues` drops exactly the AC-04/AC-05 cases in the tests.",
+      "files_hint": [
+        "vocab-photo-api/src/subtitles/prompt.ts",
+        "vocab-photo-api/src/subtitles/dialogues.ts",
+        "vocab-photo-api/test/subtitles-dialogues.test.mjs"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Accept the dialogues flag on POST /subtitles/words and return the checked dialogues",
+      "layer": "ports",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-07",
+        "AC-08",
+        "AC-09"
+      ],
+      "dod": "Through the Anthropic stub: with the flag, the reply carries checked dialogues; without it, the response is today's; a cut-off reply with dialogues answers `words_not_picked`.",
+      "files_hint": [
+        "vocab-photo-api/src/subtitles/routes.ts",
+        "vocab-photo-api/test/subtitles-dialogues-route.test.mjs",
+        "vocab-photo-api/test/anthropic-stub.mjs"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Run scene pictures as two-step runs of the story run workflow",
+      "layer": "app",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-18",
+        "AC-19",
+        "AC-22"
+      ],
+      "dod": "A scene run records a prompt step and a picture step and no story step, takes one allowance unit at start and one per Draw again, and keeps the speech-bubble lines verbatim in the stored prompt.",
+      "files_hint": [
+        "vocab-photo-api/src/story/run-steps.ts",
+        "vocab-photo-api/src/story/workflow.ts",
+        "vocab-photo-api/src/story/prompts.ts",
+        "vocab-photo-api/src/story/routes.ts",
+        "vocab-photo-api/src/story/store.ts",
+        "vocab-photo-api/test/story-scene.test.mjs"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Store dialogues with a published session and carry them in publish and republish",
+      "layer": "infra",
+      "deps": [
+        "T1",
+        "T2"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-22"
+      ],
+      "dod": "Publishing with dialogues stores them linked to the right rows; republishing replaces them; publishing without them is unchanged.",
+      "files_hint": [
+        "vocab-photo-api/src/session/dialogues.ts",
+        "vocab-photo-api/src/session/store.ts",
+        "vocab-photo-api/src/session/handlers.ts",
+        "vocab-photo-api/src/session/types.ts",
+        "vocab-photo-api/test/publish-dialogues.test.mjs"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add the append route and the scene-picture upload route for a published session",
+      "layer": "ports",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-22"
+      ],
+      "dod": "An append adds rows and dialogues once per import id without touching existing rows; a picture upload makes the picture readable by its public link; wrong token and expired link are refused.",
+      "files_hint": [
+        "vocab-photo-api/src/session/dialogues.ts",
+        "vocab-photo-api/src/session/handlers.ts",
+        "vocab-photo-api/test/append-dialogues.test.mjs"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Carry dialogues and scene-picture arrivals in the shared page's change feed",
+      "layer": "ports",
+      "deps": [
+        "T6",
+        "T2"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-21"
+      ],
+      "dod": "After a partner edits a dialogue word's translation, deletes its row, or edits its word so it no longer appears, the next feed answer carries that dialogue in its new state.",
+      "files_hint": [
+        "vocab-photo-api/src/session/changes.ts",
+        "vocab-photo-api/test/changes-dialogues.test.mjs"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Render the dialogue pages after the word table on the shared page",
+      "layer": "ui",
+      "deps": [
+        "T6",
+        "T2"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-22"
+      ],
+      "dod": "A published session with dialogues renders one dialogue page each, in order, with correct bold places and the arrived picture; one without dialogues renders byte for byte as before.",
+      "files_hint": [
+        "vocab-photo-api/src/session/page.ts",
+        "vocab-photo-api/src/session/style.ts",
+        "vocab-photo-api/test/page-dialogues.test.mjs"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Keep the shared page's dialogue pages in step with the change feed",
+      "layer": "ui",
+      "deps": [
+        "T8",
+        "T9"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-21"
+      ],
+      "dod": "With the page open, a dialogue appended by the app, a picture arriving, and a partner's translation edit or row delete each show on the dialogue page after one poll.",
+      "files_hint": [
+        "vocab-photo-api/src/session/client/page.js",
+        "vocab-photo-api/src/session/client/page.d.ts",
+        "vocab-photo-api/test/page-client-dialogues.test.mjs"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Add \"Dialogs from movie\" to the exercise list for the app and the web",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-16",
+        "AC-22"
+      ],
+      "dod": "Both lists hold twelve exercises in the same order, and the web learn page's Start with \"Dialogs from movie\" ticked opens coming soon.",
+      "files_hint": [
+        "vocab-photo-api/src/learn/exercises.json",
+        "lib/features/learn/exercises.dart",
+        "vocab-photo-api/test/learn-exercises.test.mjs",
+        "test/learn_exercises_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Add FilmDialogue, Session.dialogues, WordGroup.dialogueId and StoryRun kind to the app",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-10",
+        "AC-14"
+      ],
+      "dod": "The new fields round-trip through Isar and JSON, and an Isar store written before this change opens with empty dialogues and story-kind runs.",
+      "files_hint": [
+        "lib/core/models/film_dialogue.dart",
+        "lib/core/models/session.dart",
+        "lib/core/models/word_group.dart",
+        "lib/core/models/story_run.dart",
+        "lib/core/models/*.g.dart",
+        "test/dialogue_models_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Port the matching rule to Dart and test it against the Worker's case file",
+      "layer": "domain",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-11"
+      ],
+      "dod": "Every case in `match-cases.json` gives the same places in Dart as in TypeScript.",
+      "files_hint": [
+        "lib/core/dialogues/dialogue_match.dart",
+        "test/dialogue_match_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Add the Done filter, the edit rule and the card names for dialogues",
+      "layer": "domain",
+      "deps": [
+        "T12",
+        "T13"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-11",
+        "AC-13",
+        "AC-26"
+      ],
+      "dod": "The AC-03, AC-11, AC-13 and AC-26 examples from the spec pass as unit tests, including a pending dialogue that becomes hidden instead of removed.",
+      "files_hint": [
+        "lib/core/dialogues/dialogue_rules.dart",
+        "test/dialogue_rules_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Group dialogue words into dialogue groups before the existing grouping rules",
+      "layer": "domain",
+      "deps": [
+        "T12"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-13",
+        "AC-15",
+        "AC-17",
+        "AC-24",
+        "AC-25"
+      ],
+      "dod": "The AC-06, AC-15, AC-17, AC-24 and AC-25 examples pass as unit tests, and every existing grouping test still passes.",
+      "files_hint": [
+        "lib/core/story/word_grouping.dart",
+        "lib/core/story/word_groups_notifier.dart",
+        "test/word_grouping_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Add the \"Get dialogues from subtitles\" switch to Settings",
+      "layer": "ui",
+      "deps": [],
+      "acs": [
+        "AC-01",
+        "AC-23"
+      ],
+      "dod": "The switch shows off on first launch, keeps its value across restarts, and the provider reflects it.",
+      "files_hint": [
+        "lib/core/providers.dart",
+        "lib/features/settings/settings_screen.dart",
+        "test/settings_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Carry dialogues from the subtitle import to Done and save them with the words",
+      "layer": "app",
+      "deps": [
+        "T4",
+        "T14",
+        "T16"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-07",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-12",
+        "AC-23"
+      ],
+      "dod": "With the setting off the request has no `dialogues` key and Done adds only words; with it on Done saves words and filtered dialogues in one session save; a changed session drops both.",
+      "files_hint": [
+        "lib/core/services/subtitle_words_service.dart",
+        "lib/features/word_input/subtitle_import_flow.dart",
+        "lib/features/word_input/word_input_notifier.dart",
+        "test/subtitle_import_dialogues_test.dart"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Apply the edit rule to dialogues whenever a word changes or is deleted",
+      "layer": "app",
+      "deps": [
+        "T14",
+        "T17"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-26"
+      ],
+      "dod": "Deleting a dialogue word, editing it out of the text, editing its translation, and deleting every word of a dialogue each leave the session in the AC-11/AC-26 state after one save.",
+      "files_hint": [
+        "lib/features/word_input/word_input_notifier.dart",
+        "test/dialogue_edits_test.dart"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Show the main screen as a pager with one read-only dialogue page per dialogue",
+      "layer": "ui",
+      "deps": [
+        "T17",
+        "T13"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-05",
+        "AC-06",
+        "AC-10",
+        "AC-11"
+      ],
+      "dod": "A session without dialogues renders exactly as before with no pager; one with dialogues pages through them with correct bold words and lists, and follows edits.",
+      "files_hint": [
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/features/word_input/widgets/dialogue_page.dart",
+        "test/main_screen_pager_test.dart"
+      ]
+    },
+    {
+      "id": "T20",
+      "title": "Start, follow and collect scene runs in the app, and show them in Story runs",
+      "layer": "app",
+      "deps": [
+        "T5",
+        "T12"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-18",
+        "AC-19"
+      ],
+      "dod": "A scene run started by the tracker is collected into Isar with its two steps and picture, sets the dialogue's scene picture, and appears in Story runs as a two-step run.",
+      "files_hint": [
+        "lib/core/services/story_api_service.dart",
+        "lib/core/story/story_run_tracker.dart",
+        "lib/core/services/story_run_store.dart",
+        "lib/features/words_settings/story_runs_screen.dart",
+        "lib/features/words_settings/story_run_screen.dart",
+        "test/story_run_tracker_test.dart",
+        "test/story_runs_screens_test.dart"
+      ]
+    },
+    {
+      "id": "T21",
+      "title": "Offer \"Dialogs from movie\" on the learn page with dialogue groups",
+      "layer": "ui",
+      "deps": [
+        "T11",
+        "T15"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-15",
+        "AC-16",
+        "AC-24",
+        "AC-25"
+      ],
+      "dod": "In a session with dialogues the learn page shows the dialogue cards and the line, starts nothing on selection, and Start routes per AC-13; without dialogues the exercise is greyed and everything else is unchanged.",
+      "files_hint": [
+        "lib/features/learn/learn_screen.dart",
+        "lib/features/learn/widgets/group_pager.dart",
+        "test/learn_dialogues_test.dart"
+      ]
+    },
+    {
+      "id": "T22",
+      "title": "Add the dialogue screen with its scene picture and open it from Start",
+      "layer": "ui",
+      "deps": [
+        "T20",
+        "T21",
+        "T13"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-14",
+        "AC-18",
+        "AC-19"
+      ],
+      "dod": "Start on a dialogue group without a picture starts one scene run and shows its progress and outcome; reopening shows the picture with no Worker call.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/router/routes.g.dart",
+        "lib/features/dialogue/dialogue_screen.dart",
+        "test/dialogue_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T23",
+      "title": "Send the session's dialogues and scene-picture declarations when publishing",
+      "layer": "infra",
+      "deps": [
+        "T6",
+        "T12"
+      ],
+      "acs": [
+        "AC-20"
+      ],
+      "dod": "A publish of a session with dialogues sends them with correct entry positions; without dialogues the body is unchanged.",
+      "files_hint": [
+        "lib/core/services/session_publish_service.dart",
+        "lib/features/words_table/words_table_screen.dart",
+        "test/session_publish_service_test.dart"
+      ]
+    },
+    {
+      "id": "T24",
+      "title": "Append an import's rows and dialogues, and upload scene pictures, to the shared link automatically",
+      "layer": "app",
+      "deps": [
+        "T7",
+        "T17",
+        "T20",
+        "T23"
+      ],
+      "acs": [
+        "AC-20"
+      ],
+      "dod": "A pending import is delivered once even across an app restart, a picture is uploaded after collection, and an expired link stops the retries.",
+      "files_hint": [
+        "lib/core/dialogues/dialogue_push.dart",
+        "lib/core/providers.dart",
+        "lib/app.dart",
+        "test/dialogue_push_test.dart"
+      ]
+    },
+    {
+      "id": "T25",
+      "title": "Update the repo docs this design outdates and run the release checks",
+      "layer": "docs",
+      "deps": [
+        "T10",
+        "T19",
+        "T22",
+        "T24"
+      ],
+      "acs": [],
+      "dod": "The docs describe what shipped, and the device pass results are recorded against every spec §6 row.",
+      "files_hint": [
+        "docs/architecture.md",
+        "vocab-photo-api/README.md",
+        "docs/features/get-words-from-subtitles-improvment/spec.md",
+        "docs/features/get-words-from-subtitles-improvment/CONTEXT.md",
+        "docs/features/get-words-from-subtitles-improvment/tasks/tracker.md"
+      ]
+    }
+  ]
+}

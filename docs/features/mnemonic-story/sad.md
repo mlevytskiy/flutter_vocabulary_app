@@ -1,0 +1,879 @@
+---
+status: Draft
+owner: "Maksym (learner, app owner)"
+reviewers: ["Maksym (Tech Lead)", "Security Lead"]
+updated_at: "2026-10-07"
+feature_size: "M"
+target_surfaces: [mobile-app, backend-service]  # decided in §4 (ADR-0001) — subset of: backend-service | web-frontend | mobile-app | desktop-app | cli | worker | library-sdk. Read (never re-derived) by api/sequences/tasks/plan-tests/review → _shared/surfaces.md
+---
+
+# Software Architecture Document — mnemonic-story
+
+## 1. Introduction and goals
+
+**Intent.** Ship the first real exercise behind the learn page's Start: a **mnemonic story** with one picture, written by AI from one **word group** of the session's words to learn (spec §1, §2). A session with more than 19 words to learn is first split by a fixed AI on the Worker into topical groups of 7 to 19 words. The learner selects one group on a pager at the top of the learn page. Each group gets one story made by three AIs in turn, the **story writer**, the **picture prompt writer** and the **picture maker**, chosen by the learner on a new Words settings screen. The story is kept on the phone and made again only when the learner asks. Every **story run** is kept as a record with each AI's result, price and time, so the owner can pick the best AIs for the money. Everything happens in the app. The web learn page does not change, and a daily **story allowance** caps what the whole app can spend.
+
+**Top-3 quality goals (1-liners; full scenarios in §10):**
+
+1. **Spending is bounded and never doubled.** ≤ 20 story runs start per UTC day across the whole app. A finished step is never paid again, even when the app is closed mid-run, and nothing reachable from a shared link can start a run (spec §6 "Story allowance", AC-10, AC-18, AC-19).
+2. **A story run finishes on its own.** ≤ 3 min from start to the picture shown with the default AI choice, and the run carries on while the learner is away (spec §6 "Story run time", AC-10).
+3. **A saved story opens at once.** ≤ 500 ms from Start to the picture and text shown, from the phone's own storage, with no network (spec §6 "Saved story open time", AC-07).
+
+**Stakeholders.**
+
+| Role | Interest | Sign-off owner? |
+|---|---|---|
+| learner | Selects a word group, reads its mnemonic story, chooses the AI choice, compares story runs, makes a story again | No |
+| partner | Unchanged: the web learn page still leads to coming soon, and nothing on the web can start a run (AC-18) | No |
+| Tech Lead (Maksym) | SAD approval | Yes |
+| Security Lead | Required by spec §6.1: a new paid server capability reached with a secret that ships in the app | Yes |
+
+**Decision overrides.**
+- Decision override: story run records are also kept on the Worker — rationale: spec §6.1 says stories, pictures and run records stay on the learner's device. Two needs require the Worker to keep its own copy. To meet AC-10 (a step in progress when the app closes is collected later, not paid again), the Worker must hold each step's result until the app collects it. And to accept "Try again" (AC-08b) and "Draw again" (AC-09) at any later time, it must still know the counted run and its story and prompt. So run and step rows in D1 (story text, prompt, AI, price, time, outcome — a few KB per run) are kept with no expiry. A picture in R2 is deleted once the app has collected it, or by the daily clean-up after 7 days. The phone keeps the copy the learner sees ([ADR-0002](adr/0002-run-each-story-run-as-a-cloudflare-workflow.md), §11). Owner, 2026-10-07; widened after the critic pass.
+
+**Critic resolutions (2026-10-07):** no overrides beyond the one above. Five findings were resolved by amendment. Run rows are kept on the Worker so redo and collect have no time limit (§1, §5, §7, §8, §11, ADR-0002). A timed-out step gets a "≈" list-price estimate (§4, §8, ADR-0004). The tracker and the grouping rules move to `lib/core/story/` (architecture.md §2 rule 3; §5, §8). §7 counts Draw again inside the 20 units and gains the R2 deploy step (§7, §11).
+
+## 2. Constraints
+
+**Technical.**
+- App: Flutter 3.35.1, Dart SDK `>=3.0.0 <4.0.0`, phone only. Typed routes in `lib/router/routes.dart` (`go_router` 17 + `go_router_builder`). Under `/` the tree is `table` → `learn` → `soon`, plus `history` and `settings`. State uses `flutter_riverpod` / `riverpod_annotation` 2.6.x.
+- App storage: `isar_community` pinned to `3.3.0-dev.1` (architecture.md §2 rule 6). One collection today, `Session`, opened in `lib/core/services/session_store.dart` (`Isar.open([SessionSchema], …, name: 'vocab')`). `WordPair` and `SessionSource` are `@embedded`. `WordPair` has no stable id. Preferences use `shared_preferences`, and files live under the documents directory from `path_provider` (as in `source_photo_store.dart`).
+- App packages already present that this feature reuses: `http` (Worker calls with the `x-app-secret` header, as `vocab_photo_service.dart` does), `flutter_image_compress` (picture size), `shared_preferences` and `path_provider`. `InteractiveViewer` (Flutter SDK) is already used for zoom in `lib/features/words_table/photo_viewer.dart`. The project has no background-execution package, so the app does nothing while it is closed.
+- Worker (`vocab-photo-api/`): TypeScript 5.6, `wrangler` 4, `@cloudflare/workers-types`, no runtime npm dependencies, `compatibility_date` `2025-01-01`. Routes are a table of `RouteDefinition`s, each declaring `public` (`src/routing.ts`, `src/index.ts`). Every non-public route needs `x-app-secret` = `APP_SHARED_SECRET` and passes `RATE_LIMITER`: 20 requests per 60 s per `cf-connecting-ip`.
+- Worker storage: D1 `DB` (`vocab-sessions`, migrations `migrations/000N_*.sql` with hand-applied `migrations/down/`), KV `SESSIONS` and `DEFINITIONS`, and R2 `SOURCES` (optional binding: when it is absent, the photo routes answer 503). One cron, `0 3 * * *`, runs the daily clean-up.
+- Worker AI today: Anthropic only (`ANTHROPIC_API_KEY`), with an allow-listed model set in `src/subtitles/prompt.ts`. Subtitle imports cap the AI call at 225 s and let tests point `ANTHROPIC_API_URL` at a local stub.
+- The daily allowance pattern exists: `src/subtitles/allowance.ts` `takeSubtitleImport` takes one unit from `all_subtitle_imports(utc_day, used)` (≤ 20 per UTC day) in one D1 batch before the AI call. A unit is not given back when the call fails.
+- Verification: `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze`, `flutter test`, the CLAUDE.md greps. In `vocab-photo-api/`: `npm test` (`scripts/test.mjs` runs `wrangler dev` with a SQLite D1 stand-in and stub providers) and `npm run typecheck`.
+
+**Organisational.**
+- One owner (Maksym) builds, reviews and deploys. There is no deadline. The Worker is deployed by hand (`wrangler deploy`, D1 migrations with `wrangler d1 migrations apply`), and the app ships through the usual store build.
+- Size M (`.size`), route standard (`.route`): two surfaces, a new Worker module, a D1 migration, an Isar schema change and five new app screens or parts of screens.
+- Provider accounts and keys for OpenCode Zen, xAI and Higgsfield must exist before the Worker can offer their models. Until then, `models.json` lists only Anthropic models (ADR-0004).
+
+**Conventions.**
+- [`CLAUDE.md`](../../../CLAUDE.md) rules 1–6 and [`docs/architecture.md`](../../architecture.md) §2. Navigation goes only through typed routes, and dialogs/SnackBars are not routes. Services come from providers in `lib/core/providers.dart`. Screen data lives in a `@riverpod` notifier, and transient UI state stays in widget `State`. A feature is a folder, features don't import each other's screens, and one file ≈ one thing.
+- Spec-approved overrides, which this feature carries out:
+  - CLAUDE.md rule 3 / architecture.md rule 4 ("do not change how anything looks") gives way for the visible parts spec §1 lists: the Words screen's settings button, Words settings, Story runs and a run's details, the group pager on the learn page, the story screen in place of coming soon for Mnemonic story in the app, and the "Make a new story" confirmation.
+  - CLAUDE.md rule 5 ("no new domain models — ask first"): `WordGroup` (embedded in `Session`), `StoryRun` with its `StoryStep`s (a new collection) and `WordPair.rowId`. Approved by the owner on 2026-10-07 in this design ([ADR-0003](adr/0003-keep-word-groups-in-the-session-and-story-runs-in-their-own-collection.md)). The text update is tracked in §11.
+  - learn-part-step-1's invariant "the learn page saves nothing" is narrowed (spec §1). Ticks still last one visit, but word groups, the selected group, mnemonic stories and story runs are kept.
+- The precedent for one shape shared by the app and the Worker is learn-part-step-1 ADR-0003: JSON in the Worker as the source of truth, read by the app. Here the app fetches it instead of copying it (ADR-0004).
+
+**Regulatory / external.**
+- Data classification: internal (spec §6.1). The words of a word group go to the chosen AI providers, as photo words go to Anthropic today. No personal data is added.
+- Security review: required (spec §6.1). The Security Lead signs off §8 "Spending control" and ADR-0002 before release (§11).
+- Provider terms: each provider is used only through its paid API with a key held as a Worker secret. Pictures that a provider refuses are a failed picture (AC-09), never retried with altered words.
+
+## 3. Context and scope
+
+The learner collects words on the phone. The learn page from learn-part-step-1 lists eleven exercises, and Mnemonic story is the only one that can be ticked. This feature makes it real in the app. The app asks the Worker to group the session's words and to run each group through three AIs, and keeps the groups, stories, pictures and run records on the phone. The Worker holds the provider keys, the offered model list and the daily allowance, and calls four AI providers. The partner's web learn page is not changed: Mnemonic story there still leads to coming soon, and no public route can start a run.
+
+<!-- brownfield: Flutter app (lib/, go_router + Riverpod, Isar on device) + Cloudflare Worker (vocab-photo-api/, TypeScript, D1 + KV + R2, x-app-secret on app routes, per-address rate limiter, daily subtitle allowance in D1, Anthropic as the only AI); read from docs/architecture.md, CLAUDE.md and an explorer scan — no docs/architecture-map.md exists -->
+
+**External systems (in / out):**
+
+| Actor or system | Type | Interaction |
+|---|---|---|
+| learner | Person | Selects a word group, reads its story, chooses the AIs, compares story runs, makes a story again — all in the app |
+| partner | Person | Unchanged: opens the web learn page, where Mnemonic story still leads to coming soon (AC-18) |
+| Vocabulary app | System (ours) | Groups and stories on the phone; calls the Worker with the app secret |
+| vocab-photo-api Worker | System (ours) | Groups words, runs story runs, keeps the allowance and the offered model list, holds results until collected |
+| Anthropic API | System (external) | Grouping (fixed model); story writer and picture prompt writer (Sonnet 5.5, Opus 5.5) |
+| OpenCode Zen | System (external, new) | Story writer and picture prompt writer for the OpenCode Zen models on the list; OpenAI-compatible API |
+| xAI (Grok) | System (external, new) | Picture maker for the Grok picture models on the list |
+| Higgsfield | System (external, new) | Picture maker for the Higgsfield picture models on the list; credits under a plan |
+
+**C4 Context (L1):**
+
+```mermaid
+C4Context
+    title mnemonic-story — System Context
+
+    Person(learner, "learner", "Studies a session's words as mnemonic stories on the phone")
+    Person(partner, "partner", "Holds a shared link, web learn page unchanged")
+    System(app, "Vocabulary app", "Flutter phone app: group pager, story screen, Words settings, story runs, keeps groups, stories and runs")
+    System(worker, "vocab-photo-api Worker", "Cloudflare Worker: grouping, story runs, story allowance, offered model list")
+    System_Ext(anthropic, "Anthropic API", "Grouping, story and picture prompt writing")
+    System_Ext(zen, "OpenCode Zen", "Story and picture prompt writing")
+    System_Ext(xai, "xAI Grok", "Picture making")
+    System_Ext(higgs, "Higgsfield", "Picture making")
+
+    Rel(learner, app, "Selects a group, reads its story, chooses the AIs")
+    Rel(partner, worker, "Opens the web learn page, unchanged", "HTTPS")
+    Rel(app, worker, "Groups words, starts and follows story runs", "HTTPS + app secret")
+    Rel(worker, anthropic, "Groups words, writes stories and picture prompts", "HTTPS")
+    Rel(worker, zen, "Writes stories and picture prompts", "HTTPS")
+    Rel(worker, xai, "Draws pictures", "HTTPS")
+    Rel(worker, higgs, "Draws pictures", "HTTPS")
+```
+
+The context has two people and two of our own systems. The learner uses only the phone app. The app talks only to our Worker, with the app secret, and never to an AI provider directly, so no provider key ships in the app. The Worker calls four AI providers: Anthropic, which it already uses, plus three new ones. The partner's web learn page sits on the Worker as before. It gains nothing, so nothing on the web can spend money.
+
+## 4. Solution strategy
+
+**Top strategic choices (the seeds for ADRs):**
+
+1. **Two surfaces: the app and the Worker** ([ADR-0001](adr/0001-change-the-app-and-the-worker-as-two-surfaces.md)). `target_surfaces: [mobile-app, backend-service]`. The app gains the group pager, the story screen, Words settings, Story runs and a run's details, plus the storage behind them. The Worker gains app-secret routes for the offered model list, grouping, starting a story run, following runs, redoing a step and fetching a picture. It also gains the story allowance, the run orchestration and four provider adapters. The web learn page is not a surface of this feature: it does not change. AC-18 is kept by giving the Worker no public story route, and a test pins that. This serves quality goal 1.
+
+2. **Each story run is a Cloudflare Workflow on the Worker; the app starts it and collects it** ([ADR-0002](adr/0002-run-each-story-run-as-a-cloudflare-workflow.md)). Starting a run checks the AI choice against the offered list and takes one unit of the story allowance. It then creates a Workflow instance named by the app-generated run id, so a repeated start finds the same run and takes nothing more. The Workflow runs the story writer, checks every word (AC-08), runs the picture prompt writer and runs the picture maker. Each is a durable step with no automatic retry, so a finished step is never run, or paid, again. Each step's result, price and time go to D1, and the picture goes to R2 under `story-runs/`. The app follows runs that are not yet collected with one status call for all of them, every 5 s while the learn page or the story screen is open, and once on app start. It then copies the results to the phone. "Try again" for the picture prompt and "Draw again" are new Workflow instances for that step of the same counted run. Draw again takes one unit, and a step for an unknown or uncounted run is refused. This serves quality goals 1 and 2.
+
+3. **Word groups live in the session; story runs are their own collection** ([ADR-0003](adr/0003-keep-word-groups-in-the-session-and-story-runs-in-their-own-collection.md)). `WordPair` gains a stable `rowId` (a UUID, filled in for older rows on first read), so a group follows its words through edits (AC-17). `Session` gains its `groups` (embedded `WordGroup`: id, name, the `rowId`s, the English words as they were when its story was made, and the id of the run that made its story), the selected group's id and the grouped-words key that tells whether grouping must run again (AC-03). `StoryRun` is a new Isar collection, listed app-wide and never removed (AC-14, AC-15). A run holds embedded `StoryStep`s, one per attempt, with the AI, the result, the price, the time and the outcome. The picture is a compressed file under `mnemonic_pictures/`. A group's **mnemonic story** is the run its `storyRunId` names, replaced only when a newer run finishes with a picture (AC-16). **Override of CLAUDE.md rule 5, approved by the owner on 2026-10-07.** This serves quality goal 3.
+
+4. **The offered AI list, with prices, is JSON in the Worker that the app fetches** ([ADR-0004](adr/0004-serve-the-offered-ai-list-with-prices-from-the-worker.md)). `vocab-photo-api/src/story/models.json` lists each offered model: id, name, provider, role (`text` for the story writer and the picture prompt writer, `picture` for the picture maker), list price (per million input and output tokens, or per picture), the "≈" estimate for a group of 15 words, and the default for each step. The Worker serves it to the app and refuses any run or step with a model not on it (spec §6.1, AC-13). The Worker prices every step from the provider's reported token use × list price, or from the price per picture, and returns that price with the step. The app shows the JSON's estimate until the learner's own runs give an average (AC-12). This serves quality goal 1.
+
+5. **The app owns the grouping rules; the AI only splits words** ([ADR-0005](adr/0005-let-the-app-own-the-grouping-rules-and-the-ai-only-split-words.md)). The app decides what needs grouping. With ≤ 19 words to learn and no group with a story, it makes one "All words" group locally (AC-02). Words added beside a story group in a small session become their own group locally (AC-02b). With > 19 words, it sends to the Worker the words outside every group with a story, together with the groups without a story (AC-05). The Worker asks a fixed AI (Haiku 4.5) for a split and returns it unchanged. The app then validates the answer: every word exactly once, and 7 to 19 words per group above 19 (AC-04). It also keeps groups without a story stable, and holds back fewer than 7 leftover words as waiting (AC-05). Grouping is a plain request, not stored on the Worker and not counted against the allowance. This serves quality goal 1 (no paid chain behind grouping) and keeps every group invariant testable in Dart.
+
+**Decided inline (below the ADR gate, from the assumptions ledger the owner accepted on 2026-10-07):**
+
+- **Mobile UI architecture: unchanged.** The app stays a Flutter phone app, and the existing stack rules out any alternative. New full screens are typed routes: the story screen under `learn` (`StoryRoute`, replacing `ComingSoonRoute` for `mnemonic-story` only), and Words settings under `table`, with Story runs and a run's details under it. All are opened with `push`. The confirmation before "Make a new story" is a dialog, not a route. The pager is part of the learn page. Zoom and pan use `InteractiveViewer` in place on the story screen (AC-06), as `photo_viewer.dart` does.
+- **AI choice and model list on the phone.** The fetched `models.json` is cached in `shared_preferences`, with the learner's three choices beside it. A choice that is no longer on the list falls back to that step's default and shows "<AI name> is no longer available" (AC-13). The Worker refuses it anyway.
+- **Story allowance.** A new D1 table `all_story_runs(utc_day, used)`, taken the way `takeSubtitleImport` takes `all_subtitle_imports`: one unit when a new run's story step starts and one for each Draw again. It is not given back on failure (AC-19). There is no per-address window: the spec caps the whole app, and the per-address rate limiter already applies.
+- **Word check (AC-08)** runs on the Worker, inside the Workflow, between the story step and the picture prompt step. It returns the missed words.
+- **Timeouts.** Each provider call is aborted at 90 s (story writer and picture prompt writer) or 120 s (picture maker, including Higgsfield's submit-and-poll) (AC-08b). A timed-out step is failed, with its time and a "≈" estimated price, because no usage came back. A text step is priced from the input tokens sent plus the step's output limit × the list price, and a picture step at the price per picture (ADR-0004). The story runs screens mark it "≈".
+- **New providers.** Each provider gets one adapter file in `src/story/providers/` behind a common `writeText` / `drawPicture` shape. The keys are new Worker secrets, and each provider's base URL can be overridden for the test stubs (`*_API_URL`, as `ANTHROPIC_API_URL` today).
+- **Spec §8 open questions, resolved:** Higgsfield's price is shown as "≈ $X" per picture, the plan price divided by the credits one picture takes, fixed in `models.json`. The defaults are Sonnet 5.5 for the story writer and the picture prompt writer, and the Grok picture model for the picture maker.
+- **Pictures on the phone** are compressed with `flutter_image_compress` to ≤ 3 MB and kept under `mnemonic_pictures/` in the documents directory, beside `source_photos/`.
+
+## 5. Building block view
+
+The feature follows the repo's existing shapes. In the app, the parts more than one feature uses live in `lib/core/story/`: the pure grouping rules with the grouped-words key, the word-groups notifier and the story run tracker. The learn page, the Words screen and the story screen reach them only through providers, so features still don't import each other (architecture.md §2 rule 3). Storage stays in `SessionStore` plus one new store for runs and pictures. Worker calls go through one service reached from `lib/core/providers.dart`, and screens read `@riverpod` notifiers. A long-lived `StoryRunTracker` notifier (`keepAlive`, like `photoUploadServiceProvider`) follows the runs that are not yet collected and writes their results to Isar. Screens watch Isar, so they show a run's current step whenever they open (AC-06, AC-10). In the Worker, the story feature is a new `src/story/` module beside `src/subtitles/`, with routes in the same route table, all `public: false`. Its Workflow class is exported from `src/index.ts`, and its D1 tables come in one new migration.
+
+**Internal decomposition:**
+
+```
+lib/
+├── router/routes.dart                       + StoryRoute (under 'learn', sessionId?, groupId)
+│                                            + WordsSettingsRoute (under 'table') → StoryRunsRoute → StoryRunRoute (runId)
+├── core/
+│   ├── models/
+│   │   ├── word_pair.dart                   + rowId (UUID, filled in for older rows on read) — ADR-0003
+│   │   ├── word_group.dart                  NEW @embedded WordGroup: id, name, rowIds, storyRunId?, storyWords (English words when its story was made)
+│   │   ├── session.dart                     + groups, selectedGroupId, groupedWordsKey
+│   │   ├── story_run.dart                   NEW @collection StoryRun: runId, sessionId, groupId, groupName, words, startedAt, models, steps, outcome, collected
+│   │   │                                    + @embedded StoryStep: role, attempt, modelId, modelName, outcome, text / picturePath, missedWords, priceUsd?, ms
+│   │   └── offered_ai.dart                  NEW OfferedAi + AiChoice (read from the Worker's models.json) — ADR-0004
+│   ├── services/
+│   │   ├── session_store.dart               + opens StoryRunSchema beside SessionSchema; rowId fill-in on read
+│   │   ├── story_api_service.dart           NEW Worker calls: models, grouping, start run, runs status, redo step, picture bytes
+│   │   ├── story_run_store.dart             NEW StoryRun reads/writes (newest first, by id, uncollected), never removes
+│   │   └── story_picture_store.dart         NEW mnemonic_pictures/ files, compressed ≤ 3 MB (flutter_image_compress)
+│   ├── story/                               NEW shared by learn, mnemonic_story, words_table and words_settings (rule 3)
+│   │   ├── word_grouping.dart               pure rules: what to regroup, local "All words" / small groups, validate a split, grouped-words key — ADR-0005
+│   │   ├── word_groups_notifier.dart        per-session groups, grouping state, selection; asks the tracker to start a run for a selected group without a story
+│   │   └── story_run_tracker.dart           keepAlive notifier: start, follow (one status call / 5 s while visible), collect, redo
+│   └── providers.dart                       + storyApiService, storyRunStore, storyPictureStore, offeredAis, aiChoice (persisted)
+└── features/
+    ├── learn/
+    │   ├── widgets/group_pager.dart         NEW the pager of group cards (tap selects, swipe browses)
+    │   └── learn_screen.dart                + group line, pager, grouping/waiting/limit messages; Start → StoryRoute for mnemonic-story
+    ├── mnemonic_story/                      NEW feature folder
+    │   ├── story_screen.dart                running step, picture (InteractiveViewer) over text, errors, "Words changed", Make a new story
+    │   └── widgets/new_story_dialog.dart    the confirmation before a new run
+    ├── words_settings/                      NEW feature folder
+    │   ├── words_settings_screen.dart       three AI choices with prices, "no longer available", Story runs
+    │   ├── story_runs_screen.dart           all runs, newest first
+    │   └── story_run_screen.dart            one run's steps: AI, result, price, time, failed attempts
+    └── words_table/words_table_screen.dart  + settings button (as the main screen's); asks the word-groups notifier to group quietly when needed (AC-03)
+
+vocab-photo-api/
+├── wrangler.jsonc                           + workflows: STORY_RUN → StoryRunWorkflow
+├── migrations/0004_story_runs.sql           NEW all_story_runs, story_runs, story_run_steps (+ down/)
+└── src/
+    ├── index.ts                             + storyRoutes; export StoryRunWorkflow; cron also deletes run pictures > 7 days
+    ├── env.ts                               + STORY_RUN, OPENCODE_ZEN_API_KEY, XAI_API_KEY, HIGGSFIELD_API_KEY, *_API_URL overrides
+    └── story/                               NEW module
+        ├── models.json                      offered AIs, roles, list prices, 15-word estimates, defaults — ADR-0004
+        ├── models.ts                        typed view + isOffered(role, id) + price(step usage)
+        ├── allowance.ts                     takeStoryRun: one unit per new run / Draw again from all_story_runs
+        ├── grouping.ts                      grouping prompt + Haiku 4.5 call + JSON parse
+        ├── prompts.ts                       story writer and picture prompt writer prompts
+        ├── word-check.ts                    AC-08 rule: whole word, any case, phrase in order, -s/-es/-ed/-ing
+        ├── providers/                       anthropic.ts, opencode-zen.ts, xai.ts, higgsfield.ts (writeText / drawPicture, abort at 90 s / 120 s)
+        ├── workflow.ts                      StoryRunWorkflow: story → word check → prompt → picture; redo of one step
+        ├── store.ts                         D1 runs/steps (kept), R2 story-runs/<runId>/<attempt> (deleted once collected or after 7 days)
+        └── routes.ts                        models, grouping, start, status, redo, picture (all public: false)
+
+test/word_grouping_test.dart, test/story_*_test.dart          rules, stores, tracker with a fake service
+vocab-photo-api/test/story-*.test.mjs (+ zen/xai/higgsfield stubs)  routes, allowance, word check, workflow, AC-18
+```
+
+**C4 Container (L2):**
+
+```mermaid
+C4Container
+    title mnemonic-story — Containers
+
+    Person(learner, "learner")
+
+    Container_Boundary(phone, "Learner's phone") {
+        Container(app, "Vocabulary app", "Flutter, go_router, Riverpod", "Group pager, story screen, Words settings, story runs, StoryRunTracker follows and collects runs")
+        ContainerDb(isar, "Device store", "Isar on the device", "Sessions with word groups, story runs with their steps")
+        ContainerDb(files, "Picture files", "mnemonic_pictures/ in the documents directory", "Compressed story pictures, at most 3 MB each")
+    }
+
+    Container_Boundary(cloud, "Cloudflare") {
+        Container(worker, "vocab-photo-api Worker", "TypeScript, Cloudflare Workers", "App-secret story routes: models, grouping, start, status, redo, picture, allowance, models.json")
+        Container(flow, "Story run workflow", "Cloudflare Workflows, same Worker script", "Runs story writer, word check, picture prompt writer, picture maker as durable steps")
+        ContainerDb(d1, "Story run records", "Cloudflare D1", "all_story_runs allowance, story runs and their steps, kept")
+        ContainerDb(r2, "Run pictures", "Cloudflare R2, SOURCES bucket", "story-runs pictures until collected, at most 7 days")
+    }
+
+    System_Ext(anthropic, "Anthropic API", "Grouping, text steps")
+    System_Ext(zen, "OpenCode Zen", "Text steps")
+    System_Ext(xai, "xAI Grok", "Pictures")
+    System_Ext(higgs, "Higgsfield", "Pictures")
+
+    Rel(learner, app, "Selects a group, reads its story, chooses the AIs")
+    Rel(app, isar, "Reads and writes groups and story runs", "Riverpod providers")
+    Rel(app, files, "Writes and reads pictures", "dart:io")
+    Rel(app, worker, "Groups words, starts runs, follows and collects them", "HTTPS + x-app-secret")
+    Rel(worker, d1, "Takes allowance units, reads run status", "D1 binding")
+    Rel(worker, flow, "Creates a run or a one-step redo", "Workflow binding")
+    Rel(worker, anthropic, "Groups words", "HTTPS")
+    Rel(flow, d1, "Records each step's result, price and time", "D1 binding")
+    Rel(flow, r2, "Stores the picture", "R2 binding")
+    Rel(flow, anthropic, "Writes story or prompt", "HTTPS")
+    Rel(flow, zen, "Writes story or prompt", "HTTPS")
+    Rel(flow, xai, "Draws the picture", "HTTPS")
+    Rel(flow, higgs, "Draws the picture", "HTTPS")
+    Rel(worker, r2, "Serves a run's picture to the app", "R2 binding")
+```
+
+There is one container per declared surface, plus their stores. The **Vocabulary app** (mobile-app) keeps everything lasting on the phone: sessions with their word groups and the story runs in the **Device store**, and the pictures as **Picture files**. It talks only to the **Worker** (backend-service). The Worker answers grouping itself, calling Anthropic. For a story run, it takes an allowance unit in **D1** and hands the run to the **Story run workflow**, which ships in the same Worker script. The workflow calls the chosen text provider (Anthropic or OpenCode Zen) and picture provider (xAI or Higgsfield), records each step in D1 and stores the picture in **R2**. The app polls the Worker for status and downloads the picture, after which the phone holds the only lasting copy.
+
+## 6. Runtime view
+
+Two seed flows: the story run, the paid and critical one, with its failure and leave-and-return branches, and grouping. The `sequences` stage then covers every §5 AC.
+
+**Critical flow 1: a story run, from selecting a group to the picture shown (US-02, US-06; AC-06 – AC-10, AC-19)**
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Device store
+    participant Worker as vocab-photo-api Worker
+    participant Flow as Story run workflow
+    participant D1 as Story run records
+    participant AI as AI providers
+    Learner->>App: selects a group without a story, or opens the learn page with it selected
+    App->>Store: saves a new story run in progress (new run id, group words, AI choice)
+    App->>Worker: starts the run with its run id, words and AI choice
+    Worker->>Worker: checks the three AIs are on the offered list
+    Worker->>D1: takes one unit of today's story allowance, once per run id
+    alt allowance used up
+        Worker-->>App: refused, today's limit reached
+        App-->>Learner: "Today's story limit is reached. Try again tomorrow."
+    else unit taken
+        Worker->>Flow: creates the run's workflow
+        Worker-->>App: run started
+        Flow->>AI: story writer writes the story (90 s limit)
+        Flow->>Flow: checks every group word appears
+        alt a word is missing, or the story writer failed
+            Flow->>D1: story step failed, with missed words, price and time
+        else story complete
+            Flow->>AI: picture prompt writer writes the prompt (90 s limit)
+            Flow->>AI: picture maker draws the picture (120 s limit)
+            Flow->>D1: each step's result, price and time, the picture goes to R2
+        end
+        loop every 5 s while the learn page or story screen is open, and on app start
+            App->>Worker: status of every run not yet collected
+            Worker->>D1: reads their steps
+            Worker-->>App: steps so far
+            App->>Store: records finished steps
+        end
+        opt the learner closed the app mid-run
+            Note over App,Flow: the workflow carries on, nothing is redone or paid again, results are collected on return
+        end
+        App->>Worker: fetches the finished picture
+        App->>Store: compressed picture file, run finished, becomes the group's story
+        App-->>Learner: story screen shows the picture over the story text, zoom and pan
+    end
+```
+
+The learner selects a group that has no story. The app records a new run locally and asks the Worker to start it. The Worker checks that the AI choice is on the offered list and takes one unit of the day's allowance. If none is left, the learner sees the daily-limit message and nothing is paid. Otherwise the Worker hands the run to its workflow and answers at once. The workflow has the story written and checks that every word is present. If a word is missing or the story writer fails, the run stops at the story step. Otherwise it has the picture prompt written and the picture drawn, recording each step's result, price and time. Meanwhile the app asks for the status of every unfinished run every 5 s while a story-related screen is open, and once on app start, and copies each finished step to the phone. If the app was closed, the workflow simply carried on, and the app collects the results when it next opens. When the picture is ready, the app downloads it, compresses it, stores it and makes this run the group's story.
+
+**Critical flow 2: grouping a session with more than 19 words to learn (US-01; AC-01, AC-03 – AC-05)**
+
+```mermaid
+sequenceDiagram
+    actor Learner as learner
+    participant App as Vocabulary app
+    participant Store as Device store
+    participant Worker as vocab-photo-api Worker
+    participant AI as Anthropic API
+    Learner->>App: opens a session's Words screen or learn page
+    App->>Store: reads the session's words to learn, groups and grouped-words key
+    alt words to learn unchanged since the last grouping
+        App-->>Learner: groups as they are, last selected group selected
+    else 19 words to learn or fewer
+        App->>Store: one "All words" group, or a new own group beside a story group
+    else more than 19 and changed
+        App->>App: picks the words outside every group with a story, and the groups without a story
+        App-->>Learner: pager shows "Grouping your words…" if the learn page is open
+        App->>Worker: asks for a split of those words
+        Worker->>AI: grouping prompt with the fixed model
+        AI-->>Worker: proposed groups with names
+        Worker-->>App: proposed groups
+        App->>App: validates every word exactly once and 7 to 19 per group, keeps groups without a story stable
+        alt split invalid or the call failed
+            App-->>Learner: "Could not group your words" with "Try again", Start unavailable for Mnemonic story
+        else fewer than 7 words have no room
+            App->>Store: groups saved, leftover words wait
+            App-->>Learner: "N more words are waiting for a group (at least 7 are needed)"
+        else valid
+            App->>Store: groups and the new grouped-words key saved
+            App-->>Learner: group line and pager, the remembered group selected or the first
+        end
+    end
+```
+
+When a session's Words screen or learn page opens, the app compares the current words to learn with the key stored at the last grouping. If nothing changed, the groups stay as they are. A session with 19 or fewer words to learn is grouped on the phone, as "All words", or with a new group of its own beside a story group. Above 19, the app sends the words outside any story group, and the groups without a story, to the Worker, which asks the fixed AI for a split. The app checks the answer. A broken split, or a failed call, shows "Could not group your words" with Try again and keeps Start unavailable for Mnemonic story. Leftover words that cannot form a group of 7 wait, with the waiting message. A good split is saved, and the pager appears with the remembered group selected.
+
+### S-01 Group a session's words (US-01)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant X as <external-system>
+
+    Note over U,UI: Precondition: a session (the current one or one opened from History) has words to learn, Words screen (SCR-02) or learn page (SCR-03) is opening
+    U->>UI: opens the session's Words screen or learn page
+    UI->>DS: reads this session's word rows, groups, selected group and grouped-words key
+    DS-->>UI: session
+    UI->>UI: computes the current grouped-words key (row id + English word of each word to learn)
+    alt key unchanged since the last grouping
+        UI-->>U: groups as they are, no grouping starts
+    else 19 words to learn or fewer, no group with a story
+        UI->>DS: one group "All words" with every word to learn
+        Note over UI,DS: persists Session.groups, groupedWordsKey
+        UI-->>U: learn page without the group line and pager
+    else 19 or fewer, a group has a story, words were added
+        UI->>DS: the added words become their own group of any size, the story group keeps its words
+        Note over UI,DS: persists Session.groups, groupedWordsKey
+        UI-->>U: group line and pager with the new card
+    else more than 19 words to learn, changed
+        UI->>UI: takes the words outside every group with a story (or with a run in progress) and the groups without a story
+        UI-->>U: on the learn page, the pager shows "Grouping your words…", on the Words screen, nothing
+        UI->>S: asks for a split of those words, keeping the groups without a story
+        S->>X: grouping request to the fixed AI
+        X-->>S: proposed groups with names
+        S-->>UI: proposed groups
+        UI->>UI: validates: every word exactly once, 7 to 19 per group, groups without a story only gain words
+        alt the call failed, or a word is missing, doubled, or a group is outside 7 to 19
+            UI-->>U: "Could not group your words" with "Try again", Start unavailable for Mnemonic story
+        else fewer than 7 words have no room in a group without a story
+            UI->>DS: valid groups saved, those words wait outside any group
+            Note over UI,DS: persists Session.groups, groupedWordsKey
+            UI-->>U: "N more words are waiting for a group (at least 7 are needed)"
+        else valid
+            UI->>DS: groups, names and the new grouped-words key saved
+            Note over UI,DS: persists Session.groups, groupedWordsKey
+            UI-->>U: "We grouped your words into sets of up to 19 words. Please select one group to learn." and the pager, the remembered group selected, else the first
+        end
+    end
+    Note over UI,DS: a History session keeps its own groups, the current session is not changed
+    Note over U,UI: Postcondition: every word to learn is in exactly one group or waiting, groups with a story never changed
+```
+
+### S-02 Select a group and start its story run (US-01, US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over U,UI: Precondition: the learn page (SCR-03) shows the session's groups
+    alt the learner taps another group's card
+        UI->>DS: saves that group as the selected group, the previous one unselected
+        Note over UI,DS: persists Session.selectedGroupId
+    else the learner swipes the pager
+        UI-->>U: browses cards, the selection does not change
+    end
+    UI->>DS: reads the selected group and its story run id
+    alt the selected group has a story, or a run in progress
+        UI-->>U: no run starts
+    else no story and no run in progress
+        UI->>UI: reads the AI choice, a choice no longer on the offered list falls back to that step's default
+        UI->>DS: new story run in progress (new run id, the group's words, the AI choice)
+        Note over UI,DS: persists StoryRun (runId, sessionId, groupId, startedAt, outcome running)
+        UI->>S: starts the run with its run id, words and AI choice
+        S->>S: checks the three AIs are on the offered list
+        S->>SS: takes one unit of today's story allowance for this run id (a repeated run id takes none)
+        alt an AI is not on the offered list
+            S-->>UI: refused, AI not offered
+            UI->>DS: run marked not started, the choice reset to the defaults
+            UI-->>U: "<AI name> is no longer available"
+        else today's allowance used up
+            S-->>UI: refused, today's limit reached
+            UI->>DS: run marked not started, no allowance taken
+            UI-->>U: "Today's story limit is reached. Try again tomorrow."
+        else unit taken
+            Note over S,SS: persists story_runs row and the all_story_runs day count
+            S-->>UI: run started (see S-03)
+            UI-->>U: learn page as it was, the run goes on in the background
+        end
+    end
+    Note over UI,S: a run already going for another group carries on, several runs can go at once
+    Note over U,UI: Postcondition: exactly one group is selected, a group without a story has a run going, or a visible reason why not
+```
+
+### S-03 The story run on the server (US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as <service>
+    participant B as <message-bus>
+    participant X as <external-system>
+    participant SS as <data-store> server
+
+    Note over S,B: Trigger: a counted run start (S-02), keyed by the app's run id
+    S->>B: hands over the run, keyed by the run id
+    B->>B: checks the run id (an existing run is not started twice)
+    B->>X: story writer writes the story from the group's words (90 s limit)
+    alt the story writer fails, refuses or gives no answer within 90 s
+        B->>SS: story step failed, with its price (estimated on a timeout) and time
+        Note over B,SS: persists story_run_steps (story, failed)
+    else story written
+        B->>B: checks every group word appears as written
+        alt a word is missing
+            B->>SS: story step failed with the missed words, its price and time
+            Note over B,SS: persists story_run_steps (story, failed, missed words)
+        else every word present
+            B->>SS: story, price and time
+            Note over B,SS: persists story_run_steps (story, done)
+            B->>X: picture prompt writer writes the prompt from the story (90 s limit)
+            alt the prompt writer fails, refuses or gives no answer within 90 s
+                B->>SS: prompt step failed, with its price and time
+                Note over B,SS: persists story_run_steps (prompt, failed)
+            else prompt written
+                B->>SS: prompt, price and time
+                Note over B,SS: persists story_run_steps (prompt, done)
+                B->>X: picture maker draws from the prompt (120 s limit)
+                alt the picture maker fails, refuses or gives no answer within 120 s
+                    B->>SS: picture attempt failed, with its picture maker, price and time
+                    Note over B,SS: persists story_run_steps (picture attempt, failed)
+                else picture drawn
+                    B->>SS: picture kept until collected, its price and time
+                    Note over B,SS: persists story_run_steps (picture, done) and the run picture
+                end
+            end
+        end
+    end
+    Note over B,X: no retry on paid steps: a failed step is recorded as failed (the dead-letter outcome), and the learner decides to try again (S-05)
+    Note over B,SS: a finished step is never run or paid again, even if the app closed mid-run
+    Note over S,SS: Postcondition: every step that ran has its result or failure, AI, price and time on record
+```
+
+### S-04 Follow, collect and show the story (US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over U,UI: Precondition: Mnemonic story ticked on the learn page, a group selected
+    U->>UI: presses Start
+    UI->>DS: reads the selected group's story run
+    DS-->>UI: run with its steps
+    alt the group has a story (finished run with a picture on the phone)
+        UI-->>U: story screen (SCR-04): the same picture over the story text, no network, no new run
+    else a run is still going or not yet collected
+        UI-->>U: story screen with the running step: "Writing the story…", "Writing the picture prompt…" or "Drawing the picture…"
+        loop every 5 s while the learn page or story screen is open, and once on app start
+            UI->>S: status of every run not yet collected
+            S->>SS: reads their steps
+            SS-->>S: steps so far
+            S-->>UI: steps so far
+            UI->>DS: records each newly finished step
+            Note over UI,DS: persists StoryRun.steps
+            UI-->>U: the running step label moves on
+        end
+        alt the picture step is done
+            UI->>S: fetches the run's picture
+            S->>SS: reads the picture
+            SS-->>S: picture bytes
+            S-->>UI: picture
+            UI->>DS: picture compressed to at most 3 MB and kept as a file, run finished, the group's story is this run
+            Note over UI,DS: persists picture file, StoryRun (finished, collected), WordGroup.storyRunId and storyWords
+            UI-->>U: picture on top, story text under it, zoom and pan in place
+        else the story step failed with missed words
+            UI-->>U: "The story missed these words: …" with "Try again"
+        else the story writer failed
+            UI-->>U: "Could not write the story" with "Try again"
+        else the picture prompt writer failed
+            UI-->>U: "Could not write the picture prompt" with "Try again"
+        else the picture maker failed
+            UI-->>U: story text with "The picture could not be drawn" and "Draw again"
+        end
+    end
+    opt the learner left, locked the phone or closed the app mid-run
+        Note over UI,S: on return the loop picks the run up where the server is, nothing is started or paid again
+    end
+    Note over U,UI: Postcondition: the phone holds every finished step, a finished run with a picture is the group's story
+```
+
+### S-05 Try again and Draw again (US-02, US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over U,UI: Precondition: the story screen (SCR-04) shows a failed run of the selected group
+    alt "Try again" after a missed word or a story writer failure
+        U->>UI: presses "Try again"
+        UI-->>U: a new story run starts as in S-02 (takes one allowance unit)
+    else "Try again" after a picture prompt failure
+        U->>UI: presses "Try again"
+        UI->>S: redoes the prompt step of this run
+        S->>SS: checks the run exists and its prompt step failed
+        alt not a counted run, or the step did not fail
+            S-->>UI: refused
+            UI-->>U: the failure message stays
+        else accepted, no allowance unit taken
+            S-->>UI: prompt step restarted from the same story, then the picture as in S-03
+            UI->>DS: run back in progress
+            Note over UI,DS: persists StoryRun.outcome
+            UI-->>U: "Writing the picture prompt…"
+        end
+    else "Draw again" after a picture failure
+        U->>UI: presses "Draw again"
+        UI->>UI: reads the picture maker chosen now (falls back to the default if no longer offered)
+        UI->>S: redraws this run's picture with that picture maker
+        S->>SS: checks the run exists and its picture step failed, the AI is offered, and takes one allowance unit
+        alt not a counted run, or the picture did not fail, or the AI is not offered
+            S-->>UI: refused
+            UI-->>U: the failure message stays
+        else today's allowance used up
+            S-->>UI: refused, today's limit reached
+            UI-->>U: "Today's story limit is reached. Try again tomorrow."
+        else unit taken
+            Note over S,SS: persists all_story_runs day count, a new picture attempt on the same run
+            S-->>UI: picture attempt started from the same prompt, the story is not written again
+            UI->>DS: new attempt in progress, the failed attempt kept with its picture maker, price and time
+            Note over UI,DS: persists StoryRun.steps (attempts)
+            UI-->>U: "Drawing the picture…", then as in S-04
+        end
+    end
+    Note over U,UI: Postcondition: only a counted run's failed step can be redone, each Draw again is one allowance unit, a prompt redo none
+```
+
+### S-06 Choose the AIs (US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+
+    Note over U,UI: Precondition: the learner is on the Words screen (SCR-02)
+    U->>UI: taps the settings button
+    UI->>S: fetches the offered AI list with prices
+    alt list received
+        S-->>UI: offered AIs, roles, list prices, estimates, defaults
+        UI->>DS: caches the list
+        Note over UI,DS: persists the cached offered AI list
+    else no network
+        UI->>DS: reads the last cached list (only the defaults if none)
+    end
+    UI->>DS: reads the AI choice and the learner's finished steps per AI
+    UI->>UI: per text AI: "$X average · N runs" from finished steps of that role, else "≈ $X (estimate)", per picture maker: its fixed price
+    alt a chosen AI is no longer on the list
+        UI->>DS: that step back on its default AI
+        Note over UI,DS: persists AI choice
+        UI-->>U: Words settings (SCR-05) with "<AI name> is no longer available"
+    else every chosen AI still offered
+        UI-->>U: Words settings with the three choices and a price next to each option
+    end
+    U->>UI: picks another AI for a step
+    UI->>DS: saves the AI choice
+    Note over UI,DS: persists AI choice, kept after a restart, used by every new run
+    Note over U,UI: Postcondition: the AI choice names only offered AIs
+```
+
+### S-07 Compare story runs (US-04)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+
+    Note over U,UI: Precondition: Words settings (SCR-05) are open
+    U->>UI: taps "Story runs"
+    UI->>DS: reads every story run, newest first
+    DS-->>UI: runs with their steps
+    alt no story run yet
+        UI-->>U: Story runs (SCR-06): "No story runs yet"
+    else at least one run
+        UI-->>U: each run: group name, date, the three AIs, total price, total time (sum of step times), finished or where it stopped
+        U->>UI: taps a run
+        UI-->>U: Story run details (SCR-07): story writer and story, prompt writer and prompt, picture maker and picture, each step's price and time, failed attempts too, estimated prices marked "≈"
+    end
+    Note over UI,DS: runs that stopped at a step, or whose story was replaced, are listed like any other
+    Note over U,UI: Postcondition: nothing is removed from story runs
+```
+
+### S-08 Outdated story and making a new one (US-05)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as <user>
+    participant UI as <ui>
+    participant DS as <data-store> device
+    participant S as <service>
+
+    Note over U,UI: Precondition: a word group has a mnemonic story
+    opt on the Words screen the learner deletes one of its words, edits its English word, or makes it stop being a word to learn
+        UI->>DS: saves the word rows, the group follows by row id (a deleted word leaves it, an edited word shows its new form)
+        Note over UI,DS: persists Session words and groups
+    end
+    U->>UI: opens that group's story
+    UI->>DS: reads the group, its current words and the words its story was made from
+    alt the English words changed since the story was made
+        UI-->>U: the story, marked "Words changed", with "Make a new story", nothing is made again on its own
+    else unchanged (or only a translation or definition edited)
+        UI-->>U: the story with "Make a new story"
+    end
+    U->>UI: presses "Make a new story"
+    UI-->>U: confirmation dialog
+    alt cancel
+        UI-->>U: the story as before
+    else confirm
+        UI->>S: starts a new run for the group's current words (even fewer than 7) as in S-02
+        alt today's allowance used up
+            S-->>UI: refused
+            UI-->>U: "Today's story limit is reached. Try again tomorrow.", the old story stays
+        else started
+            UI-->>U: the old story and picture stay shown while the new run goes (S-03, S-04)
+            alt the new run finishes with a picture
+                UI->>DS: the new run becomes the group's story, the earlier run stays in story runs
+                Note over UI,DS: persists WordGroup.storyRunId and storyWords
+                UI-->>U: the new story and picture replace the old
+            else the new run fails
+                UI-->>U: the old story stays with "The new story could not be made" and "Try again"
+            end
+        end
+    end
+    Note over U,UI: Postcondition: a group's story changes only when a newer run finishes with a picture
+```
+
+### S-09 Spending guard (US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor P as <user> partner or anyone without the app
+    participant UI as <ui> web learn page
+    participant S as <service>
+    participant SS as <data-store> server
+
+    Note over P,UI: Precondition: a shared session's web learn page, or any caller outside the learner's app
+    P->>UI: ticks Mnemonic story and presses Start
+    UI->>S: requests the coming-soon page, as before
+    S-->>UI: coming-soon page, no story run starts
+    P->>S: tries to start a run, redo a step or group words without the app secret
+    S-->>P: refused, not authorised, nothing is paid
+    opt a caller with the app secret
+        P->>S: starts the 21st story run of the UTC day, or a Draw again past the allowance
+        S->>SS: tries to take one unit of today's story allowance
+        SS-->>S: none left
+        S-->>P: refused, today's limit reached
+        P->>S: asks for a picture prompt or picture step of a run that was never counted
+        S->>SS: looks the run up
+        SS-->>S: unknown run
+        S-->>P: refused
+        P->>S: starts a run with an AI not on the offered list
+        S-->>P: refused, AI not offered
+    end
+    Note over S,SS: Postcondition: at most 20 allowance units per UTC day, no route reachable from a shared link spends money on AI
+```
+
+**Coverage (use cases → flows, ACs → flows).**
+
+| User story | Flows |
+|---|---|
+| US-01 Select a word group | S-01, S-02 |
+| US-02 Read the story with its picture | S-02, S-03, S-04, S-05 |
+| US-03 Choose the AIs | S-06 |
+| US-04 Compare story runs | S-07 |
+| US-05 Make a story again | S-08 |
+| US-06 Keep AI spending bounded | S-05, S-09 (and the allowance branches of S-02, S-08) |
+
+| AC | Shown by |
+|---|---|
+| AC-01 | S-01 valid branch (line, pager, remembered or first group); S-02 tap/swipe branches |
+| AC-02 | S-01 "19 or fewer, no story" branch |
+| AC-02b | S-01 "19 or fewer, a group has a story, words added" branch |
+| AC-03 | S-01 key check; grouping from either screen, message only on the learn page |
+| AC-04 | S-01 "call failed or split invalid" branch |
+| AC-05 | S-01 waiting branch and "groups without a story only gain words"; run in progress counts as a story group |
+| AC-06 | S-02 background start, several runs at once; S-04 step labels, picture over text, zoom |
+| AC-07 | S-04 "group has a story" branch, no network, no new run |
+| AC-08 | S-03 missed-word branch; S-04 message; S-05 Try again |
+| AC-08b | S-03 writer and prompt failure/timeout branches; S-04 messages; S-05 prompt redo |
+| AC-09 | S-03 picture failure; S-04 "picture could not be drawn"; S-05 Draw again with the current picture maker |
+| AC-10 | S-03 "never run or paid again" note; S-04 leave-and-return option |
+| AC-11 | S-01 History note (the History session's groups, current session unchanged) |
+| AC-12 | S-06 prices and choice kept |
+| AC-13 | S-06 "no longer available"; S-02 fallback at start and server refusal |
+| AC-14 | S-07 list and details |
+| AC-15 | S-07 note: stopped and replaced runs listed |
+| AC-16 | S-08 confirm, old story kept while running, success and failure branches |
+| AC-17 | S-08 opt edit and "Words changed" branch |
+| AC-18 | S-09 web Start → coming soon; no-secret refusal |
+| AC-19 | S-02, S-05, S-08, S-09 allowance branches; S-09 uncounted-run refusal |
+
+**Flagged for later stages (not decided here):**
+- S-03 uses `<message-bus>` for the durable run orchestration (ADR-0002, §5 "Story run workflow"). It never retries a paid step, so the dead-letter outcome is "step recorded as failed".
+- S-02: the allowance take is keyed by run id, so `story_runs` needs the run id as its key, and `all_story_runs` needs the UTC day (`data-model`).
+- S-04: one status call covers several run ids. The `api` stage decides its shape within the per-address limit of 20 requests / 60 s (sad §11).
+- S-06: "$X average · N runs" is computed on the phone from finished steps of that role, so `StoryRun.steps` needs the role, model id and price (`data-model`).
+
+## 7. Deployment view
+
+The Worker stays one script and one deployment. It gains a Workflow binding (`STORY_RUN` → `StoryRunWorkflow`, exported from `src/index.ts`), one D1 migration (`0004_story_runs.sql`) and three secrets (`OPENCODE_ZEN_API_KEY`, `XAI_API_KEY`, `HIGGSFIELD_API_KEY`). It uses a `story-runs/` prefix in the existing R2 `SOURCES` bucket and a longer daily cron job: the same `0 3 * * *` trigger also deletes run pictures older than 7 days from R2. Run and step rows are kept (sad §1 override). The app ships through the usual store build.
+
+**Deploy order:** confirm R2 is enabled on the account and `SOURCES` is bound (the picture routes need it), apply `0004` (`wrangler d1 migrations apply`), put the new secrets, `wrangler deploy` the Worker, then release the app. The Worker change is additive: an older app never calls the new routes. The app shows the AI choice only from the fetched list, so a provider without a secret is simply left out of `models.json` until its key exists.
+
+**Monitoring:**
+- Metrics: the Worker's existing observability (`wrangler.jsonc` `observability.enabled`) covers the new routes and the workflow. No new log events (repo default).
+- Spend: the D1 `all_story_runs` row per UTC day is the day's count, and the story runs screen's totals are the month's spend. The owner compares them with the invoices after the first month (spec §6 "Price accuracy").
+- Workflow failures: each failed step is recorded in `story_run_steps` with its outcome, so a stuck or failing provider shows on the story runs screen.
+
+**Scaling thresholds:**
+- At most 20 allowance units (new runs + Draw again) per UTC day for the whole app (AC-19). That bounds R2 to about 20 × 7 = 140 pictures at any time, and D1 grows by at most 20 runs a day, a few KB each (a few MB a year).
+- The per-address rate limit (20 requests / 60 s) caps polling. One status call every 5 s is 12 a minute, which leaves room for grouping, starts and picture fetches.
+- On the phone, story runs are never removed. At about 3 MB a run and a few runs a week, that is about 100 MB a year (spec §1 assumption), to revisit if the list grows large (§11).
+
+## 8. Crosscutting concepts
+
+The repo's defaults are inherited (assumptions ledger A12, accepted 2026-10-07). The rows below say how each one applies here.
+
+| Concept | Convention | Where defined |
+|---|---|---|
+| Navigation (app) | `StoryRoute`, `WordsSettingsRoute`, `StoryRunsRoute` and `StoryRunRoute` are typed routes opened with `push`. The new-story confirmation is a dialog, and messages are on-screen text, not routes | CLAUDE.md rule 1; architecture.md §2 rule 1; sad §4 |
+| State (app) | Groups and selection come from the `@riverpod` word-groups notifier over `Session`. Runs come from `StoryRunTracker` (`keepAlive`) over `StoryRun`. Both live in `lib/core/story/` because several features use them (architecture.md §2 rule 3). Screens watch Isar, and transient state (pager page, zoom) stays in widget `State` | architecture.md §2 rule 2; sad §5 |
+| Persistence (app) | Isar `Session` (+ groups) and `StoryRun`. `shared_preferences` holds the AI choice and the cached model list. Pictures are files in `mnemonic_pictures/`. Nothing is ever removed from story runs | ADR-0003; ADR-0004 |
+| Identity | `WordPair.rowId` and the group id are UUIDs (`_uuidV4`). The run id is a UUID made by the app, used as the Workflow instance id and as the key of the allowance take, so a repeated start is free | ADR-0002; ADR-0003 |
+| Authentication | Every story route is `public: false`: `x-app-secret` plus the per-address rate limiter. No story route is public, so the shared link cannot reach them (AC-18) | `src/index.ts`; ADR-0001 |
+| Spending control | Server side only: the model must be on `models.json`, one `all_story_runs` unit per new run and per Draw again (≤ 20 per UTC day), and a redo is accepted only for a failed step of a run already in `story_runs`. Paid workflow steps have retries off | spec §6.1, AC-19; ADR-0002; ADR-0004 |
+| Errors | Provider failures, refusals and timeouts (90 s / 120 s) are recorded as a failed step with its price (a "≈" list-price estimate on a timeout) and time. The app shows the spec's messages ("Could not write the story", "The picture could not be drawn", …). Worker errors are JSON `{ error, code }`, as `/subtitles/words` answers | spec AC-04, AC-08, AC-08b, AC-09, AC-16, AC-19 |
+| Prices and times | Priced on the Worker from the reported token use × list price, or the price per picture. Time is each step's own wall-clock time on the Worker, and a run's total is the sum of its steps (AC-14) | ADR-0004 |
+| Word check | One TypeScript function (`word-check.ts`) implements AC-08's rule. The app only shows the missed words it returns | spec AC-08; sad §4 |
+| Privacy | The group's English words, and the story, go to the chosen providers, as photo words go to Anthropic today. The Worker keeps run and step rows (story, prompt, AI, price, time) with no expiry, and pictures until collected or 7 days at most | spec §6.1; sad §1 decision override |
+| Accessibility | Group cards are tappable at ≥ 48 × 48 dp with the group's name as their label. The running step is announced as text. The picture has a semantic label | Flutter defaults; learn-part-step-1 sad §8 |
+| Internationalisation | The UI stays English, as elsewhere. The story itself is Ukrainian with the English words embedded (CONTEXT "mnemonic story") | CONTEXT |
+| Logging / observability | No new log events. The Worker's existing observability, plus the D1 step records | `wrangler.jsonc` `observability` |
+
+## 9. Architecture decisions
+
+| # | Title | Status | Section |
+|---|---|---|---|
+| 0001 | Change the app and the Worker as two surfaces | Accepted | §4 |
+| 0002 | Run each story run as a Cloudflare Workflow | Accepted | §4 |
+| 0003 | Keep word groups in the session and story runs in their own collection | Accepted | §4 |
+| 0004 | Serve the offered AI list with prices from the Worker | Accepted | §4 |
+| 0005 | Let the app own the grouping rules and the AI only split words | Accepted | §4 |
+
+ADR files live under `docs/features/mnemonic-story/adr/NNNN-<title>.md`.
+
+## 10. Quality requirements
+
+**QG-1. Spending is bounded and never doubled**
+- **When:** story runs are started on any one UTC day, from any copy of the app or with a leaked app secret, including repeated starts of the same run id, Try again, Draw again and redoing the picture prompt.
+- **Then:** ≤ 20 story runs started per UTC day across the whole app, one unit per run start or "Draw again" (AC-19). A repeated start of the same run id and a prompt redo take none. A model not on `models.json`, and a redo for an unknown or not-failed step, are refused. No public route starts a run (AC-18).
+- **How verify:** spec §6: "server-side count, one unit per run start or "Draw again" (AC-19); a test that the 21st of a day is refused". In `vocab-photo-api/test/story-allowance.test.mjs`: 20 starts are accepted and the 21st is refused, a repeated run id takes no unit, Draw again takes one, a prompt redo takes none, an unlisted model and an uncounted redo are refused. `story-routes.test.mjs` checks that every story route answers 401 without the secret and that the web learn page and coming-soon link are unchanged.
+
+**QG-2. A story run finishes on its own**
+- **When:** the learner starts a story run with the default AI choice, then stays, or leaves, locks the phone or closes the app.
+- **Then:** ≤ 3 min from start to the picture shown, with the default AI choice. A finished step is never redone or paid again, and a step in progress when the app closed is collected on return (AC-10).
+- **How verify:** spec §6: "the total times (sum of step times) on the story runs screen, median of the first 10 runs". Plus a Worker test that runs a workflow against stub providers, interrupts the client after the story step and checks that each stub was called exactly once. Plus an app test where `StoryRunTracker` with a fake service, restarted mid-run, collects the run without a second start.
+
+**QG-3. A saved story opens at once**
+- **When:** the learner presses Start for a group that already has a mnemonic story, in this visit or after restarting the app.
+- **Then:** ≤ 500 ms from Start to the picture and text shown, with no network call and no new run (AC-07).
+- **How verify:** spec §6: "5 runs on the owner's phone at release". Plus an app test that opening the story screen of a group with a story calls no Worker method.
+
+**QG-4. Grouping is quick and safe**
+- **When:** a session with 60 words to learn is grouped.
+- **Then:** ≤ 30 s for a 60-word session. An invalid split is never shown (AC-04), and a group with a story never changes its words (AC-05).
+- **How verify:** spec §6: "5 runs on the owner's phone at release". Plus `test/word_grouping_test.dart` covering AC-02, AC-02b, AC-03's change rule, AC-04's rejections and AC-05's waiting and stability rules.
+
+**QG-5. Prices can be trusted**
+- **When:** the owner reads the story runs after the first month.
+- **Then:** the month's sum of run prices within ±25 % of the providers' invoices.
+- **How verify:** spec §6: "owner compares the story runs total with the invoices after the first month". Plus a Worker unit test of the price rule for each provider's usage shape.
+
+**QG-6. The picture is sharp and small**
+- **When:** a finished picture is stored and viewed on the story screen.
+- **Then:** zoom up to at least 4× with pan, no visible blur at 2× on the owner's phone, and ≤ 3 MB on the device per story run (picture included).
+- **How verify:** spec §6: "device check at release" and "check app storage after 10 runs". Plus an app test that `story_picture_store.dart` writes ≤ 3 MB for an oversized input.
+
+## 11. Risks and technical debt
+
+| Risk / debt | Severity | Mitigation | Owner |
+|---|---|---|---|
+| The app secret ships in the app. With it, anyone can start paid runs up to the allowance | High | The story allowance (≤ 20 per UTC day), the server-side model list, redo only for a counted run's failed step, and the per-address rate limiter. Security review by the Security Lead before release (spec §6.1) | Maksym, before `sdd:ship` |
+| If the Workflows engine restarts in the middle of an unfinished step, it runs that step again, so a rare double charge is possible (ADR-0002) | Low | Paid steps have retries off. Step times and prices are on the story runs screen, and the monthly invoice check (QG-5) would show it | Maksym |
+| Polling and other app calls share the per-address limit of 20 requests / 60 s | Medium | One status call for all followed runs every 5 s, only while the learn page or story screen is open. The tracker backs off on 429 | Maksym |
+| The Worker keeps run and step rows with no expiry, against spec §6.1's "stays on the device" (sad §1 override) | Low | Only vocabulary stories, prompts, AI names, prices and times, nothing personal, and the rows grow by a few MB a year. Pictures are deleted once collected or after 7 days | Maksym |
+| A picture the app has not collected within 7 days is deleted from R2 (for example, the app was not opened for a week) | Low | The app shows "The picture could not be drawn" with Draw again (AC-09). The run's story and prompt are still on the Worker, so redrawing works | Maksym |
+| New providers' APIs and prices (OpenCode Zen, xAI, Higgsfield credits) may change or differ from the list price | Medium | One adapter per provider, stub tests per adapter, `models.json` with `pricesAsOf`, and the ±25 % invoice check after the first month | Maksym |
+| The `R2 SOURCES` binding is optional in `env.ts`. Without it, pictures cannot be held | Medium | The routes that need R2 (start, Draw again, fetching a picture) answer 503 when it is missing, as the photo routes do. Grouping and the model list work without it. The §7 deploy order confirms R2 is enabled first | Maksym |
+| The Isar schema change (`WordPair.rowId`, `Session.groups`, `StoryRun`) ships to users' phones and cannot be rolled back | Medium | Additive fields only. The `rowId` fill-in runs once per older session on read, and an app test opens a session saved without `rowId` | Maksym |
+| AC-08's strict word check may fail many stories, which would hurt the "≥ 80 % finish with a picture" KPI | Medium | The story writer's prompt asks for each word as written. Failures show which words were missed, and the owner tunes the prompt from the story runs | Maksym |
+| Workflows under the local `wrangler dev` used by `npm test` may behave differently from production | Medium | Stub providers for every adapter. One manual run against real providers on a staging deploy before release | Maksym |
+| Repo texts this design outdates: CLAUDE.md rule 3 (the new visible parts) and rule 5 (`WordGroup`, `StoryRun`, `StoryStep`, `WordPair.rowId` approved), `docs/architecture.md` §1/§3, `vocab-photo-api/README.md` (story routes, secrets, Workflow), and learn-part-step-1 `CONTEXT.md` ("the learn page saves nothing") | Low | Update them with the code in the implementing tasks | Maksym |
+
+**Accepted debt (acceptable in v1, plan to fix later):**
+- Story runs are never removed from the phone (about 100 MB a year, spec §1). Revisit if the list grows large.
+- The grouping AI's cost is not recorded or shown (spec §3).
+- The app learns of progress only by polling while a story-related screen is open. There are no push notifications and no background fetch.
+- Prices are list-price estimates, not invoice copies (spec §3 "Exact billing").
+- The web learn page still leads to coming soon for Mnemonic story (spec §3).
+
+## 12. Glossary
+
+| Term | Meaning |
+|---|---|
+| learner | The phone owner who collects words into sessions; here, the only person who can make mnemonic stories (repo-root CONTEXT) |
+| partner | A person holding a session's shared link, with no app and no account; their web learn page is unchanged (repo-root CONTEXT) |
+| session | A set of words collected together on the learner's device; it now also holds its word groups (repo-root CONTEXT) |
+| word row | One line of a session: an English word with its details; it now carries a stable `rowId` (repo-root CONTEXT; ADR-0003) |
+| learn page | The screen where exercises are ticked and Start is pressed; in the app it now also shows the group pager (learn-part-step-1 CONTEXT) |
+| word to learn | A word row with an English word plus a translation or a definition (learn-part-step-1 CONTEXT) |
+| mnemonic story | One connected story, one "→" step per word, Ukrainian sentences with the English words embedded as written, with one picture (feature CONTEXT) |
+| word group | 7 to 19 words to learn from one session, by topic, with a short name; any size, "All words", in a session of 19 or fewer (feature CONTEXT) |
+| selected group | The one word group chosen on the learn page's pager by tapping its card, remembered per session (feature CONTEXT) |
+| story writer | The AI that writes the mnemonic story from a word group (feature CONTEXT) |
+| picture prompt writer | The AI that turns a mnemonic story into a description for drawing its picture (feature CONTEXT) |
+| picture maker | The AI that draws the picture from the picture prompt writer's description (feature CONTEXT) |
+| story run | One pass of a word group through the three AIs, with each one's result, price and time; kept for comparing AIs (feature CONTEXT) |
+| outdated story | A mnemonic story whose group's words changed after it was made; shown with "Words changed" (feature CONTEXT) |
+| story allowance | At most 20 story runs started per UTC day for the whole app (feature CONTEXT) |
+| AI choice | The three AIs picked in Words settings; each new run uses the choice in force when it starts (feature CONTEXT) |
+| offered AI list | The Worker's `models.json`: every AI that may be chosen, its role, list price, estimate and the defaults (ADR-0004). *Not yet in CONTEXT, so flagged for `/sdd:glossary`* |
+| grouped-words key | What the session's words to learn were (row id + English word) at the last grouping; a different key means grouping runs again (AC-03). *Not yet in CONTEXT, so flagged for `/sdd:glossary`* |
+| story run workflow | The Cloudflare Workflow instance that carries one story run's steps on the Worker (ADR-0002) |

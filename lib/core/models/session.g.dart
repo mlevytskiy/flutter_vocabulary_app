@@ -17,44 +17,66 @@ const SessionSchema = CollectionSchema(
   name: r'Session',
   id: 4817823809690647594,
   properties: {
-    r'editToken': PropertySchema(
+    r'dialogues': PropertySchema(
       id: 0,
+      name: r'dialogues',
+      type: IsarType.objectList,
+      target: r'FilmDialogue',
+    ),
+    r'editToken': PropertySchema(
+      id: 1,
       name: r'editToken',
       type: IsarType.string,
     ),
+    r'groupedWordsKey': PropertySchema(
+      id: 2,
+      name: r'groupedWordsKey',
+      type: IsarType.string,
+    ),
+    r'groups': PropertySchema(
+      id: 3,
+      name: r'groups',
+      type: IsarType.objectList,
+      target: r'WordGroup',
+    ),
     r'isShared': PropertySchema(
-      id: 1,
+      id: 4,
       name: r'isShared',
       type: IsarType.bool,
     ),
     r'lastLocalModifiedAt': PropertySchema(
-      id: 2,
+      id: 5,
       name: r'lastLocalModifiedAt',
       type: IsarType.dateTime,
     ),
     r'publishedId': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'publishedId',
       type: IsarType.string,
     ),
+    r'selectedGroupId': PropertySchema(
+      id: 7,
+      name: r'selectedGroupId',
+      type: IsarType.string,
+    ),
     r'sessionId': PropertySchema(
-      id: 4,
+      id: 8,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'sources': PropertySchema(
-      id: 5,
+      id: 9,
       name: r'sources',
       type: IsarType.objectList,
       target: r'SourcePhoto',
     ),
     r'updatedAt': PropertySchema(
-      id: 6,
+      id: 10,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 7,
+      id: 11,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -83,7 +105,9 @@ const SessionSchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'WordPair': WordPairSchema,
-    r'SourcePhoto': SessionSourceSchema
+    r'SourcePhoto': SessionSourceSchema,
+    r'WordGroup': WordGroupSchema,
+    r'FilmDialogue': FilmDialogueSchema
   },
   getId: _sessionGetId,
   getLinks: _sessionGetLinks,
@@ -97,6 +121,14 @@ int _sessionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.dialogues.length * 3;
+  {
+    final offsets = allOffsets[FilmDialogue]!;
+    for (var i = 0; i < object.dialogues.length; i++) {
+      final value = object.dialogues[i];
+      bytesCount += FilmDialogueSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
   {
     final value = object.editToken;
     if (value != null) {
@@ -104,7 +136,27 @@ int _sessionEstimateSize(
     }
   }
   {
+    final value = object.groupedWordsKey;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.groups.length * 3;
+  {
+    final offsets = allOffsets[WordGroup]!;
+    for (var i = 0; i < object.groups.length; i++) {
+      final value = object.groups[i];
+      bytesCount += WordGroupSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
+  {
     final value = object.publishedId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.selectedGroupId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -136,20 +188,34 @@ void _sessionSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeString(offsets[0], object.editToken);
-  writer.writeBool(offsets[1], object.isShared);
-  writer.writeDateTime(offsets[2], object.lastLocalModifiedAt);
-  writer.writeString(offsets[3], object.publishedId);
-  writer.writeString(offsets[4], object.sessionId);
+  writer.writeObjectList<FilmDialogue>(
+    offsets[0],
+    allOffsets,
+    FilmDialogueSchema.serialize,
+    object.dialogues,
+  );
+  writer.writeString(offsets[1], object.editToken);
+  writer.writeString(offsets[2], object.groupedWordsKey);
+  writer.writeObjectList<WordGroup>(
+    offsets[3],
+    allOffsets,
+    WordGroupSchema.serialize,
+    object.groups,
+  );
+  writer.writeBool(offsets[4], object.isShared);
+  writer.writeDateTime(offsets[5], object.lastLocalModifiedAt);
+  writer.writeString(offsets[6], object.publishedId);
+  writer.writeString(offsets[7], object.selectedGroupId);
+  writer.writeString(offsets[8], object.sessionId);
   writer.writeObjectList<SessionSource>(
-    offsets[5],
+    offsets[9],
     allOffsets,
     SessionSourceSchema.serialize,
     object.sources,
   );
-  writer.writeDateTime(offsets[6], object.updatedAt);
+  writer.writeDateTime(offsets[10], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[7],
+    offsets[11],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -163,22 +229,38 @@ Session _sessionDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Session();
-  object.editToken = reader.readStringOrNull(offsets[0]);
+  object.dialogues = reader.readObjectList<FilmDialogue>(
+        offsets[0],
+        FilmDialogueSchema.deserialize,
+        allOffsets,
+        FilmDialogue(),
+      ) ??
+      [];
+  object.editToken = reader.readStringOrNull(offsets[1]);
+  object.groupedWordsKey = reader.readStringOrNull(offsets[2]);
+  object.groups = reader.readObjectList<WordGroup>(
+        offsets[3],
+        WordGroupSchema.deserialize,
+        allOffsets,
+        WordGroup(),
+      ) ??
+      [];
   object.id = id;
-  object.isShared = reader.readBool(offsets[1]);
-  object.lastLocalModifiedAt = reader.readDateTime(offsets[2]);
-  object.publishedId = reader.readStringOrNull(offsets[3]);
-  object.sessionId = reader.readString(offsets[4]);
+  object.isShared = reader.readBool(offsets[4]);
+  object.lastLocalModifiedAt = reader.readDateTime(offsets[5]);
+  object.publishedId = reader.readStringOrNull(offsets[6]);
+  object.selectedGroupId = reader.readStringOrNull(offsets[7]);
+  object.sessionId = reader.readString(offsets[8]);
   object.sources = reader.readObjectList<SessionSource>(
-        offsets[5],
+        offsets[9],
         SessionSourceSchema.deserialize,
         allOffsets,
         SessionSource(),
       ) ??
       [];
-  object.updatedAt = reader.readDateTime(offsets[6]);
+  object.updatedAt = reader.readDateTime(offsets[10]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[7],
+        offsets[11],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -195,16 +277,36 @@ P _sessionDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readObjectList<FilmDialogue>(
+            offset,
+            FilmDialogueSchema.deserialize,
+            allOffsets,
+            FilmDialogue(),
+          ) ??
+          []) as P;
     case 1:
-      return (reader.readBool(offset)) as P;
-    case 2:
-      return (reader.readDateTime(offset)) as P;
-    case 3:
       return (reader.readStringOrNull(offset)) as P;
+    case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
+      return (reader.readObjectList<WordGroup>(
+            offset,
+            WordGroupSchema.deserialize,
+            allOffsets,
+            WordGroup(),
+          ) ??
+          []) as P;
     case 4:
-      return (reader.readString(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 5:
+      return (reader.readDateTime(offset)) as P;
+    case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
       return (reader.readObjectList<SessionSource>(
             offset,
             SessionSourceSchema.deserialize,
@@ -212,9 +314,9 @@ P _sessionDeserializeProp<P>(
             SessionSource(),
           ) ??
           []) as P;
-    case 6:
+    case 10:
       return (reader.readDateTime(offset)) as P;
-    case 7:
+    case 11:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -416,6 +518,91 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
 
 extension SessionQueryFilter
     on QueryBuilder<Session, Session, QFilterCondition> {
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      dialoguesLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'dialogues',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -559,6 +746,242 @@ extension SessionQueryFilter
         property: r'editToken',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      groupedWordsKeyIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'groupedWordsKey',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      groupedWordsKeyIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'groupedWordsKey',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'groupedWordsKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      groupedWordsKeyGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'groupedWordsKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'groupedWordsKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'groupedWordsKey',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      groupedWordsKeyStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'groupedWordsKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'groupedWordsKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'groupedWordsKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'groupedWordsKey',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      groupedWordsKeyIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'groupedWordsKey',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      groupedWordsKeyIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'groupedWordsKey',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'groups',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'groups',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'groups',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'groups',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'groups',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'groups',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
@@ -822,6 +1245,158 @@ extension SessionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'publishedId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      selectedGroupIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'selectedGroupId',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      selectedGroupIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'selectedGroupId',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'selectedGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      selectedGroupIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'selectedGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'selectedGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'selectedGroupId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      selectedGroupIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'selectedGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'selectedGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'selectedGroupId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'selectedGroupId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      selectedGroupIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'selectedGroupId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      selectedGroupIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'selectedGroupId',
         value: '',
       ));
     });
@@ -1182,6 +1757,20 @@ extension SessionQueryFilter
 
 extension SessionQueryObject
     on QueryBuilder<Session, Session, QFilterCondition> {
+  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesElement(
+      FilterQuery<FilmDialogue> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'dialogues');
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> groupsElement(
+      FilterQuery<WordGroup> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'groups');
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> sourcesElement(
       FilterQuery<SessionSource> q) {
     return QueryBuilder.apply(this, (query) {
@@ -1210,6 +1799,18 @@ extension SessionQuerySortBy on QueryBuilder<Session, Session, QSortBy> {
   QueryBuilder<Session, Session, QAfterSortBy> sortByEditTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> sortByGroupedWordsKey() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupedWordsKey', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> sortByGroupedWordsKeyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupedWordsKey', Sort.desc);
     });
   }
 
@@ -1249,6 +1850,18 @@ extension SessionQuerySortBy on QueryBuilder<Session, Session, QSortBy> {
     });
   }
 
+  QueryBuilder<Session, Session, QAfterSortBy> sortBySelectedGroupId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'selectedGroupId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> sortBySelectedGroupIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'selectedGroupId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterSortBy> sortBySessionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
@@ -1285,6 +1898,18 @@ extension SessionQuerySortThenBy
   QueryBuilder<Session, Session, QAfterSortBy> thenByEditTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.desc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> thenByGroupedWordsKey() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupedWordsKey', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> thenByGroupedWordsKeyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'groupedWordsKey', Sort.desc);
     });
   }
 
@@ -1336,6 +1961,18 @@ extension SessionQuerySortThenBy
     });
   }
 
+  QueryBuilder<Session, Session, QAfterSortBy> thenBySelectedGroupId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'selectedGroupId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterSortBy> thenBySelectedGroupIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'selectedGroupId', Sort.desc);
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterSortBy> thenBySessionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
@@ -1370,6 +2007,14 @@ extension SessionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<Session, Session, QDistinct> distinctByGroupedWordsKey(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'groupedWordsKey',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<Session, Session, QDistinct> distinctByIsShared() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isShared');
@@ -1386,6 +2031,14 @@ extension SessionQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'publishedId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<Session, Session, QDistinct> distinctBySelectedGroupId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'selectedGroupId',
+          caseSensitive: caseSensitive);
     });
   }
 
@@ -1411,9 +2064,28 @@ extension SessionQueryProperty
     });
   }
 
+  QueryBuilder<Session, List<FilmDialogue>, QQueryOperations>
+      dialoguesProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'dialogues');
+    });
+  }
+
   QueryBuilder<Session, String?, QQueryOperations> editTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'editToken');
+    });
+  }
+
+  QueryBuilder<Session, String?, QQueryOperations> groupedWordsKeyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'groupedWordsKey');
+    });
+  }
+
+  QueryBuilder<Session, List<WordGroup>, QQueryOperations> groupsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'groups');
     });
   }
 
@@ -1433,6 +2105,12 @@ extension SessionQueryProperty
   QueryBuilder<Session, String?, QQueryOperations> publishedIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'publishedId');
+    });
+  }
+
+  QueryBuilder<Session, String?, QQueryOperations> selectedGroupIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'selectedGroupId');
     });
   }
 

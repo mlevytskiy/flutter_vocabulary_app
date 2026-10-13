@@ -15,8 +15,20 @@ link (task-05) — see [Shared sessions](#shared-sessions).
 | `POST /subtitles/words` | secret + rate limit + subtitle import allowance | a subtitle file's dialogue lines in, ranked words out (words-from-subtitles) |
 | `POST /sessions` | secret + rate limit | publish (or republish) a word list, get a link |
 | `POST /sessions/<id>/sources/<sourceId>` | secret + rate limit | upload the bytes of a declared photo |
+| `POST /sessions/<id>/dialogues` | secret + rate limit + edit token | add an import's rows and film dialogues to a published session (get-words-from-subtitles-improvment) |
+| `POST /sessions/<id>/dialogues/<dialogueId>/picture` | secret + rate limit + edit token | upload a dialogue's scene picture |
+| `GET /story/models` | secret + rate limit | the offered AIs with prices and the defaults (mnemonic-story) |
+| `POST /story/grouping` | secret + rate limit | split the learner's words into topical groups (mnemonic-story) |
+| `POST /story/runs` | secret + rate limit + story allowance | start a story run: story, picture prompt, picture (mnemonic-story), or a scene run: picture prompt, picture |
+| `GET /story/runs?ids=<id>,<id>` | secret + rate limit | the steps so far of several runs |
+| `POST /story/runs/redo` | secret + rate limit | redo a failed picture prompt, or Draw again (a unit of the allowance) |
+| `GET /story/runs/<id>/pictures/<attempt>` | secret + rate limit | a run's picture bytes while the Worker still holds them |
 | `GET /s/<id>` | **public** | the page a person reads |
 | `GET /s/<id>/sources/<sourceId>` | **public** | the bytes of one arrived photo |
+| `GET /s/<id>/dialogues/<dialogueId>/picture` | **public** | the bytes of one arrived scene picture |
+| `GET /s/<id>/learn` | **public** | the learn page: pick exercises, Start (learn-part-step-1) |
+| `GET /s/<id>/learn/<exercise>` | **public** | the coming-soon page for an exercise that is not built yet |
+| `GET /assets/learn-<hash>.js` | **public** | the learn pages' browser script (versioned, cached a year) |
 | `GET /assets/page-<hash>.js` | **public** | the page's browser script (versioned, cached a year) |
 | `POST /s/<id>/cells` | **public** + page write limit | save one cell with a revision check |
 | `POST /s/<id>/rows` | **public** + page write limit | add a row when its first cell gets text |
@@ -255,6 +267,31 @@ curl -X POST "https://<your-worker>.workers.dev/sessions" \
 Answer (`200`): `{ "id": "<uuid>", "url": "https://<your-worker>.workers.dev/s/<uuid>", "expiresAt": "…", "editToken": "…" }`
 — after a republish, the same `id`, `url`, `expiresAt` and `editToken`.
 
+**Film dialogues (get-words-from-subtitles-improvment, ADR-0005).** Optional
+`dialogues: [{ "id", "lines": [..], "entries": [<position in entries>], "importId"?, "picture"?: { "mediaType" } }]`,
+in the phone's pager order. `id` and `importId` are app-made (1–64 letters, digits or dashes);
+1–8 lines of at most 200 characters; `entries` name kept entries by position. At most 10 per
+import and 100 per session. A declared `picture` is a pending slot until its bytes are uploaded
+(below). Without `dialogues` a publish is exactly as before. Stored by migration
+`0005_film_dialogues` (`dialogues`, `dialogue_words`).
+
+### `POST /sessions/<id>/dialogues` — secret-gated, edit token
+
+Adds one subtitle import to a published session without a republish: `x-edit-token` must be
+the session's token. Body `{ "importId", "entries": [{ "word", "translation", "definition"? }],
+"dialogues": [{ "id", "lines", "entries", "picture"? }] }`; the rows go after the existing rows
+and the dialogues after the existing dialogues, at one new revision. An import already added
+(by `importId`, or carried by a republish) adds nothing and answers the same, so the app
+retries freely. Answer `{ "importId", "rev", "url" }`; an unknown or expired session is
+`404 gone`, a wrong token `403 forbidden`, a full list `422 list_full`.
+
+### `POST /sessions/<id>/dialogues/<dialogueId>/picture` — secret-gated, edit token
+
+The raw bytes of a dialogue's scene picture, as a photo upload (`content-type:
+image/jpeg|png|webp`, ≤ 7 MB). A dialogue the session does not have is `404 not_found`; a
+repeat after the bytes arrived answers the same. Answer `{ "dialogueId", "url", "pageUrl" }`.
+Nothing on the page can draw or store a picture (AC-22).
+
 ### `POST /sessions/<id>/sources/<sourceId>` — secret-gated
 
 Uploads the bytes of a photo the publish declared. Same contract as `/analyze`: the **raw
@@ -296,6 +333,48 @@ row meanwhile it comes back with their text and a notice. Leaving the page withi
 5 seconds deletes nothing.
 A missing or expired id returns a **`404` HTML page** saying the list is gone — a human is
 reading this URL, not a client.
+
+### `GET /s/<id>/learn` and `GET /s/<id>/learn/<exercise>` — public
+
+Server-rendered HTML from `src/learn/` (learn-part-step-1). The exercise list is
+`src/learn/exercises.json`, the source of truth the app's Dart copy is tested against.
+`/s/<id>/learn` lists the exercises by stage; an unknown or gone id returns the same 404 page as
+the shared page, and a session with no word to learn gets a "no words" page. `?pick=<exercise id>`
+(repeatable) renders those exercises ticked; coming-soon or unknown ids are ignored.
+`/s/<id>/learn/<exercise>` is the coming-soon page for an available exercise that is not built
+yet. Both pages are `no-store` under the shared page's CSP and load `/assets/learn-<hash>.js`
+(from `src/learn/client/learn.js`, one-year immutable cache, only the current hash answers), which
+enables Start and the hint and mirrors ticks into the address with `history.replaceState`. Nothing
+is saved.
+
+### Story runs (mnemonic-story) — secret-gated
+
+All under `/story/`, from `src/story/routes.ts`; none is public, and the web pages link to none of
+them. A run is one Cloudflare Workflow instance (`STORY_RUN`, class `StoryRunWorkflow`) whose id is
+the app's run id; its steps and prices are rows in D1 (`story_runs`, `story_run_steps`), its picture
+an R2 object `story-runs/<runId>/<attempt>` in `SOURCES`. Run ids are 1-40 letters, digits, `-` or `_`.
+
+- A **scene run** (get-words-from-subtitles-improvment, ADR-0004) is `POST /story/runs` with
+  `{ runId, kind: "scene", sceneText, promptModel, pictureModel }`: a film dialogue of 1–8 lines instead
+  of words, no story AI. It skips the story step; the picture prompt writer gets the dialogue as scene
+  content and the picture puts its lines in speech bubbles as written. It takes a unit of the same
+  allowance when started; status, redo and picture work as for stories. `kind` and `scene_text` live
+  on `story_runs` (migration `0005_film_dialogues`).
+- `POST /story/runs` `{ runId, words: [..], storyModel, promptModel, pictureModel }`. All three AIs
+  must be on the offered list (`GET /story/models`). `200 {"started":true}`; `422 {code:"not_offered", model}`;
+  `429 {code:"day_limit"}` (20 starts a UTC day for the whole app); `400` for a bad body. A repeated
+  run id takes no unit and starts nothing twice.
+- `GET /story/runs?ids=a,b,c` (up to 50) -> `{ runs: [{ runId, words, storyModel, promptModel,
+  pictureModel, createdAt, steps: [{ role, attempt, modelId, outcome, text, missedWords, pictureKey,
+  priceUsd, priceEstimated, ms, startedAt, finishedAt }] }] }`; ids the Worker never counted are left out.
+- `POST /story/runs/redo` `{ runId, step: "prompt" | "picture", pictureModel? }`. Only a counted run whose
+  step failed: `404 unknown_run`, `409 not_failed`, `422 not_offered`, `429 day_limit`. A prompt redo takes
+  no unit; a picture redo ("Draw again") takes one and answers `{ started: true, attempt }`.
+- `GET /story/runs/<runId>/pictures/<attempt>` -> the image bytes, or `404` once collected or older than 7 days.
+
+The routes that need R2 (start, redo, picture) answer `503 {code:"no_storage"}` while `SOURCES` is unbound.
+The daily cron (`0 3 * * *`) also runs `deleteOldPictures`: run pictures older than 7 days are deleted and
+their step keys cleared; run and step rows are kept.
 
 ### `POST /define` — secret-gated
 
@@ -392,7 +471,11 @@ consistent read and says what changed after it:
 since; an old row whose three cells all changed may come this way too — apply both kinds by
 row id). `cells` are single changed cells of other rows, `deleted` the tombstones, and
 `sources` the photo slots whose bytes arrived (swap the placeholder for
-`/s/<id>/sources/<id>`). If the list was republished after `since`, or `since` is ahead
+`/s/<id>/sources/<id>`). Film dialogues (get-words-from-subtitles-improvment) add
+`dialogues: [{ "id", "position", "lines", "picture": { "mediaType", "rev" } | null, "words": [{ "rowId",
+"word", "translation", "definition", "places" }] }]` for a dialogue added, given its picture, or with a
+linked row changed after `since` (sent whole), and `removedDialogues: [<id>]` for one left with no
+words; both keys appear only when non-empty. If the list was republished after `since`, or `since` is ahead
 of the list, the answer is `{ "rev", "reload": true }`: load the page again. A missing or
 malformed `since` is `400 bad_request`; an unknown or expired id `404 gone`. Polling is not
 rate-limited.
@@ -547,6 +630,9 @@ code: without the binding the photo routes answer `503` and everything else work
    npx wrangler secret put ANTHROPIC_API_KEY
    npx wrangler secret put APP_SHARED_SECRET
    npx wrangler secret put MW_API_KEY        # Merriam-Webster Collegiate key (definition-mode)
+   npx wrangler secret put OPENCODE_ZEN_API_KEY   # story text AIs on OpenCode Zen (mnemonic-story)
+   npx wrangler secret put XAI_API_KEY            # Grok picture maker (mnemonic-story)
+   npx wrangler secret put HIGGSFIELD_API_KEY     # Higgsfield picture maker (mnemonic-story)
    ```
 
 3. Deploy:
@@ -665,6 +751,37 @@ Release order (sad §7): **D1 → Worker → app build**. An older app never cal
    It answers `200` with at most 3 words; `wrangler tail` shows one `subtitle import` line.
 4. **App.** Release the build with the "From subtitles" speed-dial item.
 
+### Deploying mnemonic-story (checklist)
+
+Release order: **D1 -> Worker -> app build**.
+
+1. **D1.** `npx wrangler d1 migrations apply DB --remote` applies `0004_story_runs`.
+2. **Workflow binding.** `wrangler.jsonc` declares `workflows: [{ name: "story-run", binding: "STORY_RUN",
+   class_name: "StoryRunWorkflow" }]`; the class is exported from `src/index.ts`, so `npm run deploy` creates
+   the Workflow. Locally `wrangler dev` runs it. Paid steps never retry.
+3. **Secrets.** `OPENCODE_ZEN_API_KEY`, `XAI_API_KEY` and `HIGGSFIELD_API_KEY` (above); `ANTHROPIC_API_KEY`
+   is reused. `OPENCODE_ZEN_API_URL`, `XAI_API_URL`, `HIGGSFIELD_API_URL`, `STORY_TEXT_TIMEOUT_MS`,
+   `STORY_PICTURE_TIMEOUT_MS` and `STORY_PICTURE_POLL_MS` are for tests only; leave them unset in production.
+   A real key in `.dev.vars` is loaded by `wrangler dev`, but `npm test` overrides every provider URL and key.
+4. **R2.** The story routes need the `SOURCES` bucket (503 without it). The daily cron deletes pictures
+   older than 7 days.
+5. **Check the offered list.** Entries in `src/story/models.json` marked `provisional` (OpenCode Zen, xAI,
+   Higgsfield ids and prices) must be verified against the providers before release.
+
+### Deploying get-words-from-subtitles-improvment (checklist, owner)
+
+Release order: **D1 -> Worker -> app build**.
+
+1. **D1.** `npx wrangler d1 migrations apply DB --remote` applies `0005_film_dialogues` (`kind` and
+   `scene_text` on `story_runs`; the `dialogues` and `dialogue_words` tables). Revert by hand with
+   `migrations/down/0005_film_dialogues.sql`.
+2. **Worker.** `npm run test:full && npm run typecheck && npm run deploy`. Nothing new to configure:
+   scene runs reuse the story Workflow, the AIs and R2.
+3. **App.** Release the build with the "Get dialogues from subtitles" switch, the main screen pager,
+   "Dialogs from movie" and the dialogue outbox.
+4. **Device pass** (spec §6): 5 films × 2 at word maximum 20 and 100, the switch on and off, per
+   subtitle model, and one scene picture per picture maker.
+
 ### KPIs (spec §7, sad §7)
 
 A weekly manual check; no automated alerts. The D1 counts cover live sessions only (the cron
@@ -734,7 +851,10 @@ test uses the real Merriam-Webster quota, even with a real key in `.dev.vars`. T
 `ANTHROPIC_API_URL` with a fake `ANTHROPIC_API_KEY`): the first dialogue line picks its reply
 (`STUB:empty`, `STUB:no-english`, `STUB:cutoff`, `STUB:malformed`, `STUB:refusal`,
 `STUB:error`, `STUB:slow:<ms>`), and `GET <stub>/__calls` counts the calls.
-`SUBTITLE_AI_TIMEOUT_MS=3000` shortens the 225 s abort for the slow case. Code that only needs
+The story providers are stubs too (`test/zen-stub.mjs`, `test/xai-stub.mjs`,
+`test/higgsfield-stub.mjs`): `scripts/test.mjs` passes their URLs, dummy keys and short limits as
+`--var`, after `--env-file`, so even the real xAI key in `.dev.vars` is never sent to a provider; the
+first test in `story-routes.test.mjs` checks the stubs' `/__calls`. `SUBTITLE_AI_TIMEOUT_MS=3000` shortens the 225 s abort for the slow case. Code that only needs
 `DB.prepare().bind()` and `batch()` (the allowance) is unit-tested against the real
 migrations in `node:sqlite` through `test/sqlite-d1.mjs`, imported straight from `src/*.ts`
 (Node 23 strips the types).

@@ -1,0 +1,438 @@
+{
+  "slug": "mnemonic-story",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Add the story allowance, story run and step tables to D1",
+      "layer": "migration",
+      "deps": [],
+      "acs": [
+        "AC-10",
+        "AC-15",
+        "AC-19"
+      ],
+      "dod": "`0004_story_runs.sql` creates `all_story_runs`, `story_runs` and `story_run_steps` with the keys above, applies on the `npm test` SQLite D1 stand-in, and its down file drops them again.",
+      "files_hint": [
+        "docs/features/mnemonic-story/migrations/01_story_runs.up.sql",
+        "docs/features/mnemonic-story/migrations/01_story_runs.down.sql",
+        "vocab-photo-api/migrations/0004_story_runs.sql",
+        "vocab-photo-api/migrations/down/0004_story_runs.sql"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add the offered AI list with prices and the step pricing rule to the Worker",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "`models.ts` exposes the typed list, `isOffered` and both pricing functions, and `story-models.test.mjs` covers role checks, the defaults being offered, token pricing, per-picture pricing and the timeout estimate.",
+      "files_hint": [
+        "vocab-photo-api/src/story/models.json",
+        "vocab-photo-api/src/story/models.ts",
+        "vocab-photo-api/test/story-models.test.mjs"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the word check every story must pass to the Worker",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-08"
+      ],
+      "dod": "`missedWords` returns exactly the group words the story does not contain under AC-08's rule, and `story-word-check.test.mjs` covers case, phrases, the four endings, \"veers off\" for \"veer off\", \"live\" inside \"deliver\", and the owner's sample story.",
+      "files_hint": [
+        "vocab-photo-api/src/story/word-check.ts",
+        "vocab-photo-api/test/story-word-check.test.mjs"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the Anthropic and OpenCode Zen text adapters with a 90 s limit",
+      "layer": "infra",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-08b"
+      ],
+      "dod": "`writeText` returns the text and token usage from either provider, turns a refusal or error into a failure, and aborts at 90 s (a test override shortens it), all checked against the stubs in `story-text-providers.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/story/providers/text.ts",
+        "vocab-photo-api/src/story/providers/anthropic.ts",
+        "vocab-photo-api/src/story/providers/opencode-zen.ts",
+        "vocab-photo-api/src/story/prompts.ts",
+        "vocab-photo-api/src/env.ts",
+        "vocab-photo-api/test/zen-stub.mjs",
+        "vocab-photo-api/test/story-text-providers.test.mjs"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Add the Grok and Higgsfield picture adapters with a 120 s limit",
+      "layer": "infra",
+      "deps": [
+        "T2",
+        "T4"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-08b"
+      ],
+      "dod": "`drawPicture` returns picture bytes from either provider, turns a refusal or error into a failure, and stops at 120 s including Higgsfield's polling, checked against the stubs in `story-picture-providers.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/story/providers/picture.ts",
+        "vocab-photo-api/src/story/providers/xai.ts",
+        "vocab-photo-api/src/story/providers/higgsfield.ts",
+        "vocab-photo-api/src/env.ts",
+        "vocab-photo-api/test/xai-stub.mjs",
+        "vocab-photo-api/test/higgsfield-stub.mjs",
+        "vocab-photo-api/test/story-picture-providers.test.mjs"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Add the story allowance take and the run store to the Worker",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-15",
+        "AC-19"
+      ],
+      "dod": "20 starts on one UTC day are taken and the 21st is refused, a repeated run id takes nothing, a Draw again takes one unit, and the store round-trips runs, steps and R2 pictures, all in `story-allowance.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/story/allowance.ts",
+        "vocab-photo-api/src/story/store.ts",
+        "vocab-photo-api/test/story-allowance.test.mjs"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Serve the offered AI list and the grouping split from the Worker",
+      "layer": "ports",
+      "deps": [
+        "T2",
+        "T4"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-04",
+        "AC-12"
+      ],
+      "dod": "Both routes answer 401 without `x-app-secret`, the models route returns the offered list with the defaults, and the grouping route returns the stub AI's groups and answers a clean error when the AI fails or returns broken JSON, all in `story-grouping.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/story/grouping.ts",
+        "vocab-photo-api/src/story/routes.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/story-grouping.test.mjs"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Run each story run as a Workflow on the Worker",
+      "layer": "app",
+      "deps": [
+        "T3",
+        "T4",
+        "T5",
+        "T6"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-08b",
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "Against the stub providers, a full run records story, prompt and picture with prices and times; a missed word stops at the story with the missed words; a writer, prompt or picture failure or timeout stops at that step; and every stub is called exactly once per step, including when the client disconnects mid-run, all in `story-workflow.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/story/workflow.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/src/env.ts",
+        "vocab-photo-api/wrangler.jsonc",
+        "vocab-photo-api/test/story-workflow.test.mjs"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Add the start, status, redo and picture routes and the 7-day picture clean-up",
+      "layer": "ports",
+      "deps": [
+        "T7",
+        "T8"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-09",
+        "AC-10",
+        "AC-13",
+        "AC-18",
+        "AC-19"
+      ],
+      "dod": "Every story route answers 401 without the secret; start refuses an unlisted AI and the 21st unit, and is free on a repeated run id; status returns several runs' steps; redo refuses unknown, uncounted or not-failed steps and takes a unit only for Draw again; and the web learn page and its coming-soon link answer exactly as before, all in `story-routes.test.mjs`.",
+      "files_hint": [
+        "vocab-photo-api/src/story/routes.ts",
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/story-routes.test.mjs",
+        "vocab-photo-api/README.md"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Add WordPair.rowId, WordGroup and the StoryRun collection to the app",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-11",
+        "AC-15",
+        "AC-17"
+      ],
+      "dod": "The new fields and collection are generated and opened, a session saved without `rowId` gets stable row ids on its first read and keeps them, and a `StoryRun` with steps round-trips through Isar, all in `test/story_models_test.dart`.",
+      "files_hint": [
+        "lib/core/models/word_pair.dart",
+        "lib/core/models/word_group.dart",
+        "lib/core/models/session.dart",
+        "lib/core/models/story_run.dart",
+        "lib/core/services/session_store.dart",
+        "lib/core/models/*.g.dart",
+        "test/story_models_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Add the pure word-grouping rules to the app",
+      "layer": "domain",
+      "deps": [
+        "T10"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-02b",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-17"
+      ],
+      "dod": "`test/word_grouping_test.dart` covers each AC-01–AC-05 rule, AC-02b's own small group, AC-03's change rule (translation edits ignored) and AC-17's outdated rule, with no Worker or Isar involved.",
+      "files_hint": [
+        "lib/core/story/word_grouping.dart",
+        "test/word_grouping_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Add the app's story service for the Worker's story routes",
+      "layer": "infra",
+      "deps": [
+        "T10",
+        "T7",
+        "T9"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-13",
+        "AC-19"
+      ],
+      "dod": "Each service method maps the Worker's answers and refusal codes to typed results, and `offeredAisProvider` uses the cached list when the fetch fails, tested with a fake HTTP client in `test/story_api_service_test.dart`.",
+      "files_hint": [
+        "lib/core/services/story_api_service.dart",
+        "lib/core/models/offered_ai.dart",
+        "lib/core/providers.dart",
+        "test/story_api_service_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Add the story run store and the picture store to the app",
+      "layer": "infra",
+      "deps": [
+        "T10"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-14",
+        "AC-15"
+      ],
+      "dod": "Runs round-trip and list newest first, uncollected runs are found, and an oversized picture is written at ≤ 3 MB, in `test/story_stores_test.dart`.",
+      "files_hint": [
+        "lib/core/services/story_run_store.dart",
+        "lib/core/services/story_picture_store.dart",
+        "lib/core/services/session_store.dart",
+        "lib/core/providers.dart",
+        "test/story_stores_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Add the word-groups notifier that groups a session and keeps its selection",
+      "layer": "app",
+      "deps": [
+        "T11",
+        "T12"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-02b",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-11"
+      ],
+      "dod": "With a fake service and an in-memory store, `test/word_groups_notifier_test.dart` shows grouping runs once per change and not again unchanged, failures and invalid splits give the failed state, waiting words give waiting(N), selection persists, and a History session's groups never touch the current session.",
+      "files_hint": [
+        "lib/core/story/word_groups_notifier.dart",
+        "test/word_groups_notifier_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Add the story run tracker that starts, follows and collects runs",
+      "layer": "app",
+      "deps": [
+        "T12",
+        "T13"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-08b",
+        "AC-09",
+        "AC-10",
+        "AC-16",
+        "AC-19"
+      ],
+      "dod": "With fake service and stores, `test/story_run_tracker_test.dart` shows a run going started → each step → collected with the group's story set; a restart mid-run collects without a second start; a failed new run leaves the old story; prompt redo and Draw again call redo; refusals are recorded; and polling stops when no screen follows.",
+      "files_hint": [
+        "lib/core/story/story_run_tracker.dart",
+        "lib/core/story/word_groups_notifier.dart",
+        "test/story_run_tracker_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Show the group line, the group pager and grouping messages on the learn page",
+      "layer": "ui",
+      "deps": [
+        "T14"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-02b",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-19"
+      ],
+      "dod": "Widget tests in `test/learn_groups_ui_test.dart` show each learn-page state (one group, several groups with the remembered one selected, grouping, failed with Try again, waiting N, daily limit), tap selecting versus swipe browsing, and Start unavailable while no group is selected.",
+      "files_hint": [
+        "lib/features/learn/learn_screen.dart",
+        "lib/features/learn/widgets/group_pager.dart",
+        "lib/features/words_table/words_table_screen.dart",
+        "test/learn_groups_ui_test.dart"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Add the story screen and open it from Start for Mnemonic story",
+      "layer": "ui",
+      "deps": [
+        "T15",
+        "T11"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-08b",
+        "AC-09",
+        "AC-16",
+        "AC-17",
+        "AC-19"
+      ],
+      "dod": "Widget tests in `test/story_screen_test.dart` cover a saved story (no service call), each running label, each failure message with its button, Draw again, Words changed, the confirm/cancel dialog, a failed new story keeping the old one, and the limit text.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/router/routes.g.dart",
+        "lib/features/mnemonic_story/story_screen.dart",
+        "lib/features/mnemonic_story/widgets/new_story_dialog.dart",
+        "lib/features/learn/learn_screen.dart",
+        "test/story_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Add the Words settings button and screen with the three AI choices",
+      "layer": "ui",
+      "deps": [
+        "T12",
+        "T13"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-13"
+      ],
+      "dod": "Widget tests in `test/words_settings_test.dart` show the three choices with estimate and average prices computed per role, the fallback message for an unlisted choice, and the choice kept after rebuilding the providers.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/router/routes.g.dart",
+        "lib/features/words_settings/words_settings_screen.dart",
+        "lib/features/words_table/words_table_screen.dart",
+        "test/words_settings_test.dart"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Add the story runs list and a run's details screen",
+      "layer": "ui",
+      "deps": [
+        "T18"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-15"
+      ],
+      "dod": "Widget tests in `test/story_runs_screens_test.dart` show the empty state, the newest-first list with totals as sums of step times and prices, stopped and replaced runs still listed, and a run's details with failed attempts and estimated prices marked \"≈\".",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/router/routes.g.dart",
+        "lib/features/words_settings/story_runs_screen.dart",
+        "lib/features/words_settings/story_run_screen.dart",
+        "test/story_runs_screens_test.dart"
+      ]
+    },
+    {
+      "id": "T20",
+      "title": "Update the repo docs this design outdates and run the release checks",
+      "layer": "docs",
+      "deps": [
+        "T9",
+        "T16",
+        "T17",
+        "T19"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-18"
+      ],
+      "dod": "The listed docs describe the shipped design, and the release-check results (grouping time, saved-open time, zoom, storage, staging run, security sign-off) are recorded in this task file's Notes.",
+      "files_hint": [
+        "CLAUDE.md",
+        "docs/architecture.md",
+        "vocab-photo-api/README.md",
+        "docs/features/learn-part-step-1/CONTEXT.md",
+        "docs/features/mnemonic-story/CONTEXT.md",
+        "docs/roadmap.md"
+      ]
+    }
+  ]
+}

@@ -17,6 +17,42 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
         GoRouteData.$route(
           path: 'table',
           factory: _$WordsTableRoute._fromState,
+          routes: [
+            GoRouteData.$route(
+              path: 'learn',
+              factory: _$LearnRoute._fromState,
+              routes: [
+                GoRouteData.$route(
+                  path: 'soon',
+                  factory: _$ComingSoonRoute._fromState,
+                ),
+                GoRouteData.$route(
+                  path: 'story',
+                  factory: _$StoryRoute._fromState,
+                ),
+                GoRouteData.$route(
+                  path: 'dialogue',
+                  factory: _$DialogueRoute._fromState,
+                ),
+              ],
+            ),
+            GoRouteData.$route(
+              path: 'settings',
+              factory: _$WordsSettingsRoute._fromState,
+              routes: [
+                GoRouteData.$route(
+                  path: 'runs',
+                  factory: _$StoryRunsRoute._fromState,
+                  routes: [
+                    GoRouteData.$route(
+                      path: ':runId',
+                      factory: _$StoryRunRoute._fromState,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
         GoRouteData.$route(
           path: 'history',
@@ -65,6 +101,198 @@ mixin _$WordsTableRoute on GoRouteData {
         queryParams: {
           if (_self.sessionId != null) 'session-id': _self.sessionId,
         },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$LearnRoute on GoRouteData {
+  static LearnRoute _fromState(GoRouterState state) => LearnRoute(
+        sessionId: state.uri.queryParameters['session-id'],
+      );
+
+  LearnRoute get _self => this as LearnRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn',
+        queryParams: {
+          if (_self.sessionId != null) 'session-id': _self.sessionId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$ComingSoonRoute on GoRouteData {
+  static ComingSoonRoute _fromState(GoRouterState state) => ComingSoonRoute(
+        exercise: state.uri.queryParameters['exercise']!,
+      );
+
+  ComingSoonRoute get _self => this as ComingSoonRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn/soon',
+        queryParams: {
+          'exercise': _self.exercise,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$StoryRoute on GoRouteData {
+  static StoryRoute _fromState(GoRouterState state) => StoryRoute(
+        sessionId: state.uri.queryParameters['session-id'],
+        groupId: state.uri.queryParameters['group-id']!,
+      );
+
+  StoryRoute get _self => this as StoryRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn/story',
+        queryParams: {
+          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          'group-id': _self.groupId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$DialogueRoute on GoRouteData {
+  static DialogueRoute _fromState(GoRouterState state) => DialogueRoute(
+        sessionId: state.uri.queryParameters['session-id'],
+        groupId: state.uri.queryParameters['group-id']!,
+      );
+
+  DialogueRoute get _self => this as DialogueRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn/dialogue',
+        queryParams: {
+          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          'group-id': _self.groupId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$WordsSettingsRoute on GoRouteData {
+  static WordsSettingsRoute _fromState(GoRouterState state) =>
+      const WordsSettingsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/settings',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$StoryRunsRoute on GoRouteData {
+  static StoryRunsRoute _fromState(GoRouterState state) =>
+      const StoryRunsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/settings/runs',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$StoryRunRoute on GoRouteData {
+  static StoryRunRoute _fromState(GoRouterState state) => StoryRunRoute(
+        runId: state.pathParameters['runId']!,
+      );
+
+  StoryRunRoute get _self => this as StoryRunRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/settings/runs/${Uri.encodeComponent(_self.runId)}',
       );
 
   @override

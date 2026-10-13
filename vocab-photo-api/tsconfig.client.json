@@ -16,5 +16,5 @@
     "noUnusedParameters": true,
     "skipLibCheck": true
   },
-  "include": ["src/session/client/*.js"]
+  "include": ["src/session/client/*.js", "src/learn/client/*.js"]
 }

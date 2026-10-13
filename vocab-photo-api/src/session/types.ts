@@ -1,3 +1,5 @@
+import type { DialogueView } from "./dialogues";
+
 /**
  * The shape of a published session. Designed source-agnostic
  * (docs/idea-brief.md §7): a word table plus whatever the words came from.
@@ -115,6 +117,8 @@ export interface StoredSession {
   detail: SessionDetail;
   rows: StoredRow[];
   sources: StoredSource[];
+  /** Film dialogues with at least one word still in the table, in phone order (empty without dialogues). */
+  dialogues: DialogueView[];
 }
 
 /**
@@ -189,7 +193,7 @@ export function isRev(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
-export type ParsedEntries = { ok: true; entries: SessionEntry[] } | { ok: false; error: string };
+export type ParsedEntries = { ok: true; entries: SessionEntry[]; keptIndexes: number[] } | { ok: false; error: string };
 export type ParsedDetail = { ok: true; detail: SessionDetail } | { ok: false; error: string };
 /** `code` is set when the answer should carry one (`invalid_source`, sad §8). */
 export type ParsedSources =
@@ -292,6 +296,7 @@ export function parseDetail(value: unknown): ParsedDetail {
  * empty after trimming) are dropped rather than rejected -- the app keeps a
  * trailing empty row by design and must not be able to leak it onto the page.
  * A row's `sourceId`, when present, must name one of `declaredSourceIds`.
+ * `keptIndexes` are the kept entries' positions in the list as sent (dialogues refer to those).
  */
 export function parseEntries(value: unknown, declaredSourceIds: ReadonlySet<string> = new Set()): ParsedEntries {
   if (!Array.isArray(value)) {
@@ -301,7 +306,8 @@ export function parseEntries(value: unknown, declaredSourceIds: ReadonlySet<stri
     return { ok: false, error: `At most ${MAX_ENTRIES} entries per session` };
   }
   const entries: SessionEntry[] = [];
-  for (const item of value) {
+  const keptIndexes: number[] = [];
+  for (const [index, item] of value.entries()) {
     if (typeof item !== "object" || item === null) {
       return { ok: false, error: "Each entry must be an object with `word` and `translation` strings" };
     }
@@ -332,9 +338,10 @@ export function parseEntries(value: unknown, declaredSourceIds: ReadonlySet<stri
     if (definition !== "") entry.definition = definition;
     if (sourceId !== undefined) entry.sourceId = sourceId;
     entries.push(entry);
+    keptIndexes.push(index);
   }
   if (entries.length === 0) {
     return { ok: false, error: "The word list is empty" };
   }
-  return { ok: true, entries };
+  return { ok: true, entries, keptIndexes };
 }

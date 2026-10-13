@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/dialogues/dialogue_rules.dart';
+import '../../core/models/film_dialogue.dart';
 import '../../core/models/session.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_store.dart';
+import '../../core/services/source_photo_store.dart' show uuidV4;
 
 part 'word_input_notifier.g.dart';
 
@@ -218,6 +222,8 @@ class WordInputNotifier extends _$WordInputNotifier {
       definitionMarkedFilled:
           definitionMarkedFilled ?? current.definitionMarkedFilled,
       sourceId: clearSourceId ? null : sourceId ?? current.sourceId,
+      // An edited row is the same row: its groups and dialogues follow it.
+      rowId: current.rowId,
     );
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
@@ -256,6 +262,56 @@ class WordInputNotifier extends _$WordInputNotifier {
     // session clock on a launch where the user did nothing at all.
     if (newPairs.every((p) => p.isEmpty)) return;
     _scheduleSave();
+  }
+
+  /// Keeps the film dialogues of a subtitle import whose [keptCount] words
+  /// were just added at the end of the session (get-words-from-subtitles-
+  /// improvment AC-03, AC-10): each is linked to those rows only, loses the
+  /// words the learner removed, is dropped when none is left, and goes after
+  /// the session's existing dialogues. In a session with a shared link they
+  /// wait to be appended to it (ADR-0005). Called right after the words are
+  /// added, so the same debounced write saves both.
+  void addImportDialogues(List<ImportedDialogue> dialogues, int keptCount) {
+    if (!state.hasValue || keptCount <= 0) return;
+    final session = state.value!;
+    final filled = [for (final w in session.words) if (!w.isEmpty) w];
+    final rows = filled.sublist(max(0, filled.length - keptCount));
+    for (final w in rows) {
+      if (w.rowId.isEmpty) w.rowId = uuidV4();
+    }
+    final kept = atDone(dialogues, rows);
+    if (kept.isEmpty) return;
+    if (session.publishedId != null && session.editToken != null) {
+      final importId = uuidV4();
+      for (final d in kept) {
+        d
+          ..importId = importId
+          ..importRowIds = [for (final w in rows) w.rowId]
+          ..pushState = PushState.pending;
+      }
+    }
+    session.dialogues = [...session.dialogues, ...kept];
+    state = AsyncData(session);
+    _scheduleSave();
+  }
+
+  /// Records that a scene run drew the picture of the dialogue [dialogueId]
+  /// (get-words-from-subtitles-improvment AC-14). Not an edit of the words:
+  /// the timestamps stay and the write goes straight to the store, as in
+  /// [markShared].
+  Future<void> setScenePicture(String dialogueId, String runId) async {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+    if (dialogue == null || dialogue.scenePictureRunId == runId) return;
+    dialogue.scenePictureRunId = runId;
+    // A shared session's page gets the picture too (ADR-0005).
+    if (session.publishedId != null && session.editToken != null) {
+      dialogue.picturePushState = PushState.pending;
+    }
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
   }
 
   /// Records a photo just kept for this session (good-looking-web T17). The
@@ -319,6 +375,32 @@ class WordInputNotifier extends _$WordInputNotifier {
     await store.put(session);
   }
 
+  /// Records how far the dialogues' delivery to the shared link got
+  /// (get-words-from-subtitles-improvment ADR-0005): [change] gets the
+  /// dialogues as they are now. Not a content change, so written like
+  /// [markShared].
+  Future<void> updateDialogues(
+      List<FilmDialogue> Function(List<FilmDialogue>) change) async {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    session.dialogues = change(session.dialogues);
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
+  }
+
+  /// Records that a publish carried the dialogues in [sent]
+  /// (get-words-from-subtitles-improvment ADR-0005): see [afterPublish]. Not
+  /// a content change, so written like [markShared].
+  Future<void> markDialoguesPublished(Set<String> sent) async {
+    final session = state.valueOrNull;
+    if (session == null || session.dialogues.isEmpty) return;
+    session.dialogues = afterPublish(session.dialogues, sent: sent);
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
+  }
+
   /// Cancels any pending debounced save and writes immediately. A no-op when
   /// nothing has changed since the last write — see [_dirty]. Blank pairs (the
   /// trailing empty row) are never persisted.
@@ -340,6 +422,9 @@ class WordInputNotifier extends _$WordInputNotifier {
   void _scheduleSave() {
     final session = state.value;
     if (session == null) return;
+    // Dialogues follow their words in the same save (get-words-from-
+    // subtitles-improvment AC-11, AC-26); links only shrink.
+    if (session.dialogues.isNotEmpty) session.dialogues = afterEdit(session);
     final now = DateTime.now();
     session.updatedAt = now;
     session.lastLocalModifiedAt = now;

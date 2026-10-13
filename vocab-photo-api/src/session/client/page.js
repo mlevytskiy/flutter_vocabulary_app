@@ -75,7 +75,17 @@
  * @typedef {{ rev: number, reload?: boolean,
  *   cells?: { rowId: string, field: Field, value: string, rev: number }[],
  *   rows?: FeedRow[], deleted?: { rowId: string, rev: number }[],
- *   sources?: { id: string }[] }} Feed
+ *   sources?: { id: string }[], dialogues?: FeedDialogue[],
+ *   removedDialogues?: string[] }} Feed
+ */
+
+/**
+ * A dialogue as the change feed sends it (T8): `places` are UTF-16 [start, end)
+ * offsets, one list per line, in the same order as `lines`.
+ * @typedef {{ id: string, position: number, lines: string[],
+ *   picture: { mediaType: string, rev: number } | null,
+ *   words: { rowId: string, word: string, translation: string, definition: string,
+ *     places: [number, number][][] }[] }} FeedDialogue
  */
 
 /** @typedef {"filled" | "nothing" | "paused" | "failed"} Fill */
@@ -1109,6 +1119,8 @@ function applyFeed(feed) {
     if (row) removedElsewhere(row);
   }
   for (const source of feed.sources ?? []) photoArrived(source.id);
+  for (const dialogue of feed.dialogues ?? []) showDialogue(dialogue);
+  for (const id of feed.removedDialogues ?? []) removeDialogue(id);
   for (const row of changed) flash(row);
   if (feed.rev > state.rev) state.rev = feed.rev;
 }
@@ -1183,6 +1195,117 @@ function photoArrived(id) {
   // The open dialog shows it too.
   const shown = main.querySelectorAll(".dialog-slide")[index]?.querySelector(".placeholder");
   if (shown) shown.replaceWith(img.cloneNode());
+}
+
+/**
+ * AC-20, AC-21: one dialogue page built from the feed's data, with the same markup
+ * the Worker renders (`renderDialogue` in page.ts). Text goes in through
+ * `textContent` only (AC-33). Nothing in it is an input or a button (AC-22).
+ * @param {FeedDialogue} dialogue
+ * @returns {HTMLElement}
+ */
+function buildDialogue(dialogue) {
+  const section = document.createElement("section");
+  section.className = "dialogue-page";
+  section.dataset.dialogue = dialogue.id;
+  section.dataset.position = String(dialogue.position);
+  const lines = document.createElement("div");
+  lines.className = "dialogue-lines";
+  dialogue.lines.forEach((line, i) => {
+    const p = document.createElement("p");
+    p.className = "dialogue-line";
+    /** @type {[number, number][]} */
+    const runs = [];
+    const places = dialogue.words.flatMap((w) => w.places[i] ?? []).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    for (const [start, end] of places) {
+      const last = runs[runs.length - 1];
+      if (last && start < last[1]) last[1] = Math.max(last[1], end);
+      else runs.push([start, end]);
+    }
+    let at = 0;
+    for (const [start, end] of runs) {
+      if (start > at) p.append(document.createTextNode(line.slice(at, start)));
+      const strong = document.createElement("strong");
+      strong.textContent = line.slice(start, end);
+      p.append(strong);
+      at = end;
+    }
+    if (at < line.length) p.append(document.createTextNode(line.slice(at)));
+    lines.append(p);
+  });
+  section.append(lines);
+  if (dialogue.picture) {
+    const img = document.createElement("img");
+    img.className = "dialogue-picture";
+    img.src = `/s/${encodeURIComponent(state.session)}/dialogues/${encodeURIComponent(dialogue.id)}/picture?v=${dialogue.picture.rev}`;
+    img.alt = "Scene picture for this dialogue";
+    img.loading = "lazy";
+    section.append(img);
+  }
+  const list = document.createElement("ul");
+  list.className = "dialogue-words";
+  for (const word of dialogue.words) {
+    const li = document.createElement("li");
+    li.dataset.row = word.rowId;
+    /** @type {[string, string][]} */
+    const parts = [["dw-word", word.word]];
+    if (word.translation !== "") parts.push(["dw-translation", word.translation]);
+    if (word.definition !== "") parts.push(["dw-definition", word.definition]);
+    parts.forEach(([className, text], n) => {
+      if (n > 0) li.append(document.createTextNode(" "));
+      const span = document.createElement("span");
+      span.className = className;
+      span.textContent = text;
+      li.append(span);
+    });
+    list.append(li);
+  }
+  section.append(list);
+  return section;
+}
+
+/**
+ * A dialogue the feed carries: a new one goes in by its position, a known one
+ * (changed words, a translation edit, an arrived picture) is rebuilt in place.
+ * Only the dialogue container is touched, so text typed in the table stays (AC-36).
+ * @param {FeedDialogue} dialogue
+ */
+function showDialogue(dialogue) {
+  if (!main) return;
+  let container = main.querySelector(".dialogues");
+  if (!container) {
+    container = document.createElement("div");
+    container.className = "dialogues";
+    container.setAttribute("aria-label", "Dialogues from the film");
+    main.insertBefore(container, main.querySelector(".toasts"));
+  }
+  main.classList.add("has-dialogues");
+  const built = buildDialogue(dialogue);
+  const sections = Array.from(container.querySelectorAll(".dialogue-page"));
+  const known = sections.find((section) => /** @type {HTMLElement} */ (section).dataset.dialogue === dialogue.id);
+  if (known) {
+    known.replaceWith(built);
+    return;
+  }
+  const after = sections.find((section) => Number(/** @type {HTMLElement} */ (section).dataset.position) > dialogue.position);
+  container.insertBefore(built, after ?? null);
+}
+
+/**
+ * The feed says a dialogue is gone (deleted, or none of its words is left).
+ * @param {string} id
+ */
+function removeDialogue(id) {
+  if (!main) return;
+  const container = main.querySelector(".dialogues");
+  if (!container) return;
+  for (const section of Array.from(container.querySelectorAll(".dialogue-page"))) {
+    if (/** @type {HTMLElement} */ (section).dataset.dialogue === id) section.remove();
+  }
+  if (!container.querySelector(".dialogue-page")) {
+    container.remove();
+    main.classList.remove("has-dialogues");
+  }
 }
 
 /**
@@ -1742,12 +1865,56 @@ function unsavedCells() {
   return cells;
 }
 
+/**
+ * The shared page's Learn link (AC-08, AC-10). Before opening the learn page it
+ * asks the change feed for what was saved since the last poll (the polling can
+ * be 5 s behind, or paused), and counts the words to learn among the saved rows
+ * only: a word and a translation or definition, as the Worker's rule says. None:
+ * a toast and no navigation. Else the learn page opens in this tab on a phone, or
+ * in a tab opened empty during the click on the wide layout (a tab opened after
+ * waiting for a request is blocked). No answer: the rows held here decide.
+ * Without this script the link is a plain link and the Worker decides.
+ * @param {MouseEvent} event
+ */
+async function learnClicked(event) {
+  if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+  const link = /** @type {HTMLAnchorElement} */ (event.currentTarget);
+  event.preventDefault();
+  const tab = WIDE.matches ? window.open("", "_blank") : null;
+  if (tab) tab.opener = null;
+  const feed = await changes();
+  if (feed) applyFeed(feed);
+  if (state.stale || state.gone) {
+    tab?.close();
+    return;
+  }
+  if (!hasWordToLearn()) {
+    tab?.close();
+    toast("No words to learn", NOTICE_MS);
+    return;
+  }
+  if (tab) tab.location.href = link.href;
+  else window.location.assign(link.href);
+}
+
+/** Is any saved row a word to learn? Unsaved text and rows being deleted do not count. */
+function hasWordToLearn() {
+  for (const row of state.rows.values()) {
+    if (row.phase !== "live" || row.pendingDelete) continue;
+    const filled = (/** @type {Field} */ field) => row.cells[field].saved.trim() !== "";
+    if (filled("word") && (filled("translation") || filled("definition"))) return true;
+  }
+  return false;
+}
+
 if (main) {
   if (tbody) {
     for (const tr of tbody.querySelectorAll("tr[data-row]")) adoptRow(/** @type {HTMLTableRowElement} */ (tr));
     wireTable(tbody);
     const add = main.querySelector(".add-row .add");
     if (blankRow && add) add.addEventListener("click", () => addBlankRow(tbody, blankRow));
+
+    main.querySelector("a.btn.learn")?.addEventListener("click", (event) => void learnClicked(/** @type {MouseEvent} */ (event)));
 
     // The photo pager (wide) and the photo dialog (phone), when there are photos.
     const photos = /** @type {HTMLElement | null} */ (main.querySelector("aside.photos"));

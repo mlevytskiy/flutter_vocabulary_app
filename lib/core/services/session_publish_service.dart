@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../config/vocab_api_config.dart';
+import '../models/film_dialogue.dart';
 import '../models/session_source.dart';
 import '../models/word_pair.dart';
 import '../providers.dart' show WordDetailMode;
@@ -32,12 +33,18 @@ class PublishedSession {
   /// (ADR-0006).
   final List<SessionSource> declaredSources;
 
+  /// The film dialogues the request carried, in pager order; those with a
+  /// picture declared still have it to upload
+  /// (get-words-from-subtitles-improvment ADR-0005).
+  final List<FilmDialogue> declaredDialogues;
+
   PublishedSession({
     required this.id,
     required this.url,
     this.expiresAt,
     this.editToken,
     this.declaredSources = const [],
+    this.declaredDialogues = const [],
   });
 }
 
@@ -68,12 +75,19 @@ class SessionPublishService {
   /// by taken time; each goes with its kind, and a set with its name and link
   /// (ADR-0006). [publishedId] and [editToken] ask the Worker to
   /// overwrite the earlier link (ADR-0008).
+  ///
+  /// [dialogues] are the session's film dialogues: each visible one with a
+  /// word still published goes with its lines, the positions of its rows in
+  /// `entries`, its import id and, when drawn, its scene picture declared
+  /// like a photo (get-words-from-subtitles-improvment ADR-0005). None sends
+  /// no `dialogues` key.
   Future<PublishedSession> publish(
     List<WordPair> pairs, {
     WordDetailMode detail = WordDetailMode.translation,
     List<SessionSource> sources = const [],
     String? publishedId,
     String? editToken,
+    List<FilmDialogue> dialogues = const [],
   }) async {
     if (VocabApiConfig.appSecret.isEmpty) {
       throw SessionPublishException(
@@ -114,6 +128,29 @@ class SessionPublishService {
       throw SessionPublishException('There are no words to publish');
     }
 
+    final position = <String, int>{
+      for (final (i, pair) in kept.indexed)
+        if (pair.rowId.isNotEmpty) pair.rowId: i,
+    };
+    final sentDialogues = <FilmDialogue>[];
+    final dialoguesJson = <Map<String, dynamic>>[];
+    for (final d in dialogues) {
+      if (d.hidden) continue;
+      final at = [
+        for (final id in d.wordRowIds)
+          if (position[id] case final i?) i,
+      ];
+      if (at.isEmpty) continue;
+      sentDialogues.add(d);
+      dialoguesJson.add({
+        'id': d.id,
+        'lines': d.lines,
+        'entries': at,
+        if (d.importId != null) 'importId': d.importId,
+        if (d.scenePictureRunId != null) 'picture': {'mediaType': 'image/jpeg'},
+      });
+    }
+
     final uri = Uri.parse('${VocabApiConfig.baseUrl}/sessions');
     http.Response response;
     try {
@@ -140,6 +177,7 @@ class SessionPublishService {
                       },
                     },
                 ],
+              if (dialoguesJson.isNotEmpty) 'dialogues': dialoguesJson,
               if (publishedId != null && editToken != null) ...{
                 'publishedId': publishedId,
                 'editToken': editToken,
@@ -183,6 +221,7 @@ class SessionPublishService {
       expiresAt: expiresAt != null ? DateTime.tryParse(expiresAt) : null,
       editToken: decoded['editToken'] as String?,
       declaredSources: declared,
+      declaredDialogues: sentDialogues,
     );
   }
 }

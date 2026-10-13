@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../core/models/definition_result.dart';
+import '../../core/models/film_dialogue.dart';
 import '../../core/models/session.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
@@ -22,6 +23,8 @@ import '../../router/routes.dart';
 import 'lightning_rules.dart';
 import 'quizlet_import_flow.dart';
 import 'subtitle_import_flow.dart';
+import 'widgets/dialogue_page.dart';
+import 'widgets/main_screen_pager.dart';
 import 'widgets/photo_source_dialog.dart';
 import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
@@ -74,6 +77,11 @@ class WordInputScreen extends ConsumerStatefulWidget {
 }
 
 class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsBindingObserver {
+  // The main screen's pager, shown only while the session has film dialogues
+  // (get-words-from-subtitles-improvment SCR-01). Page 0 is the words.
+  final PageController _mainPager = PageController();
+  int _mainPage = 0;
+
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
   ];
@@ -1228,6 +1236,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         addWords: (words) {
           if (mounted) _addWordsFromPhoto(words);
         },
+        addDialogues: (dialogues, keptCount) {
+          if (mounted) ref.read(wordInputNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
+        },
       );
 
   /// import-from-quizlet: the "Import from Quizlet" speed-dial item. On Done
@@ -1430,6 +1441,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _mainPager.dispose();
     _pronunciation.stop();
     for (var controller in _wordControllers) {
       controller.dispose();
@@ -1524,6 +1536,32 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     });
   }
 
+  /// [first] as it is, or, while the session has film dialogues to show, a
+  /// pager with [first] as page 1 and one read-only page per dialogue after it
+  /// (get-words-from-subtitles-improvment SCR-01, SCR-02). Done leaves the
+  /// pager where it is, so the learner stays on page 1.
+  Widget _mainBody(Widget first) {
+    final session = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final dialogues = [
+      for (final d in session?.dialogues ?? const <FilmDialogue>[])
+        if (!d.hidden) d,
+    ];
+    if (session == null || dialogues.isEmpty) {
+      _mainPage = 0;
+      return first;
+    }
+    return MainScreenPager(
+      controller: _mainPager,
+      page: _mainPage,
+      onPageChanged: (page) => setState(() => _mainPage = page),
+      first: first,
+      pages: [
+        for (final d in dialogues)
+          DialoguePage(key: ValueKey(d.id), dialogue: d, words: session.words),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     _ensureRowStateSynced(); // hot-reload safety net, see method doc above
@@ -1612,7 +1650,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               ),
             )
           : null,
-      body: Stack(
+      body: _mainBody(Stack(
         children: [
           isDragMode
             ? ReorderableListView.builder(
@@ -1652,7 +1690,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               ),
             ),
         ],
-      ),
+      )),
       // Both round buttons share the Scaffold's FAB slot, so the Scaffold moves
       // them together: above a snackbar, above the keyboard, above the bottom
       // safe area -- always on one line. A full-width row, centred, puts the
@@ -1660,7 +1698,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // docs/roadmap.md), each 16px from its edge like endFloat's margin. The
       // gap between them is not hit-testable, so rows underneath stay tappable.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
+      // They belong to page 1: a dialogue page is read only.
+      floatingActionButton: _mainPage != 0 ? null : Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

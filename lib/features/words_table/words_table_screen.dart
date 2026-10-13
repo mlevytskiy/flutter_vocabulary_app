@@ -7,15 +7,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../core/dialogues/dialogue_rules.dart' show afterPublish;
 import '../../core/models/session.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_publish_service.dart';
+import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
 import 'photo_viewer.dart';
+import 'widgets/learn_share_bar.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
   const WordsTableScreen({super.key, this.sessionId});
@@ -49,6 +52,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       // Belt and braces: ask the platform to hide the keyboard outright, in
       // case the input screen's field kept an open connection through the push.
       SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+      // Group the words quietly when they changed (mnemonic-story AC-03).
+      if (!mounted) return;
+      ref
+          .read(wordGroupsNotifierProvider(widget.sessionId).notifier)
+          .ensureGrouped()
+          .catchError((_) {});
     });
   }
 
@@ -94,6 +103,17 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         );
       }
     }
+  }
+
+  /// Learn (learn-part-step-1): like Share, nothing to do without a filled row.
+  void _learn(List<WordPair> wordPairs) {
+    if (wordPairs.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No words to learn')),
+      );
+      return;
+    }
+    LearnRoute(sessionId: widget.sessionId).push(context);
   }
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)
@@ -204,7 +224,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                   if (includePhotos || source.kind == SourceKind.set) source,
               ],
               publishedId: session?.publishedId,
-              editToken: session?.editToken);
+              editToken: session?.editToken,
+              dialogues: session?.dialogues ?? const []);
       // Never awaited: the link dialog does not wait for photos (AC-37).
       ref
           .read(photoUploadServiceProvider)
@@ -291,8 +312,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         ? ref.read(wordInputNotifierProvider).valueOrNull
         : null;
     if (sessionId == null || current?.sessionId == sessionId) {
-      await ref.read(wordInputNotifierProvider.notifier).markShared(
+      final notifier = ref.read(wordInputNotifierProvider.notifier);
+      await notifier.markShared(
           publishedId: published.id, editToken: published.editToken);
+      await notifier.markDialoguesPublished(
+          {for (final d in published.declaredDialogues) d.id});
       return;
     }
     // The link dialog does not wait for opening the store.
@@ -307,7 +331,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       if (stored == null) return;
       stored
         ..publishedId = published.id
-        ..editToken = published.editToken;
+        ..editToken = published.editToken
+        ..dialogues = afterPublish(stored.dialogues,
+            sent: {for (final d in published.declaredDialogues) d.id});
       await store.put(stored);
       ref.invalidate(sessionByIdProvider(sessionId));
     } catch (_) {
@@ -414,40 +440,42 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         : null;
     final canEdit = sessionId != null && sessionId != currentId;
     return Scaffold(
-      floatingActionButton: canEdit
-          ? FloatingActionButton(
-              onPressed: () => _confirmEdit(sessionId),
-              tooltip: 'Edit',
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+      // Settings bottom-left, like the main screen's settings button (same
+      // size, elevation and colours); Edit, when there is one, stays bottom-right.
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            FloatingActionButton(
+              heroTag: null,
+              onPressed: () => const WordsSettingsRoute().push(context),
+              tooltip: 'Settings',
+              elevation: 8.0,
               shape: const CircleBorder(),
-              child: const Icon(Icons.edit),
-            )
-          : null,
-      appBar: AppBar(
-        title: const Text('Words'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: ElevatedButton.icon(
-              onPressed:
-                  _isPublishing ? null : () => _showShareOptions(wordPairs),
-              icon: _isPublishing
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.share),
-              label: const Text('Share'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).colorScheme.primary,
-              ),
+              backgroundColor: const Color(0xff954ef3),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.settings),
             ),
-          ),
-        ],
+            if (canEdit)
+              FloatingActionButton(
+                heroTag: null,
+                onPressed: () => _confirmEdit(sessionId),
+                tooltip: 'Edit',
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                shape: const CircleBorder(),
+                child: const Icon(Icons.edit),
+              ),
+          ],
+        ),
+      ),
+      appBar: LearnShareBar(
+        title: 'Words',
+        onLearn: () => _learn(wordPairs),
+        onShare: _isPublishing ? null : () => _showShareOptions(wordPairs),
+        isSharing: _isPublishing,
       ),
       body: wordPairs.isEmpty
           ? const Center(

@@ -93,6 +93,44 @@ final sourcePhotoStoreProvider = Provider<SourcePhotoStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SourcePhotoStoreRef = ProviderRef<SourcePhotoStore>;
+String _$storyRunStoreHash() => r'1baae4ddf9fdf660adf336fb38e2b2a162325378';
+
+/// The story runs, kept in the same database as the sessions (ADR-0003).
+///
+/// Copied from [storyRunStore].
+@ProviderFor(storyRunStore)
+final storyRunStoreProvider = FutureProvider<StoryRunStore>.internal(
+  storyRunStore,
+  name: r'storyRunStoreProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$storyRunStoreHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef StoryRunStoreRef = FutureProviderRef<StoryRunStore>;
+String _$storyPictureStoreHash() => r'625afbaf103c13e839e9def2035d1edb5251d58f';
+
+/// The compressed story pictures kept on the phone.
+///
+/// Copied from [storyPictureStore].
+@ProviderFor(storyPictureStore)
+final storyPictureStoreProvider = Provider<StoryPictureStore>.internal(
+  storyPictureStore,
+  name: r'storyPictureStoreProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$storyPictureStoreHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef StoryPictureStoreRef = ProviderRef<StoryPictureStore>;
 String _$googleTranslateServiceHash() =>
     r'6afdf9f3d52ebdc231e65e17d05446c50f457432';
 
@@ -149,6 +187,45 @@ final dictionaryServiceProvider = Provider<DictionaryService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef DictionaryServiceRef = ProviderRef<DictionaryService>;
+String _$storyApiServiceHash() => r'a236884d7c0ebee6e6e8e747202f0035a3f0f616';
+
+/// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
+///
+/// Copied from [storyApiService].
+@ProviderFor(storyApiService)
+final storyApiServiceProvider = Provider<StoryApiService>.internal(
+  storyApiService,
+  name: r'storyApiServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$storyApiServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef StoryApiServiceRef = ProviderRef<StoryApiService>;
+String _$offeredAisHash() => r'5a7c2096143ae6f5c0db6e33b3300caccad2a625';
+
+/// The AIs on the Worker's offered list. Fetched on first use and cached in
+/// preferences; when the fetch fails, the cached list is used, and when there is
+/// none either, the built-in defaults (AC-13). Never throws.
+///
+/// Copied from [offeredAis].
+@ProviderFor(offeredAis)
+final offeredAisProvider = FutureProvider<OfferedAiList>.internal(
+  offeredAis,
+  name: r'offeredAisProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$offeredAisHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef OfferedAisRef = FutureProviderRef<OfferedAiList>;
 String _$sessionPublishServiceHash() =>
     r'f1fa0f257c2278cdc3e762d3755c1f1baa8ecbfc';
 
@@ -381,6 +458,48 @@ final nonEmptySessionsProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef NonEmptySessionsRef = AutoDisposeStreamProviderRef<List<Session>>;
+String _$dialoguePushServiceHash() =>
+    r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
+
+/// Adds an import's rows and dialogues, and scene pictures, to a published
+/// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
+/// uses it is `dialoguePushProvider`.
+///
+/// Copied from [dialoguePushService].
+@ProviderFor(dialoguePushService)
+final dialoguePushServiceProvider = Provider<DialoguePushService>.internal(
+  dialoguePushService,
+  name: r'dialoguePushServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$dialoguePushServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef DialoguePushServiceRef = ProviderRef<DialoguePushService>;
+String _$aiChoiceNotifierHash() => r'56fb292859c4632c546aa2450c049a959ad528bc';
+
+/// The learner's saved AI for each step of a story run (AC-12). Persisted like
+/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+///
+/// Copied from [AiChoiceNotifier].
+@ProviderFor(AiChoiceNotifier)
+final aiChoiceNotifierProvider =
+    NotifierProvider<AiChoiceNotifier, StoredAiChoice>.internal(
+  AiChoiceNotifier.new,
+  name: r'aiChoiceNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$aiChoiceNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$AiChoiceNotifier = Notifier<StoredAiChoice>;
 String _$dragModeHash() => r'6c8be31e69381c41da06163dfa7a77cfa9c1bb89';
 
 /// Whether the word list is in drag-and-drop (reorder) mode. A pure display
@@ -423,6 +542,28 @@ final wordDetailModeNotifierProvider =
 );
 
 typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+String _$dialoguesSettingNotifierHash() =>
+    r'79a0b0141cc70e6d14eb3a468af48a9fb1300bb6';
+
+/// The "Get dialogues from subtitles" switch in Settings
+/// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
+/// also asks for film dialogues. Persisted like the word detail mode; off
+/// until the stored value is read ([loaded]).
+///
+/// Copied from [DialoguesSettingNotifier].
+@ProviderFor(DialoguesSettingNotifier)
+final dialoguesSettingNotifierProvider =
+    NotifierProvider<DialoguesSettingNotifier, bool>.internal(
+  DialoguesSettingNotifier.new,
+  name: r'dialoguesSettingNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$dialoguesSettingNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$DialoguesSettingNotifier = Notifier<bool>;
 String _$subtitleImportPrefsNotifierHash() =>
     r'1c51c1bcfd4b6dd54478eb525338c3ba7fd99fc1';
 

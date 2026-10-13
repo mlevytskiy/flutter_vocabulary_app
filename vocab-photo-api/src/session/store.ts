@@ -1,5 +1,18 @@
 import type { Env } from "../env";
 import {
+  MAX_DIALOGUES_PER_SESSION,
+  deleteDialogueStatements,
+  insertDialogueStatements,
+  isRepeatAppend,
+  pictureKey,
+  presentDialogue,
+  type DeclaredDialogue,
+  type DialogueView,
+} from "./dialogues";
+import { logEvent } from "../log";
+import {
+  MAX_ENTRIES,
+  MAX_SESSION_JSON_BYTES,
   SESSION_TTL_SECONDS,
   detailOf,
   type DeclaredSource,
@@ -49,8 +62,12 @@ async function hashEditToken(token: string): Promise<string> {
 /** What a publish needs besides the session id: the rows and the photos they were recognised from. */
 export interface PublishInput {
   entries: SessionEntry[];
+  /** Where each kept entry stood in the list the app sent; dialogues point at those positions. */
+  entryIndexes?: number[];
   sources: DeclaredSource[];
   detail: SessionDetail;
+  /** Film dialogues, stored with the rows (ADR-0005). Absent from older apps. */
+  dialogues?: DeclaredDialogue[];
 }
 
 /** A published session and the token that lets its publisher republish it. */
@@ -66,11 +83,13 @@ export interface Published {
  * republish then lifts them to the revision that replaced the list.
  */
 function insertContent(env: Env, sessionId: string, input: PublishInput): D1PreparedStatement[] {
+  const rowIds = input.entries.map(() => crypto.randomUUID());
+  const rowIdByEntryIndex = new Map(rowIds.map((rowId, position) => [input.entryIndexes?.[position] ?? position, rowId]));
   return [
     ...input.entries.map((entry, position) =>
       env.DB.prepare(INSERT_ROW).bind(
         sessionId,
-        crypto.randomUUID(),
+        rowIds[position],
         position,
         entry.sourceId ?? null,
         entry.word,
@@ -83,6 +102,7 @@ function insertContent(env: Env, sessionId: string, input: PublishInput): D1Prep
         ? env.DB.prepare(INSERT_SET_SOURCE).bind(sessionId, source.id, source.order, source.name, source.url)
         : env.DB.prepare(INSERT_PENDING_SOURCE).bind(sessionId, source.id, source.order)
     ),
+    ...insertDialogueStatements(env, sessionId, input.dialogues ?? [], rowIdByEntryIndex),
   ];
 }
 
@@ -129,6 +149,12 @@ export async function republishSession(
     .first<{ expires_at: string }>();
   if (!current || isExpired(current.expires_at)) return null;
 
+  const oldPictures = await env.DB.prepare(
+    `SELECT id FROM dialogues WHERE session_id = ?1 AND picture_arrived_rev IS NOT NULL`
+  )
+    .bind(publishedId)
+    .all<{ id: string }>();
+
   // One batch is one transaction: pages never see the old rows mixed with the new.
   await env.DB.batch([
     env.DB.prepare(`UPDATE sessions SET rev = rev + 1, replaced_rev = rev + 1, detail = ?2 WHERE id = ?1`).bind(
@@ -137,6 +163,7 @@ export async function republishSession(
     ),
     env.DB.prepare(`DELETE FROM rows WHERE session_id = ?1`).bind(publishedId),
     env.DB.prepare(`DELETE FROM sources WHERE session_id = ?1`).bind(publishedId),
+    ...deleteDialogueStatements(env, publishedId),
     ...insertContent(env, publishedId, input),
     env.DB.prepare(
       `UPDATE rows SET word_rev = s.rev, translation_rev = s.rev, definition_rev = s.rev
@@ -144,9 +171,35 @@ export async function republishSession(
        WHERE session_id = ?1`
     ).bind(publishedId),
   ]);
+  await deleteGonePictures(env, publishedId, oldPictures.results, input.dialogues ?? []);
   const session = await readSession(env, publishedId);
   if (!session) return null;
   return { session, editToken };
+}
+
+/**
+ * Deletes the scene-picture objects of dialogues a republish dropped. Best
+ * effort: the dialogue rows are already gone, so a picture that lingers in R2
+ * is unreachable and ages out with the bucket's lifecycle rule. A dialogue the
+ * republish carries again keeps its object; its bytes come again with the
+ * publish, like a photo's.
+ */
+async function deleteGonePictures(
+  env: Env,
+  sessionId: string,
+  old: readonly { id: string }[],
+  carried: readonly DeclaredDialogue[]
+): Promise<void> {
+  if (!env.SOURCES || old.length === 0) return;
+  const keep = new Set(carried.map((dialogue) => dialogue.id));
+  for (const { id } of old) {
+    if (keep.has(id)) continue;
+    try {
+      await env.SOURCES.delete(pictureKey(sessionId, id));
+    } catch {
+      logEvent("scene picture cleanup failed", { sessionId, dialogueId: id });
+    }
+  }
 }
 
 /**
@@ -212,7 +265,7 @@ interface SourceRecord {
 
 /** One batch, so the session, its rows and its slots are read at the same revision. */
 async function readSession(env: Env, sessionId: string): Promise<StoredSession | null> {
-  const [sessions, rows, sources] = await env.DB.batch([
+  const [sessions, rows, sources, dialogues, dialogueWords] = await env.DB.batch([
     env.DB.prepare(
       `SELECT id, created_at, expires_at, rev, replaced_rev, detail FROM sessions WHERE id = ?1`
     ).bind(sessionId),
@@ -222,6 +275,15 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
     ).bind(sessionId),
     env.DB.prepare(
       `SELECT id, ord, kind, name, url, media_type, bytes, status, arrived_rev FROM sources WHERE session_id = ?1 ORDER BY ord`
+    ).bind(sessionId),
+    env.DB.prepare(
+      `SELECT id, position, lines_json, picture_arrived_rev, picture_media_type
+       FROM dialogues WHERE session_id = ?1 ORDER BY position`
+    ).bind(sessionId),
+    env.DB.prepare(
+      `SELECT dw.dialogue_id, r.id AS row_id, r.word, r.translation, r.definition
+       FROM dialogue_words dw JOIN rows r ON r.session_id = dw.session_id AND r.id = dw.row_id
+       WHERE dw.session_id = ?1 AND r.deleted_at_rev IS NULL ORDER BY r.position`
     ).bind(sessionId),
   ]);
   const session = (sessions.results as SessionRecord[])[0];
@@ -259,7 +321,52 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
         arrivedRev: source.arrived_rev,
       })
     ),
+    dialogues: presentDialogues(
+      dialogues.results as DialogueRecordRow[],
+      dialogueWords.results as DialogueWordRecord[]
+    ),
   };
+}
+
+interface DialogueRecordRow {
+  id: string;
+  position: number;
+  lines_json: string;
+  picture_arrived_rev: number | null;
+  picture_media_type: string | null;
+}
+
+interface DialogueWordRecord {
+  dialogue_id: string;
+  row_id: string;
+  word: string;
+  translation: string;
+  definition: string;
+}
+
+/** The dialogues the page renders: those with a linked word still in the table (as the change feed). */
+function presentDialogues(records: DialogueRecordRow[], words: DialogueWordRecord[]): DialogueView[] {
+  const byDialogue = new Map<string, DialogueWordRecord[]>();
+  for (const word of words) {
+    const list = byDialogue.get(word.dialogue_id) ?? [];
+    list.push(word);
+    byDialogue.set(word.dialogue_id, list);
+  }
+  const views: DialogueView[] = [];
+  for (const record of records) {
+    const view = presentDialogue(
+      {
+        id: record.id,
+        position: record.position,
+        lines: JSON.parse(record.lines_json) as string[],
+        pictureArrivedRev: record.picture_arrived_rev,
+        pictureMediaType: record.picture_media_type,
+      },
+      byDialogue.get(record.id) ?? []
+    );
+    if (view !== null) views.push(view);
+  }
+  return views;
 }
 
 /**
@@ -349,4 +456,173 @@ export async function getSourceObject(env: Env, sessionId: string, sourceId: str
 
 export function hasSourceStorage(env: Env): boolean {
   return env.SOURCES !== undefined;
+}
+
+type Authorized = { ok: true; rev: number } | { ok: false; outcome: "gone" | "forbidden" };
+
+/**
+ * Whether `editToken` is the one this live session was published with. An
+ * unknown or expired id is "gone" (answered like the page does, AC-32); a
+ * missing or wrong token, or a link with no token (a pre-feature KV import), is
+ * "forbidden". Only the token's hash is stored and compared.
+ */
+async function authorizeEdit(env: Env, sessionId: string, editToken: string | null): Promise<Authorized> {
+  const record = await env.DB.prepare(`SELECT expires_at, rev, edit_token_hash FROM sessions WHERE id = ?1`)
+    .bind(sessionId)
+    .first<{ expires_at: string; rev: number; edit_token_hash: string | null }>();
+  if (!record || isExpired(record.expires_at)) return { ok: false, outcome: "gone" };
+  if (!editToken || !record.edit_token_hash || (await hashEditToken(editToken)) !== record.edit_token_hash) {
+    return { ok: false, outcome: "forbidden" };
+  }
+  return { ok: true, rev: record.rev };
+}
+
+/** What an import adds to a published session (ADR-0005): its rows and the dialogues about them. */
+export interface AppendInput {
+  importId: string;
+  entries: SessionEntry[];
+  entryIndexes: number[];
+  dialogues: DeclaredDialogue[];
+}
+
+export type Append =
+  | { outcome: "gone" | "forbidden" | "list_full" }
+  | { outcome: "appended" | "repeat"; rev: number };
+
+const APPEND_ROW = `INSERT INTO rows
+  (session_id, id, position, word, word_rev, translation, translation_rev, definition, definition_rev)
+  VALUES (?1, ?2, (SELECT coalesce(max(position), -1) + 1 FROM rows WHERE session_id = ?1), ?3,
+    (SELECT rev FROM sessions WHERE id = ?1), ?4, (SELECT rev FROM sessions WHERE id = ?1), ?5,
+    (SELECT rev FROM sessions WHERE id = ?1))`;
+
+/**
+ * Adds an import's rows after the session's rows and its dialogues after its
+ * dialogues, all at one new revision, without touching what is there. An import
+ * already seen -- its id is in `dialogue_imports`, or one of its dialogue ids is
+ * in the session because a republish carried it -- adds nothing and answers the
+ * same. The import id is recorded in the batch that appends; a racing twin
+ * collides on its key, the batch rolls back, and it reads as the repeat it is.
+ */
+export async function appendToSession(
+  env: Env,
+  sessionId: string,
+  editToken: string | null,
+  input: AppendInput
+): Promise<Append> {
+  const auth = await authorizeEdit(env, sessionId, editToken);
+  if (!auth.ok) return { outcome: auth.outcome };
+  const dialogueIds = input.dialogues.map((dialogue) => dialogue.id);
+  const repeat = async (): Promise<Append | null> =>
+    (await isRepeatAppend(env, sessionId, input.importId, dialogueIds))
+      ? { outcome: "repeat", rev: await currentRev(env, sessionId) }
+      : null;
+  const seen = await repeat();
+  if (seen) return seen;
+
+  const held = await env.DB.prepare(
+    `SELECT
+       (SELECT count(*) FROM rows WHERE session_id = ?1 AND deleted_at_rev IS NULL) AS rows,
+       (SELECT count(*) FROM dialogues WHERE session_id = ?1) AS dialogues,
+       (SELECT coalesce(sum(length(CAST(word AS BLOB)) + length(CAST(translation AS BLOB)) + length(CAST(definition AS BLOB))), 0)
+          FROM rows WHERE session_id = ?1 AND deleted_at_rev IS NULL) AS bytes`
+  )
+    .bind(sessionId)
+    .first<{ rows: number; dialogues: number; bytes: number }>();
+  const encoder = new TextEncoder();
+  const added = input.entries.reduce(
+    (sum, entry) =>
+      sum + encoder.encode(entry.word).length + encoder.encode(entry.translation).length + encoder.encode(entry.definition ?? "").length,
+    0
+  );
+  if (
+    !held ||
+    held.rows + input.entries.length > MAX_ENTRIES ||
+    held.dialogues + input.dialogues.length > MAX_DIALOGUES_PER_SESSION ||
+    held.bytes + added > MAX_SESSION_JSON_BYTES
+  ) {
+    return { outcome: "list_full" };
+  }
+
+  const rowIds = input.entries.map(() => crypto.randomUUID());
+  const rowIdByEntryIndex = new Map(rowIds.map((rowId, position) => [input.entryIndexes[position] ?? position, rowId]));
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`INSERT INTO dialogue_imports (session_id, import_id) VALUES (?1, ?2)`).bind(sessionId, input.importId),
+      env.DB.prepare(`UPDATE sessions SET rev = rev + 1 WHERE id = ?1`).bind(sessionId),
+      ...input.entries.map((entry, position) =>
+        env.DB.prepare(APPEND_ROW).bind(sessionId, rowIds[position], entry.word, entry.translation, entry.definition ?? "")
+      ),
+      ...insertDialogueStatements(env, sessionId, input.dialogues, rowIdByEntryIndex, { afterExisting: true }),
+    ]);
+  } catch (error) {
+    // A twin of this import got in first (or a republish carried its dialogues): that is the repeat.
+    const twin = await repeat();
+    if (twin) return twin;
+    throw error;
+  }
+  return { outcome: "appended", rev: await currentRev(env, sessionId) };
+}
+
+async function currentRev(env: Env, sessionId: string): Promise<number> {
+  const record = await env.DB.prepare(`SELECT rev FROM sessions WHERE id = ?1`).bind(sessionId).first<{ rev: number }>();
+  return record?.rev ?? 0;
+}
+
+export type PictureUpload = "stored" | "already_arrived" | "not_declared" | "gone" | "forbidden";
+
+/**
+ * Stores a dialogue's scene picture (bytes in R2 under the session's prefix) and
+ * marks it arrived at a new session revision, so polling pages swap it in. Only
+ * the app holding the edit token may. Once the bytes have arrived a repeat is
+ * left as it is, so the app's retries are safe.
+ */
+export async function storeDialoguePicture(
+  env: Env,
+  sessionId: string,
+  editToken: string | null,
+  dialogueId: string,
+  bytes: ArrayBuffer,
+  mediaType: string
+): Promise<PictureUpload> {
+  if (!env.SOURCES) throw new Error("SOURCES binding is not configured");
+  const auth = await authorizeEdit(env, sessionId, editToken);
+  if (!auth.ok) return auth.outcome;
+  const slot = await env.DB.prepare(`SELECT picture_arrived_rev FROM dialogues WHERE session_id = ?1 AND id = ?2`)
+    .bind(sessionId, dialogueId)
+    .first<{ picture_arrived_rev: number | null }>();
+  if (!slot) return "not_declared";
+  if (slot.picture_arrived_rev !== null) return "already_arrived";
+
+  await env.SOURCES.put(pictureKey(sessionId, dialogueId), bytes, { httpMetadata: { contentType: mediaType } });
+  const pending = `EXISTS (SELECT 1 FROM dialogues WHERE session_id = ?1 AND id = ?2 AND picture_arrived_rev IS NULL)`;
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE sessions SET rev = rev + 1 WHERE id = ?1 AND ${pending}`).bind(sessionId, dialogueId),
+    env.DB.prepare(
+      `UPDATE dialogues SET picture_media_type = ?3, picture_bytes = ?4,
+         picture_arrived_rev = (SELECT rev FROM sessions WHERE id = ?1)
+       WHERE session_id = ?1 AND id = ?2 AND picture_arrived_rev IS NULL`
+    ).bind(sessionId, dialogueId, mediaType, bytes.byteLength),
+  ]);
+  return "stored";
+}
+
+/**
+ * The bytes of a dialogue's scene picture, only while it is an arrived picture
+ * of a live session. A guessed id, a picture not yet arrived and an expired
+ * session all read as null, whatever R2 holds.
+ */
+export async function getDialoguePictureObject(
+  env: Env,
+  sessionId: string,
+  dialogueId: string
+): Promise<R2ObjectBody | null> {
+  if (!env.SOURCES) return null;
+  const record = await env.DB.prepare(
+    `SELECT d.picture_arrived_rev AS arrived, s.expires_at AS expires_at
+     FROM dialogues d JOIN sessions s ON s.id = d.session_id WHERE d.session_id = ?1 AND d.id = ?2`
+  )
+    .bind(sessionId, dialogueId)
+    .first<{ arrived: number | null; expires_at: string }>();
+  if (!record || record.arrived === null || isExpired(record.expires_at)) return null;
+  return env.SOURCES.get(pictureKey(sessionId, dialogueId));
 }

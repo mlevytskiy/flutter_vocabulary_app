@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:isar_community/isar.dart';
 
+import 'film_dialogue.dart';
 import 'session_source.dart';
+import 'word_group.dart';
 import 'word_pair.dart';
 
 part 'session.g.dart';
@@ -41,6 +43,22 @@ class Session {
   String? publishedId;
   String? editToken;
 
+  /// The word groups of the learn page (mnemonic-story, ADR-0003). They live
+  /// and die with the session, so a History session keeps its own (AC-11).
+  List<WordGroup> groups = [];
+
+  /// The group the learn page is showing; null until grouping has run.
+  String? selectedGroupId;
+
+  /// What the words looked like when grouping last ran, to tell whether it
+  /// must run again (AC-03).
+  String? groupedWordsKey;
+
+  /// The film dialogues kept from subtitle imports, in pager order
+  /// (get-words-from-subtitles-improvment, ADR-0003). A session from before
+  /// has none.
+  List<FilmDialogue> dialogues = [];
+
   Session();
 
   static Session create() {
@@ -70,7 +88,17 @@ class Session {
             .toList() ??
         <SessionSource>[]
     ..publishedId = json['publishedId'] as String?
-    ..editToken = json['editToken'] as String?;
+    ..editToken = json['editToken'] as String?
+    ..groups = (json['groups'] as List<dynamic>?)
+            ?.map((g) => WordGroup.fromJson(g as Map<String, dynamic>))
+            .toList() ??
+        <WordGroup>[]
+    ..selectedGroupId = json['selectedGroupId'] as String?
+    ..groupedWordsKey = json['groupedWordsKey'] as String?
+    ..dialogues = (json['dialogues'] as List<dynamic>?)
+            ?.map((d) => FilmDialogue.fromJson(d as Map<String, dynamic>))
+            .toList() ??
+        <FilmDialogue>[];
 
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,
@@ -81,5 +109,9 @@ class Session {
         'sources': sources.map((s) => s.toJson()).toList(),
         'publishedId': publishedId,
         'editToken': editToken,
+        'groups': groups.map((g) => g.toJson()).toList(),
+        'selectedGroupId': selectedGroupId,
+        'groupedWordsKey': groupedWordsKey,
+        'dialogues': dialogues.map((d) => d.toJson()).toList(),
       };
 }

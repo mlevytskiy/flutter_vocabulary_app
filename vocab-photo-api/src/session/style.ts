@@ -32,6 +32,19 @@ export const STYLE = `
          color: #fff; font-weight: 600; text-decoration: none; }
   .btn:active { background: #1e4fd6; }
   .gone { text-align: center; padding: 48px 0; color: #444; }
+  /* The learn pages (learn-part-step-1): one column, nothing wider than the screen. */
+  .learn { max-width: 40rem; }
+  .learn h2 { font-size: 1.05rem; margin: 20px 0 6px; }
+  .learn .count { color: #666; margin: 0 0 8px; }
+  .exercise { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; padding: 10px 0;
+              border-bottom: 1px solid #e6e6e6; overflow-wrap: anywhere; cursor: pointer; }
+  .exercise input { flex: none; width: 20px; height: 20px; margin: 0; }
+  .exercise.soon { color: #888; cursor: default; }
+  .exercise.soon span { font-size: 0.8rem; font-style: italic; }
+  .learn .start { margin: 20px 0 0; }
+  .learn .start[aria-disabled="true"] { background: #b8c4e8; cursor: default; }
+  .learn .hint { margin: 8px 0 0; color: #666; font-size: 0.9rem; }
+  .learn .hint[hidden] { display: none; }
   .credit { color: #666; font-size: 0.8rem; margin: 8px 0 0; }
   .no-definition .credit { display: none; }
 
@@ -162,7 +175,21 @@ export const STYLE = `
   html.dialog-open, html.dialog-open body { overflow: hidden; }
   @media (prefers-reduced-motion: reduce) { .dialog-strip { transition: none; } }
 
+  /* The dialogue pages (get-words-from-subtitles-improvment, AC-20): after the table, one column,
+     the same two layouts. Read-only text, the scene picture, the word list. */
+  .dialogues { margin: 24px 0 0; display: flex; flex-direction: column; gap: 16px; }
+  .dialogue-page { padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; min-width: 0; }
+  .dialogue-line { margin: 0 0 6px; overflow-wrap: anywhere; }
+  .dialogue-line strong { font-weight: 700; }
+  .dialogue-picture { display: block; width: 100%; max-width: 32rem; height: auto; margin: 10px 0; border-radius: 6px;
+                      border: 1px solid #ddd; }
+  .dialogue-words { list-style: none; margin: 10px 0 0; padding: 8px 0 0; border-top: 1px solid #e6e6e6; font-size: 0.9rem; }
+  .dialogue-words li { margin: 0 0 4px; overflow-wrap: anywhere; }
+  .dw-word { font-weight: 600; }
+  .dw-definition { color: #666; }
+
   @media (min-width: 900px) {
+    .dialogues { max-width: 48rem; }
     table { max-width: 100%; }
     .has-photos .layout { display: grid; grid-template-columns: minmax(0, 1fr) var(--w-photos);
                   gap: 24px; align-items: start; }
@@ -190,6 +217,8 @@ export const STYLE = `
     .table-scroll { flex: 0 1 auto; min-height: 0; overflow: auto; border-radius: 6px; }
     table { width: max-content; }
     .photos { display: none; }
+    /* Download, Learn and the photo button wrap on a 320 px phone instead of overflowing. */
+    .actions { flex-wrap: wrap; row-gap: 8px; }
     /* At the right edge of the actions row, clear of the rotated stack's corners. */
     .js .photo-button { display: block; margin: 0 8px 0 auto; }
     /* One line: the short meta sits right after "Vocabulary" and never wraps. */
@@ -199,6 +228,10 @@ export const STYLE = `
     .title h1 { margin: 0; }
     .meta-short { display: inline; }
     .meta { display: none; }
+    /* With dialogue pages the page is no longer one screen tall: they follow the table below it. */
+    main.has-dialogues { height: auto; }
+    .has-dialogues .layout, .has-dialogues .table-area { flex: 0 0 auto; }
+    .has-dialogues .table-scroll { max-height: 70vh; max-height: 70dvh; }
   }
 
   @media (prefers-color-scheme: dark) {
@@ -228,6 +261,14 @@ export const STYLE = `
     .toast button { color: #1a56d6; }
     @keyframes changed { from { background: #4a3f10; } to { background: transparent; } }
     .gone { color: #ccc; }
+    .learn .count, .learn .hint { color: #9a9a9a; }
+    .exercise { border-color: #2e2e2e; }
+    .exercise.soon { color: #777; }
+    .learn .start[aria-disabled="true"] { background: #2b3550; }
+    .dialogue-page { background: #1c1c1c; border-color: #333; }
+    .dialogue-picture { border-color: #333; }
+    .dialogue-words { border-color: #2e2e2e; }
+    .dw-definition { color: #9a9a9a; }
     .pager-nav button { background: #262626; color: #ececec; border-color: #555; }
   }
   @media (prefers-color-scheme: dark) and (min-width: 900px) {

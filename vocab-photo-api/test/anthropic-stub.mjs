@@ -9,6 +9,18 @@
 //   "STUB:refusal"     -> stop_reason "refusal"
 //   "STUB:error"       -> 500
 //   "STUB:slow:<ms>"   -> the default reply after <ms> milliseconds
+// A grouping request (its system prompt names "topical groups", user content = JSON {words, keep}, mnemonic-story
+// T7) picks its mode from a word that starts "STUB:" and otherwise answers the keep groups
+// unchanged plus the other words in even new groups of 7 to 19 (the app's rules):
+//   "STUB:small-groups" -> the live bad reply (many groups under 7, invented ids) on the first ask,
+//                          a valid split when the request carries `problems` (the retry)
+//   "STUB:small-always" -> the bad reply on every ask
+//   "STUB:error" / "STUB:refusal" / "STUB:malformed" as above, "STUB:no-groups" -> JSON with no groups
+// A picture prompt writer request (system names an "image generator", user = numbered captions, mnemonic-story
+// owner feedback 2026-10-07) answers valid JSON {character, scenes} with one scene per caption, or prose
+// when the user message carries "STUB:badjson".
+//   "STUB:no-dialogues"  -> the default words and an empty dialogues list
+//   "STUB:bad-dialogues" -> the default words, no dialogues key (a reply that breaks the asked-for shape)
 //   anything else      -> 14 ranked candidates, with a case duplicate, for the
 //                         route to drop session words and cut to the maximum
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
@@ -26,6 +38,16 @@ export const STUB_WORDS = [
   context: `A line with ${word.toLowerCase()} in it.`,
 }));
 
+// Dialogues the default reply carries (the Worker keeps them only when the import asks for them): one
+// holding two words, one with a link to a word that is not in its lines and one the model never proposed,
+// one only for "fog" (gone when the session already has it), and one of 9 lines (over the limit).
+export const STUB_DIALOGUES = [
+  { lines: ["A: You look reluctant.", "B: The tide is coming in."], words: ["reluctant", "tide"] },
+  { lines: ["A: Grab the rope!", "B: Lifting it now."], words: ["grab", "rope", "lift", "harbour", "notproposed"] },
+  { lines: ["A: What fog.", "B: Yes."], words: ["fog"] },
+  { lines: Array.from({ length: 9 }, (_, i) => `Line ${i + 1} of the tide.`), words: ["tide"] },
+];
+
 const message = (model, text, stop_reason = "end_turn") => ({
   id: "msg_stub",
   type: "message",
@@ -35,18 +57,54 @@ const message = (model, text, stop_reason = "end_turn") => ({
   stop_reason,
   usage: { input_tokens: 1200, output_tokens: 340, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
 });
-const list = (words, noEnglish = false) => JSON.stringify({ no_english_lines: noEnglish, words });
+const list = (words, noEnglish = false, dialogues = STUB_DIALOGUES) =>
+  JSON.stringify({ no_english_lines: noEnglish, words, ...(dialogues ? { dialogues } : {}) });
 
 function answer(model, firstLine) {
   switch (firstLine) {
     case "STUB:empty": return { status: 200, body: message(model, list([])) };
     case "STUB:no-english": return { status: 200, body: message(model, list([], true)) };
     case "STUB:cutoff": return { status: 200, body: message(model, list(STUB_WORDS).slice(0, 200), "max_tokens") };
+    case "STUB:no-dialogues": return { status: 200, body: message(model, list(STUB_WORDS, false, [])) };
+    case "STUB:bad-dialogues": return { status: 200, body: message(model, list(STUB_WORDS, false, null)) };
     case "STUB:malformed": return { status: 200, body: message(model, "Here are some words: reluctant, tide.") };
     case "STUB:refusal": return { status: 200, body: message(model, "", "refusal") };
     case "STUB:error": return { status: 500, body: { type: "error", error: { type: "api_error", message: "stub" } } };
     default: return { status: 200, body: message(model, list(STUB_WORDS)) };
   }
+}
+
+function groupingAnswer(model, content) {
+  let request;
+  try {
+    request = JSON.parse(content);
+  } catch {
+    return { status: 400, body: { type: "error", error: { type: "invalid_request_error", message: "stub: not JSON" } } };
+  }
+  const marker = request.words.map((w) => w.word).find((w) => w.startsWith("STUB:"));
+  if (marker === "STUB:no-groups") return { status: 200, body: message(model, JSON.stringify({ note: "none" })) };
+  const kept = new Set(request.keep.flatMap((g) => g.rowIds));
+  const fresh = request.words.map((w) => w.rowId).filter((id) => !kept.has(id));
+  const keepGroups = request.keep.map((g) => ({ id: g.id, name: g.name, rowIds: g.rowIds }));
+  if (marker === "STUB:small-always" || (marker === "STUB:small-groups" && !request.problems)) {
+    // What Haiku really answered: small groups, each with an invented id.
+    const groups = [...keepGroups];
+    for (let at = 0, i = 0; at < fresh.length; i += 1) {
+      const size = [2, 4, 4, 4, 5, 5, 5, 6, 5, 5][i % 10];
+      groups.push({ id: `topic${i}`, name: `Topic ${i}`, rowIds: fresh.slice(at, at + size) });
+      at += size;
+    }
+    return { status: 200, body: message(model, JSON.stringify({ groups })) };
+  }
+  if (marker && marker !== "STUB:small-groups") return answer(model, marker);
+  const count = fresh.length < 7 ? 1 : Math.ceil(fresh.length / 19);
+  const groups = [...keepGroups];
+  for (let i = 0; i < count; i += 1) {
+    const from = Math.floor((fresh.length * i) / count);
+    const to = Math.floor((fresh.length * (i + 1)) / count);
+    if (to > from) groups.push({ name: `Stub group ${i + 1}`, rowIds: fresh.slice(from, to) });
+  }
+  return { status: 200, body: message(model, "```json\n" + JSON.stringify({ groups }) + "\n```") };
 }
 
 export function startAnthropicStub() {
@@ -65,6 +123,19 @@ export function startAnthropicStub() {
       calls.last = body;
       calls.lastApiKey = req.headers["x-api-key"] ?? null;
       const content = typeof body.messages?.[0]?.content === "string" ? body.messages[0].content : "";
+      if (typeof body.system === "string" && body.system.includes("topical groups")) {
+        const { status, body: reply } = groupingAnswer(body.model, content);
+        res.writeHead(status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(reply));
+      }
+      if (typeof body.system === "string" && body.system.includes("image generator")) {
+        const count = (content.match(/^\d+\. /gm) ?? []).length;
+        const text = content.includes("STUB:badjson")
+          ? "Here is a lovely picture of the story, no JSON."
+          : JSON.stringify({ character: "a young adult with short dark hair, a blue jacket, and a backpack", scenes: Array.from({ length: count }, (_, i) => `scene number ${i + 1}`) });
+        res.writeHead(200, { "content-type": "application/json" });
+        return res.end(JSON.stringify(message(body.model, text)));
+      }
       const firstLine = content.replace(/^<subtitle_lines>\n/, "").split("\n")[0];
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);
       const { status, body: reply } = answer(body.model, slow ? "" : firstLine);

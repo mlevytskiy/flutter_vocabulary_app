@@ -3,6 +3,7 @@ import { jsonResponse } from "../http";
 import { logEvent } from "../log";
 import type { RouteContext, RouteDefinition } from "../routing";
 import { takeSubtitleImport } from "./allowance";
+import { checkDialogues } from "./dialogues";
 import {
   ENGLISH_LEVELS,
   IMPORT_PURPOSES,
@@ -45,6 +46,8 @@ interface SubtitleWordsRequest {
   maximum: number;
   model: SubtitleModel;
   sessionWords: string[];
+  /** Also ask for film dialogues (get-words-from-subtitles-improvment, ADR-0002). Absent = today's import. */
+  dialogues?: boolean;
 }
 
 const isStringArray = (value: unknown): value is string[] =>
@@ -59,7 +62,7 @@ function readRequest(text: string): SubtitleWordsRequest | Response {
     return fail(400, "bad_request", "Body must be JSON");
   }
   if (typeof body !== "object" || body === null) return fail(400, "bad_request", "Body must be a JSON object");
-  const { lines, purpose, level, maximum, model, sessionWords } = body as Record<string, unknown>;
+  const { lines, purpose, level, maximum, model, sessionWords, dialogues } = body as Record<string, unknown>;
 
   if (!isStringArray(lines) || lines.length === 0) {
     return fail(400, "bad_request", "lines must be a non-empty array of strings");
@@ -88,6 +91,9 @@ function readRequest(text: string): SubtitleWordsRequest | Response {
     );
   }
   if (typeof model !== "string") return fail(400, "bad_request", "model must be a string");
+  if (dialogues !== undefined && typeof dialogues !== "boolean") {
+    return fail(400, "bad_request", "dialogues must be true or false");
+  }
 
   const encoder = new TextEncoder();
   const linesBytes = lines.reduce((sum, line) => sum + encoder.encode(line).length, 0);
@@ -102,6 +108,7 @@ function readRequest(text: string): SubtitleWordsRequest | Response {
     maximum,
     model,
     sessionWords,
+    ...(dialogues === undefined ? {} : { dialogues }),
   };
 }
 
@@ -123,6 +130,7 @@ export function keepWords(candidates: SubtitleWord[], sessionWords: string[], ma
 }
 
 async function callModel(env: Env, req: SubtitleWordsRequest): Promise<{ reply: ReturnType<typeof parseSubtitleReply>; aiMs: number }> {
+  const asked = req.dialogues === true;
   const timeoutMs = Number(env.SUBTITLE_AI_TIMEOUT_MS) || AI_TIMEOUT_MS;
   const startedAt = Date.now();
   const response = await fetch(new URL("v1/messages", env.ANTHROPIC_API_URL || DEFAULT_API_URL), {
@@ -132,14 +140,14 @@ async function callModel(env: Env, req: SubtitleWordsRequest): Promise<{ reply: 
       "anthropic-version": "2023-06-01",
       "content-type": "application/json",
     },
-    body: JSON.stringify(buildSubtitleRequest(req)),
+    body: JSON.stringify(buildSubtitleRequest({ ...req, dialogues: asked })),
     signal: AbortSignal.timeout(timeoutMs),
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(`Anthropic API error (${response.status}): ${detail.slice(0, 300)}`);
   }
-  const reply = parseSubtitleReply(await response.json());
+  const reply = parseSubtitleReply(await response.json(), { dialogues: asked });
   return { reply, aiMs: Date.now() - startedAt };
 }
 
@@ -173,8 +181,16 @@ async function handleSubtitleWords({ request, env }: RouteContext): Promise<Resp
     return fail(422, "no_english_lines", "No English subtitles to read in this file");
   }
   const words = keepWords(reply.words, req.sessionWords, req.maximum);
-  logEvent("subtitle import", { model: req.model, outcome: "words", aiMs, words: words.length, ...tokens(reply.usage) });
-  return jsonResponse({ words, model: req.model, timings: { aiMs }, usage: reply.usage });
+  const base = { model: req.model, outcome: "words", aiMs, words: words.length, ...tokens(reply.usage) };
+  if (!req.dialogues) {
+    logEvent("subtitle import", base);
+    return jsonResponse({ words, model: req.model, timings: { aiMs }, usage: reply.usage });
+  }
+  // The dialogues are checked against the kept words, so a dropped or cut word never leaves a link (AC-02, AC-07).
+  const returned = reply.dialogues ?? [];
+  const dialogues = checkDialogues(returned, words);
+  logEvent("subtitle import", { ...base, dialoguesAsked: true, dialoguesReturned: returned.length, dialoguesKept: dialogues.length });
+  return jsonResponse({ words, dialogues, model: req.model, timings: { aiMs }, usage: reply.usage });
 }
 
 const tokens = (usage: { inputTokens: number; outputTokens: number }) => ({

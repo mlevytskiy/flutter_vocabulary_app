@@ -35,7 +35,7 @@ class SourcePhotoStore {
     try {
       final dir = await _dir();
       await dir.create(recursive: true);
-      final id = _uuidV4();
+      final id = uuidV4();
       final photo = SessionSource()
         ..id = id
         ..fileName = '$id.jpg'
@@ -69,9 +69,9 @@ class SourcePhotoStore {
   }
 }
 
-/// A random (version 4) UUID. The photo id is declared to the Worker before
+/// A random (version 4) UUID, also used for `WordPair.rowId`. The photo id is declared to the Worker before
 /// the bytes are uploaded (ADR-0006), so it must be unguessable.
-String _uuidV4() {
+String uuidV4() {
   final random = Random.secure();
   final b = List<int>.generate(16, (_) => random.nextInt(256));
   b[6] = (b[6] & 0x0f) | 0x40;

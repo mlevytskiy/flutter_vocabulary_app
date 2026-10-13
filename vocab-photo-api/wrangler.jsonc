@@ -96,6 +96,15 @@
 			"database_id": "bfa6857e-a913-4b61-8fbf-34f9cc734e45",
 			"migrations_dir": "migrations"
 		}
+	],
+	// Story runs (mnemonic-story, ADR-0002): one Workflow instance per run, named by the
+	// app's run id. The class is exported from src/index.ts; its steps never retry.
+	"workflows": [
+		{
+			"name": "story-run",
+			"binding": "STORY_RUN",
+			"class_name": "StoryRunWorkflow"
+		}
 	]
 	// Secrets (ANTHROPIC_API_KEY, APP_SHARED_SECRET, MW_API_KEY) are NOT set here.
 	// Set them with `npx wrangler secret put <NAME>` (production) and in
