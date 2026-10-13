@@ -1545,7 +1545,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       child: WordRowMorph(
       index: index,
       openness: _photoPanel.openness,
-      line: (reveal) => CompactWordLine(
+      // The word and the translation fly between their fields and the line;
+      // a definition (usually several lines) only fades.
+      word: _wordControllers[index],
+      detail: detailMode != WordDetailMode.definition &&
+              _translationControllers[index].text.trim().isNotEmpty
+          ? _translationControllers[index]
+          : null,
+      line: (hideWord, hideDetail) => CompactWordLine(
         index: index,
         word: _wordControllers[index].text,
         detail: compactDetail(
@@ -1555,7 +1562,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         ),
         highlight: highlight,
         endInset: _compactEndInset,
-        reveal: reveal,
+        hideWord: hideWord,
+        hideDetail: hideDetail,
       ),
       full: WordRowItem(
       highlight: highlight,

@@ -4,6 +4,7 @@ import 'package:popup_menu_2/popup_menu_2.dart';
 import '../../../core/models/translation_result.dart';
 import '../../../core/providers.dart' show WordDetailMode;
 import '../../../core/services/pronunciation_service.dart';
+import '../../../core/widgets/hidden_field_text.dart';
 import '../../../core/widgets/synced_text_field_row.dart';
 import 'definition_dots_button.dart';
 import 'pronunciation_buttons.dart';
@@ -458,7 +459,7 @@ class WordRowItem extends StatelessWidget {
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      style: style,
+      style: HiddenFieldText.styleFor(context, controller, style),
       strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
       minLines: minLines,
       // Null grows without limit (the Word field); the Definition field stops

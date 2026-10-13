@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../core/providers.dart' show WordDetailMode;
+import '../../../core/widgets/hidden_field_text.dart';
 
 /// The text after the dash on a row's one line while the photo panel is
 /// open: the translation when the detail mode shows one and it is filled,
@@ -32,7 +33,8 @@ class CompactWordLine extends StatelessWidget {
     required this.detail,
     this.highlight,
     this.endInset = 0,
-    this.reveal = 1,
+    this.hideWord = false,
+    this.hideDetail = false,
   });
 
   static const separator = ' — ';
@@ -50,9 +52,10 @@ class CompactWordLine extends StatelessWidget {
   /// panel instead of under it.
   final double endInset;
 
-  /// How far the text has come in, 0 to 1, as the line replaces the full
-  /// row: it glides in and the part after the dash follows it.
-  final double reveal;
+  /// The word, or the detail, is drawn transparent: [WordRowMorph] is
+  /// flying it in from the full row.
+  final bool hideWord;
+  final bool hideDetail;
 
   /// The whole line, as a screen reader and a test read it.
   String get text {
@@ -62,10 +65,35 @@ class CompactWordLine extends StatelessWidget {
     return '$w$separator$detail';
   }
 
+  /// Where the word, and the detail, sit in the line's text; empty when the
+  /// line has none.
+  static TextRange wordRange(String word) =>
+      TextRange(start: 0, end: word.trim().length);
+  static TextRange detailRange(String word, String detail) {
+    final w = word.trim();
+    final start = w.isEmpty ? 0 : w.length + separator.length;
+    return detail.isEmpty
+        ? TextRange.empty
+        : TextRange(start: start, end: start + detail.length);
+  }
+
+  static const _wordColor = Color(0xFF3B2470);
+  static const _detailColor = Color(0xFF5E5470);
+
+  static TextStyle _base(BuildContext context) =>
+      Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+
+  /// How the line draws a typed word, and the detail.
+  static TextStyle wordStyle(BuildContext context) =>
+      _base(context).copyWith(fontWeight: FontWeight.w600, color: _wordColor);
+  static TextStyle detailStyle(BuildContext context) =>
+      _base(context).copyWith(color: _detailColor);
+
   @override
   Widget build(BuildContext context) {
-    final base =
-        Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+    final w = word.trim();
+    Color shown(Color color, bool hidden) =>
+        hidden ? color.withValues(alpha: 0) : color;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.fromLTRB(14, 12, 14 + endInset, 12),
@@ -74,33 +102,24 @@ class CompactWordLine extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       foregroundDecoration: highlight,
-      child: _line(base, Curves.easeOutCubic.transform(reveal)),
-    );
-  }
-
-  /// The text at reveal progress [v]: the line slides in from the left, and
-  /// the dash and detail fade in over the second half.
-  Widget _line(TextStyle base, double v) {
-    final w = word.trim();
-    final detailOpacity = ((v - 0.35) / 0.65).clamp(0.0, 1.0);
-    const wordColor = Color(0xFF3B2470);
-    final detailColor =
-        const Color(0xFF5E5470).withValues(alpha: detailOpacity);
-    return Transform.translate(
-      offset: Offset(-14 * (1 - v), 0),
       child: Text.rich(
         TextSpan(children: [
-          TextSpan(
-            text: w.isEmpty && detail.isEmpty ? '—' : w,
-            style: base.copyWith(
-              fontWeight: FontWeight.w600,
-              color: w.isEmpty ? const Color(0x803B2470) : wordColor,
+          if (w.isNotEmpty || detail.isEmpty)
+            TextSpan(
+              text: w.isEmpty ? '—' : w,
+              style: wordStyle(context).copyWith(
+                color: w.isEmpty
+                    ? const Color(0x803B2470)
+                    : shown(_wordColor, hideWord),
+              ),
             ),
-          ),
+          if (w.isNotEmpty && detail.isNotEmpty)
+            TextSpan(text: separator, style: detailStyle(context)),
           if (detail.isNotEmpty)
             TextSpan(
-              text: w.isEmpty ? detail : '$separator$detail',
-              style: base.copyWith(color: detailColor),
+              text: detail,
+              style: detailStyle(context)
+                  .copyWith(color: shown(_detailColor, hideDetail)),
             ),
         ]),
         semanticsLabel: text,
@@ -118,6 +137,11 @@ class CompactWordLine extends StatelessWidget {
 /// drag the rows follow the finger. The card's height glides between the two
 /// while one fades and scales into the other, and the rows change one after
 /// another from the top of the screen down, like a wave (back up on close).
+///
+/// The texts move rather than fade, like a local hero: the word flies from
+/// its field ([word]) to the start of the line, and the translation
+/// ([detail]) from its field to its place after the dash, each turning into
+/// the line's style on the way.
 class WordRowMorph extends StatefulWidget {
   const WordRowMorph({
     super.key,
@@ -125,6 +149,8 @@ class WordRowMorph extends StatefulWidget {
     required this.openness,
     required this.full,
     required this.line,
+    this.word,
+    this.detail,
   });
 
   /// The share of the panel's slide to half-open by which a row at the
@@ -137,8 +163,16 @@ class WordRowMorph extends StatefulWidget {
   final Animation<double> openness;
   final Widget full;
 
-  /// Builds the one line; `reveal` is how far its text has come in, 0 to 1.
-  final Widget Function(double reveal) line;
+  /// Builds the one line, with the texts that are flying hidden.
+  final Widget Function(bool hideWord, bool hideDetail) line;
+
+  /// The full row's Word field, whose text flies to the line's word.
+  final TextEditingController? word;
+
+  /// The full row's field whose text is the line's detail (the
+  /// translation), or null when the detail only fades (a definition, which
+  /// is usually several lines).
+  final TextEditingController? detail;
 
   @override
   State<WordRowMorph> createState() => _WordRowMorphState();
@@ -185,6 +219,7 @@ class _WordRowMorphState extends State<WordRowMorph> {
     final half = (openness / 0.5).clamp(0.0, 1.0);
     if (half == 0 || half == 1) {
       _turn = null;
+      _fields.clear();
       return half;
     }
     final turn = _turn ??= _measureTurn();
@@ -202,12 +237,79 @@ class _WordRowMorphState extends State<WordRowMorph> {
     return WordRowMorph.stagger * (y / screen).clamp(0.0, 1.0);
   }
 
+  /// The fields found while the row moves; dropped when it rests.
+  final _fields = <TextEditingController, RenderEditable>{};
+
+  /// The drawn field of [controller] in the full row, found by walking the
+  /// row's elements once per move; null when it is not there.
+  RenderEditable? _fieldOf(TextEditingController controller) {
+    final known = _fields[controller];
+    if (known != null && known.attached) return known;
+    RenderEditable? found;
+    void visit(Element element) {
+      if (found != null) return;
+      if (element is StatefulElement &&
+          element.state is EditableTextState &&
+          (element.widget as EditableText).controller == controller) {
+        found = (element.state as EditableTextState).renderEditable;
+        return;
+      }
+      element.visitChildren(visit);
+    }
+
+    if (mounted) (context as Element).visitChildren(visit);
+    if (found case final field?) _fields[controller] = field;
+    return found;
+  }
+
+  /// The texts that fly in this frame: each one typed in its field and
+  /// shown on the line.
+  List<_Flight> _flights(String detail) {
+    final fieldStyle =
+        Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
+    final word = widget.word;
+    final detailField = widget.detail;
+    final w = word?.text.trim() ?? '';
+    return [
+      if (word != null && w.isNotEmpty)
+        _Flight(
+          isWord: true,
+          text: w,
+          field: () => _fieldOf(word),
+          fieldRange: _rangeOf(word.text, w),
+          lineRange: CompactWordLine.wordRange(w),
+          from: fieldStyle,
+          to: CompactWordLine.wordStyle(context),
+        ),
+      if (detailField != null && detail.isNotEmpty)
+        _Flight(
+          isWord: false,
+          text: detail,
+          field: () => _fieldOf(detailField),
+          fieldRange: _rangeOf(detailField.text, detail),
+          lineRange: CompactWordLine.detailRange(w, detail),
+          from: fieldStyle,
+          to: CompactWordLine.detailStyle(context),
+        ),
+    ];
+  }
+
+  static TextRange _rangeOf(String text, String trimmed) {
+    final start = text.indexOf(trimmed);
+    return TextRange(start: start, end: start + trimmed.length);
+  }
+
   static const _fade = Interval(0.25, 1, curve: Curves.easeOut);
 
   @override
   Widget build(BuildContext context) {
     final t = _t;
-    // Each child as AnimatedSwitcher drew it: the one coming in fades in
+    final moving = t > 0 && t < 1;
+    final detail = widget.detail?.text.trim() ?? '';
+    final flights = moving ? _flights(detail) : const <_Flight>[];
+    final flyWord = flights.any((f) => f.isWord);
+    final flyDetail = flights.any((f) => !f.isWord);
+    // Each card as AnimatedSwitcher drew it: the one coming in fades in
     // late and scales up with a little overshoot; the one leaving does the
     // same backwards. Behind a boundary the row's fields and text are
     // recorded once and only moved.
@@ -222,13 +324,28 @@ class _WordRowMorphState extends State<WordRowMorph> {
         );
     return _Morph(
       t: Curves.easeInOutCubic.transform(t),
+      flights: flights,
       full: t < 1
-          ? part(KeyedSubtree(key: const ValueKey('full'), child: widget.full),
-              1 - t, 0.97, Alignment.topCenter)
+          ? part(
+              KeyedSubtree(
+                key: const ValueKey('full'),
+                child: HiddenFieldText(
+                  controllers: {
+                    if (flyWord) widget.word!,
+                    if (flyDetail) widget.detail!,
+                  },
+                  child: widget.full,
+                ),
+              ),
+              1 - t,
+              0.97,
+              Alignment.topCenter)
           : null,
       line: t > 0
           ? part(
-              KeyedSubtree(key: const ValueKey('line'), child: widget.line(t)),
+              KeyedSubtree(
+                  key: const ValueKey('line'),
+                  child: widget.line(flyWord, flyDetail)),
               t,
               0.92,
               Alignment.centerLeft)
@@ -237,15 +354,45 @@ class _WordRowMorphState extends State<WordRowMorph> {
   }
 }
 
+/// One text flying between its field in the full row and its place on the
+/// line: [fieldRange] of the field's text, [lineRange] of the line's.
+class _Flight {
+  const _Flight({
+    required this.isWord,
+    required this.text,
+    required this.field,
+    required this.fieldRange,
+    required this.lineRange,
+    required this.from,
+    required this.to,
+  });
+
+  /// The word, or else the detail.
+  final bool isWord;
+  final String text;
+  final RenderEditable? Function() field;
+  final TextRange fieldRange;
+  final TextRange lineRange;
+  final TextStyle from;
+  final TextStyle to;
+}
+
 enum _Part { full, line }
 
 /// The full row and its line laid over each other from the top; the card is
 /// the full row's height at [t] 0 and the line's at 1, clipping what hangs
-/// below while it glides. Either child may be missing.
+/// below while it glides, and the [flights] drawn over both. Either child
+/// may be missing.
 class _Morph extends SlottedMultiChildRenderObjectWidget<_Part, RenderBox> {
-  const _Morph({required this.t, this.full, this.line});
+  const _Morph({
+    required this.t,
+    required this.flights,
+    this.full,
+    this.line,
+  });
 
   final double t;
+  final List<_Flight> flights;
   final Widget? full;
   final Widget? line;
 
@@ -259,23 +406,41 @@ class _Morph extends SlottedMultiChildRenderObjectWidget<_Part, RenderBox> {
       };
 
   @override
-  _RenderMorph createRenderObject(BuildContext context) => _RenderMorph(t);
+  _RenderMorph createRenderObject(BuildContext context) =>
+      _RenderMorph(t, flights, Directionality.of(context));
 
   @override
   void updateRenderObject(BuildContext context, _RenderMorph renderObject) {
-    renderObject.t = t;
+    renderObject
+      ..t = t
+      ..flights = flights
+      ..textDirection = Directionality.of(context);
   }
 }
 
 class _RenderMorph extends RenderBox
     with SlottedContainerRenderObjectMixin<_Part, RenderBox> {
-  _RenderMorph(this._t);
+  _RenderMorph(this._t, this._flights, this._textDirection);
 
   double _t;
   set t(double value) {
     if (value == _t) return;
     _t = value;
     markNeedsLayout();
+  }
+
+  List<_Flight> _flights;
+  set flights(List<_Flight> value) {
+    if (identical(value, _flights)) return;
+    _flights = value;
+    markNeedsPaint();
+  }
+
+  TextDirection _textDirection;
+  set textDirection(TextDirection value) {
+    if (value == _textDirection) return;
+    _textDirection = value;
+    markNeedsPaint();
   }
 
   RenderBox? get _full => childForSlot(_Part.full);
@@ -311,19 +476,84 @@ class _RenderMorph extends RenderBox
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    void paintChildren(PaintingContext context, Offset offset) {
+    void paintAll(PaintingContext context, Offset offset) {
       if (_full case final full?) context.paintChild(full, offset);
       if (_line case final line?) context.paintChild(line, offset);
+      if (_gliding) _paintFlights(context.canvas, offset);
     }
 
     if (!_gliding) {
       _clip.layer = null;
-      paintChildren(context, offset);
+      paintAll(context, offset);
       return;
     }
     _clip.layer = context.pushClipRect(
-        needsCompositing, offset, Offset.zero & size, paintChildren,
+        needsCompositing, offset, Offset.zero & size, paintAll,
         oldLayer: _clip.layer);
+  }
+
+  /// The line's text, found in the line's render tree.
+  RenderParagraph? _lineText() {
+    RenderParagraph? found;
+    void visit(RenderObject child) {
+      if (found != null) return;
+      if (child is RenderParagraph) {
+        found = child;
+        return;
+      }
+      child.visitChildren(visit);
+    }
+
+    _line?.visitChildren(visit);
+    return found;
+  }
+
+  /// [range]'s box in [text], in this box's coordinates; null when nothing
+  /// of it is laid out.
+  Rect? _boxOf(RenderBox text, TextRange range,
+      List<TextBox> Function(TextSelection) boxes) {
+    if (!text.attached || !text.hasSize || !range.isValid) return null;
+    final found =
+        boxes(TextSelection(baseOffset: range.start, extentOffset: range.end));
+    if (found.isEmpty) return null;
+    var rect = found.first.toRect();
+    for (final box in found.skip(1)) {
+      rect = rect.expandToInclude(box.toRect());
+    }
+    return MatrixUtils.transformRect(text.getTransformTo(this), rect);
+  }
+
+  void _paintFlights(Canvas canvas, Offset offset) {
+    if (_flights.isEmpty) return;
+    final line = _lineText();
+    if (line == null) return;
+    final t = _t;
+    for (final flight in _flights) {
+      final field = flight.field();
+      if (field == null) continue;
+      final from = _boxOf(field, flight.fieldRange, field.getBoxesForSelection);
+      final to = _boxOf(line, flight.lineRange, line.getBoxesForSelection);
+      if (from == null || to == null) continue;
+      // The line's room for the text: up to its end, before the panel.
+      final lineEnd = MatrixUtils.transformPoint(
+              line.getTransformTo(this), Offset(line.size.width, 0))
+          .dx;
+      final painter = TextPainter(
+        text: TextSpan(
+            text: flight.text,
+            style: TextStyle.lerp(flight.from, flight.to, t)),
+        textDirection: _textDirection,
+        maxLines: 1,
+        ellipsis: '…',
+      )..layout(
+          maxWidth: math.max(1,
+              lerpDouble(from.width + 1, math.max(lineEnd - to.left, 1), t)!),
+        );
+      final left = lerpDouble(from.left, to.left, t)!;
+      final centre = lerpDouble(from.center.dy, to.center.dy, t)!;
+      painter.paint(canvas, offset + Offset(left, centre - painter.height / 2));
+      painter.dispose();
+    }
   }
 
   @override

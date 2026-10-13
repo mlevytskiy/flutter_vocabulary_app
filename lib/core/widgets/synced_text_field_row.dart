@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'hidden_field_text.dart';
+
 /// Colour of a field's label while it rests inside the empty, unfocused field:
 /// well lighter than typed text, so an empty field never reads as a filled
 /// one. Only the resting label -- pair it with `floatingLabelStyle:
@@ -160,7 +162,7 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
     return TextField(
       controller: controller,
       focusNode: focusNode,
-      style: style,
+      style: HiddenFieldText.styleFor(context, controller, style),
       // A forced strut keeps the rendered line height identical to what the
       // TextPainter measured, regardless of the glyphs actually typed.
       strutStyle: strutStyle,

@@ -212,7 +212,7 @@ void main() {
     expect(panel.controller.openness.value, 0.5, reason: 'the panel is settled');
     expect(find.byType(WordRowItem), findsNothing, reason: 'and so is every row');
     for (final line in tester.widgetList<CompactWordLine>(find.byType(CompactWordLine))) {
-      expect(line.reveal, 1);
+      expect(line.hideWord || line.hideDetail, isFalse, reason: 'every text has landed');
     }
     await tearDownMain(tester);
   });

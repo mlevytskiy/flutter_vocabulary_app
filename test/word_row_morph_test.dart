@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart' show WordDetailMode;
+import 'package:flutter_vocabulary_app/core/widgets/synced_text_field_row.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
 
 /// While the photo panel is open each word row turns into one line,
@@ -87,8 +88,8 @@ void main() {
                   index: 0,
                   openness: openness,
                   full: const SizedBox(key: fullKey, height: 140),
-                  line: (reveal) => CompactWordLine(
-                      key: lineKey, index: 0, word: 'run', detail: 'бігти', reveal: reveal),
+                  line: (hideWord, hideDetail) => const CompactWordLine(
+                      key: lineKey, index: 0, word: 'run', detail: 'бігти'),
                 ),
               ),
             ),
@@ -108,13 +109,10 @@ void main() {
       expect(find.byKey(fullKey), findsOneWidget, reason: 'the full row fades out');
       expect(find.byKey(lineKey), findsOneWidget, reason: 'the line fades in');
       expect(height(tester), inExclusiveRange(56, 140), reason: 'the card glides');
-      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal,
-          inExclusiveRange(0, 1));
 
       openness.value = 0.5;
       await tester.pump();
       expect(find.byKey(fullKey), findsNothing);
-      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal, 1);
       final lineHeight = height(tester);
       expect(lineHeight, lessThan(70));
 
@@ -132,6 +130,99 @@ void main() {
       expect(height(tester), 140);
     });
 
+    group('the texts fly', () {
+      late TextEditingController word;
+      late TextEditingController translation;
+      setUp(() {
+        word = TextEditingController(text: 'run');
+        translation = TextEditingController(text: 'бігти');
+      });
+      tearDown(() {
+        word.dispose();
+        translation.dispose();
+      });
+
+      Widget flying({bool detail = true}) => MaterialApp(
+            home: Scaffold(
+              body: Align(
+                alignment: Alignment.topCenter,
+                child: WordRowMorph(
+                  index: 0,
+                  openness: openness,
+                  word: word,
+                  detail: detail ? translation : null,
+                  full: SyncedTextFieldRow(
+                    leftController: word,
+                    rightController: translation,
+                    leftLabel: 'Word',
+                    rightLabel: 'Translation',
+                  ),
+                  line: (hideWord, hideDetail) => CompactWordLine(
+                      key: lineKey,
+                      index: 0,
+                      word: 'run',
+                      detail: 'бігти',
+                      hideWord: hideWord,
+                      hideDetail: hideDetail),
+                ),
+              ),
+            ),
+          );
+
+      Color? fieldColor(WidgetTester tester, TextEditingController c) => tester
+          .widget<EditableText>(find.byWidgetPredicate(
+              (w) => w is EditableText && w.controller == c))
+          .style
+          .color;
+      CompactWordLine lineOf(WidgetTester tester) =>
+          tester.widget<CompactWordLine>(find.byKey(lineKey));
+
+      testWidgets('while moving, the texts are hidden in place and drawn flying',
+          (tester) async {
+        await tester.pumpWidget(flying());
+        expect(fieldColor(tester, word)!.a, greaterThan(0));
+
+        openness.value = 0.2;
+        await tester.pump();
+        expect(tester.takeException(), isNull);
+        expect(fieldColor(tester, word)!.a, 0, reason: 'the word is flying');
+        expect(fieldColor(tester, translation)!.a, 0, reason: 'so is the translation');
+        expect(lineOf(tester).hideWord, isTrue);
+        expect(lineOf(tester).hideDetail, isTrue);
+
+        openness.value = 0.5;
+        await tester.pump();
+        expect(lineOf(tester).hideWord, isFalse, reason: 'landed: the line draws it');
+        expect(lineOf(tester).hideDetail, isFalse);
+
+        openness.value = 0.2;
+        await tester.pump();
+        expect(fieldColor(tester, word)!.a, 0, reason: 'flying back');
+        openness.value = 0;
+        await tester.pump();
+        expect(fieldColor(tester, word)!.a, greaterThan(0), reason: 'back in its field');
+        expect(fieldColor(tester, translation)!.a, greaterThan(0));
+      });
+
+      testWidgets('a detail without its field (a definition) only fades', (tester) async {
+        await tester.pumpWidget(flying(detail: false));
+        openness.value = 0.2;
+        await tester.pump();
+        expect(fieldColor(tester, translation)!.a, greaterThan(0));
+        expect(lineOf(tester).hideWord, isTrue);
+        expect(lineOf(tester).hideDetail, isFalse);
+      });
+
+      testWidgets('an empty word does not fly', (tester) async {
+        word.text = '';
+        await tester.pumpWidget(flying());
+        openness.value = 0.2;
+        await tester.pump();
+        expect(lineOf(tester).hideWord, isFalse);
+        expect(lineOf(tester).hideDetail, isTrue);
+      });
+    });
+
     testWidgets('closing again mid-morph keeps one field per controller in the end',
         (tester) async {
       final controller = TextEditingController(text: 'run');
@@ -144,7 +235,7 @@ void main() {
             index: 0,
             openness: openness,
             full: TextField(controller: controller, focusNode: focus),
-            line: (reveal) => CompactWordLine(index: 0, word: 'run', detail: '', reveal: reveal),
+            line: (hideWord, hideDetail) => const CompactWordLine(index: 0, word: 'run', detail: ''),
           ),
         ),
       ));
@@ -160,12 +251,11 @@ void main() {
       expect(focus.hasFocus, isTrue);
     });
 
-    testWidgets('built while open, it is the whole line at once', (tester) async {
+    testWidgets('built while open, it is the line at once', (tester) async {
       openness.value = 0.5;
       await tester.pumpWidget(host());
       expect(find.byKey(lineKey), findsOneWidget);
       expect(find.byKey(fullKey), findsNothing);
-      expect(tester.widget<CompactWordLine>(find.byKey(lineKey)).reveal, 1);
     });
 
     testWidgets('a rebuild that changes nothing does not animate', (tester) async {
