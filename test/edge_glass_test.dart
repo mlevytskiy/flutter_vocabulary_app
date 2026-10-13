@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
@@ -68,60 +67,33 @@ void main() {
     });
   });
 
-  group('simple glass while the panel slides (Android)', () {
+  group('which glass', () {
     tearDown(() => EdgeGlass.debugLiquidSupported = null);
 
-    Widget glass({required bool simple}) => MaterialApp(
-          home: SimpleGlassScope(
-            simple: simple,
-            child: const Align(
-              alignment: Alignment.topRight,
-              child: SizedBox(
-                width: 52,
-                height: 120,
-                child: EdgeGlass(
-                    settings: LiquidGlassSettings(), radius: 16, flare: 14),
-              ),
+    Widget glass() => const MaterialApp(
+          home: Align(
+            alignment: Alignment.topRight,
+            child: SizedBox(
+              width: 52,
+              height: 120,
+              child: EdgeGlass(settings: LiquidGlassSettings(), radius: 16, flare: 14),
             ),
           ),
         );
 
-    /// The opacity of the liquid glass and of its frosted stand-in.
-    (double, double) shown(WidgetTester tester) {
-      final liquid = tester.widget<Opacity>(find
-          .ancestor(of: find.byType(LiquidGlassLayer), matching: find.byType(Opacity))
-          .first);
-      final frosted = tester.renderObject<RenderAnimatedOpacity>(find
-          .ancestor(of: find.byType(BackdropFilter), matching: find.byType(AnimatedOpacity))
-          .first);
-      return (liquid.opacity, frosted.opacity.value);
-    }
-
-    testWidgets('on Android the frosted glass stands in, then fades back to liquid',
+    testWidgets('Android always draws the frosted blur, never the liquid glass',
         variant: TargetPlatformVariant.only(TargetPlatform.android), (tester) async {
       EdgeGlass.debugLiquidSupported = true;
-      await tester.pumpWidget(glass(simple: false));
-      expect(shown(tester), (1.0, 0.0), reason: 'at rest: liquid');
-
-      await tester.pumpWidget(glass(simple: true));
-      expect(shown(tester), (0.0, 1.0), reason: 'sliding: frosted at once');
-
-      await tester.pumpWidget(glass(simple: false));
-      await tester.pump(const Duration(milliseconds: 100));
-      final (liquid, frosted) = shown(tester);
-      expect(liquid, 1.0, reason: 'liquid back underneath');
-      expect(frosted, inExclusiveRange(0.0, 1.0), reason: 'frosted fading out');
-      await tester.pumpAndSettle();
-      expect(shown(tester), (1.0, 0.0));
-      expect(find.byType(LiquidGlassLayer), findsOneWidget,
-          reason: 'one liquid glass all along, never rebuilt');
+      await tester.pumpWidget(glass());
+      expect(find.byType(LiquidGlassLayer), findsNothing);
+      expect(find.byType(BackdropFilter), findsOneWidget);
     });
 
-    testWidgets('elsewhere the liquid glass stays',
+    testWidgets('iOS draws the liquid glass where shaders work',
         variant: TargetPlatformVariant.only(TargetPlatform.iOS), (tester) async {
       EdgeGlass.debugLiquidSupported = true;
-      await tester.pumpWidget(glass(simple: true));
-      expect(shown(tester), (1.0, 0.0));
+      await tester.pumpWidget(glass());
+      expect(find.byType(LiquidGlassLayer), findsOneWidget);
     });
   });
 

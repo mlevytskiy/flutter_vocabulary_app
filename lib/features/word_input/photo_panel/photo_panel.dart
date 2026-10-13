@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/services/system_gesture_exclusion.dart';
-import 'looks/edge_glass.dart';
 import 'looks/looks.dart';
 import 'looks/photo_panel_look.dart';
 import 'photo_panel_controller.dart';
@@ -205,32 +204,15 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     _animateTo(widget.controller.stop.openness);
   }
 
-  /// [afterDrag]: the settle after a drag let go, which keeps the liquid
-  /// glass; a slide the panel makes on its own between closed and open draws
-  /// the simple glass on Android ([_simpleGlass]).
-  void _animateTo(double target, {bool afterDrag = false}) {
+  void _animateTo(double target) {
     if (_animatingTo == target && _openness.isAnimating) return;
     if (_openness.value == target && !_openness.isAnimating) return;
     if (_openness.value == 0 && target > 0) _unfocus();
     _animatingTo = target;
-    _setSimpleGlass(!afterDrag && (_openness.value == 0 || target == 0));
     _openness
         .animateTo(target,
             duration: _settleDuration, curve: Curves.easeOutCubic)
-        .whenCompleteOrCancel(() {
-      _animatingTo = null;
-      if (!_openness.isAnimating) _setSimpleGlass(false);
-    });
-  }
-
-  /// The panel slides between closed and open on its own, while the word
-  /// rows change to or from their one line under it: on Android the glass
-  /// draws its simple, frosted form until the slide ends ([SimpleGlassScope]).
-  bool _simpleGlass = false;
-
-  void _setSimpleGlass(bool value) {
-    if (_simpleGlass == value || !mounted) return;
-    setState(() => _simpleGlass = value);
+        .whenCompleteOrCancel(() => _animatingTo = null);
   }
 
   /// Opening closes the keyboard; the field keeps its text (spec AC-03).
@@ -287,10 +269,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       await _beforeOpen();
       if (!mounted) return;
     }
-    _animateTo(stop.openness, afterDrag: true);
+    _animateTo(stop.openness);
     widget.controller.setStop(stop);
     // The same stop again does not notify; settle back to it anyway.
-    _animateTo(stop.openness, afterDrag: true);
+    _animateTo(stop.openness);
   }
 
   // The tab's height on the words page.
@@ -739,8 +721,6 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
           final t = _openness.value;
           return BackdropGroup(
             backdropKey: _backdropKey,
-            child: SimpleGlassScope(
-            simple: _simpleGlass,
             child: Stack(
               children: [
                 // Kept in the tree during a drag that started on it, so the
@@ -754,7 +734,6 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                       key: const ValueKey('panel'),
                       child: _panel(context, photos, t)),
               ],
-            ),
             ),
           );
         },
