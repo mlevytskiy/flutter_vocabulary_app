@@ -22,7 +22,7 @@
 | T15 | [Keep the tab on every pager page and open the panel only over the words page](./T15-ui-pager-integration.md) | ui | Maksym | M | T14 · roadmap #22 merged | todo |
 | T16 | [Build design variant B](./T16-ui-look-b.md) | ui | Maksym | M | T11 | done |
 | T17 | [Build design variant C](./T17-ui-look-c.md) | ui | Maksym | M | T11 | done |
-| T18 | [Add the temporary "Photo panel design" choice to Settings](./T18-ui-settings-design-choice.md) | ui | Maksym | S | T3 | todo |
+| T18 | [Add the temporary "Photo panel design" choice to Settings](./T18-ui-settings-design-choice.md) | ui | Maksym | S | T3 | done |
 | T19 | [Run the panel behaviour suite against every look and write the device-pass checklist](./T19-tests-all-looks-suite-and-device-pass.md) | tests | Maksym | M | T10, T15, T16, T17, T18 | todo |
 | T20 | [Keep the picked look and remove the others, the variant choice and its key](./T20-wiring-design-pick-cleanup.md) | wiring | Maksym | S | T19 · owner's design pick | todo |
 
