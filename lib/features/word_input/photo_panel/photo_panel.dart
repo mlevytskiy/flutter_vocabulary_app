@@ -596,7 +596,12 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     final rect = _panelRect(t);
     final p = t <= 0.5 ? 0.0 : (t - 0.5) / 0.5;
     final half = p < 1;
-    if (half && _shown != null) {
+    // A drag back that started on the full-open handle keeps the full-open
+    // content, unseen, until it ends: removing the handle would drop the
+    // drag and leave the panel between stops (spec AC-08).
+    final keepFull = !half ||
+        (_panelDragging && _dragStartStop == PanelStop.fullOpen);
+    if (!keepFull && _shown != null) {
       _shown = null;
       _disposeZooms();
     }
@@ -610,6 +615,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
           children: [
             if (half)
               Opacity(
+                key: const ValueKey('half'),
                 opacity: 1 - p,
                 child: OverflowBox(
                   alignment: Alignment.topLeft,
@@ -619,23 +625,29 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                 ),
               ),
             if (p > 0 && p < 1) _growingPhoto(context, photos, rect.size, p),
-            if (!half) _fullContent(context, photos),
+            if (keepFull)
+              Offstage(
+                key: const ValueKey('full'),
+                offstage: half,
+                child: _fullContent(context, photos),
+              ),
           ],
         ),
       ),
     );
-    if (half) {
-      // In half-open a horizontal drag anywhere on the panel moves it; a
-      // vertical one scrolls the column.
-      content = GestureDetector(
-        onHorizontalDragStart: (_) => _beginPanelDrag(),
-        onHorizontalDragUpdate: (d) => _panelDragBy(d.delta.dx),
-        onHorizontalDragEnd: (d) =>
-            _endPanelDrag(d.velocity.pixelsPerSecond.dx),
-        onHorizontalDragCancel: () => _endPanelDrag(0),
-        child: content,
-      );
-    }
+    // In half-open a horizontal drag anywhere on the panel moves it; a
+    // vertical one scrolls the column. Always in the tree, so a drag that
+    // reaches full-open is not dropped on the way.
+    final dragsPanel = half || _panelDragging;
+    content = GestureDetector(
+      onHorizontalDragStart: dragsPanel ? (_) => _beginPanelDrag() : null,
+      onHorizontalDragUpdate: dragsPanel ? (d) => _panelDragBy(d.delta.dx) : null,
+      onHorizontalDragEnd: dragsPanel
+          ? (d) => _endPanelDrag(d.velocity.pixelsPerSecond.dx)
+          : null,
+      onHorizontalDragCancel: dragsPanel ? () => _endPanelDrag(0) : null,
+      child: content,
+    );
     return Positioned.fromRect(
       rect: rect,
       child: KeyedSubtree(key: PhotoPanel.panelKey, child: content),
