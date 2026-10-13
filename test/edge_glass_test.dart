@@ -87,7 +87,10 @@ void main() {
                 width: look.halfOpenWidth,
                 height: 400,
                 child: look.buildPanelSurface(context,
-                    fullness: fullness, child: const Text('content')),
+                    fullness: fullness,
+                    halfOpenAt: Offset.zero,
+                    halfOpenSize: Size(look.halfOpenWidth, 400),
+                    child: const Text('content')),
               ),
             ),
           );

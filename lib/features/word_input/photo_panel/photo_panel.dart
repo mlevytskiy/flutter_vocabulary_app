@@ -111,6 +111,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// The half-open column of small photos.
   final _column = ScrollController();
 
+  /// The tab's and the panel's glass share one read of the screen behind
+  /// them per frame (Impeller); one key for the panel's life.
+  final _backdropKey = BackdropKey();
+
   /// Full-open: the large photo shown now (null outside full-open) and each
   /// large photo's zoom, kept while full-open lasts.
   int? _shown;
@@ -605,9 +609,13 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       _shown = null;
       _disposeZooms();
     }
+    // The half-open size from exact numbers: one that differs only in
+    // rounding would still count as a new size.
     Widget content = look.buildPanelSurface(
       context,
       fullness: p,
+      halfOpenAt: p == 0 ? Offset.zero : _panelRect(0.5).topLeft - rect.topLeft,
+      halfOpenSize: Size(_halfWidth, _page.height),
       child: ClipRect(
         child: Stack(
           fit: StackFit.expand,
@@ -711,19 +719,22 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         animation: _openness,
         builder: (context, _) {
           final t = _openness.value;
-          return Stack(
-            children: [
-              // Kept in the tree during a drag that started on it, so the
-              // drag is not cancelled when the tab fades out.
-              if (t < 0.5 || _tabDrag == _TabDrag.open)
-                KeyedSubtree(
-                    key: const ValueKey('tab'),
-                    child: _tab(context, photos, t)),
-              if (t > 0)
-                KeyedSubtree(
-                    key: const ValueKey('panel'),
-                    child: _panel(context, photos, t)),
-            ],
+          return BackdropGroup(
+            backdropKey: _backdropKey,
+            child: Stack(
+              children: [
+                // Kept in the tree during a drag that started on it, so the
+                // drag is not cancelled when the tab fades out.
+                if (t < 0.5 || _tabDrag == _TabDrag.open)
+                  KeyedSubtree(
+                      key: const ValueKey('tab'),
+                      child: _tab(context, photos, t)),
+                if (t > 0)
+                  KeyedSubtree(
+                      key: const ValueKey('panel'),
+                      child: _panel(context, photos, t)),
+              ],
+            ),
           );
         },
       );

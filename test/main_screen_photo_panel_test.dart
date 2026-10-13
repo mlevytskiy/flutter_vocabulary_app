@@ -11,6 +11,7 @@ import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/edge_glass.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
@@ -170,6 +171,39 @@ void main() {
             matching: find.byWidgetPredicate(
                 (w) => w is TextField && w.controller?.text == 'word1')),
         findsOneWidget);
+    await tearDownMain(tester);
+  });
+
+  testWidgets('the glass slides and is covered, never resized or refaded (Android cost)',
+      (tester) async {
+    await pumpMain(tester);
+    FocusManager.instance.primaryFocus?.unfocus();
+    final glass = find.descendant(
+        of: find.byKey(PhotoPanel.panelKey), matching: find.byType(EdgeGlass));
+    final sizes = <(double, double)>{};
+    final settings = <Object>{};
+    void record() {
+      if (!tester.any(glass)) return;
+      final size = tester.getSize(glass);
+      sizes.add((size.width, size.height));
+      settings.add(tester.widget<EdgeGlass>(glass).settings);
+    }
+
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      record();
+    }
+    expect(stop(tester), PanelStop.halfOpen);
+    await tester.tap(find.byKey(PhotoPanel.expandKey));
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      record();
+    }
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.fullOpen);
+    expect(sizes, hasLength(1), reason: 'one size all the way: $sizes');
+    expect(settings, hasLength(1), reason: 'never faded through its settings');
     await tearDownMain(tester);
   });
 

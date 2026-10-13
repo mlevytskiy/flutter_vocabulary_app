@@ -247,7 +247,9 @@ class _WordRowMorphState extends State<WordRowMorph>
           child: ScaleTransition(
             scale: scale,
             alignment: line ? Alignment.centerLeft : Alignment.topCenter,
-            child: child,
+            // The scale repaints every frame; behind a boundary the row's
+            // fields and text are recorded once and only moved.
+            child: RepaintBoundary(child: child),
           ),
         );
       },

@@ -78,6 +78,8 @@ class EdgeGlass extends StatelessWidget {
     final edge = size.width - _past;
     return LiquidGlassLayer(
       settings: settings,
+      // One backdrop read with the other glass under the same BackdropGroup.
+      useBackdropGroup: true,
       child: LiquidGlassBlendGroup(
         blend: flare,
         child: Stack(

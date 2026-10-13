@@ -115,20 +115,34 @@ class LookA extends PhotoPanelLook {
       : Theme.of(context).colorScheme.surfaceContainerHigh;
 
   /// Half-open is a glass column stuck to the screen edge, its flares
-  /// running up over the top bar; on the way to full-open the glass fades
-  /// out and the dark full-open surface fades in.
+  /// running up over the top bar; on the way to full-open the dark full-open
+  /// surface fades in over it.
+  ///
+  /// The glass is always drawn at [halfOpenSize], at [halfOpenAt], so it
+  /// slides in and out rather than growing, and it is covered rather than
+  /// faded: the package rebuilds the glass's shape texture whenever its size
+  /// or thickness changes, which costs a frame's worth of GPU time on Android.
   @override
   Widget buildPanelSurface(BuildContext context,
-          {required double fullness, required Widget child}) =>
+          {required double fullness,
+          required Offset halfOpenAt,
+          required Size halfOpenSize,
+          required Widget child}) =>
       Stack(
         fit: StackFit.expand,
         clipBehavior: Clip.none,
         children: [
           if (fullness < 1)
-            EdgeGlass(
-              settings: _panelGlass.copyWith(visibility: 1 - fullness),
-              radius: _panelRadius,
-              flare: _panelFlare,
+            Positioned(
+              left: halfOpenAt.dx,
+              top: halfOpenAt.dy,
+              width: halfOpenSize.width,
+              height: halfOpenSize.height,
+              child: const EdgeGlass(
+                settings: _panelGlass,
+                radius: _panelRadius,
+                flare: _panelFlare,
+              ),
             ),
           if (fullness > 0)
             Opacity(

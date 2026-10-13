@@ -52,8 +52,19 @@ abstract class PhotoPanelLook {
   /// [fullness] from 0 (half-open) to 1 (full-open). It must give [child] a
   /// `Material` ancestor for the controls' ink. The default is a `Material`
   /// in [panelColor], blended by [fullness], with elevation 8.
+  ///
+  /// [halfOpenSize] is the half-open panel's size, exactly the same while
+  /// the panel moves, at [halfOpenAt] in the surface's coordinates: on the
+  /// way to half-open that spot rides on the panel's leading edge, on the way
+  /// to full-open it stays where the half-open panel was. A surface that is
+  /// costly to resize (glass) can draw there instead of across the whole,
+  /// changing surface. (Two values, not a `Rect`: a rect's width comes back
+  /// with rounding from its edges.)
   Widget buildPanelSurface(BuildContext context,
-          {required double fullness, required Widget child}) =>
+          {required double fullness,
+          required Offset halfOpenAt,
+          required Size halfOpenSize,
+          required Widget child}) =>
       Material(
         color: Color.lerp(panelColor(context, fullOpen: false),
             panelColor(context, fullOpen: true), fullness),
