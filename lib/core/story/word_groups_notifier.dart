@@ -52,6 +52,11 @@ class WordGroupsState {
     this.groups = const [],
     this.selectedGroupId,
   });
+
+  /// With any dialogue group the learn page always shows the group pager,
+  /// however few words the session has (get-words-from-subtitles-improvment
+  /// AC-25).
+  bool get hasDialogueGroups => groups.any((g) => g.dialogueId != null);
 }
 
 /// Asks the story run tracker to start a run for a group that has neither a
@@ -180,6 +185,9 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
     final id = selectedGroupIdOf(session);
     final group = session.groups.where((g) => g.id == id).firstOrNull;
     if (group == null || group.storyRunId != null) return;
+    // A dialogue group draws only on Start (get-words-from-subtitles-improvment
+    // AC-24).
+    if (group.dialogueId != null) return;
     if ((await _runsInProgress(session.sessionId)).contains(group.id)) return;
     try {
       await ref.read(storyRunStartHookProvider)(session.sessionId, group);

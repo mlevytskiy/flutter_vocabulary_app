@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import '../dialogues/dialogue_rules.dart' show cardName;
+import '../models/film_dialogue.dart';
 import '../models/session.dart';
 import '../models/word_group.dart';
 import '../models/word_pair.dart';
@@ -21,6 +23,10 @@ const String allWordsName = 'All words';
 /// The name of the group the words added beside a story group form (AC-02b).
 const String newWordsName = 'New words';
 
+/// The name of the group the words outside every dialogue group form when the
+/// session has dialogue groups (get-words-from-subtitles-improvment AC-13).
+const String otherWordsName = 'Other words';
+
 /// The session's words to learn: a row with an English word plus a translation
 /// or a definition (learn-part-step-1). A row with no [WordPair.rowId] cannot
 /// belong to a group and is left out.
@@ -34,6 +40,10 @@ String groupedWordsKey(Session session) {
   final entries = [
     for (final w in wordsToLearn(session)) '${w.rowId}\t${w.word.trim()}',
   ]..sort();
+  // A dialogue that lost a word or became hidden regroups too (AC-26).
+  for (final d in session.dialogues) {
+    entries.add('${d.id}\t${d.hidden}\t${d.wordRowIds.join(',')}');
+  }
   return entries.join('\n');
 }
 
@@ -113,7 +123,23 @@ GroupingPlan planGrouping(
   if (session.groupedWordsKey == groupedWordsKey(session)) {
     return const GroupingUnchanged();
   }
+  if (!_hasDialogues(session)) return _plan(session, runsInProgress, newId);
+  final dialogueGroups = _dialogueGroups(session);
+  final plan = _plan(_withoutDialogueGroups(session, dialogueGroups),
+      runsInProgress, newId, dialogueGroups.isNotEmpty);
+  return plan is GroupingLocal
+      ? GroupingLocal([...dialogueGroups, ...plan.groups], plan.waiting)
+      : plan;
+}
+
+GroupingPlan _plan(
+  Session session,
+  Set<String> runsInProgress,
+  String Function()? newId, [
+  bool? besideDialogueGroups,
+]) {
   final basis = _Basis(session, runsInProgress);
+
   final make = newId ?? _randomId;
 
   if (basis.learn.length <= maxGroupSize) {
@@ -121,9 +147,22 @@ GroupingPlan planGrouping(
     if (basis.free.isEmpty) return GroupingLocal(basis.storyGroups, const []);
     final hasStory = basis.storyGroups.isNotEmpty;
     final reused = basis.others.isEmpty ? null : basis.others.first;
+    final String name;
+    if (besideDialogueGroups == null) {
+      name = hasStory ? newWordsName : allWordsName;
+    } else {
+      // A session with dialogues keeps its group's name (AC-17).
+      name = reused?.name ??
+          (besideDialogueGroups
+              ? otherWordsName
+              : hasStory
+                  ? newWordsName
+                  : allWordsName);
+    }
     final own = WordGroup()
       ..id = reused?.id ?? make()
-      ..name = hasStory ? newWordsName : allWordsName
+      ..name = name
+      ..rowIds = [for (final w in basis.free) w.rowId]
       ..rowIds = [for (final w in basis.free) w.rowId];
     return GroupingLocal([...basis.storyGroups, own], const []);
   }
@@ -159,6 +198,23 @@ SplitResult applySplit(
   Set<String> runsInProgress = const {},
   String Function()? newId,
 ]) {
+  if (!_hasDialogues(session)) {
+    return _applySplit(session, split, runsInProgress, newId);
+  }
+  final dialogueGroups = _dialogueGroups(session);
+  final result = _applySplit(_withoutDialogueGroups(session, dialogueGroups),
+      split, runsInProgress, newId);
+  return result is SplitOk
+      ? SplitOk([...dialogueGroups, ...result.groups], result.waiting)
+      : result;
+}
+
+SplitResult _applySplit(
+  Session session,
+  List<SplitGroup> split,
+  Set<String> runsInProgress,
+  String Function()? newId,
+) {
   final basis = _Basis(session, runsInProgress);
   if (basis.learn.length <= maxGroupSize || basis.newWords.isEmpty) {
     return const SplitInvalid();
@@ -250,6 +306,83 @@ String? selectedGroupIdOf(Session session) {
     if (g.id == session.selectedGroupId) return g.id;
   }
   return session.groups.isEmpty ? null : session.groups.first.id;
+}
+
+/// A session that has, or had, film dialogues groups them first.
+bool _hasDialogues(Session session) =>
+    session.dialogues.isNotEmpty ||
+    session.groups.any((g) => g.dialogueId != null);
+
+/// The id a dialogue's group is made with, so planning and applying a split
+/// agree on it.
+String _dialogueGroupId(String dialogueId) => 'dialogue-$dialogueId';
+
+/// The dialogue groups, in pager order (sad §4): a dialogue that already has
+/// a group keeps it with the words it still holds; any other visible dialogue
+/// gets one of its words to learn that are in no group yet (AC-06, AC-17).
+/// Dialogue groups are any size (AC-15) and never gain words; one left with
+/// none is gone, its dialogue with it or not (AC-26).
+List<WordGroup> _dialogueGroups(Session session) {
+  final learn = {for (final w in wordsToLearn(session)) w.rowId};
+  final visible = [
+    for (final d in session.dialogues)
+      if (!d.hidden) d,
+  ];
+  final existing = {
+    for (final g in session.groups)
+      if (g.dialogueId != null) g.dialogueId!: g,
+  };
+  final taken = <String>{
+    for (final g in session.groups)
+      if (g.dialogueId == null) ...g.rowIds.where(learn.contains),
+  };
+  final byDialogue = <String, WordGroup>{};
+  for (final d in visible) {
+    final g = existing[d.id];
+    if (g == null) continue;
+    final linked = d.wordRowIds.toSet();
+    final ids = [
+      for (final id in g.rowIds)
+        if (linked.contains(id) && learn.contains(id) && taken.add(id)) id,
+    ];
+    if (ids.isNotEmpty) byDialogue[d.id] = g.copy()..rowIds = ids;
+  }
+  for (final d in visible) {
+    if (existing.containsKey(d.id)) continue;
+    final ids = [
+      for (final id in d.wordRowIds)
+        if (learn.contains(id) && taken.add(id)) id,
+    ];
+    if (ids.isEmpty) continue;
+    byDialogue[d.id] = WordGroup()
+      ..id = _dialogueGroupId(d.id)
+      ..rowIds = ids
+      ..dialogueId = d.id;
+  }
+  final carded = <FilmDialogue>[
+    for (final d in visible)
+      if (byDialogue.containsKey(d.id)) d,
+  ];
+  return [
+    for (final d in carded) byDialogue[d.id]!..name = cardName(d, carded),
+  ];
+}
+
+/// The session as the topic grouping sees it: no dialogue group, and none of
+/// their words.
+Session _withoutDialogueGroups(
+    Session session, List<WordGroup> dialogueGroups) {
+  final held = {for (final g in dialogueGroups) ...g.rowIds};
+  return Session()
+    ..sessionId = session.sessionId
+    ..words = [
+      for (final w in session.words)
+        if (!held.contains(w.rowId)) w,
+    ]
+    ..groups = [
+      for (final g in session.groups)
+        if (g.dialogueId == null) g,
+    ];
 }
 
 /// A group has a story, or a run going, and so never changes its words.

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
@@ -349,5 +350,59 @@ void main() {
     expect(await store.currentSessionId(), cur.sessionId);
     expect(container.read(wordInputNotifierProvider).value!.sessionId, cur.sessionId);
     expect(container.read(wordInputNotifierProvider).value!.groups, isEmpty);
+  });
+
+  group('dialogue groups (get-words-from-subtitles-improvment AC-24, AC-25)',
+      () {
+    Session withDialogues() {
+      final s = sessionOf(5);
+      s.dialogues = [
+        FilmDialogue()
+          ..id = 'd1'
+          ..lines = ['wr1']
+          ..wordRowIds = ['r1'],
+        FilmDialogue()
+          ..id = 'd2'
+          ..lines = ['wr2']
+          ..wordRowIds = ['r2'],
+      ];
+      return s;
+    }
+
+    test('no story run starts on opening or selecting a dialogue group',
+        () async {
+      await makeCurrent(withDialogues());
+
+      await current().ensureGrouped();
+      expect(stateOf().groups.map((g) => g.dialogueId), ['d1', 'd2', null]);
+      expect(stateOf().selectedGroupId, stateOf().groups.first.id);
+      expect(started, isEmpty);
+
+      await current().select(stateOf().groups[1].id);
+      expect(started, isEmpty);
+    });
+
+    test('"Other words" still starts its story on its own', () async {
+      final cur = await makeCurrent(withDialogues());
+      await current().ensureGrouped();
+
+      final other = stateOf().groups.last;
+      expect(other.name, otherWordsName);
+      await current().select(other.id);
+      expect(started, ['${cur.sessionId}:${other.id}']);
+    });
+
+    test('the group pager always shows with a dialogue group', () async {
+      await makeCurrent(withDialogues());
+      await current().ensureGrouped();
+      expect(stateOf().hasDialogueGroups, isTrue);
+    });
+
+    test('without dialogues nothing changes', () async {
+      await makeCurrent(sessionOf(5));
+      await current().ensureGrouped();
+      expect(stateOf().hasDialogueGroups, isFalse);
+      expect(stateOf().groups.single.name, allWordsName);
+    });
   });
 }
