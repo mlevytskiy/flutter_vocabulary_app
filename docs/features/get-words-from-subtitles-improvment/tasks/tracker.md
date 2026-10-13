@@ -22,7 +22,7 @@
 | T15 | [Group dialogue words into dialogue groups before the existing grouping rules](./T15-app-dialogue-grouping.md) | domain | Maksym | M | T12 | done |
 | T16 | [Add the "Get dialogues from subtitles" switch to Settings](./T16-app-dialogues-setting.md) | ui | Maksym | S | — | done |
 | T17 | [Carry dialogues from the subtitle import to Done and save them with the words](./T17-app-import-with-dialogues.md) | app | Maksym | M | T4, T14, T16 | done |
-| T18 | [Apply the edit rule to dialogues whenever a word changes or is deleted](./T18-app-dialogues-follow-edits.md) | app | Maksym | S | T14, T17 | todo |
+| T18 | [Apply the edit rule to dialogues whenever a word changes or is deleted](./T18-app-dialogues-follow-edits.md) | app | Maksym | S | T14, T17 | done |
 | T19 | [Show the main screen as a pager with one read-only dialogue page per dialogue](./T19-app-main-screen-pager.md) | ui | Maksym | M | T17, T13 | todo |
 | T20 | [Start, follow and collect scene runs in the app, and show them in Story runs](./T20-app-scene-run-tracking.md) | app | Maksym | M | T5, T12 | todo |
 | T21 | [Offer "Dialogs from movie" on the learn page with dialogue groups](./T21-app-learn-page-dialogue-groups.md) | ui | Maksym | M | T11, T15 | todo |

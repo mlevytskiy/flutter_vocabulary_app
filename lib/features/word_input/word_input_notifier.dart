@@ -222,6 +222,8 @@ class WordInputNotifier extends _$WordInputNotifier {
       definitionMarkedFilled:
           definitionMarkedFilled ?? current.definitionMarkedFilled,
       sourceId: clearSourceId ? null : sourceId ?? current.sourceId,
+      // An edited row is the same row: its groups and dialogues follow it.
+      rowId: current.rowId,
     );
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
@@ -375,6 +377,9 @@ class WordInputNotifier extends _$WordInputNotifier {
   void _scheduleSave() {
     final session = state.value;
     if (session == null) return;
+    // Dialogues follow their words in the same save (get-words-from-
+    // subtitles-improvment AC-11, AC-26); links only shrink.
+    if (session.dialogues.isNotEmpty) session.dialogues = afterEdit(session);
     final now = DateTime.now();
     session.updatedAt = now;
     session.lastLocalModifiedAt = now;
