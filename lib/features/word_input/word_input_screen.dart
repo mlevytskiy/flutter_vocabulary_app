@@ -1228,6 +1228,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
         addWords: (words) {
           if (mounted) _addWordsFromPhoto(words);
         },
+        addDialogues: (dialogues, keptCount) {
+          if (mounted) ref.read(wordInputNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
+        },
       );
 
   /// import-from-quizlet: the "Import from Quizlet" speed-dial item. On Done

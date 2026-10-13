@@ -115,4 +115,75 @@ void main() {
   test('the default timeout is 240 s', () {
     expect(SubtitleWordsService.defaultTimeout, const Duration(seconds: 240));
   });
+
+  group('dialogues (get-words-from-subtitles-improvment T17)', () {
+    const ok = {
+      'words': [
+        {'word': 'reluctant', 'translation': 'неохочий', 'description': 'Unwilling.', 'context': 'I was reluctant to leave.'},
+      ],
+      'model': 'claude-haiku-4-5-20251001',
+      'timings': {'aiMs': 1},
+      'usage': {'inputTokens': 1, 'outputTokens': 1},
+    };
+
+    Future<SubtitleWordsResult> pickWith(SubtitleWordsService service, bool dialogues) => service.pickWords(
+          lines: const ['I was reluctant to leave.'],
+          purpose: ImportPurpose.frequentWords,
+          level: EnglishLevel.c1,
+          maximum: 30,
+          model: SubtitleModel.haiku45,
+          sessionWords: const ['tide'],
+          dialogues: dialogues,
+        );
+
+    test('off sends today\'s body, with no dialogues key (AC-01)', () async {
+      await pickWith(serviceAnswering(200, ok), false);
+      expect((jsonDecode(sent.body) as Map).keys,
+          ['lines', 'purpose', 'level', 'maximum', 'model', 'sessionWords']);
+    });
+
+    test('on asks for dialogues', () async {
+      await pickWith(serviceAnswering(200, ok), true);
+      expect(jsonDecode(sent.body)['dialogues'], true);
+    });
+
+    test('the checked dialogues come back with the words', () async {
+      final result = await pickWith(
+          serviceAnswering(200, {
+            ...ok,
+            'dialogues': [
+              {
+                'lines': ['- Stay?', '- I was reluctant to leave.'],
+                'words': ['reluctant'],
+              },
+            ],
+          }),
+          true);
+      expect(result.words.single.word, 'reluctant');
+      expect(result.dialogues.single.lines, ['- Stay?', '- I was reluctant to leave.']);
+      expect(result.dialogues.single.words, ['reluctant']);
+    });
+
+    test('an answer without dialogues has none (AC-07)', () async {
+      final result = await pickWith(serviceAnswering(200, ok), true);
+      expect(result.words, hasLength(1));
+      expect(result.dialogues, isEmpty);
+    });
+
+    test('cut-off dialogues are "could not pick" (AC-08)', () async {
+      try {
+        await pickWith(
+            serviceAnswering(200, {
+              ...ok,
+              'dialogues': [
+                {'lines': ['- Stay?']},
+              ],
+            }),
+            true);
+        fail('expected a SubtitleWordsException');
+      } on SubtitleWordsException catch (e) {
+        expect(e.error, SubtitleWordsError.notPicked);
+      }
+    });
+  });
 }

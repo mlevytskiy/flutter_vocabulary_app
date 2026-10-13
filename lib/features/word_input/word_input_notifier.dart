@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/dialogues/dialogue_rules.dart';
+import '../../core/models/film_dialogue.dart';
 import '../../core/models/session.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/session_store.dart';
+import '../../core/services/source_photo_store.dart' show uuidV4;
 
 part 'word_input_notifier.g.dart';
 
@@ -255,6 +259,37 @@ class WordInputNotifier extends _$WordInputNotifier {
     // growing that row is not a content change. Stamping it would restart the
     // session clock on a launch where the user did nothing at all.
     if (newPairs.every((p) => p.isEmpty)) return;
+    _scheduleSave();
+  }
+
+  /// Keeps the film dialogues of a subtitle import whose [keptCount] words
+  /// were just added at the end of the session (get-words-from-subtitles-
+  /// improvment AC-03, AC-10): each is linked to those rows only, loses the
+  /// words the learner removed, is dropped when none is left, and goes after
+  /// the session's existing dialogues. In a session with a shared link they
+  /// wait to be appended to it (ADR-0005). Called right after the words are
+  /// added, so the same debounced write saves both.
+  void addImportDialogues(List<ImportedDialogue> dialogues, int keptCount) {
+    if (!state.hasValue || keptCount <= 0) return;
+    final session = state.value!;
+    final filled = [for (final w in session.words) if (!w.isEmpty) w];
+    final rows = filled.sublist(max(0, filled.length - keptCount));
+    for (final w in rows) {
+      if (w.rowId.isEmpty) w.rowId = uuidV4();
+    }
+    final kept = atDone(dialogues, rows);
+    if (kept.isEmpty) return;
+    if (session.publishedId != null && session.editToken != null) {
+      final importId = uuidV4();
+      for (final d in kept) {
+        d
+          ..importId = importId
+          ..importRowIds = [for (final w in rows) w.rowId]
+          ..pushState = PushState.pending;
+      }
+    }
+    session.dialogues = [...session.dialogues, ...kept];
+    state = AsyncData(session);
     _scheduleSave();
   }
 
