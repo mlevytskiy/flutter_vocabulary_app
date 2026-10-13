@@ -192,4 +192,23 @@ void main() {
           ['What?', 'Fine.', 'What? (2)', 'What? (3)']);
     });
   });
+
+  group('afterPublish (T23, ADR-0005)', () {
+    test('sent dialogues are delivered, hidden ones go, declared pictures wait for upload', () {
+      final out = afterPublish([
+        dialogue('d1', ['first'], ['r1'])
+          ..pushState = PushState.pending
+          ..scenePictureRunId = 'run-1',
+        dialogue('d2', ['second'], ['r2']),
+        dialogue('d3', ['third'], [])
+          ..pushState = PushState.pending
+          ..hidden = true,
+      ], sent: {'d1', 'd2'});
+
+      expect(out.map((d) => d.id), ['d1', 'd2']);
+      expect(out.map((d) => d.pushState), [PushState.delivered, PushState.delivered]);
+      expect(out[0].picturePushState, PushState.pending);
+      expect(out[1].picturePushState, PushState.none);
+    });
+  });
 }

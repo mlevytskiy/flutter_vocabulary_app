@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -193,6 +194,23 @@ void main() {
     await tapShareLink(tester);
     expect(publisher.sentSources!.map((p) => p.id),
         ['p1', 'p2', 'p3', 'p4', 'quizlet-1', 'quizlet-2']);
+  });
+
+  testWidgets('the session\'s dialogues go with the link (get-words-from-subtitles-improvment T23)',
+      (tester) async {
+    final publisher = _FakePublisher();
+    final shown = withPhotosAndSet()
+      ..dialogues = [
+        FilmDialogue()
+          ..id = 'd1'
+          ..lines = ['A line.']
+          ..wordRowIds = ['r1'],
+      ];
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: shown);
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(publisher.sentDialogues!.map((d) => d.id), ['d1']);
   });
 
   testWidgets('photos off: the sets are still sent', (tester) async {
@@ -497,13 +515,18 @@ class _FakePublisher extends SessionPublishService {
   /// The photos the last publish was asked to include.
   List<SessionSource>? sentSources;
 
+  /// The film dialogues the last publish was given.
+  List<FilmDialogue>? sentDialogues;
+
   @override
   Future<PublishedSession> publish(List<WordPair> pairs,
       {WordDetailMode detail = WordDetailMode.translation,
       List<SessionSource> sources = const [],
       String? publishedId,
-      String? editToken}) async {
+      String? editToken,
+      List<FilmDialogue> dialogues = const []}) async {
     sentSources = sources;
+    sentDialogues = dialogues;
     return PublishedSession(id: 'id', url: 'https://example.test/s/id');
   }
 }

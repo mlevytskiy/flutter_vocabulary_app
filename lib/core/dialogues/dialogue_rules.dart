@@ -71,6 +71,23 @@ List<FilmDialogue> afterEdit(Session session) {
   return out;
 }
 
+/// The session's dialogues once a publish carried those in [sent]
+/// (ADR-0005): the page has them, so they are delivered; a hidden one is
+/// gone, its import's rows having gone with the publish; a sent dialogue's
+/// scene picture was declared and waits for its upload. Returns copies.
+List<FilmDialogue> afterPublish(List<FilmDialogue> dialogues,
+        {required Set<String> sent}) =>
+    [
+      for (final d in dialogues)
+        if (!d.hidden)
+          d.copy()
+            ..pushState = PushState.delivered
+            ..picturePushState =
+                sent.contains(d.id) && d.scenePictureRunId != null
+                    ? PushState.pending
+                    : d.picturePushState,
+    ];
+
 /// Leading dashes, then a speaker label such as "A:" or "JOHN:", then dashes
 /// again.
 final _speakerMarks = RegExp(

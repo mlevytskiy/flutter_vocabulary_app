@@ -371,6 +371,18 @@ class WordInputNotifier extends _$WordInputNotifier {
     await store.put(session);
   }
 
+  /// Records that a publish carried the dialogues in [sent]
+  /// (get-words-from-subtitles-improvment ADR-0005): see [afterPublish]. Not
+  /// a content change, so written like [markShared].
+  Future<void> markDialoguesPublished(Set<String> sent) async {
+    final session = state.valueOrNull;
+    if (session == null || session.dialogues.isEmpty) return;
+    session.dialogues = afterPublish(session.dialogues, sent: sent);
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
+  }
+
   /// Cancels any pending debounced save and writes immediately. A no-op when
   /// nothing has changed since the last write — see [_dirty]. Blank pairs (the
   /// trailing empty row) are never persisted.
