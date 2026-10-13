@@ -18,7 +18,7 @@
 | T11 | [Add "Dialogs from movie" to the exercise list for the app and the web](./T11-exercise-list-dialogs-from-movie.md) | domain | Maksym | S | — | done |
 | T12 | [Add FilmDialogue, Session.dialogues, WordGroup.dialogueId and StoryRun kind to the app](./T12-app-dialogue-models.md) | domain | Maksym | M | — | done |
 | T13 | [Port the matching rule to Dart and test it against the Worker's case file](./T13-app-matching-rule.md) | domain | Maksym | S | T2 | done |
-| T14 | [Add the Done filter, the edit rule and the card names for dialogues](./T14-app-dialogue-rules.md) | domain | Maksym | M | T12, T13 | todo |
+| T14 | [Add the Done filter, the edit rule and the card names for dialogues](./T14-app-dialogue-rules.md) | domain | Maksym | M | T12, T13 | done |
 | T15 | [Group dialogue words into dialogue groups before the existing grouping rules](./T15-app-dialogue-grouping.md) | domain | Maksym | M | T12 | todo |
 | T16 | [Add the "Get dialogues from subtitles" switch to Settings](./T16-app-dialogues-setting.md) | ui | Maksym | S | — | todo |
 | T17 | [Carry dialogues from the subtitle import to Done and save them with the words](./T17-app-import-with-dialogues.md) | app | Maksym | M | T4, T14, T16 | todo |
