@@ -7,7 +7,7 @@ part of 'word_groups_notifier.dart';
 // **************************************************************************
 
 String _$wordGroupsNotifierHash() =>
-    r'cd76f107460446b364664cd7143cbf379f96ff75';
+    r'fdfb3a66b53de94ed81491357cfa87d42265c5e8';
 
 /// Copied from Dart SDK
 class _SystemHash {

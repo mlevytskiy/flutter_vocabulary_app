@@ -226,6 +226,42 @@ class WordDetailModeNotifier extends _$WordDetailModeNotifier {
 }
 
 /// Short name used across the app and the design docs.
+final dialoguesSettingProvider = dialoguesSettingNotifierProvider;
+
+/// The "Get dialogues from subtitles" switch in Settings
+/// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
+/// also asks for film dialogues. Persisted like the word detail mode; off
+/// until the stored value is read ([loaded]).
+@Riverpod(keepAlive: true)
+class DialoguesSettingNotifier extends _$DialoguesSettingNotifier {
+  static const prefsKey = 'subtitle_dialogues';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  bool build() {
+    loaded;
+    return false;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getBool(prefsKey);
+    // A choice made before the stored value arrived wins over it.
+    if (_setByLearner) return;
+    state = stored ?? false;
+  }
+
+  Future<void> set(bool on) async {
+    _setByLearner = true;
+    state = on;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefsKey, on);
+  }
+}
+
+/// Short name used across the app and the design docs.
 final subtitleImportPrefsProvider = subtitleImportPrefsNotifierProvider;
 
 /// The subtitle import values in Settings (words-from-subtitles, data-model.md

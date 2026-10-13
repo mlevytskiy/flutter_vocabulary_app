@@ -20,7 +20,7 @@
 | T13 | [Port the matching rule to Dart and test it against the Worker's case file](./T13-app-matching-rule.md) | domain | Maksym | S | T2 | done |
 | T14 | [Add the Done filter, the edit rule and the card names for dialogues](./T14-app-dialogue-rules.md) | domain | Maksym | M | T12, T13 | done |
 | T15 | [Group dialogue words into dialogue groups before the existing grouping rules](./T15-app-dialogue-grouping.md) | domain | Maksym | M | T12 | done |
-| T16 | [Add the "Get dialogues from subtitles" switch to Settings](./T16-app-dialogues-setting.md) | ui | Maksym | S | — | todo |
+| T16 | [Add the "Get dialogues from subtitles" switch to Settings](./T16-app-dialogues-setting.md) | ui | Maksym | S | — | done |
 | T17 | [Carry dialogues from the subtitle import to Done and save them with the words](./T17-app-import-with-dialogues.md) | app | Maksym | M | T4, T14, T16 | todo |
 | T18 | [Apply the edit rule to dialogues whenever a word changes or is deleted](./T18-app-dialogues-follow-edits.md) | app | Maksym | S | T14, T17 | todo |
 | T19 | [Show the main screen as a pager with one read-only dialogue page per dialogue](./T19-app-main-screen-pager.md) | ui | Maksym | M | T17, T13 | todo |
