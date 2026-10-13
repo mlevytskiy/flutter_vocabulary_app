@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import '../photos_with_words.dart';
 
@@ -47,6 +47,19 @@ abstract class PhotoPanelLook {
 
   /// The panel's surface colour behind the photos.
   Color panelColor(BuildContext context, {required bool fullOpen});
+
+  /// The panel's surface with [child] (the panel's content) on it, at
+  /// [fullness] from 0 (half-open) to 1 (full-open). It must give [child] a
+  /// `Material` ancestor for the controls' ink. The default is a `Material`
+  /// in [panelColor], blended by [fullness], with elevation 8.
+  Widget buildPanelSurface(BuildContext context,
+          {required double fullness, required Widget child}) =>
+      Material(
+        color: Color.lerp(panelColor(context, fullOpen: false),
+            panelColor(context, fullOpen: true), fullness),
+        elevation: 8,
+        child: child,
+      );
 
   /// The height of the bar along the panel's top that holds the handle and
   /// the controls; a horizontal drag on it moves the panel (spec AC-10).

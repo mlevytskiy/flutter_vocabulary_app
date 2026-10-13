@@ -605,10 +605,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       _shown = null;
       _disposeZooms();
     }
-    Widget content = Material(
-      color: Color.lerp(look.panelColor(context, fullOpen: false),
-          look.panelColor(context, fullOpen: true), p),
-      elevation: 8,
+    Widget content = look.buildPanelSurface(
+      context,
+      fullness: p,
       child: ClipRect(
         child: Stack(
           fit: StackFit.expand,
