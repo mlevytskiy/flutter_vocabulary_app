@@ -23,6 +23,10 @@ class WordGroup {
   /// "Words changed" (AC-17).
   List<String> storyWords = [];
 
+  /// The `FilmDialogue.id` of a dialogue group; null for a topic group
+  /// (get-words-from-subtitles-improvment, ADR-0003).
+  String? dialogueId;
+
   WordGroup();
 
   WordGroup copy() => WordGroup()
@@ -30,7 +34,8 @@ class WordGroup {
     ..name = name
     ..rowIds = [...rowIds]
     ..storyRunId = storyRunId
-    ..storyWords = [...storyWords];
+    ..storyWords = [...storyWords]
+    ..dialogueId = dialogueId;
 
   factory WordGroup.fromJson(Map<String, dynamic> json) => WordGroup()
     ..id = json['id'] as String? ?? ''
@@ -38,7 +43,8 @@ class WordGroup {
     ..rowIds = [...(json['rowIds'] as List<dynamic>? ?? const []).cast<String>()]
     ..storyRunId = json['storyRunId'] as String?
     ..storyWords =
-        [...(json['storyWords'] as List<dynamic>? ?? const []).cast<String>()];
+        [...(json['storyWords'] as List<dynamic>? ?? const []).cast<String>()]
+    ..dialogueId = json['dialogueId'] as String?;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -46,5 +52,6 @@ class WordGroup {
         'rowIds': rowIds,
         'storyRunId': storyRunId,
         'storyWords': storyWords,
+        'dialogueId': dialogueId,
       };
 }

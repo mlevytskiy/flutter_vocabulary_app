@@ -16,7 +16,7 @@
 | T9 | [Render the dialogue pages after the word table on the shared page](./T9-web-dialogue-pages.md) | ui | Maksym | M | T6, T2 | done |
 | T10 | [Keep the shared page's dialogue pages in step with the change feed](./T10-web-dialogue-live-updates.md) | ui | Maksym | M | T8, T9 | done |
 | T11 | [Add "Dialogs from movie" to the exercise list for the app and the web](./T11-exercise-list-dialogs-from-movie.md) | domain | Maksym | S | — | done |
-| T12 | [Add FilmDialogue, Session.dialogues, WordGroup.dialogueId and StoryRun kind to the app](./T12-app-dialogue-models.md) | domain | Maksym | M | — | todo |
+| T12 | [Add FilmDialogue, Session.dialogues, WordGroup.dialogueId and StoryRun kind to the app](./T12-app-dialogue-models.md) | domain | Maksym | M | — | done |
 | T13 | [Port the matching rule to Dart and test it against the Worker's case file](./T13-app-matching-rule.md) | domain | Maksym | S | T2 | todo |
 | T14 | [Add the Done filter, the edit rule and the card names for dialogues](./T14-app-dialogue-rules.md) | domain | Maksym | M | T12, T13 | todo |
 | T15 | [Group dialogue words into dialogue groups before the existing grouping rules](./T15-app-dialogue-grouping.md) | domain | Maksym | M | T12 | todo |

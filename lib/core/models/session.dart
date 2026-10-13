@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:isar_community/isar.dart';
 
+import 'film_dialogue.dart';
 import 'session_source.dart';
 import 'word_group.dart';
 import 'word_pair.dart';
@@ -53,6 +54,11 @@ class Session {
   /// must run again (AC-03).
   String? groupedWordsKey;
 
+  /// The film dialogues kept from subtitle imports, in pager order
+  /// (get-words-from-subtitles-improvment, ADR-0003). A session from before
+  /// has none.
+  List<FilmDialogue> dialogues = [];
+
   Session();
 
   static Session create() {
@@ -88,7 +94,11 @@ class Session {
             .toList() ??
         <WordGroup>[]
     ..selectedGroupId = json['selectedGroupId'] as String?
-    ..groupedWordsKey = json['groupedWordsKey'] as String?;
+    ..groupedWordsKey = json['groupedWordsKey'] as String?
+    ..dialogues = (json['dialogues'] as List<dynamic>?)
+            ?.map((d) => FilmDialogue.fromJson(d as Map<String, dynamic>))
+            .toList() ??
+        <FilmDialogue>[];
 
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,
@@ -102,5 +112,6 @@ class Session {
         'groups': groups.map((g) => g.toJson()).toList(),
         'selectedGroupId': selectedGroupId,
         'groupedWordsKey': groupedWordsKey,
+        'dialogues': dialogues.map((d) => d.toJson()).toList(),
       };
 }
