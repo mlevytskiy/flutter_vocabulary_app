@@ -106,7 +106,9 @@ void main() {
 
     await tester.drag(tabFinder, const Offset(0, -2000));
     await tester.pumpAndSettle();
-    expect(tabRect(tester).top, greaterThanOrEqualTo(page.top));
+    // All the way up, the tab's straight top meets the top bar's bottom; look
+    // A's flare above it may cover the top bar.
+    expect(tabRect(tester).top, page.top);
   });
 
   testWidgets('a touch on the tab is ignored while the screen is busy (AC-17)', (tester) async {

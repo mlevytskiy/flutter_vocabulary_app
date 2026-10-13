@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart' show WordDetailMode;
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_a.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
 
 /// While the photo panel is open each word row turns into one line,
-/// "word — translation" (or the definition), and back when it closes; look A
-/// draws its tab and half-open panel on glass.
+/// "word — translation" (or the definition), and back when it closes.
 void main() {
   group('compactDetail', () {
     test('the translation when the mode shows one and it is filled', () {
@@ -185,44 +182,6 @@ void main() {
       expect(find.byKey(lineKey), findsNothing, reason: 'still waiting for its turn');
       await tester.pumpAndSettle();
       expect(find.byKey(lineKey), findsOneWidget);
-    });
-  });
-
-  group('look A glass', () {
-    testWidgets('the tab and the half-open panel stand on glass; full-open is dark',
-        (tester) async {
-      const look = LookA();
-      Widget panel(double fullness) => MaterialApp(
-            home: Builder(
-              builder: (context) => SizedBox(
-                width: look.halfOpenWidth,
-                height: 400,
-                child: look.buildPanelSurface(context,
-                    fullness: fullness, child: const Text('content')),
-              ),
-            ),
-          );
-
-      await tester.pumpWidget(panel(0));
-      expect(find.byType(LiquidGlass), findsOneWidget);
-      expect(find.text('content'), findsOneWidget);
-      expect(
-          find.ancestor(of: find.text('content'), matching: find.byType(Material)), findsWidgets,
-          reason: 'the controls get their ink');
-
-      await tester.pumpWidget(panel(1));
-      expect(find.byType(LiquidGlass), findsNothing);
-      expect(
-          tester.widgetList<ColoredBox>(find.byType(ColoredBox)).map((b) => b.color),
-          contains(Colors.black));
-
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => look.buildTab(context,
-              photos: const [], preview: (_, __) => const SizedBox()),
-        ),
-      ));
-      expect(find.byType(LiquidGlass), findsOneWidget);
     });
   });
 }
