@@ -29,6 +29,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
     this.bottomReserve = 0,
     this.scrollController,
     this.onSelected,
+    this.onBeforeOpen,
     @visibleForTesting this.look,
   });
 
@@ -62,6 +63,11 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// Called after the selected photo changes, with the new one or null; the
   /// screen highlights its rows and jumps to the first (spec AC-04, AC-05).
   final ValueChanged<String?>? onSelected;
+
+  /// Awaited before the panel leaves closed; the main screen returns its
+  /// pager to the words page here, so an open panel always sits over the
+  /// words page (spec AC-13, sad §6 Flow 7).
+  final Future<void> Function()? onBeforeOpen;
 
   /// Overrides the design variant's look; tests only.
   final PhotoPanelLook? look;
@@ -148,6 +154,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     if (oldWidget.scrollController != widget.scrollController) {
       _watchScrolling();
     }
+    // The word list may have been rebuilt with a new position, e.g. after
+    // the pager left the words page and came back.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _watchScrolling());
   }
 
   @override
@@ -205,10 +214,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// Opening closes the keyboard; the field keeps its text (spec AC-03).
   void _unfocus() => FocusManager.instance.primaryFocus?.unfocus();
 
-  void _open(PanelStop stop) {
+  Future<void> _open(PanelStop stop) async {
     if (widget.busy) return;
+    if (!widget.controller.isOpen) await _beforeOpen();
+    if (!mounted) return;
     widget.controller.setStop(stop);
   }
+
+  Future<void> _beforeOpen() async => widget.onBeforeOpen?.call();
 
   double get _halfWidth => _look.halfOpenWidth;
   double get _fullWidth => _overlay.width;
@@ -241,12 +254,17 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     _openness.value = _opennessOf(_widthOf(_openness.value) - dx);
   }
 
-  /// Settles at a stop by the rule (spec AC-08).
-  void _endPanelDrag(double velocityX) {
+  /// Settles at a stop by the rule (spec AC-08). A drag that opens from
+  /// closed waits for [PhotoPanel.onBeforeOpen] first.
+  Future<void> _endPanelDrag(double velocityX) async {
     if (!_panelDragging) return;
     _panelDragging = false;
     final velocity = -velocityX / _pixelsPerOpenness(_openness.value);
     final stop = settle(_dragStartStop, _openness.value, velocity);
+    if (_dragStartStop == PanelStop.closed && stop != PanelStop.closed) {
+      await _beforeOpen();
+      if (!mounted) return;
+    }
     _animateTo(stop.openness);
     widget.controller.setStop(stop);
     // The same stop again does not notify; settle back to it anyway.

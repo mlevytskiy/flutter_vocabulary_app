@@ -1634,12 +1634,21 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       controller: _mainPager,
       page: _mainPage,
       onPageChanged: (page) => setState(() => _mainPage = page),
+      swipeable: !_photoPanel.isOpen,
       first: first,
       pages: [
         for (final d in dialogues)
           DialoguePage(key: ValueKey(d.id), dialogue: d, words: session.words),
       ],
     );
+  }
+
+  /// The photo panel opens only over the words page: from a dialogue page
+  /// the pager runs back to it first (side-bar-for-main-screen, spec AC-13).
+  Future<void> _showWordsPage() async {
+    if (!_mainPager.hasClients || _mainPager.page == 0) return;
+    await _mainPager.animateToPage(0,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
   }
 
   @override
@@ -1756,7 +1765,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               ),
             )
           : null,
-      body: _mainBody(Stack(
+      // The photo panel is mounted above the pager, so the tab stays at its
+      // place on every page (side-bar-for-main-screen, spec AC-13).
+      body: Stack(
+        children: [
+      _mainBody(Stack(
         children: [
           // Open photo panel: a tap or a sideways swipe on the list closes it
           // and does nothing else; a vertical drag still scrolls (AC-06, AC-11).
@@ -1787,20 +1800,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
                     isDragMode: false, detailMode: detailMode, highlight: highlightFor(index)),
               ),
           ),
-          // The photo tab and panel paint above the route through an overlay;
-          // this child only marks the words page's place (ADR-0001).
-          Positioned.fill(
-            child: PhotoPanel(
-              controller: _photoPanel,
-              busy: _isAnalyzingPhoto,
-              hidden: _drawerOpen,
-              // Kept free for the floating-button row, and the RESTORE
-              // SnackBar while it is up (spec AC-01).
-              bottomReserve: 80 + (_restoreSnackBarVisible ? 56 : 0),
-              scrollController: _listScroll,
-              onSelected: _onPhotoSelected,
-            ),
-          ),
           if (_isAnalyzingPhoto)
             Container(
               color: Colors.black45,
@@ -1822,6 +1821,23 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
             ),
         ],
       )),
+          // The photo tab and panel paint above the route through an overlay;
+          // this child only marks the main screen's place (ADR-0001).
+          Positioned.fill(
+            child: PhotoPanel(
+              controller: _photoPanel,
+              busy: _isAnalyzingPhoto,
+              hidden: _drawerOpen,
+              // Kept free for the floating-button row, and the RESTORE
+              // SnackBar while it is up (spec AC-01).
+              bottomReserve: 80 + (_restoreSnackBarVisible ? 56 : 0),
+              scrollController: _listScroll,
+              onSelected: _onPhotoSelected,
+              onBeforeOpen: _showWordsPage,
+            ),
+          ),
+        ],
+      ),
       // Both round buttons share the Scaffold's FAB slot, so the Scaffold moves
       // them together: above a snackbar, above the keyboard, above the bottom
       // safe area -- always on one line. A full-width row, centred, puts the

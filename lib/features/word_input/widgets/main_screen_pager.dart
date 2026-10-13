@@ -12,6 +12,7 @@ class MainScreenPager extends StatelessWidget {
     required this.onPageChanged,
     required this.first,
     required this.pages,
+    this.swipeable = true,
   });
 
   final PageController controller;
@@ -19,6 +20,10 @@ class MainScreenPager extends StatelessWidget {
   final ValueChanged<int> onPageChanged;
   final Widget first;
   final List<Widget> pages;
+
+  /// False while the photo panel is open: no swipe changes the page
+  /// (side-bar-for-main-screen, spec AC-13).
+  final bool swipeable;
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +34,7 @@ class MainScreenPager extends StatelessWidget {
       children: [
         PageView(
           controller: controller,
+          physics: swipeable ? null : const NeverScrollableScrollPhysics(),
           onPageChanged: onPageChanged,
           children: [first, ...pages],
         ),
