@@ -161,7 +161,8 @@ class _WordRowMorphState extends State<WordRowMorph>
   /// wait is a frame-driven animation like the morph itself.
   late final AnimationController _wait;
 
-  /// The card's glide from [_fromHeight] to the shown child's height.
+  /// The morph toward [_compact], 0 to 1: the card's glide from
+  /// [_fromHeight], and the fade and scale from one child into the other.
   late final AnimationController _morph;
   double? _fromHeight;
 
@@ -171,6 +172,12 @@ class _WordRowMorphState extends State<WordRowMorph>
     _wait = AnimationController(vsync: this);
     _morph = AnimationController(
         vsync: this, duration: WordRowMorph.duration, value: 1);
+    // At rest as the full row, the line is dropped.
+    _morph.addStatusListener((status) {
+      if (status == AnimationStatus.completed && !_compact && mounted) {
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -217,82 +224,141 @@ class _WordRowMorphState extends State<WordRowMorph>
     super.dispose();
   }
 
+  static const _fade = Interval(0.25, 1, curve: Curves.easeOut);
+
   @override
   Widget build(BuildContext context) {
-    final switcher = AnimatedSwitcher(
-      duration: WordRowMorph.duration,
-      // Only the shown child sizes the row; the leaving one is laid over it
-      // from the top and clipped as the card glides to the new height.
-      layoutBuilder: (current, previous) => Stack(
-        fit: StackFit.passthrough,
-        clipBehavior: Clip.none,
-        alignment: Alignment.topLeft,
-        children: [
-          for (final child in previous)
-            Positioned(left: 0, right: 0, top: 0, child: child),
-          if (current != null) current,
-        ],
-      ),
-      transitionBuilder: (child, animation) {
-        final line = child.key == const ValueKey('line');
-        final fade = CurvedAnimation(
-          parent: animation,
-          curve: const Interval(0.25, 1, curve: Curves.easeOut),
-        );
-        final scale = Tween<double>(begin: line ? 0.92 : 0.97, end: 1)
-            .animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutBack));
-        return FadeTransition(
-          opacity: fade,
-          child: ScaleTransition(
-            scale: scale,
-            alignment: line ? Alignment.centerLeft : Alignment.topCenter,
-            // The scale repaints every frame; behind a boundary the row's
-            // fields and text are recorded once and only moved.
-            child: RepaintBoundary(child: child),
-          ),
-        );
-      },
-      child: _compact
-          ? KeyedSubtree(
-              key: const ValueKey('line'), child: widget.line(_morphed))
-          : KeyedSubtree(key: const ValueKey('full'), child: widget.full),
-    );
+    // The full row stays mounted under its line, hidden: turning back is a
+    // fade, not building every field again. Each child is drawn once into
+    // its own layer and then only faded, scaled and clipped.
+    final full = RepaintBoundary(child: widget.full);
+    final line = _compact || _morph.isAnimating
+        ? RepaintBoundary(child: widget.line(_morphed))
+        : null;
     return AnimatedBuilder(
       animation: _morph,
-      builder: (context, child) => _GlideHeight(
-        from: _fromHeight,
-        t: Curves.easeInOutCubic.transform(_morph.value),
-        child: child,
-      ),
-      child: switcher,
+      builder: (context, _) {
+        final t = _morph.value;
+        // The child being shown comes in over [t]; the other leaves over it.
+        final coming = _fade.transform(t);
+        final going = _fade.transform(1 - t);
+        double grow(double begin, double v) =>
+            lerpDouble(begin, 1, Curves.easeOutBack.transform(v))!;
+        return _MorphLayout(
+          toLine: _compact,
+          from: _fromHeight,
+          glide: Curves.easeInOutCubic.transform(t),
+          fullOpacity: _compact ? going : coming,
+          lineOpacity: _compact ? coming : going,
+          fullScale: grow(0.97, _compact ? 1 - t : t),
+          lineScale: grow(0.92, _compact ? t : 1 - t),
+          full: full,
+          line: line,
+        );
+      },
     );
   }
 }
 
-/// Sizes its child's width as the child, and its height between [from] and
-/// the child's own height at [t], clipping what is below while it glides.
-/// With [from] null, or at [t] 1, it is exactly the child.
-class _GlideHeight extends SingleChildRenderObjectWidget {
-  const _GlideHeight({required this.from, required this.t, super.child});
+enum _Slot { full, line }
 
+/// Lays out the full row and, while there is one, its line, both from the
+/// top; is as tall as the one being shown, gliding there from [from] over
+/// [glide]; and paints each at its opacity and scale, clipped to its own
+/// height while it glides. Only the one being shown takes touches and is
+/// read by a screen reader; a child at opacity 0 is not painted and counts
+/// as offstage.
+class _MorphLayout
+    extends SlottedMultiChildRenderObjectWidget<_Slot, RenderBox> {
+  const _MorphLayout({
+    required this.toLine,
+    required this.from,
+    required this.glide,
+    required this.fullOpacity,
+    required this.lineOpacity,
+    required this.fullScale,
+    required this.lineScale,
+    required this.full,
+    required this.line,
+  });
+
+  final bool toLine;
   final double? from;
-  final double t;
+  final double glide;
+  final double fullOpacity;
+  final double lineOpacity;
+  final double fullScale;
+  final double lineScale;
+  final Widget full;
+  final Widget? line;
 
   @override
-  RenderObject createRenderObject(BuildContext context) =>
-      _RenderGlideHeight(from, t);
+  Iterable<_Slot> get slots => _Slot.values;
 
   @override
-  void updateRenderObject(BuildContext context, _RenderGlideHeight renderObject) {
+  Widget? childForSlot(_Slot slot) => switch (slot) {
+        _Slot.full => full,
+        _Slot.line => line,
+      };
+
+  @override
+  SlottedRenderObjectElement<_Slot, RenderBox> createElement() =>
+      _MorphElement(this);
+
+  @override
+  _RenderMorph createRenderObject(BuildContext context) => _RenderMorph()
+    ..toLine = toLine
+    ..from = from
+    ..glide = glide
+    ..fullOpacity = fullOpacity
+    ..lineOpacity = lineOpacity
+    ..fullScale = fullScale
+    ..lineScale = lineScale;
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderMorph renderObject) {
     renderObject
+      ..toLine = toLine
       ..from = from
-      ..t = t;
+      ..glide = glide
+      ..fullOpacity = fullOpacity
+      ..lineOpacity = lineOpacity
+      ..fullScale = fullScale
+      ..lineScale = lineScale;
   }
 }
 
-class _RenderGlideHeight extends RenderProxyBox {
-  _RenderGlideHeight(this._from, this._t);
+class _MorphElement extends SlottedRenderObjectElement<_Slot, RenderBox> {
+  _MorphElement(_MorphLayout super.widget);
+
+  /// A child at opacity 0 is offstage, as for `Offstage`: finders skip it.
+  @override
+  void debugVisitOnstageChildren(ElementVisitor visitor) {
+    final layout = widget as _MorphLayout;
+    visitChildren((child) {
+      final opacity =
+          child.slot == _Slot.full ? layout.fullOpacity : layout.lineOpacity;
+      if (opacity > 0) visitor(child);
+    });
+  }
+}
+
+class _RenderMorph extends RenderBox
+    with SlottedContainerRenderObjectMixin<_Slot, RenderBox> {
+  RenderBox? get _full => childForSlot(_Slot.full);
+  RenderBox? get _line => childForSlot(_Slot.line);
+
+  /// The child being shown: the line while [toLine] and there is one.
+  RenderBox? get _shown => toLine ? (_line ?? _full) : _full;
+
+  bool _toLine = false;
+  bool get toLine => _toLine;
+  set toLine(bool value) {
+    if (value == _toLine) return;
+    _toLine = value;
+    markNeedsLayout();
+    markNeedsSemanticsUpdate();
+  }
 
   double? _from;
   set from(double? value) {
@@ -301,44 +367,143 @@ class _RenderGlideHeight extends RenderProxyBox {
     markNeedsLayout();
   }
 
-  double _t;
-  set t(double value) {
-    if (value == _t) return;
-    _t = value;
+  double _glide = 1;
+  set glide(double value) {
+    if (value == _glide) return;
+    _glide = value;
     markNeedsLayout();
   }
 
-  final _clip = LayerHandle<ClipRectLayer>();
+  double _fullOpacity = 1;
+  set fullOpacity(double value) {
+    if (value == _fullOpacity) return;
+    _fullOpacity = value;
+    markNeedsPaint();
+  }
+
+  double _lineOpacity = 0;
+  set lineOpacity(double value) {
+    if (value == _lineOpacity) return;
+    _lineOpacity = value;
+    markNeedsPaint();
+  }
+
+  double _fullScale = 1;
+  set fullScale(double value) {
+    if (value == _fullScale) return;
+    _fullScale = value;
+    markNeedsPaint();
+  }
+
+  double _lineScale = 1;
+  set lineScale(double value) {
+    if (value == _lineScale) return;
+    _lineScale = value;
+    markNeedsPaint();
+  }
+
+  bool get _gliding => _from != null && _glide < 1;
 
   @override
   void performLayout() {
-    final child = this.child!;
-    child.layout(constraints, parentUsesSize: true);
-    final height = child.size.height;
+    // Laid out again only when they change: a hidden, settled full row
+    // costs nothing per frame.
+    // Both as wide as the row, one over the other.
+    final child = constraints.hasBoundedWidth
+        ? constraints.copyWith(minWidth: constraints.maxWidth)
+        : constraints;
+    _full?.layout(child, parentUsesSize: true);
+    _line?.layout(child, parentUsesSize: true);
+    final shown = _shown;
+    final height = shown == null ? 0.0 : shown.size.height;
     final from = _from;
-    size = constraints.constrain(Size(child.size.width,
-        from == null || _t >= 1 ? height : lerpDouble(from, height, _t)!));
+    size = constraints.constrain(Size(constraints.maxWidth,
+        _gliding ? lerpDouble(from, height, _glide)! : height));
   }
+
+  final _clip = LayerHandle<ClipRectLayer>();
+  final _fullLayers =
+      (LayerHandle<OpacityLayer>(), LayerHandle<TransformLayer>());
+  final _lineLayers =
+      (LayerHandle<OpacityLayer>(), LayerHandle<TransformLayer>());
 
   @override
   void paint(PaintingContext context, Offset offset) {
-    final child = this.child;
-    if (child == null) return;
-    // Settled, the child is drawn as it is; while gliding, the leaving
-    // child hangs below the shown one and is clipped at the card's height.
-    if (_t >= 1 || _from == null) {
+    // While it glides, the taller child hangs below and is clipped.
+    if (_gliding) {
+      _clip.layer = context.pushClipRect(
+          needsCompositing, offset, Offset.zero & size, _paintChildren,
+          oldLayer: _clip.layer);
+    } else {
       _clip.layer = null;
-      context.paintChild(child, offset);
+      _paintChildren(context, offset);
+    }
+  }
+
+  void _paintChildren(PaintingContext context, Offset offset) {
+    _paintChild(context, offset, _full, _fullOpacity, _fullScale,
+        Alignment.topCenter, _fullLayers);
+    _paintChild(context, offset, _line, _lineOpacity, _lineScale,
+        Alignment.centerLeft, _lineLayers);
+  }
+
+  void _paintChild(
+    PaintingContext context,
+    Offset offset,
+    RenderBox? child,
+    double opacity,
+    double scale,
+    Alignment alignment,
+    (LayerHandle<OpacityLayer>, LayerHandle<TransformLayer>) layers,
+  ) {
+    final (opacityLayer, transformLayer) = layers;
+    if (child == null || opacity <= 0) {
+      opacityLayer.layer = null;
+      transformLayer.layer = null;
       return;
     }
-    _clip.layer = context.pushClipRect(
-        needsCompositing, offset, Offset.zero & size, super.paint,
-        oldLayer: _clip.layer);
+    void scaled(PaintingContext context, Offset offset) {
+      if (scale == 1) {
+        transformLayer.layer = null;
+        context.paintChild(child, offset);
+        return;
+      }
+      final origin = alignment.alongSize(child.size);
+      final transform = Matrix4.diagonal3Values(scale, scale, 1)
+        ..setTranslationRaw(
+            origin.dx * (1 - scale), origin.dy * (1 - scale), 0);
+      transformLayer.layer = context.pushTransform(needsCompositing, offset,
+          transform, (context, offset) => context.paintChild(child, offset),
+          oldLayer: transformLayer.layer);
+    }
+
+    if (opacity >= 1) {
+      opacityLayer.layer = null;
+      scaled(context, offset);
+    } else {
+      opacityLayer.layer = context.pushOpacity(
+          offset, (opacity * 255).round(), scaled,
+          oldLayer: opacityLayer.layer);
+    }
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) =>
+      _shown?.hitTest(result, position: position) ?? false;
+
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    final shown = _shown;
+    if (shown != null) visitor(shown);
   }
 
   @override
   void dispose() {
     _clip.layer = null;
+    _fullLayers.$1.layer = null;
+    _fullLayers.$2.layer = null;
+    _lineLayers.$1.layer = null;
+    _lineLayers.$2.layer = null;
     super.dispose();
   }
 }

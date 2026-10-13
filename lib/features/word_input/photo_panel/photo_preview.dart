@@ -9,9 +9,10 @@ import '../../../core/providers.dart';
 /// One photo of the photo panel, read from the kept 1600 px file and decoded
 /// at [width] × the device pixel ratio, with no stored thumbnail (sad §4
 /// "Previews"). The file is read only after the first frame, so the main
-/// screen's start does not wait for it (spec §6). A missing file or a failed
-/// decode shows [placeholder] (spec AC-09); the look gives its own, and
-/// [PhotoNotAvailable] is the plain default.
+/// screen's start does not wait for it (spec §6); a file read before is
+/// already in memory ([SourcePhotoBytes]) and shows at once, from the image
+/// cache. A missing file or a failed decode shows [placeholder] (spec AC-09);
+/// the look gives its own, and [PhotoNotAvailable] is the plain default.
 class PhotoPreview extends ConsumerStatefulWidget {
   const PhotoPreview({
     super.key,
@@ -28,29 +29,56 @@ class PhotoPreview extends ConsumerStatefulWidget {
   final BoxFit fit;
   final WidgetBuilder? placeholder;
 
+  /// The image a preview of [bytes] at [width] draws: the same key in the
+  /// image cache, so a photo warmed with it ([precacheImage]) shows at once.
+  static ImageProvider imageFor(Uint8List bytes, double width, double dpr) =>
+      ResizeImage.resizeIfNeeded((width * dpr).round(), null, MemoryImage(bytes));
+
   @override
   ConsumerState<PhotoPreview> createState() => _PhotoPreviewState();
 }
 
 class _PhotoPreviewState extends ConsumerState<PhotoPreview> {
-  Future<Uint8List?>? _bytes;
+  /// The read is over, and its bytes (null: no file).
+  bool _done = false;
+  Uint8List? _data;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) setState(() => _load());
-    });
+    if (!_takeKept()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    }
   }
 
   @override
   void didUpdateWidget(PhotoPreview oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.source.id != widget.source.id && _bytes != null) _load();
+    if (oldWidget.source.id == widget.source.id) return;
+    _done = false;
+    _data = null;
+    if (!_takeKept()) _load();
+  }
+
+  /// Takes bytes read before, if there are any.
+  bool _takeKept() {
+    final kept = ref.read(sourcePhotoBytesProvider).peek(widget.source);
+    if (kept == null) return false;
+    _data = kept;
+    _done = true;
+    return true;
   }
 
   void _load() {
-    _bytes = ref.read(sourcePhotoStoreProvider).read(widget.source);
+    if (!mounted) return;
+    final source = widget.source;
+    ref.read(sourcePhotoBytesProvider).read(source).then((bytes) {
+      if (!mounted || widget.source.id != source.id) return;
+      setState(() {
+        _data = bytes;
+        _done = true;
+      });
+    });
   }
 
   Widget _placeholder(BuildContext context) =>
@@ -58,27 +86,17 @@ class _PhotoPreviewState extends ConsumerState<PhotoPreview> {
 
   @override
   Widget build(BuildContext context) {
-    final bytes = _bytes;
-    if (bytes == null) return const SizedBox.expand();
-    return FutureBuilder<Uint8List?>(
-      future: bytes,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return const SizedBox.expand();
-        }
-        final data = snapshot.data;
-        if (data == null) return _placeholder(context);
-        final dpr = MediaQuery.devicePixelRatioOf(context);
-        return Image.memory(
-          data,
-          fit: widget.fit,
-          width: double.infinity,
-          height: double.infinity,
-          cacheWidth: (widget.width * dpr).round(),
-          gaplessPlayback: true,
-          errorBuilder: (context, _, __) => _placeholder(context),
-        );
-      },
+    if (!_done) return const SizedBox.expand();
+    final data = _data;
+    if (data == null) return _placeholder(context);
+    return Image(
+      image: PhotoPreview.imageFor(
+          data, widget.width, MediaQuery.devicePixelRatioOf(context)),
+      fit: widget.fit,
+      width: double.infinity,
+      height: double.infinity,
+      gaplessPlayback: true,
+      errorBuilder: (context, _, __) => _placeholder(context),
     );
   }
 }

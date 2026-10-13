@@ -93,6 +93,26 @@ final sourcePhotoStoreProvider = Provider<SourcePhotoStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SourcePhotoStoreRef = ProviderRef<SourcePhotoStore>;
+String _$sourcePhotoBytesHash() => r'c15ebdfa730629d2116a94bb8bd8ca2d345e1825';
+
+/// The kept photos' bytes, read once each (side-bar-for-main-screen): the
+/// photo panel's previews then hit the image cache instead of decoding again.
+///
+/// Copied from [sourcePhotoBytes].
+@ProviderFor(sourcePhotoBytes)
+final sourcePhotoBytesProvider = Provider<SourcePhotoBytes>.internal(
+  sourcePhotoBytes,
+  name: r'sourcePhotoBytesProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sourcePhotoBytesHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SourcePhotoBytesRef = ProviderRef<SourcePhotoBytes>;
 String _$systemGestureExclusionHash() =>
     r'6e5cfd25b75fb8acad89848713fcd6222249a31f';
 

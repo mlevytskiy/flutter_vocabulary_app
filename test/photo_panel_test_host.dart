@@ -33,7 +33,9 @@ class PanelHost {
     this.bottomReserve = 80,
     this.look,
     this.rows = 50,
-  }) : photos = ValueNotifier(photos ?? fakePhotos(3));
+    MapSourcePhotoStore? store,
+  })  : photos = ValueNotifier(photos ?? fakePhotos(3)),
+        store = store ?? MapSourcePhotoStore({});
 
   final ValueNotifier<List<PhotoWithWords>> photos;
   final bool busy;
@@ -41,6 +43,9 @@ class PanelHost {
   final double bottomReserve;
   final PhotoPanelLook? look;
   final int rows;
+
+  /// The kept photo files the previews read.
+  final MapSourcePhotoStore store;
   final controller = PhotoPanelController();
   final scroll = ScrollController();
   final selections = <String?>[];
@@ -57,7 +62,7 @@ class PanelHost {
             ref.onDispose(() => photos.removeListener(update));
             return photos.value;
           }),
-          sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
+          sourcePhotoStoreProvider.overrideWithValue(store),
         ],
         child: MaterialApp(
           home: Scaffold(

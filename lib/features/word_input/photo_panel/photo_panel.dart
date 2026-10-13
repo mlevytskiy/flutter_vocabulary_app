@@ -111,6 +111,35 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   /// The half-open column of small photos.
   final _column = ScrollController();
 
+  /// The previews already decoded ahead at the half-open column's size, so
+  /// opening the panel does not decode them in its first frames: an Android
+  /// phone drops those frames, and the rows' change seems to start late.
+  final _warmed = <String>{};
+  bool _warmScheduled = false;
+
+  /// Reads and decodes, while the tab only sits there, each photo's preview
+  /// as the half-open column will draw it.
+  void _warm(List<PhotoWithWords> photos) {
+    _warmScheduled = false;
+    if (!mounted || photos.isEmpty) return;
+    final width =
+        (widget.look ?? lookFor(ref.read(photoPanelVariantProvider))).halfOpenWidth;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final bytes = ref.read(sourcePhotoBytesProvider);
+    for (final photo in photos) {
+      final key = '${photo.source.id}@$width@$dpr';
+      if (!_warmed.add(key)) continue;
+      bytes.read(photo.source).then((data) {
+        if (data == null || !mounted) {
+          _warmed.remove(key);
+          return;
+        }
+        precacheImage(PhotoPreview.imageFor(data, width, dpr), context,
+            onError: (_, __) {});
+      });
+    }
+  }
+
   /// The tab's and the panel's glass share one read of the screen behind
   /// them per frame (Impeller); one key for the panel's life.
   final _backdropKey = BackdropKey();
@@ -757,6 +786,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   @override
   Widget build(BuildContext context) {
     final photos = ref.watch(photosWithWordsProvider);
+    if (!_warmScheduled && photos.isNotEmpty) {
+      _warmScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _warm(photos));
+    }
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayChildBuilder: (context, info) {

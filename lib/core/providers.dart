@@ -17,6 +17,7 @@ import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
 import 'services/session_publish_service.dart';
 import 'services/session_store.dart';
+import 'services/source_photo_bytes.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
 import 'services/story_picture_store.dart';
@@ -44,6 +45,12 @@ Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
 @Riverpod(keepAlive: true)
 SourcePhotoStore sourcePhotoStore(Ref ref) => SourcePhotoStore();
+
+/// The kept photos' bytes, read once each (side-bar-for-main-screen): the
+/// photo panel's previews then hit the image cache instead of decoding again.
+@Riverpod(keepAlive: true)
+SourcePhotoBytes sourcePhotoBytes(Ref ref) =>
+    SourcePhotoBytes(ref.watch(sourcePhotoStoreProvider));
 
 /// The Android Back-gesture exclusion for the photo tab
 /// (side-bar-for-main-screen ADR-0002).

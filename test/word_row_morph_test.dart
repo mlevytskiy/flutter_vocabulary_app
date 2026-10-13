@@ -160,6 +160,63 @@ void main() {
       expect(focus.hasFocus, isTrue);
     });
 
+    testWidgets('the full row stays alive under its line: turning back builds nothing anew',
+        (tester) async {
+      var created = 0;
+      Widget row(bool compact) => MaterialApp(
+            home: Scaffold(
+              body: WordRowMorph(
+                index: 0,
+                compact: compact,
+                full: _Counted(onCreate: () => created++),
+                line: (reveal) =>
+                    CompactWordLine(index: 0, word: 'run', detail: 'бігти', reveal: reveal),
+              ),
+            ),
+          );
+      await tester.pumpWidget(row(false));
+      await tester.pumpWidget(row(true));
+      await tester.pumpAndSettle();
+      expect(find.byType(_Counted), findsNothing, reason: 'hidden, offstage');
+      expect(find.byType(_Counted, skipOffstage: false), findsOneWidget, reason: 'but alive');
+      expect(find.bySemanticsLabel('run — бігти'), findsOneWidget);
+
+      await tester.pumpWidget(row(false));
+      await tester.pumpAndSettle();
+      expect(find.byType(_Counted), findsOneWidget);
+      expect(find.byType(CompactWordLine, skipOffstage: false), findsNothing,
+          reason: 'the line goes once the full row is back');
+      expect(created, 1, reason: 'never built anew');
+    });
+
+    testWidgets('only the row being shown takes a tap', (tester) async {
+      var taps = 0;
+      Widget row(bool compact) => MaterialApp(
+            home: Scaffold(
+              body: WordRowMorph(
+                index: 0,
+                compact: compact,
+                full: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => taps++,
+                  child: const SizedBox(height: 140),
+                ),
+                line: (reveal) =>
+                    CompactWordLine(index: 0, word: 'run', detail: '', reveal: reveal),
+              ),
+            ),
+          );
+      await tester.pumpWidget(row(false));
+      await tester.pumpWidget(row(true));
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getCenter(find.byType(CompactWordLine)));
+      expect(taps, 0, reason: 'the hidden full row takes no tap');
+      await tester.pumpWidget(row(false));
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getCenter(find.byType(WordRowMorph)));
+      expect(taps, 1);
+    });
+
     testWidgets('built while compact, it is a line at once, with no reveal', (tester) async {
       await tester.pumpWidget(host(compact: true));
       expect(find.byKey(lineKey), findsOneWidget);
@@ -184,4 +241,24 @@ void main() {
       expect(find.byKey(lineKey), findsOneWidget);
     });
   });
+}
+
+class _Counted extends StatefulWidget {
+  const _Counted({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  State<_Counted> createState() => _CountedState();
+}
+
+class _CountedState extends State<_Counted> {
+  @override
+  void initState() {
+    super.initState();
+    widget.onCreate();
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 140);
 }

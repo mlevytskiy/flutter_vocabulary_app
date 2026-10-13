@@ -61,6 +61,8 @@ lib/
                                 url) and each row's sourceId; republishes with the stored token,
                                 good-looking-web)
                                 dictionary_service.dart (definition-mode: POST /define on the Worker)
+                                source_photo_bytes.dart (those files' bytes, read once each and
+                                kept, so the photo panel's previews hit the image cache)
                                 source_photo_store.dart (the kept 1600 px photo files under
                                 source_photos/ in the documents dir; never throws, good-looking-web)
                                 photo_upload_service.dart (background POST /sessions/<id>/sources/
