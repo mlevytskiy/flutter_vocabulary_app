@@ -29,6 +29,6 @@
 | T22 | [Add the dialogue screen with its scene picture and open it from Start](./T22-app-dialogue-screen.md) | ui | Maksym | M | T20, T21, T13 | done |
 | T23 | [Send the session's dialogues and scene-picture declarations when publishing](./T23-app-publish-dialogues.md) | infra | Maksym | S | T6, T12 | done |
 | T24 | [Append an import's rows and dialogues, and upload scene pictures, to the shared link automatically](./T24-app-dialogue-push-outbox.md) | app | Maksym | L | T7, T17, T20, T23 | done |
-| T25 | [Update the repo docs this design outdates and run the release checks](./T25-docs-and-release-pass.md) | docs | Maksym | M | T10, T19, T22, T24 | todo |
+| T25 | [Update the repo docs this design outdates and run the release checks](./T25-docs-and-release-pass.md) | docs | Maksym | M | T10, T19, T22, T24 | blocked |
 
 **Total:** 25 tasks, ~21 person-days (S ≈ ½ day, M ≈ 1 day, L ≈ a full day at the limit).

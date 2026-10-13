@@ -37,7 +37,7 @@ Committed approach: a new switch in the main screen's Settings, "Get dialogues f
 - Decision (owner, clarify 2026-10-07): a scene picture is one scene with invented characters and the dialogue's lines in speech bubbles, given to the picture maker exactly as written, as mnemonic-story does with its captions.
 - Decision (owner, clarify 2026-10-07): "Other words" is an ordinary word group under mnemonic-story's rules: without a story it takes in new words up to 19; words that don't fit are grouped by topic (7 to 19) or wait when fewer than 7. A session with any dialogue group always shows the group pager, whatever its size (AC-25).
 - Decision (owner, clarify 2026-10-07): which rows are a dialogue's words is fixed at Done and can only shrink. A word deleted and typed again, or a row the partner adds on the shared page, never becomes a dialogue word (AC-11).
-- Decision (owner, clarify 2026-10-07): new dialogues and scene pictures reach a session's existing shared link the same way word changes do, without sharing again (AC-20).
+- Decision (owner, clarify 2026-10-07; aligned with ADR-0005 at implement, 2026-10-13): an import's new rows and dialogues, and scene pictures drawn later, reach a session's existing shared link on their own, without sharing again (AC-20). Words typed by hand and edits made on the phone still reach the link only by a republish.
 
 ## 2. Goals
 
@@ -185,7 +185,7 @@ Committed approach: a new switch in the main screen's Settings, "Get dialogues f
 ### AC-20 (US-05) — happy
 **Given** a learner shares a session that has dialogues, one of which has a scene picture
 **When** the partner opens the shared page
-**Then** the partner can swipe from the word table to one page per dialogue, in the same order as on the phone, each with its words in bold and listed with translation and definition, and the dialogue that has a scene picture shows it. Dialogues added by a later import and pictures drawn later reach the same link the way word changes do, without sharing again
+**Then** the partner can swipe from the word table to one page per dialogue, in the same order as on the phone, each with its words in bold and listed with translation and definition, and the dialogue that has a scene picture shows it. Dialogues added by a later import (with that import's rows) and pictures drawn later reach the same link on their own, without sharing again (ADR-0005)
 
 ### AC-21 (US-05) — cross-context
 **Given** a partner on the shared page edits a dialogue word's translation, or deletes that word's row

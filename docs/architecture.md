@@ -89,7 +89,16 @@ lib/
                                 word_groups_notifier.dart (+.g) (grouping a session, the selected
                                 group; keepAlive, per session)
                                 story_run_tracker.dart (+.g) (starts runs, polls the Worker every 5 s,
-                                collects stories and pictures onto the phone; read once in app.dart)
+                                collects stories and pictures onto the phone; read once in app.dart;
+                                startScene for a dialogue group's scene picture)
+    dialogues/                  film dialogues (get-words-from-subtitles-improvment), shared by
+                                word_input, learn, dialogue and words_table:
+                                dialogue_match.dart (pure AC-05 rule: does a word appear, and where;
+                                tested against the Worker's match-cases.json)
+                                dialogue_rules.dart (pure: atDone, afterEdit, afterPublish, cardName)
+                                dialogue_push.dart (+.g) (keepAlive outbox: appends an import's rows
+                                and dialogues to a shared link, uploads scene pictures, retries;
+                                read once in app.dart)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
     word_input/
@@ -101,7 +110,12 @@ lib/
                                       dialog → addWords on Done; a result for another session is dropped
       word_input_notifier.dart (+.g)  AsyncNotifier<Session> + the launch rule + debounced save()
                                       + switchTo(id): makes a History session current without
-                                      stamping it (edit-session-from-history)
+                                      stamping it (edit-session-from-history); every save runs the
+                                      dialogue edit rule; addImportDialogues keeps an import's
+                                      dialogues (get-words-from-subtitles-improvment)
+      subtitle_import_flow.dart       runSubtitleImport: import dialog → loading → results → Done;
+                                      with "Get dialogues from subtitles" on it also asks for film
+                                      dialogues and hands them over after the words
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
@@ -119,6 +133,9 @@ lib/
                                         of the set page (webview_flutter); the page is shown full
                                         size only while Quizlet's robot check is on screen
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
+        main_screen_pager.dart          the main screen as a pager, only while the session has
+                                        dialogues: page 1 unchanged, then the dialogue pages
+        dialogue_page.dart              one read-only dialogue page: picture, bold words, word list
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays); "From subtitles" dark grey
                                         with the captions icon; it shares the Scaffold's floating-button
                                         slot with the Settings button, so both rise above a SnackBar
@@ -135,10 +152,12 @@ lib/
                                       (edit-session-from-history)
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
                                       the Worker side is vocab-photo-api/src/learn/
-      exercises.dart                  Exercise (id, name, stage, available) + the const list of eleven,
+      exercises.dart                  Exercise (id, name, stage, available) + the const list of twelve,
                                       tested against the Worker's exercises.json (ADR-0003)
       learn_screen.dart               the learn page: ticks live in widget State, nothing is saved;
-                                      reads the current session or a History row (LearnRoute)
+                                      reads the current session or a History row (LearnRoute);
+                                      "Dialogs from movie" only with dialogues; Start opens the
+                                      ticked exercises one after the other
       coming_soon_screen.dart         what Start opens while the picked exercise is not built
                                       (ComingSoonRoute carries the exercise id)
       widgets/group_pager.dart        the group pager on the learn page (a card per word group);
@@ -147,6 +166,11 @@ lib/
       story_screen.dart               the story, its picture (zoomable), progress, failures and
                                       "Make a new story" (StoryRoute: groupId, optional sessionId)
       widgets/new_story_dialog.dart   the new-story confirmation (a dialog, not a route)
+      widgets/story_picture.dart      a run's zoomable picture; story_parts.dart the progress label,
+                                      messages and buttons (both cut from story_screen.dart)
+    dialogue/
+      dialogue_screen.dart            "Dialogs from movie" for a dialogue group: the dialogue in bold
+                                      under its scene picture, drawing it once (DialogueRoute)
     words_settings/
       words_settings_screen.dart      Words settings (WordsSettingsRoute, from the Words screen's
                                       settings button): the three AI choices (story writer, picture
@@ -161,7 +185,9 @@ lib/
       settings_screen.dart            the drag-and-drop mode switch (task-13) and the word
                                       detail mode — translation / definition / both
                                       (definition-mode); writes dragModeProvider and
-                                      wordDetailModeProvider, which the input screen reads
+                                      wordDetailModeProvider, which the input screen reads;
+                                      the subtitle import values and "Get dialogues from
+                                      subtitles" (dialoguesSettingProvider)
 ```
 
 No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder.
@@ -335,6 +361,32 @@ secrets (`OPENCODE_ZEN_API_KEY`, `XAI_API_KEY`, `HIGGSFIELD_API_KEY`). No story 
 (`x-app-secret`), and at most 20 runs (starts plus "Draw again") start per UTC day for the whole app.
 The Worker side is in `vocab-photo-api/README.md`; the design is in
 `docs/features/mnemonic-story/sad.md`.
+
+### Film dialogues (get-words-from-subtitles-improvment)
+
+With "Get dialogues from subtitles" on, a subtitle import asks the Worker for words and up to 10
+film dialogues in one request. The results dialog is unchanged; at Done the words are added and
+`addImportDialogues` links each dialogue to the import's kept rows by `WordPair.rowId`
+(`atDone`), all in one debounced save. Dialogues live in `Session.dialogues` (`FilmDialogue`,
+embedded, pager order). Every later save runs `afterEdit`: links only shrink, and a dialogue left
+with no words goes (or stays hidden while its delivery is pending). The AC-05 matching rule exists
+twice, in `src/story/word-check.ts` and `lib/core/dialogues/dialogue_match.dart`, pinned by one case
+file both test suites read.
+
+The main screen becomes a `PageView` only while the session has visible dialogues: page 1 is the
+screen as before, then one read-only `DialoguePage` each. On the learn page, grouping first gives
+each dialogue a dialogue group (`WordGroup.dialogueId`, any size, never started on its own), then
+groups the other words as before ("Other words" beside dialogue groups). "Dialogs from movie" opens
+`DialogueScreen`, which draws the scene picture once as a story run of kind `scene` (picture prompt
+writer then picture maker, no story step, one unit of the story allowance); the picture becomes
+`FilmDialogue.scenePictureRunId` and is listed in Story runs.
+
+A shared session gets its dialogues two ways. A publish or republish sends them with the words (rows
+by position, pictures declared like photos). After that, `dialoguePushProvider` appends each new
+import's rows and dialogues (`POST /sessions/<id>/dialogues`, keyed by an app-made import id) and
+uploads each scene picture, retrying with growing pauses and on every app start; the delivery state
+is on each `FilmDialogue`, so closing the app loses nothing. Words typed by hand still reach the link
+only by a republish. The design is in `docs/features/get-words-from-subtitles-improvment/sad.md`.
 
 ## 4. Checklist for any change
 
