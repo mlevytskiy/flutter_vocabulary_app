@@ -30,6 +30,10 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
                   path: 'story',
                   factory: _$StoryRoute._fromState,
                 ),
+                GoRouteData.$route(
+                  path: 'dialogue',
+                  factory: _$DialogueRoute._fromState,
+                ),
               ],
             ),
             GoRouteData.$route(
@@ -182,6 +186,37 @@ mixin _$StoryRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/table/learn/story',
+        queryParams: {
+          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          'group-id': _self.groupId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$DialogueRoute on GoRouteData {
+  static DialogueRoute _fromState(GoRouterState state) => DialogueRoute(
+        sessionId: state.uri.queryParameters['session-id'],
+        groupId: state.uri.queryParameters['group-id']!,
+      );
+
+  DialogueRoute get _self => this as DialogueRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn/dialogue',
         queryParams: {
           if (_self.sessionId != null) 'session-id': _self.sessionId,
           'group-id': _self.groupId,

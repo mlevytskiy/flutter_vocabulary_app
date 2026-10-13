@@ -96,7 +96,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
         route = StoryRoute(sessionId: widget.sessionId, groupId: groupId);
       } else if (exercise.id == 'dialogs-from-movie' && group != null) {
         route = group.dialogueId != null
-            ? ComingSoonRoute(exercise: exercise.id)
+            ? DialogueRoute(sessionId: widget.sessionId, groupId: group.id)
             : StoryRoute(sessionId: widget.sessionId, groupId: group.id);
       } else {
         route = ComingSoonRoute(exercise: exercise.id);

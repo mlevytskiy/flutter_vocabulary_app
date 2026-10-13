@@ -91,6 +91,10 @@ void main() {
               builder: (context, state) => stub('story:${state.uri.queryParameters['group-id']}'),
             ),
             GoRoute(
+              path: 'dialogue',
+              builder: (context, state) => stub('dialogue:${state.uri.queryParameters['group-id']}'),
+            ),
+            GoRoute(
               path: 'soon',
               builder: (context, state) => stub('soon:${state.uri.queryParameters['exercise']}'),
             ),
@@ -174,6 +178,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsOneWidget);
     expect(find.textContaining('story:'), findsNothing);
+  });
+
+  testWidgets('Dialogs from movie on a dialogue group opens its dialogue (AC-13)', (tester) async {
+    await pumpScreen(tester, withDialogues,
+        WordGroupsState(groups: [d1, other], selectedGroupId: 'dialogue-d1'));
+    await tap(tester, dialogs);
+    await tap(tester, start);
+    expect(find.text('dialogue:dialogue-d1'), findsOneWidget);
+  });
+
+  testWidgets('both ticked on a dialogue group: its story, then its dialogue, in list order (AC-13)',
+      (tester) async {
+    await pumpScreen(tester, withDialogues,
+        WordGroupsState(groups: [d1, other], selectedGroupId: 'dialogue-d1'));
+    await tap(tester, mnemonic);
+    await tap(tester, dialogs);
+    await tap(tester, start);
+    expect(find.text('story:dialogue-d1'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('dialogue:dialogue-d1'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(LearnScreen), findsOneWidget);
   });
 
   testWidgets('Dialogs from movie needs a selected group', (tester) async {

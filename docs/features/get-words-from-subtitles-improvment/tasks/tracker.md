@@ -26,7 +26,7 @@
 | T19 | [Show the main screen as a pager with one read-only dialogue page per dialogue](./T19-app-main-screen-pager.md) | ui | Maksym | M | T17, T13 | done |
 | T20 | [Start, follow and collect scene runs in the app, and show them in Story runs](./T20-app-scene-run-tracking.md) | app | Maksym | M | T5, T12 | done |
 | T21 | [Offer "Dialogs from movie" on the learn page with dialogue groups](./T21-app-learn-page-dialogue-groups.md) | ui | Maksym | M | T11, T15 | done |
-| T22 | [Add the dialogue screen with its scene picture and open it from Start](./T22-app-dialogue-screen.md) | ui | Maksym | M | T20, T21, T13 | todo |
+| T22 | [Add the dialogue screen with its scene picture and open it from Start](./T22-app-dialogue-screen.md) | ui | Maksym | M | T20, T21, T13 | done |
 | T23 | [Send the session's dialogues and scene-picture declarations when publishing](./T23-app-publish-dialogues.md) | infra | Maksym | S | T6, T12 | todo |
 | T24 | [Append an import's rows and dialogues, and upload scene pictures, to the shared link automatically](./T24-app-dialogue-push-outbox.md) | app | Maksym | L | T7, T17, T20, T23 | todo |
 | T25 | [Update the repo docs this design outdates and run the release checks](./T25-docs-and-release-pass.md) | docs | Maksym | M | T10, T19, T22, T24 | todo |

@@ -13,6 +13,7 @@ import '../../core/story/word_groups_notifier.dart';
 import '../learn/learn_screen.dart' show storyDayLimitMessage;
 import '../word_input/word_input_notifier.dart';
 import 'widgets/new_story_dialog.dart';
+import 'widgets/story_parts.dart';
 import 'widgets/story_picture.dart';
 
 /// Every story run of one group, newest first, re-emitted after each write
@@ -132,21 +133,21 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final notes = <Widget>[];
     var canMakeNew = true;
     if (other != null && other.outcome == 'running') {
-      notes.add(_Label(_stepLabel(other)));
+      notes.add(StoryLabel(_stepLabel(other)));
       canMakeNew = false;
     } else if (other != null && other.outcome == 'failed') {
       if (refusal?.reason == StoryRefusal.dayLimit) {
-        notes.add(const _Message(storyDayLimitMessage));
+        notes.add(const StoryMessage(storyDayLimitMessage));
       } else {
-        notes.add(const _Message('The new story could not be made'));
-        notes.add(_Action('Try again', () => _startNew(session, group)));
+        notes.add(const StoryMessage('The new story could not be made'));
+        notes.add(StoryAction('Try again', () => _startNew(session, group)));
       }
     } else if (refusal?.reason == StoryRefusal.dayLimit) {
-      notes.add(const _Message(storyDayLimitMessage));
+      notes.add(const StoryMessage(storyDayLimitMessage));
     }
-    if (isOutdated(session, group)) notes.add(const _Message('Words changed'));
+    if (isOutdated(session, group)) notes.add(const StoryMessage('Words changed'));
     if (canMakeNew) {
-      notes.add(_Action('Make a new story', () => _makeNew(session, group)));
+      notes.add(StoryAction('Make a new story', () => _makeNew(session, group)));
     }
     return _StoryView(run: shown, notes: notes);
   }
@@ -156,49 +157,49 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
       StoryStartRefusal? refusal) {
     if (run == null) {
       if (refusal?.reason == StoryRefusal.dayLimit) {
-        return const _Plain([_Message(storyDayLimitMessage)]);
+        return const StoryPlain([StoryMessage(storyDayLimitMessage)]);
       }
-      return const _Plain([_Label('Writing the story…')]);
+      return const StoryPlain([StoryLabel('Writing the story…')]);
     }
     if (run.outcome != 'failed') {
       return _StoryView(
-          run: run, notes: [_Label(_stepLabel(run))], pictureWanted: false);
+          run: run, notes: [StoryLabel(_stepLabel(run))], pictureWanted: false);
     }
 
     final story = _last(run, 'story');
     final prompt = _last(run, 'prompt');
     final picture = _last(run, 'picture');
-    final startNew = _Action('Try again', () => _startNew(session, group));
+    final startNew = StoryAction('Try again', () => _startNew(session, group));
     if (story == null && run.steps.isEmpty) {
       // The run never started: the Worker refused, or could not be reached.
-      return _Plain([
-        _Message(_refusalText(refusal)),
+      return StoryPlain([
+        StoryMessage(_refusalText(refusal)),
         if (refusal?.reason != StoryRefusal.dayLimit) startNew
       ]);
     }
     if (story == null || story.outcome == 'failed') {
       final missed = story?.missedWords ?? const <String>[];
-      return _Plain([
-        _Message(missed.isEmpty
+      return StoryPlain([
+        StoryMessage(missed.isEmpty
             ? 'Could not write the story'
             : 'The story missed these words: ${missed.join(', ')}'),
         startNew,
       ]);
     }
     if (prompt == null || prompt.outcome == 'failed') {
-      return _Plain([
-        const _Message('Could not write the picture prompt'),
-        _Action('Try again', () => _tracker.redoPrompt(run.runId)),
+      return StoryPlain([
+        const StoryMessage('Could not write the picture prompt'),
+        StoryAction('Try again', () => _tracker.redoPrompt(run.runId)),
       ]);
     }
     return _StoryView(run: run, pictureWanted: false, notes: [
       if (refusal?.reason == StoryRefusal.dayLimit)
-        const _Message(storyDayLimitMessage)
+        const StoryMessage(storyDayLimitMessage)
       else ...[
-        _Message(picture?.outcome == 'failed'
+        StoryMessage(picture?.outcome == 'failed'
             ? 'The picture could not be drawn'
             : 'Could not finish the story'),
-        _Action('Draw again', () => _tracker.drawAgain(run.runId)),
+        StoryAction('Draw again', () => _tracker.drawAgain(run.runId)),
       ],
     ]);
   }
@@ -227,63 +228,6 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 }
 
 // --- parts ---------------------------------------------------------------
-
-/// A column of messages and buttons in the middle of the screen.
-class _Plain extends StatelessWidget {
-  const _Plain(this.children);
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(mainAxisSize: MainAxisSize.min, children: children),
-        ),
-      );
-}
-
-class _Label extends StatelessWidget {
-  const _Label(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2)),
-          const SizedBox(width: 12),
-          Text(text, style: Theme.of(context).textTheme.bodyMedium),
-        ]),
-      );
-}
-
-class _Message extends StatelessWidget {
-  const _Message(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(text,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium),
-      );
-}
-
-class _Action extends StatelessWidget {
-  const _Action(this.label, this.onPressed);
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: ElevatedButton(onPressed: onPressed, child: Text(label)),
-      );
-}
 
 /// The picture over the story text, with [notes] between the bar and them.
 /// The picture zooms and pans in place with two fingers (AC-06).
