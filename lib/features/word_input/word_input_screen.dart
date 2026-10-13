@@ -35,6 +35,7 @@ import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
+import 'widgets/word_row_morph.dart';
 import 'word_input_notifier.dart';
 
 /// Cap on how many marked words one photo may contribute. Not a quota: the
@@ -166,6 +167,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
   /// The drawer is open: the photo tab hides behind it (ADR-0001).
   bool _drawerOpen = false;
+
+  /// Kept free at the end of a row's one line: the half-open panel covers the
+  /// list's right side past its 16 px padding. Set in build from the look.
+  double _compactEndInset = 0;
 
   void _onPhotoPanelChanged() {
     if (mounted) setState(() {});
@@ -1530,11 +1535,28 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       {required bool isDragMode,
       required WordDetailMode detailMode,
       Decoration? highlight}) {
-    // While the photo panel is open the rows ignore touches (spec AC-11).
+    // While the photo panel is open the rows ignore touches (spec AC-11),
+    // and each one turns into its one line, "word — translation".
+    final compact = _photoPanel.isOpen;
     return IgnorePointer(
       key: _rowKey(index),
-      ignoring: _photoPanel.isOpen,
-      child: WordRowItem(
+      ignoring: compact,
+      child: WordRowMorph(
+      index: index,
+      compact: compact,
+      line: (reveal) => CompactWordLine(
+        index: index,
+        word: _wordControllers[index].text,
+        detail: compactDetail(
+          mode: detailMode,
+          translation: _translationControllers[index].text,
+          definition: _definitionControllers[index].text,
+        ),
+        highlight: highlight,
+        endInset: _compactEndInset,
+        reveal: reveal,
+      ),
+      full: WordRowItem(
       highlight: highlight,
       index: index,
       detailMode: detailMode,
@@ -1575,6 +1597,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       onOpenTranslationOptions: _onOpenTranslationOptions,
       onCloseTranslationOptions: () => _closeTranslationOptions(index),
       onSpeak: (accent) => _speak(index, accent),
+      ),
       ),
     );
   }
@@ -1695,6 +1718,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     ref.listen(photosWithWordsProvider, (_, photos) {
       _photoPanel.retain([for (final p in photos) p.source.id]);
     });
+    _compactEndInset =
+        lookFor(ref.watch(photoPanelVariantProvider)).halfOpenWidth - 16;
     final (highlightedRows, highlight) =
         _photoHighlight(ref.watch(photosWithWordsProvider));
     Decoration? highlightFor(int index) =>

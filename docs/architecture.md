@@ -119,6 +119,10 @@ lib/
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
+        word_row_morph.dart             (photo-panel-glass) while the photo panel is open each row
+                                        glides, top to bottom, into CompactWordLine — one line,
+                                        "word — translation" (the definition when there is no
+                                        translation or the mode shows none) — and back on close
         translation_dots_button.dart    _buildTranslationDotsButton (popup_menu_2 stays)
         vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog) and
                                         showQuizletResultDialog (set name, "Read X of Y", skipped

@@ -21,6 +21,7 @@ import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_pan
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/main_screen_pager.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -151,16 +152,25 @@ void main() {
   PanelStop stop(WidgetTester tester) => panel(tester).controller.stop;
   String? selected(WidgetTester tester) => panel(tester).controller.selectedId;
 
+  /// Rows drawn with a highlight: while the panel is open each row is its
+  /// one line, closed the full row.
   Set<int> highlighted(WidgetTester tester) => {
         for (final row in tester.widgetList<WordRowItem>(find.byType(WordRowItem)))
           if (row.highlight != null) row.index,
+        for (final line in tester.widgetList<CompactWordLine>(find.byType(CompactWordLine)))
+          if (line.highlight != null) line.index,
       };
 
+  /// Row [index], a full row or its one line.
   Finder row(int index) =>
-      find.byWidgetPredicate((w) => w is WordRowItem && w.index == index);
+      find.byWidgetPredicate((w) => w is WordRowMorph && w.index == index);
+
+  /// Row [index]'s one line, while the panel is open.
+  Finder line(int index) =>
+      find.byWidgetPredicate((w) => w is CompactWordLine && w.index == index);
 
   Finder rowField(int index, String label) => find.descendant(
-      of: row(index),
+      of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == index),
       matching: find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == label));
 
   bool wordFocused(WidgetTester tester, int index) =>
@@ -253,9 +263,8 @@ void main() {
         await tester.pump(const Duration(milliseconds: 284));
         expect(stop(tester), PanelStop.halfOpen);
         expect(tester.getSize(find.byKey(PhotoPanel.panelKey)).width, look.halfOpenWidth);
-        expect(wordFocused(tester, 1), isFalse, reason: 'the keyboard closes');
-        expect(tester.widget<TextField>(rowField(1, 'Word')).controller!.text, 'word1',
-            reason: 'the text is kept');
+        expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse,
+            reason: 'the keyboard closes');
 
         final p1 = tester.getRect(find.byKey(PhotoPanel.smallPhotoKey('p1')));
         final p2 = tester.getRect(find.byKey(PhotoPanel.smallPhotoKey('p2')));
@@ -268,6 +277,8 @@ void main() {
                     (w) => w is Semantics && w.properties.label == 'Photo not available')),
             findsOneWidget,
             reason: 'no file: the placeholder (AC-09)');
+        expect(tester.widget<CompactWordLine>(line(1)).text, startsWith('word1'),
+            reason: 'the text is kept, shown on the row\'s one line');
         expect(tester.getRect(row(1)).left, lessThan(listRect(tester).right - look.halfOpenWidth),
             reason: 'the rows stay visible beside it');
         await tearDownMain(tester);
@@ -403,7 +414,7 @@ void main() {
         await openHalf(tester);
         final count = container.read(wordInputNotifierProvider).value!.words.length;
 
-        await tester.tap(rowField(1, 'Word'), warnIfMissed: false);
+        await tester.tap(line(1), warnIfMissed: false);
         await tester.pumpAndSettle();
         expect(stop(tester), PanelStop.closed);
         expect(wordFocused(tester, 1), isFalse);

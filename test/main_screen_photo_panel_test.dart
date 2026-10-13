@@ -14,6 +14,7 @@ import 'package:flutter_vocabulary_app/core/services/session_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -113,11 +114,22 @@ void main() {
   String? selected(WidgetTester tester) =>
       tester.widget<PhotoPanel>(find.byType(PhotoPanel, skipOffstage: false)).controller.selectedId;
 
-  /// Indices of the rows drawn with a highlight.
+  /// Indices of the rows drawn with a highlight: while the panel is open
+  /// each row is its one line, closed the full row.
   Set<int> highlighted(WidgetTester tester) => {
         for (final row in tester.widgetList<WordRowItem>(find.byType(WordRowItem)))
           if (row.highlight != null) row.index,
+        for (final line in tester.widgetList<CompactWordLine>(find.byType(CompactWordLine)))
+          if (line.highlight != null) line.index,
       };
+
+  /// Row [index], a full row or its one line.
+  Finder row(int index) =>
+      find.byWidgetPredicate((w) => w is WordRowMorph && w.index == index);
+
+  /// Row [index]'s one line, while the panel is open.
+  Finder line(int index) =>
+      find.byWidgetPredicate((w) => w is CompactWordLine && w.index == index);
 
   Rect listRect(WidgetTester tester) => tester.getRect(find.byType(ListView).first);
 
@@ -137,6 +149,30 @@ void main() {
     await tearDownMain(tester);
   });
 
+  testWidgets('open, every row is one line "word — translation"; closed, the rows are back',
+      (tester) async {
+    await pumpMain(tester);
+    FocusManager.instance.primaryFocus?.unfocus();
+    expect(find.byType(CompactWordLine), findsNothing);
+
+    await openHalf(tester);
+    expect(find.byType(WordRowItem), findsNothing);
+    expect(tester.widget<CompactWordLine>(line(0)).text, 'word0 — слово0');
+    expect(tester.widget<CompactWordLine>(line(1)).text, 'word1 — слово1');
+    expect(tester.getSize(row(1)).height, lessThan(64), reason: 'one line of text');
+
+    await tester.tap(find.byKey(PhotoPanel.closeKey));
+    await tester.pumpAndSettle();
+    expect(find.byType(CompactWordLine), findsNothing);
+    expect(
+        find.descendant(
+            of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == 1),
+            matching: find.byWidgetPredicate(
+                (w) => w is TextField && w.controller?.text == 'word1')),
+        findsOneWidget);
+    await tearDownMain(tester);
+  });
+
   testWidgets('selecting a photo highlights all its rows and jumps to the first (AC-04)',
       (tester) async {
     await pumpMain(tester);
@@ -147,16 +183,16 @@ void main() {
     }
     expect(selected(tester), 'p2');
     expect(highlighted(tester), {18});
-    final row = tester.getRect(find.byWidgetPredicate((w) => w is WordRowItem && w.index == 18));
-    expect(row.top, greaterThanOrEqualTo(listRect(tester).top));
-    expect(row.bottom, lessThanOrEqualTo(listRect(tester).bottom));
+    final rect = tester.getRect(row(18));
+    expect(rect.top, greaterThanOrEqualTo(listRect(tester).top));
+    expect(rect.bottom, lessThanOrEqualTo(listRect(tester).bottom));
 
     // Another photo moves the highlight; its first row (3) is far up again.
     await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p1')));
     await tester.pumpAndSettle();
     expect(highlighted(tester), containsAll([3]));
     expect(highlighted(tester).contains(18), isFalse);
-    expect(tester.any(find.byWidgetPredicate((w) => w is WordRowItem && w.index == 3)), isTrue);
+    expect(tester.any(row(3)), isTrue);
 
     // The same photo again clears it and does not scroll (AC-05).
     final offset = listPosition(tester).pixels;
@@ -234,10 +270,6 @@ void main() {
 
   // T14: an open panel owns the main screen's touches (AC-11, AC-13, AC-15b).
 
-  Finder rowField(int index, String label) => find.descendant(
-      of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == index),
-      matching: find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == label));
-
   testWidgets('with the panel open a tap on a row only closes it: no focus, no delete (AC-11)',
       (tester) async {
     await pumpMain(tester);
@@ -245,23 +277,25 @@ void main() {
     await openHalf(tester);
     final rows = container.read(wordInputNotifierProvider).value!.words.length;
 
-    await tester.tap(rowField(1, 'Word'), warnIfMissed: false);
+    await tester.tap(line(1), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
     expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
 
     // The delete button sits at the row's right edge, under the half-open
     // panel: a tap there belongs to the panel and deletes nothing (AC-14).
+    final delete = tester.getCenter(find
+        .descendant(
+            of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == 1),
+            matching: find.byIcon(Icons.close))
+        .first);
     await openHalf(tester);
-    final delete = find.descendant(
-        of: find.byWidgetPredicate((w) => w is WordRowItem && w.index == 1),
-        matching: find.byIcon(Icons.close));
-    await tester.tap(delete.first, warnIfMissed: false);
+    await tester.tapAt(delete);
     await tester.pumpAndSettle();
     expect(container.read(wordInputNotifierProvider).value!.words.length, rows);
 
-    // Another field of the row: only closes the panel.
-    await tester.tap(rowField(2, 'Translation'), warnIfMissed: false);
+    // Another row's one line: only closes the panel.
+    await tester.tap(line(2), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
     expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
