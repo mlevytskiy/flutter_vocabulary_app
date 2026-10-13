@@ -667,6 +667,18 @@ void main() {
       expect(after.groups.first.storyRunId, isNull, reason: 'a scene is not the group\'s story');
     });
 
+    test('in a shared session the picture then waits for its upload (ADR-0005)', () async {
+      await bootWithDialogue();
+      session
+        ..publishedId = 'pub'
+        ..editToken = 'tok';
+      await store.put(session);
+      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      workerDraws(id);
+      await tracker().poll();
+      expect((await saved()).dialogues.single.picturePushState, PushState.pending);
+    });
+
     test('a dialogue with a picture is never drawn again (AC-14)', () async {
       await bootWithDialogue();
       final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;

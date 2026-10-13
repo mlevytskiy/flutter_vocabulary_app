@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/word_input/word_input_notifier.dart';
+import '../models/film_dialogue.dart';
 import '../models/offered_ai.dart';
 import '../models/session.dart';
 import '../models/story_run.dart';
@@ -482,6 +483,9 @@ class StoryRunTracker extends _$StoryRunTracker {
     final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
     if (dialogue == null) return;
     dialogue.scenePictureRunId = run.runId;
+    if (session.publishedId != null && session.editToken != null) {
+      dialogue.picturePushState = PushState.pending;
+    }
     await (await ref.read(sessionStoreProvider.future)).put(session);
   }
 

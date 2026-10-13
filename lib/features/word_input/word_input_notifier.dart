@@ -305,6 +305,10 @@ class WordInputNotifier extends _$WordInputNotifier {
     final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
     if (dialogue == null || dialogue.scenePictureRunId == runId) return;
     dialogue.scenePictureRunId = runId;
+    // A shared session's page gets the picture too (ADR-0005).
+    if (session.publishedId != null && session.editToken != null) {
+      dialogue.picturePushState = PushState.pending;
+    }
     state = AsyncData(session);
     final store = await ref.read(sessionStoreProvider.future);
     await store.put(session);
@@ -366,6 +370,20 @@ class WordInputNotifier extends _$WordInputNotifier {
       ..isShared = true
       ..publishedId = publishedId
       ..editToken = editToken;
+    state = AsyncData(session);
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.put(session);
+  }
+
+  /// Records how far the dialogues' delivery to the shared link got
+  /// (get-words-from-subtitles-improvment ADR-0005): [change] gets the
+  /// dialogues as they are now. Not a content change, so written like
+  /// [markShared].
+  Future<void> updateDialogues(
+      List<FilmDialogue> Function(List<FilmDialogue>) change) async {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    session.dialogues = change(session.dialogues);
     state = AsyncData(session);
     final store = await ref.read(sessionStoreProvider.future);
     await store.put(session);

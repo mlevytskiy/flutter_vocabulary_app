@@ -1,3 +1,4 @@
+import 'dialogues/dialogue_push.dart' show DialoguePushService;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -224,6 +225,12 @@ class WordDetailModeNotifier extends _$WordDetailModeNotifier {
     await prefs.setString(prefsKey, mode.name);
   }
 }
+
+/// Adds an import's rows and dialogues, and scene pictures, to a published
+/// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
+/// uses it is `dialoguePushProvider`.
+@Riverpod(keepAlive: true)
+DialoguePushService dialoguePushService(Ref ref) => DialoguePushService();
 
 /// Short name used across the app and the design docs.
 final dialoguesSettingProvider = dialoguesSettingNotifierProvider;
