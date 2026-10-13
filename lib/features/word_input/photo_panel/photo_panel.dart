@@ -30,6 +30,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
     this.scrollController,
     this.onSelected,
     this.onBeforeOpen,
+    this.onSettled,
     @visibleForTesting this.look,
   });
 
@@ -68,6 +69,12 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// pager to the words page here, so an open panel always sits over the
   /// words page (spec AC-13, sad §6 Flow 7).
   final Future<void> Function()? onBeforeOpen;
+
+  /// Called when the panel has come to rest at a stop: its slide is over.
+  /// The main screen starts its rows' change to and from one line here, so
+  /// the glass is never sliding over rows that are changing too, the
+  /// heaviest frames for an Android GPU.
+  final ValueChanged<PanelStop>? onSettled;
 
   /// Overrides the design variant's look; tests only.
   final PhotoPanelLook? look;
@@ -206,13 +213,28 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   void _animateTo(double target) {
     if (_animatingTo == target && _openness.isAnimating) return;
-    if (_openness.value == target && !_openness.isAnimating) return;
+    if (_openness.value == target && !_openness.isAnimating) {
+      _settled(target);
+      return;
+    }
     if (_openness.value == 0 && target > 0) _unfocus();
     _animatingTo = target;
     _openness
         .animateTo(target,
             duration: _settleDuration, curve: Curves.easeOutCubic)
-        .whenCompleteOrCancel(() => _animatingTo = null);
+        .whenCompleteOrCancel(() {
+      _animatingTo = null;
+      _settled(target);
+    });
+  }
+
+  /// Tells the screen the panel rests at [target], if it really does: not
+  /// cancelled half way, not taken over by a drag, and still the stop.
+  void _settled(double target) {
+    if (!mounted || _panelDragging || _openness.isAnimating) return;
+    if (_openness.value != target) return;
+    final stop = widget.controller.stop;
+    if (stop.openness == target) widget.onSettled?.call(stop);
   }
 
   /// Opening closes the keyboard; the field keeps its text (spec AC-03).

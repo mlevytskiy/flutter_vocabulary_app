@@ -174,6 +174,33 @@ void main() {
     await tearDownMain(tester);
   });
 
+  testWidgets('the rows change only after the panel has slid in or out (Android cost)',
+      (tester) async {
+    await pumpMain(tester);
+    FocusManager.instance.primaryFocus?.unfocus();
+
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(milliseconds: 16)); // ~225 ms of the slide
+      expect(find.byType(CompactWordLine), findsNothing, reason: 'frame $i of the slide in');
+    }
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.halfOpen);
+    expect(find.byType(CompactWordLine), findsWidgets);
+    expect(find.byType(WordRowItem), findsNothing);
+
+    await tester.tap(find.byKey(PhotoPanel.closeKey));
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.byType(WordRowItem), findsNothing, reason: 'frame $i of the slide out');
+    }
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(find.byType(CompactWordLine), findsNothing);
+    expect(find.byType(WordRowItem), findsWidgets);
+    await tearDownMain(tester);
+  });
+
   testWidgets('the glass slides and is covered, never resized or refaded (Android cost)',
       (tester) async {
     await pumpMain(tester);
