@@ -174,30 +174,54 @@ void main() {
     await tearDownMain(tester);
   });
 
-  testWidgets('the rows change only after the panel has slid in or out (Android cost)',
+  testWidgets('the panel asks for simple glass while it slides on its own, not after a drag',
       (tester) async {
     await pumpMain(tester);
     FocusManager.instance.primaryFocus?.unfocus();
+    bool simple() => tester
+        .widget<SimpleGlassScope>(find.byType(SimpleGlassScope, skipOffstage: false))
+        .simple;
+    expect(simple(), isFalse);
 
+    // A tap: the panel slides in while the rows change under it.
     await tester.tap(find.byKey(PhotoPanel.tabKey));
-    for (var i = 0; i < 14; i++) {
-      await tester.pump(const Duration(milliseconds: 16)); // ~225 ms of the slide
-      expect(find.byType(CompactWordLine), findsNothing, reason: 'frame $i of the slide in');
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(simple(), isTrue, reason: 'sliding in');
+    var rowsChangedWhileSliding = false;
+    while (simple()) {
+      await tester.pump(const Duration(milliseconds: 16));
+      rowsChangedWhileSliding |= simple() && tester.any(find.byType(CompactWordLine));
+    }
+    expect(rowsChangedWhileSliding, isTrue, reason: 'the rows change at the same time');
+    await tester.pumpAndSettle();
+    expect(simple(), isFalse, reason: 'at rest');
+
+    // Close: it slides out on its own.
+    await tester.tap(find.byKey(PhotoPanel.closeKey));
+    await tester.pump(const Duration(milliseconds: 16));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(simple(), isTrue, reason: 'sliding out');
+    await tester.pumpAndSettle();
+    expect(simple(), isFalse);
+
+    // A drag follows the finger and settles after it: liquid all along.
+    final tab = tester.getCenter(find.byKey(PhotoPanel.tabKey));
+    final gesture = await tester.startGesture(tab);
+    var sawSimple = false;
+    for (var i = 0; i < 8; i++) {
+      await gesture.moveBy(const Offset(-20, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+      sawSimple |= simple();
+    }
+    await gesture.up();
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      sawSimple |= simple();
     }
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.halfOpen);
-    expect(find.byType(CompactWordLine), findsWidgets);
-    expect(find.byType(WordRowItem), findsNothing);
-
-    await tester.tap(find.byKey(PhotoPanel.closeKey));
-    for (var i = 0; i < 14; i++) {
-      await tester.pump(const Duration(milliseconds: 16));
-      expect(find.byType(WordRowItem), findsNothing, reason: 'frame $i of the slide out');
-    }
-    await tester.pumpAndSettle();
-    expect(stop(tester), PanelStop.closed);
-    expect(find.byType(CompactWordLine), findsNothing);
-    expect(find.byType(WordRowItem), findsWidgets);
+    expect(sawSimple, isFalse, reason: 'a drag keeps the liquid glass');
     await tearDownMain(tester);
   });
 

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/services/system_gesture_exclusion.dart';
+import 'looks/edge_glass.dart';
 import 'looks/looks.dart';
 import 'looks/photo_panel_look.dart';
 import 'photo_panel_controller.dart';
@@ -30,7 +31,6 @@ class PhotoPanel extends ConsumerStatefulWidget {
     this.scrollController,
     this.onSelected,
     this.onBeforeOpen,
-    this.onSettled,
     @visibleForTesting this.look,
   });
 
@@ -69,12 +69,6 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// pager to the words page here, so an open panel always sits over the
   /// words page (spec AC-13, sad §6 Flow 7).
   final Future<void> Function()? onBeforeOpen;
-
-  /// Called when the panel has come to rest at a stop: its slide is over.
-  /// The main screen starts its rows' change to and from one line here, so
-  /// the glass is never sliding over rows that are changing too, the
-  /// heaviest frames for an Android GPU.
-  final ValueChanged<PanelStop>? onSettled;
 
   /// Overrides the design variant's look; tests only.
   final PhotoPanelLook? look;
@@ -211,30 +205,32 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     _animateTo(widget.controller.stop.openness);
   }
 
-  void _animateTo(double target) {
+  /// [afterDrag]: the settle after a drag let go, which keeps the liquid
+  /// glass; a slide the panel makes on its own between closed and open draws
+  /// the simple glass on Android ([_simpleGlass]).
+  void _animateTo(double target, {bool afterDrag = false}) {
     if (_animatingTo == target && _openness.isAnimating) return;
-    if (_openness.value == target && !_openness.isAnimating) {
-      _settled(target);
-      return;
-    }
+    if (_openness.value == target && !_openness.isAnimating) return;
     if (_openness.value == 0 && target > 0) _unfocus();
     _animatingTo = target;
+    _setSimpleGlass(!afterDrag && (_openness.value == 0 || target == 0));
     _openness
         .animateTo(target,
             duration: _settleDuration, curve: Curves.easeOutCubic)
         .whenCompleteOrCancel(() {
       _animatingTo = null;
-      _settled(target);
+      if (!_openness.isAnimating) _setSimpleGlass(false);
     });
   }
 
-  /// Tells the screen the panel rests at [target], if it really does: not
-  /// cancelled half way, not taken over by a drag, and still the stop.
-  void _settled(double target) {
-    if (!mounted || _panelDragging || _openness.isAnimating) return;
-    if (_openness.value != target) return;
-    final stop = widget.controller.stop;
-    if (stop.openness == target) widget.onSettled?.call(stop);
+  /// The panel slides between closed and open on its own, while the word
+  /// rows change to or from their one line under it: on Android the glass
+  /// draws its simple, frosted form until the slide ends ([SimpleGlassScope]).
+  bool _simpleGlass = false;
+
+  void _setSimpleGlass(bool value) {
+    if (_simpleGlass == value || !mounted) return;
+    setState(() => _simpleGlass = value);
   }
 
   /// Opening closes the keyboard; the field keeps its text (spec AC-03).
@@ -291,10 +287,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
       await _beforeOpen();
       if (!mounted) return;
     }
-    _animateTo(stop.openness);
+    _animateTo(stop.openness, afterDrag: true);
     widget.controller.setStop(stop);
     // The same stop again does not notify; settle back to it anyway.
-    _animateTo(stop.openness);
+    _animateTo(stop.openness, afterDrag: true);
   }
 
   // The tab's height on the words page.
@@ -743,6 +739,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
           final t = _openness.value;
           return BackdropGroup(
             backdropKey: _backdropKey,
+            child: SimpleGlassScope(
+            simple: _simpleGlass,
             child: Stack(
               children: [
                 // Kept in the tree during a drag that started on it, so the
@@ -756,6 +754,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                       key: const ValueKey('panel'),
                       child: _panel(context, photos, t)),
               ],
+            ),
             ),
           );
         },

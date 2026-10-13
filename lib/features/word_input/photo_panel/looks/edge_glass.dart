@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
@@ -16,6 +17,9 @@ import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 /// blend draws the flares. Elsewhere (Skia, widget tests) [edgeGlassPath]
 /// draws the same outline with a frosted blur: the blend's fillet is exactly
 /// a quadratic curve with its control point in the corner.
+///
+/// On Android, while a [SimpleGlassScope] above says so, the frosted glass
+/// stands in for the liquid one, and fades back to it when the scope clears.
 class EdgeGlass extends StatelessWidget {
   const EdgeGlass({
     super.key,
@@ -38,6 +42,16 @@ class EdgeGlass extends StatelessWidget {
   /// reach and only the flares show.
   double get _over => 2 * flare;
 
+  /// How long the frosted stand-in takes to fade back into the liquid glass.
+  static const settleBack = Duration(milliseconds: 220);
+
+  /// Overrides whether the liquid glass can be drawn (Impeller); tests only.
+  @visibleForTesting
+  static bool? debugLiquidSupported;
+
+  static bool get _liquidSupported =>
+      debugLiquidSupported ?? ui.ImageFilter.isShaderFilterSupported;
+
   @override
   Widget build(BuildContext context) {
     final glass = LayoutBuilder(builder: (context, box) {
@@ -48,13 +62,29 @@ class EdgeGlass extends StatelessWidget {
           bottom: size.height - _over,
           radius: radius,
           flare: flare);
-      // On Impeller the package draws the rim itself.
-      final liquid = ui.ImageFilter.isShaderFilterSupported;
+      final frosted = _frosted(context, size, path);
+      final Widget surface;
+      if (!_liquidSupported) {
+        surface = frosted;
+      } else {
+        // The liquid glass stays mounted under its stand-in, so its shape is
+        // not rebuilt when it shows again; at opacity 0 it is not drawn.
+        final simple = SimpleGlassScope.simpleOf(context);
+        surface = Stack(
+          fit: StackFit.expand,
+          children: [
+            Opacity(opacity: simple ? 0 : 1, child: _liquid(size)),
+            AnimatedOpacity(
+              opacity: simple ? 1 : 0,
+              duration: simple ? Duration.zero : settleBack,
+              child: frosted,
+            ),
+          ],
+        );
+      }
       return CustomPaint(
         painter: _Light(path, settings, shadow: true),
-        foregroundPainter:
-            liquid ? null : _Light(path, settings, shadow: false),
-        child: liquid ? _liquid(size) : _frosted(size, path),
+        child: surface,
       );
     });
     return Stack(
@@ -110,20 +140,52 @@ class EdgeGlass extends StatelessWidget {
     );
   }
 
-  /// The same outline as a frosted blur with a tint and a rim.
-  Widget _frosted(Size size, Path path) {
+  /// The same outline as a frosted blur with a tint and a rim: no shader,
+  /// so far cheaper to draw than the liquid glass.
+  Widget _frosted(BuildContext context, Size size, Path path) {
     final blur = settings.effectiveBlur;
-    return ClipPath(
-      clipper: _PathClipper(path),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: CustomPaint(
-          painter: _Tint(path, settings.effectiveGlassColor),
-          size: size,
+    return CustomPaint(
+      foregroundPainter: _Light(path, settings, shadow: false),
+      child: ClipPath(
+        clipper: _PathClipper(path),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          // One backdrop read with the other glass under the same group.
+          backdropGroupKey: BackdropGroup.of(context)?.backdropKey,
+          child: CustomPaint(
+            painter: _Tint(path, settings.effectiveGlassColor),
+            size: size,
+          ),
         ),
       ),
     );
   }
+}
+
+/// Asks the [EdgeGlass] below to stand in its frosted glass for the liquid
+/// one on Android while [simple]: the photo panel says so while it slides in
+/// or out on its own, the moment the word rows change under it too. Liquid
+/// glass over a moving, changing picture is more than many Android GPUs draw
+/// in a frame; at rest, or following a finger, it is not. Elsewhere it has no
+/// effect.
+class SimpleGlassScope extends InheritedWidget {
+  const SimpleGlassScope(
+      {super.key, required this.simple, required super.child});
+
+  final bool simple;
+
+  /// Whether the glass at [context] should stand in its frosted glass now.
+  static bool simpleOf(BuildContext context) {
+    if (defaultTargetPlatform != TargetPlatform.android) return false;
+    return context
+            .dependOnInheritedWidgetOfExactType<SimpleGlassScope>()
+            ?.simple ??
+        false;
+  }
+
+  @override
+  bool updateShouldNotify(SimpleGlassScope oldWidget) =>
+      simple != oldWidget.simple;
 }
 
 /// The glass's outline in its own box: the screen edge at x = [edge], the

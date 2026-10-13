@@ -23,7 +23,6 @@ import '../../router/routes.dart';
 import 'lightning_rules.dart';
 import 'photo_panel/looks/looks.dart';
 import 'photo_panel/photo_panel.dart';
-import 'photo_panel/photo_panel_stops.dart';
 import 'photo_panel/photo_panel_controller.dart';
 import 'photo_panel/photos_with_words.dart';
 import 'photo_panel/row_jump.dart';
@@ -168,19 +167,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
   /// The drawer is open: the photo tab hides behind it (ADR-0001).
   bool _drawerOpen = false;
-
-  /// The rows show their one line: the photo panel has come to rest open.
-  /// It follows the panel's settle, not its stop, so the rows change after
-  /// the glass has slid in or out rather than under it (Android's GPU cannot
-  /// redo the glass over changing rows while it moves).
-  bool _rowsCompact = false;
-
-  void _onPhotoPanelSettled(PanelStop stop) {
-    final compact = stop != PanelStop.closed;
-    if (mounted && compact != _rowsCompact) {
-      setState(() => _rowsCompact = compact);
-    }
-  }
 
   /// Kept free at the end of a row's one line: the half-open panel covers the
   /// list's right side past its 16 px padding. Set in build from the look.
@@ -1550,14 +1536,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       required WordDetailMode detailMode,
       Decoration? highlight}) {
     // While the photo panel is open the rows ignore touches (spec AC-11),
-    // and once it has slid in each one turns into its one line,
-    // "word — translation".
+    // and each one turns into its one line, "word — translation".
+    final compact = _photoPanel.isOpen;
     return IgnorePointer(
       key: _rowKey(index),
-      ignoring: _photoPanel.isOpen,
+      ignoring: compact,
       child: WordRowMorph(
       index: index,
-      compact: _rowsCompact,
+      compact: compact,
       line: (reveal) => CompactWordLine(
         index: index,
         word: _wordControllers[index].text,
@@ -1873,7 +1859,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               scrollController: _listScroll,
               onSelected: _onPhotoSelected,
               onBeforeOpen: _showWordsPage,
-              onSettled: _onPhotoPanelSettled,
             ),
           ),
         ],
