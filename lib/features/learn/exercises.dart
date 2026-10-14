@@ -22,7 +22,7 @@ const exercises = <Exercise>[
   Exercise(id: 'dialogs-from-movie', name: 'Dialogs from movie', stage: 1, available: true),
   Exercise(id: 'match-synonyms', name: 'Match synonyms', stage: 1, available: true),
   Exercise(id: 'match-definitions', name: 'Match word and definition', stage: 1, available: true),
-  Exercise(id: 'guess-my-word', name: 'Guess my word', stage: 1, available: false),
+  Exercise(id: 'guess-my-word', name: 'Guess my word', stage: 1, available: true),
   Exercise(id: 'pick-the-answer', name: 'Pick the right answer', stage: 1, available: true),
   Exercise(id: 'fill-the-gaps', name: 'Fill the gaps', stage: 2, available: true),
   Exercise(id: 'remember-or-not', name: 'Remember or not', stage: 2, available: true),

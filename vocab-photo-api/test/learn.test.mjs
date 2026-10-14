@@ -73,9 +73,10 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the thi
   assert.doesNotMatch(inputOf(html, "match-definitions"), /disabled/);
   assert.doesNotMatch(inputOf(html, "fill-the-gaps"), /disabled/);
   assert.doesNotMatch(inputOf(html, "sentence-patterns"), /disabled/);
-  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps" && x !== "sentence-patterns")) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 5);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 5);
+  assert.doesNotMatch(inputOf(html, "guess-my-word"), /disabled/);
+  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps" && x !== "sentence-patterns" && x !== "guess-my-word")) assert.match(inputOf(html, x), /disabled/);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 4);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 4);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -134,6 +135,19 @@ test("learn-match-synonyms AC-23: Match synonyms is listed in Step 1, can be tic
   const html = withoutStyle(await res.text());
   assert.equal(res.status, 200);
   assert.match(html, /<h1>Match synonyms<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
+  assert.doesNotMatch(html, /<button|<input|<form/);
+});
+
+test("learn-guess-my-word AC-25: Guess my word is listed in Step 1, can be ticked, and the page has no way to play it or to add a clue", async () => {
+  const { id } = await publish();
+  const ticked = (await learn(id, "?pick=guess-my-word")).html;
+  assert.match(inputOf(ticked, "guess-my-word"), /\bchecked\b/);
+  assert.match(ticked, /Guess my word/);
+  const res = await get(`/s/${id}/learn/guess-my-word?pick=guess-my-word`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Guess my word<\/h1>/);
   assert.match(html, /Coming soon — this exercise is not ready yet\./);
   assert.doesNotMatch(html, /<button|<input|<form/);
 });
