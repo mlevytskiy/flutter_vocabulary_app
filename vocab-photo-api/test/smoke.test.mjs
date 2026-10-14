@@ -105,9 +105,7 @@ test("smoke: the app's dictionary lookup and subtitle import answer", async () =
   assert.equal(define.body.outcome, "senses");
 
   const subtitles = await appPost("/subtitles/words", {
-    lines: ["I was reluctant to leave, but the tide was coming in."],
-    purpose: "understand_film",
-    level: "B2",
+    words: ["reluctant", "tide", "harbour", "fog", "grab", "rope", "lift"].map((word) => ({ word, context: `A line with ${word}.` })),
     maximum: 5,
     model: "claude-sonnet-5",
     sessionWords: [],

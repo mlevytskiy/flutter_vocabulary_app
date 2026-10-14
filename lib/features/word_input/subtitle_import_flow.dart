@@ -7,9 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dialogues/dialogue_rules.dart' show ImportedDialogue;
 import '../../core/models/vocab_word.dart';
 import '../../core/providers.dart';
+import '../../core/models/subtitle_import_options.dart';
 import '../../core/services/subtitle_parser.dart';
+import '../../core/services/subtitle_search_service.dart';
+import '../../core/services/subtitle_word_counter.dart';
 import '../../core/services/subtitle_words_service.dart';
-import 'widgets/import_loading_dialog.dart';
+import 'widgets/subtitle_progress_dialog.dart';
+import 'widgets/subtitle_search_dialog.dart';
 import 'widgets/subtitle_import_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 
@@ -23,13 +27,16 @@ abstract final class SubtitleImportMessages {
 
 /// One subtitle import, from the speed dial to Done (words-from-subtitles
 /// sad §6 F1, F3, F4): the import dialog, then — with its values recorded in
-/// Settings while "Update with each import" is on — the non-dismissible
-/// loading dialog while the file is read and the Worker picks the words, then
-/// the results dialog. Only Done changes the session, through [addWords];
-/// every failure closes the loading dialog with its message and leaves the
+/// Settings while "Update with each import" is on — the progress dialog
+/// ([showSubtitleProgressDialog]: the picked words with their context lines,
+/// swipeable, translations as skeletons until they arrive) while the phone picks the most frequent words the level
+/// does not know yet ([SubtitleWordCounter]) and the translator chosen in
+/// Settings translates them — Google Translate on the phone, with the phone's
+/// context line, or the AI on the Worker — then the results dialog. Only Done changes the session, through [addWords];
+/// every failure closes the progress dialog with its message and leaves the
 /// session as it was. A result for a session other than the one current at
-/// Start is dropped (AC-16). With "Get dialogues from subtitles" on, the
-/// import also asks for film dialogues; they ride with the result, unseen by
+/// Start is dropped (AC-16). With the AI translating and "Get dialogues from
+/// subtitles" on, the import also asks for film dialogues; they ride with the result, unseen by
 /// the results dialog, and right after [addWords] go to [addDialogues] with
 /// the number of words kept, so one save holds both
 /// (get-words-from-subtitles-improvment AC-02, AC-03).
@@ -51,60 +58,89 @@ Future<void> runSubtitleImport({
     context,
     initial: ref.read(subtitleImportPrefsProvider),
     pickFile: pickFile,
+    findByName: (context) => showSubtitleSearchDialog(context, service: ref.read(subtitleSearchServiceProvider)),
   );
   if (request == null || !context.mounted) return;
 
-  await prefsNotifier.recordUsed(purpose: request.purpose, level: request.level, maximum: request.maximum);
+  await prefsNotifier.recordUsed(level: request.level, maximum: request.maximum);
   if (!context.mounted) return;
   final startedIn = currentSessionId();
-  final model = ref.read(subtitleImportPrefsProvider).model;
-  final withDialogues = ref.read(dialoguesSettingProvider);
-  final stopwatch = Stopwatch()..start();
-  showImportLoadingDialog(context);
+  final prefs = ref.read(subtitleImportPrefsProvider);
+  final withAi = prefs.translator != SubtitleTranslator.google;
+  final withDialogues = withAi && ref.read(dialoguesSettingProvider);
+  final stopwatch = Stopwatch();
+
+  // The file (still downloading when found by name) is read and its words are
+  // picked inside the progress dialog; the translation follows.
+  final picking = request.bytes.then((bytes) {
+    final lines = SubtitleParser.parse(utf8.decode(bytes, allowMalformed: true), extension: request.extension);
+    final picked = SubtitleWordCounter.pick(
+      lines,
+      maximum: request.maximum,
+      level: request.level,
+      sessionWords: sessionWords(),
+      boostCloseRepeats: prefs.boostCloseRepeats,
+      removeNames: prefs.removeNames,
+    );
+    if (picked.isEmpty) throw const _NoWords();
+    return picked;
+  });
 
   SubtitleWordsResult? result;
-  String? message;
-  try {
-    final lines = SubtitleParser.parse(
-      utf8.decode(request.bytes, allowMalformed: true),
-      extension: request.extension,
-    );
-    if (lines.isEmpty) {
-      message = SubtitleImportMessages.noEnglish;
-    } else {
-      result = await ref.read(subtitleWordsServiceProvider).pickWords(
-            lines: lines,
-            purpose: request.purpose,
-            level: request.level,
-            maximum: request.maximum,
-            model: model,
-            sessionWords: sessionWords(),
-            dialogues: withDialogues,
-          );
-      if (result.words.length > request.maximum) {
-        // spec §6 "Word maximum respected": never show more than was asked for.
-        debugPrint('SUBTITLES: ${result.words.length} words for a maximum of ${request.maximum}');
-        result = null;
-        message = SubtitleImportMessages.notPicked;
-      }
-    }
-  } on SubtitleWordsException catch (e) {
-    debugPrint('SUBTITLES: $e');
-    message = switch (e.error) {
-      SubtitleWordsError.noEnglish => SubtitleImportMessages.noEnglish,
-      SubtitleWordsError.tooManyImports => SubtitleImportMessages.tooManyImports,
-      SubtitleWordsError.notPicked => SubtitleImportMessages.notPicked,
-    };
-  } catch (e) {
-    debugPrint('SUBTITLES: import failed: $e');
-    message = SubtitleImportMessages.notPicked;
-  }
-  stopwatch.stop();
-  if (!context.mounted) return;
-  closeImportLoadingDialog(context);
+  final translated = picking.then((picked) {
+    stopwatch.start();
+    return withAi
+        ? ref
+            .read(subtitleWordsServiceProvider)
+            .pickWords(
+              words: picked.words,
+              contexts: picked.contexts,
+              lines: picked.lines,
+              maximum: request.maximum,
+              model: prefs.modelInUse,
+              sessionWords: sessionWords(),
+              dialogues: withDialogues,
+            )
+            .then((r) => (result = r).words)
+        : ref.read(subtitleGoogleWordsProvider).translate(picked.words, contexts: picked.contexts, maximum: request.maximum);
+  }).whenComplete(stopwatch.stop);
 
-  if (message != null) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  final outcome = await showSubtitleProgressDialog(
+    context,
+    fileName: request.fileName,
+    title: request.title,
+    imageUrl: request.imageUrl,
+    picked: picking.then((p) => (words: p.words.take(request.maximum).toList(), contexts: p.contexts)),
+    translated: translated,
+  );
+  if (!context.mounted) return;
+
+  List<VocabWord> words;
+  switch (outcome) {
+    case SubtitleProgressCancelled():
+      debugPrint('SUBTITLES: cancelled');
+      return;
+    case SubtitleProgressFailed(:final error):
+      debugPrint('SUBTITLES: $error');
+      final message = switch (error) {
+        _NoWords() => SubtitleImportMessages.noEnglish,
+        SubtitleSearchException(:final error) => SubtitleSearchMessages.of(error),
+        SubtitleWordsException(:final error) => switch (error) {
+            SubtitleWordsError.noEnglish => SubtitleImportMessages.noEnglish,
+            SubtitleWordsError.tooManyImports => SubtitleImportMessages.tooManyImports,
+            SubtitleWordsError.notPicked => SubtitleImportMessages.notPicked,
+          },
+        _ => SubtitleImportMessages.notPicked,
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      return;
+    case SubtitleProgressDone(words: final done):
+      words = done;
+  }
+  if (words.length > request.maximum) {
+    // spec §6 "Word maximum respected": never show more than was asked for.
+    debugPrint('SUBTITLES: ${words.length} words for a maximum of ${request.maximum}');
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(SubtitleImportMessages.notPicked)));
     return;
   }
   if (currentSessionId() != startedIn) {
@@ -114,18 +150,29 @@ Future<void> runSubtitleImport({
 
   final kept = await showSubtitleResultDialog(
     context,
-    result!.words,
-    infoLine: subtitleInfoLine(
-      model: result.model,
-      elapsed: stopwatch.elapsed,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-    ),
+    words,
+    title: request.title,
+    imageUrl: request.imageUrl,
+    infoLine: result == null
+        ? subtitleGoogleInfoLine(stopwatch.elapsed)
+        : subtitleInfoLine(
+            model: result!.model,
+            elapsed: stopwatch.elapsed,
+            inputTokens: result!.inputTokens,
+            outputTokens: result!.outputTokens,
+          ),
   );
   if (kept != null && kept.isNotEmpty && context.mounted && currentSessionId() == startedIn) {
     addWords(kept);
-    if (withDialogues && result.dialogues.isNotEmpty) {
-      addDialogues?.call(result.dialogues, kept.length);
+    final dialogues = result?.dialogues ?? const [];
+    if (withDialogues && dialogues.isNotEmpty) {
+      addDialogues?.call(dialogues, kept.length);
     }
   }
+}
+
+/// The file holds no word to propose: no English dialogue, or only words the
+/// level already knows.
+class _NoWords implements Exception {
+  const _NoWords();
 }

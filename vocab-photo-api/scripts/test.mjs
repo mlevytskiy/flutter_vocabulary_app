@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { startMwStub } from "../test/mw-stub.mjs";
 import { startAnthropicStub } from "../test/anthropic-stub.mjs";
 import { startZenStub } from "../test/zen-stub.mjs";
+import { startOpenSubtitlesStub } from "../test/opensubtitles-stub.mjs";
 import { startXaiStub } from "../test/xai-stub.mjs";
 import { startHiggsfieldStub } from "../test/higgsfield-stub.mjs";
 
@@ -69,6 +70,7 @@ const stateDir = mkdtempSync(join(tmpdir(), "vocab-photo-api-test-"));
 const mwStub = await startMwStub();
 const aiStub = await startAnthropicStub();
 const zenStub = await startZenStub();
+const openSubtitlesStub = await startOpenSubtitlesStub();
 const xaiStub = await startXaiStub();
 const higgsfieldStub = await startHiggsfieldStub();
 
@@ -103,6 +105,8 @@ const worker = spawn(
     // The story providers: stub URLs, dummy keys (never the real ones from .dev.vars), short limits.
     "--var", `OPENCODE_ZEN_API_URL:${zenStub.url}`,
     "--var", "OPENCODE_ZEN_API_KEY:test-key",
+    "--var", `OPENSUBTITLES_API_URL:${openSubtitlesStub.url}`,
+    "--var", "OPENSUBTITLES_API_KEY:test-key",
     "--var", `XAI_API_URL:${xaiStub.url}`,
     "--var", "XAI_API_KEY:test-key",
     "--var", `HIGGSFIELD_API_URL:${higgsfieldStub.url}`,
@@ -133,6 +137,7 @@ function stopWorker() {
   mwStub.close();
   aiStub.close();
   zenStub.close();
+  openSubtitlesStub.close();
   xaiStub.close();
   higgsfieldStub.close();
 }
@@ -162,6 +167,7 @@ try {
       VOCAB_API_MW_STUB_URL: mwStub.url,
       VOCAB_API_AI_STUB_URL: aiStub.url,
       VOCAB_API_ZEN_STUB_URL: zenStub.url,
+      VOCAB_API_OPENSUBTITLES_STUB_URL: openSubtitlesStub.url,
       VOCAB_API_XAI_STUB_URL: xaiStub.url,
       VOCAB_API_HIGGSFIELD_STUB_URL: higgsfieldStub.url,
     },

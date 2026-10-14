@@ -8,10 +8,12 @@ import { appHeaders, baseUrl, d1 } from "./helpers.mjs";
 const stubUrl = process.env.VOCAB_API_AI_STUB_URL;
 const aiCalls = async () => (await (await fetch(`${stubUrl}__calls`)).json()).count;
 
+const asked = ["reluctant", "tide", "harbour", "fog", "grab", "rope", "lift", "drift", "wary", "shore", "stern", "gale", "moor"]
+  .map((word) => ({ word, context: `A line with ${word} in it.` }));
+const marker = (word) => [{ word, context: "" }];
+
 const request = (overrides = {}) => ({
-  lines: ["I was reluctant to leave, but the tide was coming in.", "Grab the rope."],
-  purpose: "understand_film",
-  level: "B2",
+  words: asked,
   maximum: 20,
   model: "claude-sonnet-5",
   sessionWords: [],
@@ -46,7 +48,8 @@ test("200: ranked words, at most the maximum, no session word in any case, no du
     body.words.map((w) => w.word),
     ["reluctant", "harbour", "grab", "rope", "lift"],
   );
-  for (const w of body.words) assert.deepEqual(Object.keys(w).sort(), ["context", "description", "translation", "word"]);
+  for (const w of body.words) assert.deepEqual(Object.keys(w).sort(), ["context", "translation", "word"]);
+  assert.deepEqual(body.words[0], { word: "reluctant", translation: "переклад reluctant", context: "A line with reluctant in it." });
   assert.equal(body.model, "claude-sonnet-5");
   assert.equal(typeof body.timings.aiMs, "number");
   assert.deepEqual(body.usage, { inputTokens: 1200, outputTokens: 340 });
@@ -60,21 +63,33 @@ test("200: a larger maximum keeps the same words on top (the cut is in rank orde
 });
 
 test("200: no word qualifies gives an empty list with the model, time and usage", async () => {
-  const { status, body } = await pick(request({ lines: ["STUB:empty"], model: "claude-haiku-4-5-20251001" }));
+  const { status, body } = await pick(request({ words: marker("STUB:empty"), model: "claude-haiku-4-5-20251001" }));
   assert.equal(status, 200);
   assert.deepEqual(body.words, []);
   assert.equal(body.model, "claude-haiku-4-5-20251001");
 });
 
-test("the chosen model and the request's options reach the AI; the lines are sent, the session words are not", async () => {
-  await pick(request({ model: "claude-opus-5-5", purpose: "frequent_words", level: "C1", maximum: 7, sessionWords: ["secretword"] }));
+test("the chosen model and the phone's words with their context reach the AI as JSON; the session words and lines do not", async () => {
+  const words = [{ word: "reluctant", context: "I was reluctant to leave." }, { word: "harbour", context: "The harbour." }];
+  await pick(request({ model: "claude-opus-5-5", words, lines: ["An excerpt line."], maximum: 7, sessionWords: ["secretword"] }));
   const { last } = await (await fetch(`${stubUrl}__calls`)).json();
   assert.equal(last.model, "claude-opus-5-5");
-  assert.match(last.system, /common in English generally/);
-  assert.match(last.system, /above C1/);
-  assert.match(last.system, /at most 17 /);
-  assert.match(last.messages[0].content, /reluctant to leave/);
+  assert.equal(last.messages[0].content, `<words>\n${JSON.stringify(words)}\n</words>\n\nTranslate these words.`);
   assert.ok(!JSON.stringify(last).includes("secretword"));
+  assert.ok(!JSON.stringify(last).includes("An excerpt line."), "lines go only with dialogues");
+});
+
+test("a word the AI returns that was not asked is dropped", async () => {
+  const { body } = await pick(request({ words: asked.filter((w) => w.word !== "harbour") }));
+  assert.ok(body.words.length > 0);
+  assert.ok(!body.words.some((w) => w.word === "harbour"));
+});
+
+test("a purpose or level from an older app is ignored", async () => {
+  const { status } = await pick(request({ purpose: "understand_film", level: "B2" }));
+  assert.equal(status, 200);
+  const { last } = await (await fetch(`${stubUrl}__calls`)).json();
+  assert.doesNotMatch(last.system, /B2/);
 });
 
 test("401: no app secret, nothing picked and the allowance untouched", async () => {
@@ -89,14 +104,21 @@ test("400 bad_request for every out-of-bounds field, before the allowance or the
   const before = await aiCalls();
   const cases = [
     "not json",
-    { ...request(), lines: [] },
     { ...request(), lines: ["x".repeat(201)] },
     { ...request(), lines: [""] },
+    { ...request(), dialogues: true },
+    { ...request(), dialogues: true, lines: [] },
     { ...request(), maximum: 0 },
     { ...request(), maximum: 101 },
     { ...request(), maximum: 2.5 },
-    { ...request(), level: "D1" },
-    { ...request(), purpose: "everything" },
+    { ...request(), words: [] },
+    { ...request(), words: ["reluctant"] },
+    { ...request(), words: [{ word: " ", context: "" }] },
+    { ...request(), words: [{ word: "x".repeat(101), context: "" }] },
+    { ...request(), words: [{ word: "fog" }] },
+    { ...request(), words: [{ word: "fog", context: "x".repeat(603) }] },
+    { ...request(), words: Array.from({ length: 111 }, (_, i) => ({ word: `w${i}`, context: "" })) },
+    (({ words, ...rest }) => rest)(request()),
     { ...request(), sessionWords: Array.from({ length: 501 }, (_, i) => `w${i}`) },
     { ...request(), sessionWords: ["x".repeat(501)] },
     (({ sessionWords, ...rest }) => rest)(request()),
@@ -128,15 +150,9 @@ test("413 too_large past 1 MB of lines; exactly 1 MB is accepted", async () => {
   assert.equal(over.body.code, "too_large");
 });
 
-test("422 no_english_lines when the model finds no English dialogue", async () => {
-  const { status, body } = await pick(request({ lines: ["STUB:no-english"] }));
-  assert.equal(status, 422);
-  assert.equal(body.code, "no_english_lines");
-});
-
 test("502 words_not_picked for a cut-off, malformed, refused, failed or too-late reply; never a partial list", async () => {
   for (const line of ["STUB:cutoff", "STUB:malformed", "STUB:refusal", "STUB:error", "STUB:slow:6000"]) {
-    const { status, body } = await pick(request({ lines: [line] }));
+    const { status, body } = await pick(request({ words: marker(line) }));
     assert.equal(status, 502, line);
     assert.equal(body.code, "words_not_picked", line);
     assert.equal(body.words, undefined, line);
@@ -165,4 +181,39 @@ test("429 too_many_imports: the 21st import of a UTC day is refused, from any ad
   const { status, body } = await pick(request(), appHeaders({ "content-type": "application/json", "cf-connecting-ip": "203.0.113.99" }));
   assert.equal(status, 429);
   assert.equal(body.code, "too_many_imports");
+});
+
+const zenStubUrl = process.env.VOCAB_API_ZEN_STUB_URL;
+const zenCalls = async () => (await fetch(`${zenStubUrl}__calls`)).json();
+
+test("an OpenCode Zen model: the same words go to Zen's chat completions with the Zen key, and its translations come back", async () => {
+  const anthropicBefore = await aiCalls();
+  const { status, body } = await pick(request({ model: "deepseek-v4.1-flash", maximum: 3, sessionWords: ["tide"] }));
+  assert.equal(status, 200);
+  assert.deepEqual(body.words, [
+    { word: "reluctant", translation: "зен reluctant", context: "A line with reluctant in it." },
+    { word: "harbour", translation: "зен harbour", context: "A line with harbour in it." },
+    { word: "fog", translation: "зен fog", context: "A line with fog in it." },
+  ]);
+  assert.equal(body.model, "deepseek-v4.1-flash");
+  assert.deepEqual(body.usage, { inputTokens: 910, outputTokens: 275 });
+  const { last, lastAuth, lastPath } = await zenCalls();
+  assert.equal(lastPath, "/chat/completions");
+  assert.equal(lastAuth, "Bearer test-key");
+  assert.equal(last.model, "deepseek-v4.1-flash");
+  assert.equal(last.messages[0].role, "system");
+  assert.equal(await aiCalls(), anthropicBefore, "Anthropic is not asked");
+});
+
+test("an OpenCode Zen model: a cut-off or failed reply is words_not_picked", async () => {
+  for (const marker of ["STUB:cutoff", "STUB:error", "STUB:empty"]) {
+    const { status, body } = await pick(request({ model: "kimi-k3", words: [{ word: marker, context: "" }] }));
+    assert.equal(status, 502, marker);
+    assert.equal(body.code, "words_not_picked", marker);
+  }
+});
+
+test("a context of three full lines (602 characters) is accepted", async () => {
+  const { status } = await pick(request({ words: [{ word: "reluctant", context: "x".repeat(602) }] }));
+  assert.equal(status, 200);
 });

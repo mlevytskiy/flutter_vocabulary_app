@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/subtitle_import_options.dart';
 import '../../../core/models/vocab_word.dart';
+import 'subtitle_poster.dart';
 import '../../../core/services/quizlet_cards.dart';
 
 String _formatDuration(Duration d) {
@@ -47,6 +48,9 @@ String subtitleInfoLine({
   return '${model.label} · ${_formatDuration(elapsed)} · $costText';
 }
 
+/// The translator · time line of a subtitle import translated on the phone.
+String subtitleGoogleInfoLine(Duration elapsed) => 'Google Translate · ${_formatDuration(elapsed)}';
+
 /// The same dialog after a subtitle import (words-from-subtitles): the
 /// [infoLine] from [subtitleInfoLine] in place of the photo timing lines, and
 /// its own message when no word qualified (AC-20).
@@ -54,11 +58,15 @@ Future<List<VocabWord>?> showSubtitleResultDialog(
   BuildContext context,
   List<VocabWord> words, {
   required String infoLine,
+  String? title,
+  String? imageUrl,
 }) =>
     _showResultDialog(
       context,
       words,
       headerText: infoLine,
+      setName: title,
+      imageUrl: imageUrl,
       emptyMessage: 'No new words above your level in these subtitles.',
     );
 
@@ -92,6 +100,7 @@ Future<List<VocabWord>?> _showResultDialog(
   required String headerText,
   required String emptyMessage,
   String? setName,
+  String? imageUrl,
 }) {
   // Words the user hasn't crossed out; whatever is left here when the
   // dialog is closed gets added to the main screen.
@@ -110,19 +119,41 @@ Future<List<VocabWord>?> _showResultDialog(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (setName != null) ...[
-                    Text(setName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    SizedBox(height: headerText.isEmpty ? 12 : 4),
-                  ],
-                  if (headerText.isNotEmpty) ...[
-                    Text(
-                      headerText,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
+                  if (imageUrl != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          SubtitlePoster(imageUrl),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (setName != null) Text(setName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                if (headerText.isNotEmpty)
+                                  Text(headerText, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 12),
+                    )
+                  else ...[
+                    if (setName != null) ...[
+                      Text(setName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: headerText.isEmpty ? 12 : 4),
+                    ],
+                    if (headerText.isNotEmpty) ...[
+                      Text(
+                        headerText,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                   ],
                   Flexible(
                     child: remainingWords.isEmpty

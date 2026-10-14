@@ -21,6 +21,8 @@ import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
 import 'services/story_picture_store.dart';
 import 'services/story_run_store.dart';
+import 'services/subtitle_google_words.dart';
+import 'services/subtitle_search_service.dart';
 import 'services/subtitle_words_service.dart';
 import 'services/system_gesture_exclusion.dart';
 import 'services/vocab_photo_service.dart';
@@ -154,6 +156,14 @@ SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();
 @Riverpod(keepAlive: true)
 SubtitleWordsService subtitleWordsService(Ref ref) => SubtitleWordsService();
 
+/// Subtitle files found by film name, through the Worker (OpenSubtitles).
+@Riverpod(keepAlive: true)
+SubtitleSearchService subtitleSearchService(Ref ref) => SubtitleSearchService();
+
+/// Subtitle words translated on the phone with Google Translate.
+@Riverpod(keepAlive: true)
+SubtitleGoogleWords subtitleGoogleWords(Ref ref) => SubtitleGoogleWords(ref.watch(googleTranslateServiceProvider));
+
 /// Background upload of the photos a publish declared (good-looking-web T18).
 /// keepAlive, so uploads outlive the words table (sad §8).
 @Riverpod(keepAlive: true)
@@ -279,17 +289,20 @@ class DialoguesSettingNotifier extends _$DialoguesSettingNotifier {
 final subtitleImportPrefsProvider = subtitleImportPrefsNotifierProvider;
 
 /// The subtitle import values in Settings (words-from-subtitles, data-model.md
-/// Device preferences): one set of purpose, level and maximum, the "Update with
-/// each import" switch, and the model. Persisted like the word detail mode;
+/// Device preferences): one set of level and maximum, the "Update with
+/// each import" switch, the translator and the model. Persisted like the word detail mode;
 /// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
 /// values are read ([loaded]). A missing or unknown value keeps its default.
 @Riverpod(keepAlive: true)
 class SubtitleImportPrefsNotifier extends _$SubtitleImportPrefsNotifier {
-  static const purposeKey = 'subtitle_purpose';
   static const levelKey = 'subtitle_level';
   static const maximumKey = 'subtitle_maximum';
   static const updateEachImportKey = 'subtitle_update_each_import';
   static const modelKey = 'subtitle_model';
+  static const translatorKey = 'subtitle_translator';
+  static const opencodeModelKey = 'subtitle_opencode_model';
+  static const boostCloseRepeatsKey = 'subtitle_boost_close_repeats';
+  static const removeNamesKey = 'subtitle_remove_names';
 
   late final Future<void> loaded = _load();
   bool _setByLearner = false;
@@ -305,22 +318,21 @@ class SubtitleImportPrefsNotifier extends _$SubtitleImportPrefsNotifier {
     // A choice made before the stored values arrived wins over them.
     if (_setByLearner) return;
     const d = SubtitleImportPrefs.firstLaunch;
-    final purpose = prefs.getString(purposeKey);
     final level = prefs.getString(levelKey);
     final maximum = prefs.getInt(maximumKey);
     final model = prefs.getString(modelKey);
+    final translator = prefs.getString(translatorKey);
+    final opencodeModel = prefs.getString(opencodeModelKey);
     state = SubtitleImportPrefs(
-      purpose: ImportPurpose.values.where((p) => p.name == purpose).firstOrNull ?? d.purpose,
       level: EnglishLevel.values.where((l) => l.wire == level).firstOrNull ?? d.level,
       maximum: maximum != null && SubtitleImportPrefs.isValidMaximum(maximum) ? maximum : d.maximum,
       updateEachImport: prefs.getBool(updateEachImportKey) ?? d.updateEachImport,
-      model: SubtitleModel.values.where((m) => m.name == model).firstOrNull ?? d.model,
+      model: SubtitleModel.values.where((m) => m.name == model && !m.opencode).firstOrNull ?? d.model,
+      opencodeModel: SubtitleModel.values.where((m) => m.name == opencodeModel && m.opencode).firstOrNull ?? d.opencodeModel,
+      boostCloseRepeats: prefs.getBool(boostCloseRepeatsKey) ?? d.boostCloseRepeats,
+      removeNames: prefs.getBool(removeNamesKey) ?? d.removeNames,
+      translator: SubtitleTranslator.values.where((t) => t.name == translator).firstOrNull ?? d.translator,
     );
-  }
-
-  Future<void> setPurpose(ImportPurpose purpose) async {
-    _update(state.copyWith(purpose: purpose));
-    await (await SharedPreferences.getInstance()).setString(purposeKey, purpose.name);
   }
 
   Future<void> setLevel(EnglishLevel level) async {
@@ -346,15 +358,33 @@ class SubtitleImportPrefsNotifier extends _$SubtitleImportPrefsNotifier {
     await (await SharedPreferences.getInstance()).setString(modelKey, model.name);
   }
 
+  Future<void> setBoostCloseRepeats(bool on) async {
+    _update(state.copyWith(boostCloseRepeats: on));
+    await (await SharedPreferences.getInstance()).setBool(boostCloseRepeatsKey, on);
+  }
+
+  Future<void> setRemoveNames(bool on) async {
+    _update(state.copyWith(removeNames: on));
+    await (await SharedPreferences.getInstance()).setBool(removeNamesKey, on);
+  }
+
+  Future<void> setOpencodeModel(SubtitleModel model) async {
+    _update(state.copyWith(opencodeModel: model));
+    await (await SharedPreferences.getInstance()).setString(opencodeModelKey, model.name);
+  }
+
+  Future<void> setTranslator(SubtitleTranslator translator) async {
+    _update(state.copyWith(translator: translator));
+    await (await SharedPreferences.getInstance()).setString(translatorKey, translator.name);
+  }
+
   /// Called at Start (F3): with "Update with each import" on, the values used
   /// become the Settings values; with it off, nothing changes (AC-05, AC-05b).
   Future<void> recordUsed({
-    required ImportPurpose purpose,
     required EnglishLevel level,
     required int maximum,
   }) async {
     if (!state.updateEachImport) return;
-    await setPurpose(purpose);
     await setLevel(level);
     await setMaximum(maximum);
   }

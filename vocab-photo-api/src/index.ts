@@ -11,6 +11,7 @@ import { deleteExpiredSessions } from "./session/cleanup";
 import { assetRoutes } from "./session/assets";
 import { learnRoutes } from "./learn/routes";
 import { subtitleRoutes } from "./subtitles/routes";
+import { subtitleSearchRoutes } from "./subtitles/search";
 import { storyRoutes } from "./story/routes.ts";
 import { deleteOldPictures } from "./story/store.ts";
 
@@ -269,6 +270,7 @@ const ROUTES: RouteDefinition[] = [
   ...autofillRoutes,
   ...assetRoutes,
   ...subtitleRoutes,
+  ...subtitleSearchRoutes,
   ...learnRoutes,
   ...storyRoutes,
 ];

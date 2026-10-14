@@ -82,6 +82,22 @@ export function startZenStub() {
       const captionCount = typeof system === "string" && system.includes("image generator") && typeof user === "string"
         ? user.includes("<dialogue>") ? 1 : (user.match(/^\d+\. /gm) ?? []).length
         : null;
+      // A subtitle import (its system prompt names a "translator"): the user turn opens with a
+      // <words> JSON block; its first word may be a marker, else every word is translated.
+      const subtitleWords = typeof system === "string" && system.includes("translator for a language learner") && typeof user === "string"
+        ? JSON.parse(user.match(/^<words>\n(.*)\n<\/words>/)?.[1] ?? "[]")
+        : null;
+      if (subtitleWords) {
+        const marker = subtitleWords[0]?.word ?? "";
+        const { status, body: reply } = marker.startsWith("STUB:")
+          ? answer(body.model, marker)
+          : answer(body.model, "");
+        if (!marker.startsWith("STUB:")) {
+          reply.choices[0].message.content = JSON.stringify({ words: subtitleWords.map(({ word }) => ({ word, translation: `зен ${word}` })) });
+        }
+        res.writeHead(status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(reply));
+      }
       const { status, body: reply } = answer(body.model, slow ? "" : firstLine, captionCount);
       const send = () => {
         if (res.destroyed) return;

@@ -3,22 +3,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/models/subtitle_import_options.dart';
+import 'subtitle_poster.dart';
+
+/// A subtitle file for the import: chosen on the phone, or found by name —
+/// then [bytes] may still be downloading, so Start never waits for it, and
+/// [title] and [imageUrl] name the film and show its poster.
+class SubtitleSource {
+  SubtitleSource({required this.fileName, required this.bytes, this.title, this.imageUrl}) {
+    // Marks a failure as seen, so a source dropped before Start never reports
+    // an unhandled error; the import still sees it when it awaits [bytes].
+    bytes.ignore();
+  }
+
+  /// A file chosen on the phone.
+  factory SubtitleSource.file(XFile file) => SubtitleSource(fileName: file.name, bytes: file.readAsBytes());
+
+  final String fileName;
+  final Future<Uint8List> bytes;
+
+  /// "My Brilliant Friend · S01E04 · Dissolving Margins", for a found file.
+  final String? title;
+  final String? imageUrl;
+}
 
 /// What Start in the import dialog hands to the import flow.
 class SubtitleImportRequest {
   const SubtitleImportRequest({
     required this.fileName,
     required this.bytes,
-    required this.purpose,
     required this.level,
     required this.maximum,
+    this.title,
+    this.imageUrl,
   });
 
   final String fileName;
-  final Uint8List bytes;
-  final ImportPurpose purpose;
+
+  /// The file's bytes; still downloading for a file found by name.
+  final Future<Uint8List> bytes;
   final EnglishLevel level;
   final int maximum;
+
+  /// The film's title and poster, for a file found by name.
+  final String? title;
+  final String? imageUrl;
 
   /// The file's extension, lower case, without the dot ('' when it has none).
   String get extension {
@@ -31,39 +59,44 @@ class SubtitleImportRequest {
 const maxSubtitleFileBytes = 1048576;
 
 /// The import dialog (words-from-subtitles SCR-02, sad §6 F1): a subtitle
-/// file, the purpose, the level and the maximum, opened with [initial] from
+/// file, the level and the maximum, opened with [initial] from
 /// Settings. Resolves with the request on Start, or null when closed.
 /// [pickFile] opens the phone's file chooser (SCR-03); it has no type filter
 /// because `.srt` has no reliable MIME type on Android (sad §4) — the
 /// extension is checked when the file is read after Start (F3).
+/// [findByName], when given, offers "Find by name" beside "Choose file": it
+/// finds a subtitle file by film name and hands it back at once, with its
+/// title and poster, while it downloads — Start does not wait for it.
 Future<SubtitleImportRequest?> showSubtitleImportDialog(
   BuildContext context, {
   required SubtitleImportPrefs initial,
   Future<XFile?> Function()? pickFile,
+  Future<SubtitleSource?> Function(BuildContext context)? findByName,
 }) {
   return showDialog<SubtitleImportRequest>(
     context: context,
-    builder: (context) => _SubtitleImportDialog(initial: initial, pickFile: pickFile ?? openFile),
+    builder: (context) =>
+        _SubtitleImportDialog(initial: initial, pickFile: pickFile ?? openFile, findByName: findByName),
   );
 }
 
 class _SubtitleImportDialog extends StatefulWidget {
-  const _SubtitleImportDialog({required this.initial, required this.pickFile});
+  const _SubtitleImportDialog({required this.initial, required this.pickFile, this.findByName});
 
   final SubtitleImportPrefs initial;
   final Future<XFile?> Function() pickFile;
+  final Future<SubtitleSource?> Function(BuildContext context)? findByName;
 
   @override
   State<_SubtitleImportDialog> createState() => _SubtitleImportDialogState();
 }
 
 class _SubtitleImportDialogState extends State<_SubtitleImportDialog> {
-  late ImportPurpose _purpose = widget.initial.purpose;
   late EnglishLevel _level = widget.initial.level;
   late int? _maximum = widget.initial.maximum;
   late final _maximumController = TextEditingController(text: '${widget.initial.maximum}');
 
-  XFile? _file;
+  SubtitleSource? _source;
   String? _fileError;
 
   @override
@@ -76,23 +109,34 @@ class _SubtitleImportDialogState extends State<_SubtitleImportDialog> {
     final file = await widget.pickFile();
     if (file == null || !mounted) return; // cancelled: the dialog stays as it was
     final tooLarge = await file.length() > maxSubtitleFileBytes;
+    if (!mounted) return;
     setState(() {
-      _file = tooLarge ? null : file;
+      _source = tooLarge ? null : SubtitleSource.file(file);
       _fileError = tooLarge ? 'This file is too large. The largest file accepted is 1 MB.' : null;
     });
   }
 
-  Future<void> _start() async {
-    final bytes = await _file!.readAsBytes();
-    if (!mounted) return;
+  /// A file found by name comes back at once; the Worker checks its size.
+  Future<void> _findByName() async {
+    final source = await widget.findByName!(context);
+    if (source == null || !mounted) return;
+    setState(() {
+      _source = source;
+      _fileError = null;
+    });
+  }
+
+  void _start() {
+    final source = _source!;
     Navigator.pop(
       context,
       SubtitleImportRequest(
-        fileName: _file!.name,
-        bytes: bytes,
-        purpose: _purpose,
+        fileName: source.fileName,
+        bytes: source.bytes,
         level: _level,
         maximum: _maximum!,
+        title: source.title,
+        imageUrl: source.imageUrl,
       ),
     );
   }
@@ -100,7 +144,7 @@ class _SubtitleImportDialogState extends State<_SubtitleImportDialog> {
   @override
   Widget build(BuildContext context) {
     final maximumValid = _maximum != null && SubtitleImportPrefs.isValidMaximum(_maximum!);
-    final canStart = _file != null && maximumValid;
+    final canStart = _source != null && maximumValid;
     return AlertDialog(
       title: const Text('Words from subtitles'),
       content: SizedBox(
@@ -110,44 +154,31 @@ class _SubtitleImportDialogState extends State<_SubtitleImportDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     icon: const Icon(Icons.subtitles),
                     label: const Text('Choose file'),
                     onPressed: _chooseFile,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _file?.name ?? 'No file chosen',
-                      overflow: TextOverflow.ellipsis,
+                  if (widget.findByName != null)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.search),
+                      label: const Text('Find by name'),
+                      onPressed: _findByName,
                     ),
-                  ),
                 ],
               ),
+              const SizedBox(height: 8),
+              _chosen(context),
               if (_fileError != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(_fileError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                 ),
               const SizedBox(height: 12),
-              RadioGroup<ImportPurpose>(
-                groupValue: _purpose,
-                onChanged: (purpose) {
-                  if (purpose != null) setState(() => _purpose = purpose);
-                },
-                child: Column(
-                  children: [
-                    for (final purpose in ImportPurpose.values)
-                      RadioListTile<ImportPurpose>(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(purpose.label),
-                        value: purpose,
-                      ),
-                  ],
-                ),
-              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('My English level'),
@@ -193,6 +224,31 @@ class _SubtitleImportDialogState extends State<_SubtitleImportDialog> {
         TextButton(
           onPressed: canStart ? _start : null,
           child: const Text('Start'),
+        ),
+      ],
+    );
+  }
+
+  /// The chosen file's name — for a file found by name, its poster and title
+  /// above the file's name.
+  Widget _chosen(BuildContext context) {
+    final source = _source;
+    if (source == null) return const Text('No file chosen');
+    final name = Text(source.fileName, maxLines: 2, overflow: TextOverflow.ellipsis);
+    if (source.title == null && source.imageUrl == null) return name;
+    return Row(
+      children: [
+        SubtitlePoster(source.imageUrl),
+        if (source.imageUrl != null) const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (source.title != null)
+                Text(source.title!, maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleSmall),
+              DefaultTextStyle.merge(style: Theme.of(context).textTheme.bodySmall, child: name),
+            ],
+          ),
         ),
       ],
     );

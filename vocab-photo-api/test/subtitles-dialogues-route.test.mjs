@@ -7,10 +7,13 @@ import { appHeaders, baseUrl, d1 } from "./helpers.mjs";
 const stubUrl = process.env.VOCAB_API_AI_STUB_URL;
 const calls = async () => (await fetch(`${stubUrl}__calls`)).json();
 
+const asked = ["reluctant", "tide", "harbour", "fog", "grab", "rope", "lift", "drift", "wary", "shore", "stern", "gale", "moor"]
+  .map((word) => ({ word, context: `A line with ${word} in it.` }));
+const marker = (word) => [{ word, context: "" }];
+
 const request = (overrides = {}) => ({
+  words: asked,
   lines: ["I was reluctant to leave, but the tide was coming in.", "Grab the rope."],
-  purpose: "understand_film",
-  level: "B2",
   maximum: 20,
   model: "claude-sonnet-5",
   sessionWords: [],
@@ -61,7 +64,7 @@ test("flag off, false or absent: today's response, no dialogues key, and today's
 });
 
 test("flag on, no qualifying dialogue: dialogues is an empty list and the words still come (AC-07)", async () => {
-  const { status, body } = await pick(request({ dialogues: true, lines: ["STUB:no-dialogues"] }));
+  const { status, body } = await pick(request({ dialogues: true, words: [...marker("STUB:no-dialogues"), ...asked] }));
   assert.equal(status, 200);
   assert.deepEqual(body.dialogues, []);
   assert.ok(body.words.length > 0);
@@ -78,7 +81,7 @@ test("a malformed dialogues flag is bad_request and nothing is asked", async () 
 });
 
 test("flag on, cut-off reply: words_not_picked, neither words nor dialogues (AC-08)", async () => {
-  const { status, body } = await pick(request({ dialogues: true, lines: ["STUB:cutoff"] }));
+  const { status, body } = await pick(request({ dialogues: true, words: marker("STUB:cutoff") }));
   assert.equal(status, 502);
   assert.equal(body.code, "words_not_picked");
   assert.equal("dialogues" in body, false);
@@ -86,15 +89,9 @@ test("flag on, cut-off reply: words_not_picked, neither words nor dialogues (AC-
 });
 
 test("flag on, reply without the dialogues list: words_not_picked (complete or nothing, AC-08)", async () => {
-  const { status, body } = await pick(request({ dialogues: true, lines: ["STUB:bad-dialogues"] }));
+  const { status, body } = await pick(request({ dialogues: true, words: marker("STUB:bad-dialogues") }));
   assert.equal(status, 502);
   assert.equal(body.code, "words_not_picked");
-});
-
-test("flag on, no English lines: no_english_lines as today (AC-09)", async () => {
-  const { status, body } = await pick(request({ dialogues: true, lines: ["STUB:no-english"] }));
-  assert.equal(status, 422);
-  assert.equal(body.code, "no_english_lines");
 });
 
 test("flag on takes one allowance unit per import, like flag off", async () => {
