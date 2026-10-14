@@ -247,6 +247,26 @@ final learnApiServiceProvider = Provider<LearnApiService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LearnApiServiceRef = ProviderRef<LearnApiService>;
+String _$examResultSinkHash() => r'b4c8c65a5c0b4abbc459f3a6c161f25d8a3c6113';
+
+/// Where Step 3 exams record each word's known / repeat result (learn-kit
+/// S-23), on the session in the session store.
+///
+/// Copied from [examResultSink].
+@ProviderFor(examResultSink)
+final examResultSinkProvider = Provider<ExamResultSink>.internal(
+  examResultSink,
+  name: r'examResultSinkProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$examResultSinkHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef ExamResultSinkRef = ProviderRef<ExamResultSink>;
 String _$offeredAisHash() => r'5a7c2096143ae6f5c0db6e33b3300caccad2a625';
 
 /// The AIs on the Worker's offered list. Fetched on first use and cached in

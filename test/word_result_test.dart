@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
+import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/core/services/exam_result_sink.dart';
 import 'package:flutter_vocabulary_app/core/services/session_store.dart';
 
 /// learn-kit S-22: the Step 3 word results on a session (AC-35 – AC-38).
@@ -114,5 +117,60 @@ void main() {
   test('AC-37: results never reach a word row', () {
     final s = session('rows')..results = [result('r1', WordResultLabel.repeat, t0)];
     expect(s.words.single.toJson().toString(), isNot(contains('repeat')));
+  });
+
+  group('ExamResultSink (S-23)', () {
+    late DateTime now;
+    late ExamResultSink sink;
+
+    setUp(() {
+      now = t0;
+      sink = StoreExamResultSink(() async => store, clock: () => now);
+    });
+
+    test('AC-35: record saves the word, the exercise and the time on that session at once', () async {
+      await store.put(session('sink'));
+      await sink.record(sessionId: 'sink', rowId: 'r1', exerciseId: 'own-sentences', label: WordResultLabel.repeat);
+      final r = (await store.byId('sink'))!.results.single;
+      expect((r.rowId, r.exerciseId, r.label), ('r1', 'own-sentences', WordResultLabel.repeat));
+      expect(r.at.isAtSameMomentAs(t0), isTrue);
+    });
+
+    test('no session id means the current session', () async {
+      await store.put(session('current'));
+      await store.setCurrentSessionId('current');
+      await sink.record(sessionId: null, rowId: 'r1', exerciseId: 'quiz', label: WordResultLabel.known);
+      expect((await store.byId('current'))!.results.single.label, WordResultLabel.known);
+    });
+
+    test('an empty rowId is not written', () async {
+      await store.put(session('empty'));
+      await sink.record(sessionId: 'empty', rowId: '', exerciseId: 'quiz', label: WordResultLabel.known);
+      expect((await store.byId('empty'))!.results, isEmpty);
+    });
+
+    test("AC-35: a word's current result is its most recent one from any exam", () async {
+      await store.put(session('latest')..words.add(WordPair(word: 'run', translation: 'бігти', rowId: 'r2')));
+      await sink.record(sessionId: 'latest', rowId: 'r1', exerciseId: 'quiz', label: WordResultLabel.repeat);
+      now = t0.add(const Duration(minutes: 5));
+      await sink.record(sessionId: 'latest', rowId: 'r1', exerciseId: 'translate-sentences', label: WordResultLabel.known);
+      await sink.record(sessionId: 'latest', rowId: 'r2', exerciseId: 'quiz', label: WordResultLabel.repeat);
+      final latest = sink.latest((await store.byId('latest'))!);
+      expect(latest['r1']!.label, WordResultLabel.known);
+      expect(latest['r1']!.exerciseId, 'translate-sentences');
+      expect(latest['r2']!.label, WordResultLabel.repeat);
+    });
+
+    test('AC-36, AC-37: a word never examined has no result; a deleted row is ignored', () async {
+      final s = session('ignored')
+        ..results = [result('deleted-row', WordResultLabel.repeat, t0)];
+      expect(sink.latest(s), isEmpty);
+    });
+
+    test('the provider gives a sink over the session store', () {
+      final container = ProviderContainer(overrides: [sessionStoreProvider.overrideWith((ref) async => store)]);
+      addTearDown(container.dispose);
+      expect(container.read(examResultSinkProvider), isA<StoreExamResultSink>());
+    });
   });
 }

@@ -11,6 +11,7 @@ import 'models/offered_ai.dart';
 import 'models/session.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
+import 'services/exam_result_sink.dart';
 import 'services/google_translate_service.dart';
 import 'services/learn_api_service.dart';
 import 'services/photo_scaler.dart';
@@ -82,6 +83,12 @@ StoryApiService storyApiService(Ref ref) => StoryApiService();
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 @Riverpod(keepAlive: true)
 LearnApiService learnApiService(Ref ref) => LearnApiService();
+
+/// Where Step 3 exams record each word's known / repeat result (learn-kit
+/// S-23), on the session in the session store.
+@Riverpod(keepAlive: true)
+ExamResultSink examResultSink(Ref ref) =>
+    StoreExamResultSink(() => ref.read(sessionStoreProvider.future));
 
 /// The AIs on the Worker's offered list. Fetched on first use and cached in
 /// preferences; when the fetch fails, the cached list is used, and when there is
