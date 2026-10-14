@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/models/session.dart';
+import '../../core/models/word_group.dart';
 import '../../core/providers.dart';
 import '../../core/services/story_api_service.dart';
 import '../../core/story/story_run_tracker.dart';
@@ -17,6 +18,25 @@ import 'widgets/step_progress.dart';
 /// Said on the learn page when the day's story allowance is used up (AC-19).
 const storyDayLimitMessage =
     "Today's story limit is reached. Try again tomorrow.";
+
+/// Where Start opens [exerciseId] (learn-kit S-04): Mnemonic story opens the
+/// story of the selected group (AC-06); Dialogs from movie opens the dialogue
+/// of a dialogue group, or the story of any other group; every other exercise
+/// opens `ExerciseRoute` for the selected group, and without a group the
+/// coming-soon screen.
+GoRouteData startRouteFor(String exerciseId,
+    {String? sessionId, required String? groupId, required WordGroup? group}) {
+  if (exerciseId == 'mnemonic-story' && groupId != null) {
+    return StoryRoute(sessionId: sessionId, groupId: groupId);
+  } else if (exerciseId == 'dialogs-from-movie' && group != null) {
+    return group.dialogueId != null
+        ? DialogueRoute(sessionId: sessionId, groupId: group.id)
+        : StoryRoute(sessionId: sessionId, groupId: group.id);
+  } else if (group != null) {
+    return ExerciseRoute(sessionId: sessionId, exercise: exerciseId, groupId: group.id);
+  }
+  return ComingSoonRoute(exercise: exerciseId);
+}
 
 /// The learn page (learn-part-step-1, SCR-03). [sessionId] is the session the
 /// exercises will read: none is the current session, an id is a History row
@@ -84,23 +104,16 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   /// (get-words-from-subtitles-improvment AC-13): Mnemonic story opens the
   /// story of the selected group (AC-06); Dialogs from movie opens the
   /// dialogue of a dialogue group, or the story of any other group; the
-  /// others are still coming soon. A screen already shown is not shown again.
+  /// others open for the selected group ([startRouteFor]). A screen already
+  /// shown is not shown again.
   Future<void> _start() async {
     final grouping = ref.read(wordGroupsNotifierProvider(widget.sessionId));
     final groupId = grouping.selectedGroupId;
     final group = grouping.groups.where((g) => g.id == groupId).firstOrNull;
     final opened = <String>{};
     for (final exercise in exercises.where((e) => _ticked.contains(e.id))) {
-      final GoRouteData route;
-      if (exercise.id == 'mnemonic-story' && groupId != null) {
-        route = StoryRoute(sessionId: widget.sessionId, groupId: groupId);
-      } else if (exercise.id == 'dialogs-from-movie' && group != null) {
-        route = group.dialogueId != null
-            ? DialogueRoute(sessionId: widget.sessionId, groupId: group.id)
-            : StoryRoute(sessionId: widget.sessionId, groupId: group.id);
-      } else {
-        route = ComingSoonRoute(exercise: exercise.id);
-      }
+      final route = startRouteFor(exercise.id,
+          sessionId: widget.sessionId, groupId: groupId, group: group);
       if (!opened.add(route.location)) continue;
       await route.push<void>(context);
       if (!mounted) return;

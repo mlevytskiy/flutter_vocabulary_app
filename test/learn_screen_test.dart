@@ -95,7 +95,7 @@ void main() {
       (tester) async {
     await pump(tester);
     expect(find.widgetWithText(AppBar, 'Learn'), findsOneWidget);
-    expect(exercises.length, 12);
+    expect(exercises.length, 13);
     for (final stage in const [1, 2, 3]) {
       expect(find.text('Step $stage'), findsOneWidget); // in the progress
       expect(currentStep(tester), stage);
@@ -232,7 +232,7 @@ void main() {
     final tiles =
         tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile));
     expect(tiles.where((t) => t.enabled ?? true).length, 1);
-    expect(inCard(1, find.text('Coming soon')), findsNWidgets(3));
+    expect(inCard(1, find.text('Coming soon')), findsNWidgets(4));
     await next(tester);
     await next(tester);
     final soon = find.widgetWithText(CheckboxListTile, 'Translate sentences');

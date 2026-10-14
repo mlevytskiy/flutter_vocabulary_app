@@ -10,7 +10,7 @@ export interface Exercise {
   available: boolean;
 }
 
-/** All twelve exercises in plan order. */
+/** All thirteen exercises in plan order (learn-kit S-02). */
 export const EXERCISES: readonly Exercise[] = data as Exercise[];
 
 /** The exercise with this id when it exists and is available; otherwise undefined. */

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
+import '../features/learn/exercise_screens.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
 import '../features/settings/settings_screen.dart';
@@ -26,6 +27,7 @@ part 'routes.g.dart';
           routes: [
             TypedGoRoute<ComingSoonRoute>(path: 'soon'),
             TypedGoRoute<StoryRoute>(path: 'story'),
+            TypedGoRoute<ExerciseRoute>(path: 'exercise'),
             TypedGoRoute<DialogueRoute>(path: 'dialogue'),
           ],
         ),
@@ -101,6 +103,21 @@ class StoryRoute extends GoRouteData with _$StoryRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       StoryScreen(sessionId: sessionId, groupId: groupId);
+}
+
+/// One exercise for one word group (learn-kit S-03), pushed from Start like
+/// [StoryRoute]. Ids only (rule 1): [sessionId] as on [LearnRoute], the
+/// frozen [exercise] id and the [groupId]. `exerciseScreen` picks the screen.
+class ExerciseRoute extends GoRouteData with _$ExerciseRoute {
+  const ExerciseRoute({this.sessionId, required this.exercise, required this.groupId});
+
+  final String? sessionId;
+  final String exercise;
+  final String groupId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      exerciseScreen(exercise, sessionId, groupId);
 }
 
 /// "Dialogs from movie" for one dialogue group (get-words-from-subtitles-

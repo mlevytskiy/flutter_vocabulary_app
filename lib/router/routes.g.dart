@@ -31,6 +31,10 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
                   factory: _$StoryRoute._fromState,
                 ),
                 GoRouteData.$route(
+                  path: 'exercise',
+                  factory: _$ExerciseRoute._fromState,
+                ),
+                GoRouteData.$route(
                   path: 'dialogue',
                   factory: _$DialogueRoute._fromState,
                 ),
@@ -188,6 +192,39 @@ mixin _$StoryRoute on GoRouteData {
         '/table/learn/story',
         queryParams: {
           if (_self.sessionId != null) 'session-id': _self.sessionId,
+          'group-id': _self.groupId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$ExerciseRoute on GoRouteData {
+  static ExerciseRoute _fromState(GoRouterState state) => ExerciseRoute(
+        sessionId: state.uri.queryParameters['session-id'],
+        exercise: state.uri.queryParameters['exercise']!,
+        groupId: state.uri.queryParameters['group-id']!,
+      );
+
+  ExerciseRoute get _self => this as ExerciseRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/table/learn/exercise',
+        queryParams: {
+          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          'exercise': _self.exercise,
           'group-id': _self.groupId,
         },
       );

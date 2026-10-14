@@ -7,19 +7,21 @@ import { baseUrl, get, pagePost, publish, storedRows } from "./helpers.mjs";
 
 const revsOf = (row) => ({ word: row.word_rev, translation: row.translation_rev, definition: row.definition_rev });
 
+// The plan after learn-kit (S-02, AC-01): six in Step 1, three in Step 2, four in Step 3.
 const IDS = [
   "mnemonic-story",
   "dialogs-from-movie",
   "match-synonyms",
-  "match-antonyms",
   "match-definitions",
+  "guess-my-word",
   "pick-the-answer",
   "fill-the-gaps",
   "remember-or-not",
+  "sentence-patterns",
   "own-sentences",
   "translate-sentences",
-  "own-sentences-spoken",
-  "translate-sentences-spoken",
+  "explain-to-friend",
+  "quiz",
 ];
 
 /** The page without its inline stylesheet, whose comments hold words of their own. */
@@ -37,7 +39,7 @@ function inputOf(html, exerciseId) {
   return m[0];
 }
 
-test("AC-04, AC-08: the learn page shows the word count, three steps and the twelve exercises in order", async () => {
+test("AC-04, AC-08: the learn page shows the word count, three steps and the thirteen exercises in order", async () => {
   const { id } = await publish({
     entries: [
       { word: "apple", translation: "яблуко" },
@@ -59,14 +61,15 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the twe
   const positions = IDS.map((x) => html.indexOf(`value="${x}"`));
   assert.ok(positions.every((p) => p > 0), "every exercise is listed");
   assert.deepEqual([...positions].sort((a, b) => a - b), positions, "plan order");
-  assert.ok(html.indexOf("Step 1") < positions[0] && positions[4] < html.indexOf("Step 2"));
-  assert.ok(positions[5] < html.indexOf("Step 3") && html.indexOf("Step 3") < positions[8]);
+  assert.ok(html.indexOf("Step 1") < positions[0] && positions[5] < html.indexOf("Step 2"));
+  assert.ok(html.indexOf("Step 2") < positions[6] && positions[8] < html.indexOf("Step 3"));
+  assert.ok(html.indexOf("Step 3") < positions[9]);
 
   assert.doesNotMatch(inputOf(html, "mnemonic-story"), /disabled/);
   assert.doesNotMatch(inputOf(html, "dialogs-from-movie"), /disabled/);
   for (const x of IDS.slice(2)) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 10);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 10);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 11);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 11);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -178,6 +181,22 @@ test("OQ-1: the coming-soon page for a live session with no word to learn is the
   const res = await get(`/s/${id}/learn/mnemonic-story`);
   assert.equal(res.status, 200);
   assert.match(await res.text(), /<h1>Mnemonic story<\/h1>/);
+});
+
+test("learn-kit AC-02: an old link naming a removed exercise answers the gone page; a pick naming it is ignored", async () => {
+  const live = await publish();
+  const refBody = await (await get(`/s/${randomUUID()}`)).text();
+  for (const removed of ["match-antonyms", "own-sentences-spoken", "translate-sentences-spoken", "chain-story"]) {
+    const res = await get(`/s/${live.id}/learn/${removed}`);
+    assert.equal(res.status, 404, removed);
+    assert.equal(await res.text(), refBody, removed);
+    const page = await learn(live.id, `?pick=${removed}&pick=mnemonic-story`);
+    assert.equal(page.res.status, 200, removed);
+    assert.equal((page.html.match(/\bchecked\b/g) ?? []).length, 1, removed);
+    assert.match(inputOf(page.html, "mnemonic-story"), /\bchecked\b/);
+    assert.doesNotMatch(page.html, new RegExp(`value="${removed}"`), removed);
+    assert.match(page.html, /<h2>Step 3<\/h2>/);
+  }
 });
 
 test("AC-09: a dead session or an unusable exercise answers byte-for-byte the shared page's gone answer", async () => {
