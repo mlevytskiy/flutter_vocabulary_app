@@ -219,3 +219,15 @@ The app has no usage analytics; these are checked at review and by the owner's o
 
 - [ ] CLAUDE.md rule 3 must list this visible change: the "Pick the right answer" row becomes tickable and its exercise screen (question, options with green/red marks, Next, summary) appears. Only the owner edits CLAUDE.md. Default now: build it (H-10/S-01 approved the Learn list and "all exercises implemented"); flip `available` only after the owner's line is added. — owner: Maksym, due: before `sdd:implement learn-pick-the-answer` ships the flip.
 - [ ] Should a speaker button appear after the answer (D-22 lists this exercise)? Default now: no speaker in v1, per the clarified small spec. — owner: Maksym, due: any time; a later small change.
+
+## Implementation status
+
+Implemented 2026-10-14 on `feat/learn-exercises`, test-first (commits `feat(learn-pick-the-answer): ...`). All 20 ACs have code and tests.
+
+**Done.** Kit: S-26 in `buildQuestion` (no homograph or same-meaning wrong option), `exerciseRandomProvider` (S-27), `ChoiceOptions` (S-28). Exercise: `lib/features/learn/pick_the_answer/` (`PickTheAnswer` notifier family + `PickTheAnswerScreen`), `case 'pick-the-answer'` in `exerciseScreen`, `available: true` in `exercises.json` and `exercises.dart`. Tests: `learn_kit_helpers_test` (S-26, 1000 seeds), `learn_choice_options_test`, `learn_pick_the_answer_notifier_test`, `learn_pick_the_answer_screen_test` (incl. a `learnApiService` that throws on any call, AC-18); AC-19 by a new case in `vocab-photo-api/test/learn.test.mjs`. Existing tests updated for the flip: `learn_screen_test`, `learn_exercises_test`, `exercise_route_test`, `learn-exercises.test.mjs`, `learn.test.mjs`.
+
+**Deviations / notes.**
+- §8 rule-3 question: answered by CLAUDE.md rule 3 (owner, 2026-10-14, approves the exercise screens of learn-kit and each exercise spec); the flip is done. The speaker question stays open (no speaker).
+- The notifier is an `AsyncNotifier` (`Future<PickState>`): a load error maps through `failureOf` in the screen; Retry (`retry()`) invalidates the words provider and itself. Questions of all rounds are built once when the exercise opens.
+- The Worker's web learn page now lists the row as tickable; Start there leads to its existing coming-soon page (no play surface, AC-19). The Worker needs a deploy for the web list to match.
+- Green/red are `Colors.green` / `Colors.red`; the no-reveal mark (exams) is `Colors.blueGrey`.

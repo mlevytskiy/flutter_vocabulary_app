@@ -203,6 +203,11 @@ lib/
                                       word_marks.dart (maskWord, boldWord, holdsWordOnce), check_verdict.dart
                                       (judgeCheck, sentenceProblem), check_result_line.dart,
                                       exercise_words.dart (+.g) (exerciseWordsProvider: group + other words)
+                                      exercise_random.dart (exerciseRandomProvider: the one Random, S-27),
+                                      choice_options.dart (ChoiceOptions: four-option widget, S-28)
+      pick_the_answer/                (learn-pick-the-answer) Step 1 exercise, no network, nothing saved
+        pick_the_answer_notifier.dart (+.g)  PickTheAnswer notifier (usable words, rounds, kinds) + PickState
+        pick_the_answer_screen.dart   PickTheAnswerScreen: the question body inside ExerciseScaffold
       widgets/group_pager.dart        the group pager on the learn page (a card per word group);
                                       step_progress.dart shows a running run's steps
     mnemonic_story/
