@@ -41,3 +41,16 @@ CheckVerdict judgeCheck(CheckReply reply,
   if (aiFine) return CheckFixed(fixed: reply.fixed, note: 'Use “$word” in your sentence.');
   return CheckFixed(fixed: reply.fixed, note: reply.note);
 }
+
+/// Why a sentence is not sent (AC-30), or null when it may be: fewer than two
+/// words, or over 200 characters (300 for an explanation). The Worker refuses
+/// the same input.
+String? sentenceProblem(String text, LearnCheckTask task) {
+  final trimmed = text.trim();
+  if (trimmed.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length < 2) return 'Write a full sentence';
+  final explain = task == LearnCheckTask.explain;
+  if (trimmed.length > (explain ? 300 : 200)) {
+    return explain ? 'Keep it under three hundred characters' : 'Keep it under two hundred characters';
+  }
+  return null;
+}
