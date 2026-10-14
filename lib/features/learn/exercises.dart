@@ -24,7 +24,7 @@ const exercises = <Exercise>[
   Exercise(id: 'match-definitions', name: 'Match word and definition', stage: 1, available: true),
   Exercise(id: 'guess-my-word', name: 'Guess my word', stage: 1, available: false),
   Exercise(id: 'pick-the-answer', name: 'Pick the right answer', stage: 1, available: true),
-  Exercise(id: 'fill-the-gaps', name: 'Fill the gaps', stage: 2, available: false),
+  Exercise(id: 'fill-the-gaps', name: 'Fill the gaps', stage: 2, available: true),
   Exercise(id: 'remember-or-not', name: 'Remember or not', stage: 2, available: true),
   Exercise(id: 'sentence-patterns', name: 'Sentence patterns', stage: 2, available: false),
   Exercise(id: 'own-sentences', name: 'Make your own sentences', stage: 3, available: false),
