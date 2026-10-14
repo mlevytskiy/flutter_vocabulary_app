@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-10-07"
+updated_at: "2026-10-14"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -47,6 +47,9 @@ lib/
                                 (never published: the Worker knows photo and set only). Stored
                                 name stays SourcePhoto (good-looking-web; import-from-quizlet,
                                 ADR-0005; side-panel-sources AC-22)
+                                word_result.dart (+.g) — Isar @embedded WordResult {rowId, exerciseId,
+                                label known/repeat, at}: Session.results, append-only, at most 2000;
+                                never in a row, a publish or an export (learn-kit S-22)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
@@ -86,6 +89,11 @@ lib/
                                 story_api_service.dart (mnemonic-story: the Worker's /story/* routes —
                                 offered AI list, grouping split, start, status, redo, picture bytes;
                                 30 s timeout, throws StoryApiException)
+                                learn_api_service.dart (learn-kit: POST /learn/data — typed per
+                                LearnDataKind, 30 s — and POST /learn/check, 15 s; throws
+                                LearnApiException)
+                                exam_result_sink.dart (learn-kit: ExamResultSink, StoreExamResultSink —
+                                Step 3 word results onto the session via appendResult; latest per row)
                                 story_run_store.dart (Isar StoryRun: put/byId/watch; nothing is ever
                                 removed) and StoryPictureStore (mnemonic_pictures/<runId>-<attempt>.jpg,
                                 at most 3 MB each)
@@ -176,7 +184,7 @@ lib/
                                       (edit-session-from-history)
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
                                       the Worker side is vocab-photo-api/src/learn/
-      exercises.dart                  Exercise (id, name, stage, available) + the const list of twelve,
+      exercises.dart                  Exercise (id, name, stage, available) + the const list of thirteen (learn-kit),
                                       tested against the Worker's exercises.json (ADR-0003)
       learn_screen.dart               the learn page: ticks live in widget State, nothing is saved;
                                       reads the current session or a History row (LearnRoute);
@@ -184,6 +192,17 @@ lib/
                                       ticked exercises one after the other
       coming_soon_screen.dart         what Start opens while the picked exercise is not built
                                       (ComingSoonRoute carries the exercise id)
+      exercise_screens.dart           exerciseScreen: ExerciseRoute's switch on the exercise id (one case
+                                      per built exercise); anything else is the coming-soon screen (learn-kit)
+      kit/                            (learn-kit) the frame and helpers every exercise shares:
+                                      exercise_phase.dart (ExercisePhase states, ExerciseFailure, failureOf),
+                                      exercise_scaffold.dart (ExerciseScaffold: loading / failed / not enough /
+                                      round / summary), result_summary.dart (ResultSummary, WordOutcome),
+                                      split_rounds.dart, question_builder.dart (buildQuestion, QuestionPool),
+                                      typed_match.dart (matchTyped), typed_answer_field.dart (practice / exam),
+                                      word_marks.dart (maskWord, boldWord, holdsWordOnce), check_verdict.dart
+                                      (judgeCheck, sentenceProblem), check_result_line.dart,
+                                      exercise_words.dart (+.g) (exerciseWordsProvider: group + other words)
       widgets/group_pager.dart        the group pager on the learn page (a card per word group);
                                       step_progress.dart shows a running run's steps
     mnemonic_story/
@@ -274,6 +293,9 @@ flowchart LR
   T -->|ref.watch| N
   T -->|LearnRoute push| L[LearnScreen]
   L -->|Start: ComingSoonRoute push| C[ComingSoonScreen]
+  L -->|Start with a group: ExerciseRoute push| EX[exerciseScreen<br/>kit: ExerciseScaffold]
+  EX -->|fetchData / check| LA[learnApiServiceProvider<br/>Worker /learn/data, /learn/check]
+  EX -->|record| ER[examResultSinkProvider<br/>Session.results]
   L -->|Start with Mnemonic story: StoryRoute push| Y[StoryScreen]
   L -->|ensureGrouped| GN[wordGroupsNotifierProvider<br/>core/story]
   GN -->|POST /story/grouping| SA[storyApiServiceProvider<br/>Worker /story/*]

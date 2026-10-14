@@ -329,7 +329,7 @@ Committed approach (H-01, H-02, H-03, H-04, H-05, H-10): a thin shared kit, not 
 ### 6.2 Deployment (owner, local Worker work only)
 
 The agent builds and tests the Worker locally; the owner creates the bindings and deploys:
-1. **Create one KV namespace** `vocab-learn-data` and bind it as `LEARN_DATA` in `vocab-photo-api/wrangler.jsonc` (the owner fills in the id). It holds only the exercise data cache, so it can be purged without touching `DEFINITIONS` or `SESSIONS`. Without the binding the data service answers "not available" and the exercise shows the error line.
+1. **Create one KV namespace** `vocab-learn-data` and bind it as `LEARN_DATA` in `vocab-photo-api/wrangler.jsonc` (the owner fills in the id). *Implementation note:* `wrangler.jsonc` already declares `LEARN_DATA` with the placeholder id `00000000000000000000000000000000` (`wrangler dev` and the tests simulate it with any id); replace it with the id `npx wrangler kv namespace create vocab-learn-data` prints. It holds only the exercise data cache, so it can be purged without touching `DEFINITIONS` or `SESSIONS`. Without the binding the data service answers "not available" and the exercise shows the error line.
 2. **No new D1 database:** apply migration `0006_learn_allowance.sql` to the existing `vocab-sessions` (`DB` binding) with `wrangler d1 migrations apply vocab-sessions --remote`.
 3. **No new secret:** the fixed exercise AI uses the existing `ANTHROPIC_API_KEY`.
 4. **No new rate limiter:** the existing `RATE_LIMITER` (20 requests / 60 s per address) applies.
@@ -349,3 +349,27 @@ The agent builds and tests the Worker locally; the owner creates the bindings an
 - [ ] Should the Learn rows show the subtitles of `learn-screen-briefs.md` instead of "Coming soon"? That is a visible change plus a new field on the approved Exercise model. Default now: no; names only, "Coming soon" kept. — owner: Maksym, due: before pick-the-answer ships.
 - [ ] CLAUDE.md approval lists: rule 5 should name `WordResult` (and `Session.results`), rule 3 the Learn list change of this feature. Only the owner edits CLAUDE.md. Default now: this spec's ¶4 records the decisions. — owner: Maksym, due: before `sdd:implement learn-kit`.
 - [ ] Confirm the daily caps (200 data calls, 500 checks, worst case about $3 a day). Default now: as stated (H-02, H-03; no owner needed). — owner: Maksym, due: first deploy.
+
+## Implementation status
+
+Implemented 2026-10-14 on `feat/learn-exercises` (commits `feat(learn-kit): …`), test-first. All 40 ACs have code; ACs that describe an exercise's own flow (AC-03 order of several exercises, AC-10 Back mid-round, AC-35 an exam writing a result) are served by the kit and become testable end to end with the first exercise that uses them.
+
+**Done.** Worker: `POST /learn/data` (`src/learn/data.ts`, prompts in `src/learn/prompts.ts`), `POST /learn/check` (`src/learn/check.ts`), day caps (`src/learn/allowance.ts`, migration `0006_learn_allowance.sql` + `down/`), the 13-item list (`exercises.json`); tests `learn-data`, `learn-check`, `learn-allowance`, `learn`, `learn-exercises` (`.test.mjs`), with the Anthropic stub extended for both routes. App: `WordResult` + `Session.results` + `SessionStore.appendResult`, `ExamResultSink`, `LearnApiService`, `ExerciseRoute` + `exerciseScreen`, the kit in `lib/features/learn/kit/`; tests `word_result`, `learn_kit_helpers`, `learn_kit_widgets`, `learn_api_service`, `exercise_route`, `learn_exercises` (`_test.dart`). No exercise is available yet: every new id shows "Coming soon", and `exerciseScreen` sends every id to the coming-soon screen until its exercise adds a `case`.
+
+**Deviations from S-01..S-24 (shapes widened, names kept).**
+- `LearnDataKind` is a typed const class (`LearnDataKind<T>`, `.synonym` … `.translate`, `.values`, `.wire`), not an enum, so `fetchData(LearnDataKind.synonym, words)` returns `Map<String, SynonymData?>`. The per-kind answers are Dart records (`SynonymData`, `DefinitionData`, `CluesData`, `SentenceData`, `PatternData`, `TranslateData`); `LearnWord`, `LearnCheckRequest`, `CheckReply` are record typedefs; `LearnCheckTask` is an enum.
+- `CheckVerdict` is sealed: `CheckRight` / `CheckFixed(fixed, note)`, because S-21's note override has to travel with the verdict.
+- `ExerciseScaffold` also takes `title` (top bar) and `onNextRound`; `TypedAnswerField` also takes `expected` and calls `onSubmit` once with a `TypedAnswerResult` (match, answer, firstTry, gaveUp).
+- `matchTyped`: an answer that is the word plus -s/-es/-ed/-ing/-d is wrong even when it is one edit away ("receives" for "receive"), per D-18's "other forms are wrong".
+- `SessionStore.put` keeps the stored `results` (results are written only by `appendResult`), so the words notifier's older copy of the session cannot wipe them. `ExamResultSink.record` with a null session id writes to the store's current-session pointer.
+- The learn page's Start decision moved, unchanged, into a top-level `startRouteFor` in `learn_screen.dart` so it can be tested without an available exercise.
+- Copy the spec does not give, chosen here: the check failure line "Could not check the sentence. Check the connection and try again." (AC-34); "Keep it under three hundred characters" for an explanation (AC-30); the practice hint "Starts with “r”, 7 letters", and "Almost: <word>" / "Answer: <word>" (AC-12, AC-14). The exercise specs may replace them.
+- A pattern (S-15) must hold at least one slot. A data request is validated before the binding check (400 before 503).
+- Not done: §7's "the app logs its verdict in debug builds" (no logging was added to the pure `judgeCheck`).
+- Worker plumbing: `LEARN_AI_TIMEOUT_MS` is a test-only override (set to 1 s in `scripts/test.mjs`); `src/define.ts` now imports `./http.ts` with its extension so the Node tests can load `data.ts`.
+
+**Owner deploy steps.**
+1. `cd vocab-photo-api && npx wrangler kv namespace create vocab-learn-data`, then paste the printed id into the `LEARN_DATA` entry of `wrangler.jsonc` (replacing `00000000000000000000000000000000`).
+2. `npx wrangler d1 migrations apply vocab-sessions --remote` (applies `0006_learn_allowance.sql`: tables `all_learn_data`, `all_learn_checks`).
+3. No new secret (the existing `ANTHROPIC_API_KEY`), no new rate limiter. Run `npm run test:full`, then deploy.
+
