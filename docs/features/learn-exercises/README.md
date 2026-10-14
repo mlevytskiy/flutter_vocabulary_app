@@ -27,7 +27,7 @@ Sizes: XS very small, S, M, L. Rough guess only.
 | 3 | [own-sentences](own-sentences.md) | Make your own sentences | exercises.dart + screenshot | Write a sentence per word; scored | M | AI scoring; word result record |
 | 3 | [own-sentences-spoken](own-sentences-spoken.md) | Speak mode of own-sentences (blocked: owner) | exercises.dart | Same, said aloud (D-35) | M | own-sentences; speech-to-text |
 | 3 | [translate-sentences](translate-sentences.md) | Translate sentences | exercises.dart | Translate into English with the word; scored | M | AI sentences and scoring; result record |
-| 3 | [translate-sentences-spoken](translate-sentences-spoken.md) | Translate sentences (speak) | exercises.dart | Same, said aloud | M | translate-sentences; speech-to-text |
+| 3 | [translate-sentences-spoken](translate-sentences-spoken.md) | Speak mode of translate-sentences (blocked: owner) | exercises.dart | Same, said aloud (D-35) | M | translate-sentences; speech-to-text |
 | 3 | [explain-to-friend](explain-to-friend.md) | Explain it to a friend | Fable | Explain the word with no cues; scored | L | speech-to-text; AI scoring; shared-page vote (later) |
 | 3 | [quiz](quiz.md) | Quiz | screenshot | 5–7 mixed questions; known or repeat | M | pick-the-answer, fill-the-gaps builders; result record |
 
