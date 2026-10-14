@@ -9,6 +9,7 @@ import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_phase.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
+import 'package:flutter_vocabulary_app/features/learn/kit/match_rounds.dart';
 import 'package:flutter_vocabulary_app/features/learn/match_synonyms/match_synonyms_notifier.dart';
 
 /// A Worker stand-in: the synonym of each word by its English text (null =
@@ -34,6 +35,10 @@ class FakeLearnApi implements LearnApiService {
   dynamic noSuchMethod(Invocation i) => throw StateError('unexpected call: ${i.memberName}');
 }
 
+/// The kit's usable-words loop over the Worker's synonym answers (S-41).
+List<MatchPair> usableSynonymPairs(List<WordPair> words, Map<String, SynonymData?> answers) =>
+    usableMatchPairs(words, {for (final e in answers.entries) e.key: e.value?.synonym});
+
 /// learn-match-synonyms: usable words, rounds, shuffle, pairing, misses and
 /// the summary (AC-02, AC-03, AC-04, AC-06, AC-08 – AC-12, AC-15 – AC-18,
 /// AC-20, AC-21; S-34, S-36, S-38, S-39).
@@ -58,9 +63,9 @@ void main() {
     if (listen) c.listen(provider, (_, __) {});
     return c;
   }
-  Future<MatchSynonymsState> load(ProviderContainer c) => c.read(provider.future);
+  Future<MatchRoundsState> load(ProviderContainer c) => c.read(provider.future);
   MatchSynonyms notifier(ProviderContainer c) => c.read(provider.notifier);
-  MatchSynonymsState now(ProviderContainer c) => c.read(provider).requireValue;
+  MatchRoundsState now(ProviderContainer c) => c.read(provider).requireValue;
 
   /// Links every pair of the current round.
   void solve(ProviderContainer c) {

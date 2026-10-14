@@ -6,7 +6,7 @@ part of 'match_synonyms_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$matchSynonymsHash() => r'39a5532191dd5902193ad9587cd3686efb1f9687';
+String _$matchSynonymsHash() => r'ed00f743f031dcfdd9f8a532ee9e47612da52989';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,11 +30,11 @@ class _SystemHash {
 }
 
 abstract class _$MatchSynonyms
-    extends BuildlessAutoDisposeAsyncNotifier<MatchSynonymsState> {
+    extends BuildlessAutoDisposeAsyncNotifier<MatchRoundsState> {
   late final String? sessionId;
   late final String groupId;
 
-  FutureOr<MatchSynonymsState> build(
+  FutureOr<MatchRoundsState> build(
     String? sessionId,
     String groupId,
   );
@@ -53,7 +53,7 @@ const matchSynonymsProvider = MatchSynonymsFamily();
 /// Auto-disposed, so leaving the screen forgets the round (AC-21).
 ///
 /// Copied from [MatchSynonyms].
-class MatchSynonymsFamily extends Family<AsyncValue<MatchSynonymsState>> {
+class MatchSynonymsFamily extends Family<AsyncValue<MatchRoundsState>> {
   /// The match-synonyms exercise of one group (learn-match-synonyms): one
   /// Worker call for the whole group when it opens (S-39), nothing saved (D-04).
   /// Auto-disposed, so leaving the screen forgets the round (AC-21).
@@ -107,7 +107,7 @@ class MatchSynonymsFamily extends Family<AsyncValue<MatchSynonymsState>> {
 ///
 /// Copied from [MatchSynonyms].
 class MatchSynonymsProvider extends AutoDisposeAsyncNotifierProviderImpl<
-    MatchSynonyms, MatchSynonymsState> {
+    MatchSynonyms, MatchRoundsState> {
   /// The match-synonyms exercise of one group (learn-match-synonyms): one
   /// Worker call for the whole group when it opens (S-39), nothing saved (D-04).
   /// Auto-disposed, so leaving the screen forgets the round (AC-21).
@@ -148,7 +148,7 @@ class MatchSynonymsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   final String groupId;
 
   @override
-  FutureOr<MatchSynonymsState> runNotifierBuild(
+  FutureOr<MatchRoundsState> runNotifierBuild(
     covariant MatchSynonyms notifier,
   ) {
     return notifier.build(
@@ -177,7 +177,7 @@ class MatchSynonymsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   }
 
   @override
-  AutoDisposeAsyncNotifierProviderElement<MatchSynonyms, MatchSynonymsState>
+  AutoDisposeAsyncNotifierProviderElement<MatchSynonyms, MatchRoundsState>
       createElement() {
     return _MatchSynonymsProviderElement(this);
   }
@@ -202,7 +202,7 @@ class MatchSynonymsProvider extends AutoDisposeAsyncNotifierProviderImpl<
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin MatchSynonymsRef
-    on AutoDisposeAsyncNotifierProviderRef<MatchSynonymsState> {
+    on AutoDisposeAsyncNotifierProviderRef<MatchRoundsState> {
   /// The parameter `sessionId` of this provider.
   String? get sessionId;
 
@@ -212,7 +212,7 @@ mixin MatchSynonymsRef
 
 class _MatchSynonymsProviderElement
     extends AutoDisposeAsyncNotifierProviderElement<MatchSynonyms,
-        MatchSynonymsState> with MatchSynonymsRef {
+        MatchRoundsState> with MatchSynonymsRef {
   _MatchSynonymsProviderElement(super.provider);
 
   @override
