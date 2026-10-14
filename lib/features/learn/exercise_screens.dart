@@ -6,6 +6,7 @@ import 'guess_my_word/guess_my_word_screen.dart';
 import 'match_definitions/match_definitions_screen.dart';
 import 'match_synonyms/match_synonyms_screen.dart';
 import 'pick_the_answer/pick_the_answer_screen.dart';
+import 'quiz/quiz_screen.dart';
 import 'remember_or_not/remember_or_not_screen.dart';
 import 'sentence_patterns/sentence_patterns_screen.dart';
 
@@ -26,6 +27,8 @@ Widget exerciseScreen(String exercise, String? sessionId, String groupId) {
       return MatchSynonymsScreen(sessionId: sessionId, groupId: groupId);
     case 'pick-the-answer':
       return PickTheAnswerScreen(sessionId: sessionId, groupId: groupId);
+    case 'quiz':
+      return QuizScreen(sessionId: sessionId, groupId: groupId);
     case 'remember-or-not':
       return RememberOrNotScreen(sessionId: sessionId, groupId: groupId);
     case 'sentence-patterns':

@@ -10,7 +10,17 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/exam_result_sink.dart';
+import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
+import 'package:flutter_vocabulary_app/features/learn/quiz/quiz_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words_table/anki_export.dart';
+
+/// No gap sentences: the Quiz runs choice only (learn-quiz AC-08).
+class _OfflineApi implements LearnApiService {
+  @override
+  dynamic noSuchMethod(Invocation i) => throw LearnApiException(LearnApiError.network, 'offline');
+}
 
 /// learn-kit S-22: the Step 3 word results on a session (AC-35 – AC-38).
 /// One Isar store for the whole file (docs/testing.md rule 4).
@@ -165,6 +175,37 @@ void main() {
       final s = session('ignored')
         ..results = [result('deleted-row', WordResultLabel.repeat, t0)];
       expect(sink.latest(s), isEmpty);
+    });
+
+    test('learn-quiz AC-19, AC-22: a Quiz answer saves one result and moves no time, row or export', () async {
+      final words = [
+        for (var i = 0; i < 5; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 'q$i'),
+      ];
+      final s = session('quiz')..words = words;
+      await store.put(s);
+      final anki = generateAnkiFile((await store.byId('quiz'))!.words);
+      final container = ProviderContainer(overrides: [
+        sessionStoreProvider.overrideWith((ref) async => store),
+        learnApiServiceProvider.overrideWithValue(_OfflineApi()),
+        exerciseWordsProvider('quiz', 'g').overrideWith((ref) async => (group: words, others: const <WordPair>[])),
+        exerciseDialoguesProvider('quiz').overrideWith((ref) async => const []),
+      ]);
+      addTearDown(container.dispose);
+      final quiz = await container.read(quizProvider('quiz', 'g').future);
+      final asked = quiz.question!;
+      container.read(quizProvider('quiz', 'g').notifier).pick(asked.choice!.rightIndex);
+      // The quiz does not wait for the save; wait here until it lands.
+      var read = (await store.byId('quiz'))!;
+      for (var i = 0; i < 100 && read.results.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        read = (await store.byId('quiz'))!;
+      }
+      final r = read.results.single;
+      expect((r.rowId, r.exerciseId, r.label), (asked.rowId, 'quiz', WordResultLabel.known));
+      expect(read.updatedAt.isAtSameMomentAs(t0), isTrue);
+      expect(read.lastLocalModifiedAt.isAtSameMomentAs(t0), isTrue);
+      expect(generateAnkiFile(read.words), anki);
+      expect(read.words.map((w) => w.toJson().toString()).join(), isNot(contains('known')));
     });
 
     test('the provider gives a sink over the session store', () {
