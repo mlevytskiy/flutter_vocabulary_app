@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/models/film_dialogue.dart';
 import '../../../core/models/session.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
@@ -28,4 +29,14 @@ Future<({List<WordPair> group, List<WordPair> others})> exerciseWords(
     group: words,
     others: [for (final w in wordsToLearn(session)) if (!inGroup.contains(w.rowId)) w],
   );
+}
+
+/// The film dialogues of the session an exercise reads, same session choice as
+/// [exerciseWords] (null = current, id = History). S-31.
+@riverpod
+Future<List<FilmDialogue>> exerciseDialogues(Ref ref, String? sessionId) async {
+  final Session? session = sessionId == null
+      ? await ref.watch(wordInputNotifierProvider.future)
+      : await ref.watch(sessionByIdProvider(sessionId).future);
+  return session?.dialogues ?? const <FilmDialogue>[];
 }

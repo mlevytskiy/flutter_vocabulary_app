@@ -19,6 +19,7 @@ class ResultSummary extends StatelessWidget {
     required this.hasNextRound,
     required this.onNextRound,
     required this.onDone,
+    this.heading,
   });
 
   final List<WordOutcome> outcomes;
@@ -26,11 +27,19 @@ class ResultSummary extends StatelessWidget {
   final VoidCallback onNextRound;
   final VoidCallback onDone;
 
+  /// S-33: an exercise's own counts line, shown above the list; null shows nothing.
+  final String? heading;
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (heading != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Text(heading!),
+          ),
         Expanded(
           child: ListView(
             children: [

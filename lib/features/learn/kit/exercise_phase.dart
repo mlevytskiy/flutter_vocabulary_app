@@ -54,7 +54,8 @@ class ExerciseRound extends ExercisePhase {
 
 /// A round is over: every word of it with its result (AC-06).
 class ExerciseSummary extends ExercisePhase {
-  const ExerciseSummary(this.outcomes, {required this.hasNextRound});
+  const ExerciseSummary(this.outcomes, {required this.hasNextRound, this.heading});
   final List<WordOutcome> outcomes;
   final bool hasNextRound;
+  final String? heading;
 }

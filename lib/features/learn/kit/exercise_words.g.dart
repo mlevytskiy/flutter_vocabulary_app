@@ -215,5 +215,155 @@ class _ExerciseWordsProviderElement extends AutoDisposeFutureProviderElement<
   @override
   String get groupId => (origin as ExerciseWordsProvider).groupId;
 }
+
+String _$exerciseDialoguesHash() => r'316d8994d1fe927cdf8deee3fcc21e1f1a1bb4c6';
+
+/// The film dialogues of the session an exercise reads, same session choice as
+/// [exerciseWords] (null = current, id = History). S-31.
+///
+/// Copied from [exerciseDialogues].
+@ProviderFor(exerciseDialogues)
+const exerciseDialoguesProvider = ExerciseDialoguesFamily();
+
+/// The film dialogues of the session an exercise reads, same session choice as
+/// [exerciseWords] (null = current, id = History). S-31.
+///
+/// Copied from [exerciseDialogues].
+class ExerciseDialoguesFamily extends Family<AsyncValue<List<FilmDialogue>>> {
+  /// The film dialogues of the session an exercise reads, same session choice as
+  /// [exerciseWords] (null = current, id = History). S-31.
+  ///
+  /// Copied from [exerciseDialogues].
+  const ExerciseDialoguesFamily();
+
+  /// The film dialogues of the session an exercise reads, same session choice as
+  /// [exerciseWords] (null = current, id = History). S-31.
+  ///
+  /// Copied from [exerciseDialogues].
+  ExerciseDialoguesProvider call(
+    String? sessionId,
+  ) {
+    return ExerciseDialoguesProvider(
+      sessionId,
+    );
+  }
+
+  @override
+  ExerciseDialoguesProvider getProviderOverride(
+    covariant ExerciseDialoguesProvider provider,
+  ) {
+    return call(
+      provider.sessionId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'exerciseDialoguesProvider';
+}
+
+/// The film dialogues of the session an exercise reads, same session choice as
+/// [exerciseWords] (null = current, id = History). S-31.
+///
+/// Copied from [exerciseDialogues].
+class ExerciseDialoguesProvider
+    extends AutoDisposeFutureProvider<List<FilmDialogue>> {
+  /// The film dialogues of the session an exercise reads, same session choice as
+  /// [exerciseWords] (null = current, id = History). S-31.
+  ///
+  /// Copied from [exerciseDialogues].
+  ExerciseDialoguesProvider(
+    String? sessionId,
+  ) : this._internal(
+          (ref) => exerciseDialogues(
+            ref as ExerciseDialoguesRef,
+            sessionId,
+          ),
+          from: exerciseDialoguesProvider,
+          name: r'exerciseDialoguesProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$exerciseDialoguesHash,
+          dependencies: ExerciseDialoguesFamily._dependencies,
+          allTransitiveDependencies:
+              ExerciseDialoguesFamily._allTransitiveDependencies,
+          sessionId: sessionId,
+        );
+
+  ExerciseDialoguesProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.sessionId,
+  }) : super.internal();
+
+  final String? sessionId;
+
+  @override
+  Override overrideWith(
+    FutureOr<List<FilmDialogue>> Function(ExerciseDialoguesRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: ExerciseDialoguesProvider._internal(
+        (ref) => create(ref as ExerciseDialoguesRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        sessionId: sessionId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeFutureProviderElement<List<FilmDialogue>> createElement() {
+    return _ExerciseDialoguesProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExerciseDialoguesProvider && other.sessionId == sessionId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, sessionId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin ExerciseDialoguesRef on AutoDisposeFutureProviderRef<List<FilmDialogue>> {
+  /// The parameter `sessionId` of this provider.
+  String? get sessionId;
+}
+
+class _ExerciseDialoguesProviderElement
+    extends AutoDisposeFutureProviderElement<List<FilmDialogue>>
+    with ExerciseDialoguesRef {
+  _ExerciseDialoguesProviderElement(super.provider);
+
+  @override
+  String? get sessionId => (origin as ExerciseDialoguesProvider).sessionId;
+}
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

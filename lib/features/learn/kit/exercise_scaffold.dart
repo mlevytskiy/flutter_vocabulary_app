@@ -47,7 +47,8 @@ class ExerciseScaffold extends StatelessWidget {
           ),
         ExerciseNotEnough(:final message) => _message(context, message ?? notEnoughWordsMessage, _back(context)),
         final ExerciseRound round => roundBuilder(context, round),
-        ExerciseSummary(:final outcomes, :final hasNextRound) => ResultSummary(
+        ExerciseSummary(:final outcomes, :final hasNextRound, :final heading) => ResultSummary(
+            heading: heading,
             outcomes: outcomes,
             hasNextRound: hasNextRound,
             onNextRound: onNextRound,
