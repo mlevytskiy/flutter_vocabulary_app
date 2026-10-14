@@ -137,9 +137,6 @@ lib/
                                         of the set page (webview_flutter); the page is shown full
                                         size only while Quizlet's robot check is on screen
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
-        main_screen_pager.dart          the main screen as a pager, only while the session has
-                                        dialogues: page 1 unchanged, then the dialogue pages
-        dialogue_page.dart              one read-only dialogue page: picture, bold words, word list
         word_input_speed_dial.dart      the FAB (flutter_speed_dial stays); "From subtitles" dark grey
                                         with the captions icon; it shares the Scaffold's floating-button
                                         slot with the Settings button, so both rise above a SnackBar
@@ -377,8 +374,8 @@ with no words goes (or stays hidden while its delivery is pending). The AC-05 ma
 twice, in `src/story/word-check.ts` and `lib/core/dialogues/dialogue_match.dart`, pinned by one case
 file both test suites read.
 
-The main screen becomes a `PageView` only while the session has visible dialogues: page 1 is the
-screen as before, then one read-only `DialoguePage` each. On the learn page, grouping first gives
+The main screen no longer shows dialogues (its pager was removed 2026-10-14; they will be shown
+elsewhere later). On the learn page, grouping first gives
 each dialogue a dialogue group (`WordGroup.dialogueId`, any size, never started on its own), then
 groups the other words as before ("Other words" beside dialogue groups). "Dialogs from movie" opens
 `DialogueScreen`, which draws the scene picture once as a story run of kind `scene` (picture prompt

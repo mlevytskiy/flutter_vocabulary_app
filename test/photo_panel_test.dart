@@ -8,7 +8,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/session.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -19,7 +18,6 @@ import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/loo
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/main_screen_pager.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
@@ -95,7 +93,7 @@ void main() {
   }
 
   Future<Session> pumpMain(WidgetTester tester, PhotoPanelVariant variant,
-      {List<WordPair>? words, bool photos = true, List<FilmDialogue> dialogues = const []}) async {
+      {List<WordPair>? words, bool photos = true}) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
@@ -111,8 +109,7 @@ void main() {
         ..updatedAt = now
         ..lastLocalModifiedAt = now
         ..words = words ?? rows()
-        ..sources = photos ? [photo('p1', 1), photo('p2', 2)] : []
-        ..dialogues = dialogues;
+        ..sources = photos ? [photo('p1', 1), photo('p2', 2)] : [];
       await store.put(current);
       await store.setCurrentSessionId(current.sessionId);
     });
@@ -212,12 +209,6 @@ void main() {
     await tester.drag(browser, offset);
     await tester.pumpAndSettle();
   }
-
-  double pagerPage(WidgetTester tester) => tester
-      .widget<PageView>(find.descendant(
-          of: find.byType(MainScreenPager), matching: find.byType(PageView)))
-      .controller!
-      .page!;
 
   for (final variant in PhotoPanelVariant.values) {
     final look = lookFor(variant);
@@ -443,32 +434,6 @@ void main() {
         await openFull(tester);
         await tester.pump();
         expect(exclusion.sent.last, isEmpty);
-        await tearDownMain(tester);
-      });
-
-      testWidgets('on a dialogue page the tab stays put and opening returns to the words page '
-          '(AC-13)', (tester) async {
-        // Few rows: the swipe starts on the page, not on a row's text field.
-        await pumpMain(tester, variant, words: rows(count: 3, p1: [1], p2: [2]), dialogues: [
-          FilmDialogue()
-            ..id = 'd1'
-            ..lines = ['word1 in a line.']
-            ..wordRowIds = ['r1'],
-        ]);
-        final before = tester.getRect(find.byKey(PhotoPanel.tabKey));
-        await tester.flingFrom(const Offset(150, 600), const Offset(-250, 0), 2000);
-        await tester.pumpAndSettle();
-        expect(pagerPage(tester), 1);
-        expect(tester.getRect(find.byKey(PhotoPanel.tabKey)), before);
-
-        await tester.tap(find.byKey(PhotoPanel.tabKey));
-        await tester.pumpAndSettle();
-        expect(pagerPage(tester), 0);
-        expect(stop(tester), PanelStop.halfOpen);
-
-        await tester.flingFrom(const Offset(150, 600), const Offset(-250, 0), 2000);
-        await tester.pumpAndSettle();
-        expect(pagerPage(tester), 0, reason: 'no swipe changes the page while open');
         await tearDownMain(tester);
       });
 
