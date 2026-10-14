@@ -11,6 +11,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { GROUPING_MODEL } from "../story/models.ts";
 import { writeText } from "../story/providers/text.ts";
 import { matchPlaces } from "../story/word-check.ts";
+import { takeLearnCheck } from "./allowance.ts";
 import { checkPrompt, type LearnCheckTask } from "./prompts.ts";
 
 const TASKS: readonly LearnCheckTask[] = ["pattern", "own", "translate", "explain"];
@@ -106,6 +107,11 @@ async function handleLearnCheck({ request, env }: RouteContext): Promise<Respons
   const log = (outcome: string, reply?: CheckReply) =>
     logEvent("learn check", { task, aiOk: reply?.ok ?? null, aiUsesWord: reply?.usesWord ?? null, outcome, ms: Date.now() - started });
 
+  // One unit per check, taken before the call and never given back (S-18, AC-34b).
+  if (!(await takeLearnCheck(env))) {
+    log("day_limit");
+    return jsonResponse({ error: "Today's exercise limit is reached", code: "day_limit" }, 429);
+  }
   const { system, user } = checkPrompt({ word, translation, sentence, task, extra });
   const result = await writeText(env, {
     model: GROUPING_MODEL,

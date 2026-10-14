@@ -12,6 +12,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { GROUPING_MODEL } from "../story/models.ts";
 import { writeText } from "../story/providers/text.ts";
 import { matchPlaces } from "../story/word-check.ts";
+import { takeLearnData } from "./allowance.ts";
 import { dataPrompt } from "./prompts.ts";
 
 export const LEARN_DATA_KINDS = ["synonym", "definition", "clues", "sentence", "pattern", "translate"] as const;
@@ -189,6 +190,11 @@ async function handleLearnData({ request, env }: RouteContext): Promise<Response
     });
 
   if (misses.length > 0) {
+    // One unit per AI call, taken before it and never given back (S-18, AC-24, AC-27).
+    if (!(await takeLearnData(env))) {
+      log("day_limit");
+      return jsonResponse({ error: "Today's exercise limit is reached", code: "day_limit" }, 429);
+    }
     const { system, user } = dataPrompt(kind, misses);
     const result = await writeText(env, {
       model: GROUPING_MODEL,
