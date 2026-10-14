@@ -156,15 +156,9 @@ class LookA extends PhotoPanelLook {
   @override
   double get handleBarHeight => 48;
 
+  /// No grip: the bar still drags, but draws no "–" (owner, 2026-10-14).
   @override
-  Widget buildGrip(BuildContext context) => Container(
-        width: 28,
-        height: 4,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade500,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      );
+  Widget buildGrip(BuildContext context) => const SizedBox.shrink();
 
   @override
   Widget buildExpandIcon(BuildContext context) =>

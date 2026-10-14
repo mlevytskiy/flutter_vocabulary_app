@@ -10,7 +10,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../core/models/definition_result.dart';
-import '../../core/models/film_dialogue.dart';
 import '../../core/models/session.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
@@ -28,8 +27,6 @@ import 'photo_panel/photos_with_words.dart';
 import 'photo_panel/row_jump.dart';
 import 'quizlet_import_flow.dart';
 import 'subtitle_import_flow.dart';
-import 'widgets/dialogue_page.dart';
-import 'widgets/main_screen_pager.dart';
 import 'widgets/photo_source_dialog.dart';
 import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
@@ -84,11 +81,6 @@ class WordInputScreen extends ConsumerStatefulWidget {
 }
 
 class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsBindingObserver {
-  // The main screen's pager, shown only while the session has film dialogues
-  // (get-words-from-subtitles-improvment SCR-01). Page 0 is the words.
-  final PageController _mainPager = PageController();
-  int _mainPage = 0;
-
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
   ];
@@ -1352,6 +1344,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (source != null) {
       ref.read(wordInputNotifierProvider.notifier).addSource(source);
     }
+    // The new words go after the last word, not after the trailing blank row:
+    // drop it here, and _checkAndAddNewPair below adds a fresh one at the end.
+    if (words.isNotEmpty && _wordPairs.length > 1 && _wordPairs.last.isEmpty) {
+      _removeItem(_wordPairs.length - 1);
+    }
 
     setState(() {
       for (final w in words) {
@@ -1379,7 +1376,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           appendedPairs.add(_wordPairs[_wordPairs.length - 1]);
         }
       }
-      _checkAndAddNewPair();
     });
 
     if (reusedFirstRow) {
@@ -1392,6 +1388,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (appendedPairs.isNotEmpty) {
       ref.read(wordInputNotifierProvider.notifier).addAll(appendedPairs);
     }
+    // After addAll, so the notifier gets the new blank row after the words too.
+    _checkAndAddNewPair();
   }
 
   void _removeItem(int index) {
@@ -1525,7 +1523,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _mainPager.dispose();
     _pronunciation.stop();
     for (var controller in _wordControllers) {
       controller.dispose();
@@ -1668,41 +1665,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     });
   }
 
-  /// [first] as it is, or, while the session has film dialogues to show, a
-  /// pager with [first] as page 1 and one read-only page per dialogue after it
-  /// (get-words-from-subtitles-improvment SCR-01, SCR-02). Done leaves the
-  /// pager where it is, so the learner stays on page 1.
-  Widget _mainBody(Widget first) {
-    final session = ref.watch(wordInputNotifierProvider).valueOrNull;
-    final dialogues = [
-      for (final d in session?.dialogues ?? const <FilmDialogue>[])
-        if (!d.hidden) d,
-    ];
-    if (session == null || dialogues.isEmpty) {
-      _mainPage = 0;
-      return first;
-    }
-    return MainScreenPager(
-      controller: _mainPager,
-      page: _mainPage,
-      onPageChanged: (page) => setState(() => _mainPage = page),
-      swipeable: !_photoPanel.isOpen,
-      first: first,
-      pages: [
-        for (final d in dialogues)
-          DialoguePage(key: ValueKey(d.id), dialogue: d, words: session.words),
-      ],
-    );
-  }
-
-  /// The photo panel opens only over the words page: from a dialogue page
-  /// the pager runs back to it first (side-bar-for-main-screen, spec AC-13).
-  Future<void> _showWordsPage() async {
-    if (!_mainPager.hasClients || _mainPager.page == 0) return;
-    await _mainPager.animateToPage(0,
-        duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
-  }
-
   @override
   Widget build(BuildContext context) {
     _ensureRowStateSynced(); // hot-reload safety net, see method doc above
@@ -1819,11 +1781,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               ),
             )
           : null,
-      // The photo panel is mounted above the pager, so the tab stays at its
-      // place on every page (side-bar-for-main-screen, spec AC-13).
       body: Stack(
         children: [
-      _mainBody(Stack(
+      Stack(
         children: [
           // Open photo panel: a tap or a sideways swipe on the list closes it
           // and does nothing else; a vertical drag still scrolls (AC-06, AC-11).
@@ -1874,7 +1834,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               ),
             ),
         ],
-      )),
+      ),
           // The photo tab and panel paint above the route through an overlay;
           // this child only marks the main screen's place (ADR-0001).
           Positioned.fill(
@@ -1887,7 +1847,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
               bottomReserve: 80 + (_restoreSnackBarVisible ? 56 : 0),
               scrollController: _listScroll,
               onSelected: _onPhotoSelected,
-              onBeforeOpen: _showWordsPage,
             ),
           ),
         ],
@@ -1899,8 +1858,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
       // docs/roadmap.md), each 16px from its edge like endFloat's margin. The
       // gap between them is not hit-testable, so rows underneath stay tappable.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      // They belong to page 1: a dialogue page is read only.
-      floatingActionButton: _mainPage != 0 ? null : _closesOpenPhotoPanel(Padding(
+      floatingActionButton: _closesOpenPhotoPanel(Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

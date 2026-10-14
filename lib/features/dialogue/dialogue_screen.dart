@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/dialogues/dialogue_match.dart';
 import '../../core/models/film_dialogue.dart';
 import '../../core/models/session.dart';
 import '../../core/models/story_run.dart';
@@ -14,7 +15,6 @@ import '../learn/learn_screen.dart' show storyDayLimitMessage;
 import '../mnemonic_story/story_screen.dart' show groupStoryRunsProvider;
 import '../mnemonic_story/widgets/story_parts.dart';
 import '../mnemonic_story/widgets/story_picture.dart';
-import '../word_input/widgets/dialogue_page.dart' show boldSpans;
 import '../word_input/word_input_notifier.dart';
 
 /// "Dialogs from movie" for one dialogue group (get-words-from-subtitles-
@@ -217,4 +217,25 @@ class _Lines extends StatelessWidget {
       ],
     );
   }
+}
+
+/// [line] split into spans, every place of every word in [words] bold
+/// (AC-05 rule); overlapping places merge.
+List<TextSpan> boldSpans(String line, List<WordPair> words) {
+  final places = [
+    for (final w in words) ...matchPlaces(line, w.word),
+  ]..sort((a, b) => a.start.compareTo(b.start));
+  final spans = <TextSpan>[];
+  var at = 0;
+  for (final p in places) {
+    if (p.end <= at) continue;
+    final start = p.start < at ? at : p.start;
+    if (start > at) spans.add(TextSpan(text: line.substring(at, start)));
+    spans.add(TextSpan(
+        text: line.substring(start, p.end),
+        style: const TextStyle(fontWeight: FontWeight.bold)));
+    at = p.end;
+  }
+  if (at < line.length) spans.add(TextSpan(text: line.substring(at)));
+  return spans;
 }

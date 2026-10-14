@@ -367,6 +367,18 @@ void main() {
     await unmount(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  testWidgets(
+      'kept photo words follow the last word; the one blank row stays at the end',
+      (tester) async {
+    await pumpScreen(tester);
+    await pickFromGalleryAndAnswer(tester, ['candid', 'fog']);
+    await tester.tap(find.text('Done'));
+    await settleDialog(tester);
+
+    expect(sessionWords(), ['harbour', 'candid', 'fog', '']);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   testWidgets('the gallery pick asks for no metadata (AC-09)', (tester) async {
     await pumpScreen(tester);
     await tapGetWordsFromPhoto(tester);
