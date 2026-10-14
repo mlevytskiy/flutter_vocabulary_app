@@ -298,3 +298,17 @@ The app has no usage analytics; checked at review, from the Worker's `learn data
 - [ ] Merge sentence-patterns into own-sentences as its first half? Carried from the small spec. Default now: a separate Stage 2 exercise. — owner: Maksym, due: any time; would only move the card into own-sentences.
 - [ ] Should "Fixed" score less than "Right" in a later saved result, or show a score heading here? Carried from the small spec. Default now: labels only, no heading, nothing saved (AC-26). — owner: Maksym, due: any time; a change to the S-48 practice mapping only.
 - [ ] Real use needs the owner's learn-kit deploy steps (the `vocab-learn-data` KV namespace, `0006_learn_allowance.sql`, deploy); until then the exercise shows the load error line (AC-24). Default now: build and flip `available`; the web list needs a deploy to show the row as tickable. — owner: Maksym, due: before the owner's first real use.
+
+## Implementation status
+
+Implemented 2026-10-15 on `feat/learn-exercises`, test-first (commits `feat(learn-kit): ...` and `feat(learn-sentence-patterns): ...`). All 31 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults (a separate Stage 2 exercise; labels only, no heading, nothing saved; the owner's learn-kit deploy steps are still needed for real use).
+
+**Done.** Kit: `kit/sentence_check.dart` (S-47 `SentenceCheckField` + `SentenceCheckMode`; S-48 `SentenceResult` with `SentenceResult.checked`, `SentenceOutcome`, `practiceLabel`, `examLabel`, `examSummaryText`); `kit/check_result_line.dart` gains the optional `word` of `CheckResultLine.verdict` (S-49). Exercise: `lib/features/learn/sentence_patterns/` (`SentencePatterns` notifier family + `PatternsState`, `PatternCard`; `SentencePatternsScreen`), `case 'sentence-patterns'` in `exerciseScreen`, `available: true` in `exercises.json` and `exercises.dart`. `check_verdict.dart`, `typed_answer_field.dart`, `word_marks.dart` and the Worker code are unchanged. Tests: `learn_sentence_check_test` (20, incl. exam mode for AC-30, AC-31), `learn_sentence_patterns_notifier_test` (10), `learn_sentence_patterns_screen_test` (17); AC-29 by a new case in `vocab-photo-api/test/learn.test.mjs`; AC-03 by the Worker's existing kind `pattern` checks in `learn-data.test.mjs` (the app shows what the Worker accepted). Updated for the flip: `learn_screen_test`, `learn_exercises_test`, `exercise_route_test`, `learn.test.mjs`, `learn-exercises.test.mjs`.
+
+**Notes.**
+- The field keeps the keyboard open after a refused Send (`onEditingComplete` is a no-op) and unfocuses once the word is final. Text wraps; line breaks are filtered out.
+- "Skipped" under the field is drawn by the exercise screen from `practiceLabel` (the field has no task copy, S-47); the field itself only drops Skip and any failure line once the word is final.
+- In both modes the text is read-only while a check is in flight.
+- Words with an empty row id are skipped, as in fill-the-gaps (the Worker needs unique row ids).
+- No `Random` is used, so tests need no `exerciseRandomProvider` override.
+- The Worker's web list shows the row as tickable and needs a deploy to match.

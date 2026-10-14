@@ -210,6 +210,7 @@ lib/
                                       definition_text.dart (definitionText, definitionCard: definition line, mask, cut; S-40)
                                       gap_question.dart (GapQuestion, gapFromText, gapFromDialogues, loadGapQuestions, GapPrompt; S-43..S-45)
                                       match_board.dart (MatchBoard + MatchItem + MatchCard: the two-column match round, cardText, missesText; S-35..S-37)
+                                      sentence_check.dart (SentenceCheckField practice / exam, SentenceResult, SentenceOutcome, practiceLabel, examLabel, examSummaryText; S-47, S-48); check_result_line.dart bolds the word in the fix (S-49)
       pick_the_answer/                (learn-pick-the-answer) Step 1 exercise, no network, nothing saved
         pick_the_answer_notifier.dart (+.g)  PickTheAnswer notifier (usable words, rounds, kinds) + PickState
         pick_the_answer_screen.dart   PickTheAnswerScreen: the question body inside ExerciseScaffold
@@ -225,6 +226,9 @@ lib/
       fill_the_gaps/                  (learn-fill-the-gaps) Step 2 type the missing word; dialogue sentence first, else one Worker call, nothing saved
         fill_the_gaps_notifier.dart (+.g)  FillTheGaps notifier (gap questions, rounds, results, score) + FillState
         fill_the_gaps_screen.dart     FillTheGapsScreen: GapPrompt + TypedAnswerField (practice) inside ExerciseScaffold
+      sentence_patterns/              (learn-sentence-patterns) Step 2 model sentence + pattern, then the learner's own sentence checked by the Worker; one data call per open, nothing saved
+        sentence_patterns_notifier.dart (+.g)  SentencePatterns notifier (pattern cards, rounds, My turn, results) + PatternsState, PatternCard
+        sentence_patterns_screen.dart SentencePatternsScreen: card, PronunciationButtons (read the sentence), SentenceCheckField (practice) inside ExerciseScaffold
       widgets/group_pager.dart        the group pager on the learn page (a card per word group);
                                       step_progress.dart shows a running run's steps
     mnemonic_story/

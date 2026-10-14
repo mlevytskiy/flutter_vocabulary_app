@@ -199,6 +199,37 @@ void main() {
       expect(done.single.outcome, SentenceOutcome.fixed);
     });
 
+    testWidgets('AC-10: the AI says wrong but its fix equals the sentence: Good', (tester) async {
+      api.replies.add((usesWord: true, usesTask: true, ok: false, fixed: 'the main conflict was that nobody had time', note: 'x'));
+      await pumpField(tester, SentenceCheckMode.practice);
+      await send(tester, 'The main conflict was that nobody had time.');
+      await tester.pump();
+      expect(find.text('Good'), findsOneWidget);
+      expect(done.single.outcome, SentenceOutcome.right);
+    });
+
+    testWidgets('AC-09: an inflected form counts as the word', (tester) async {
+      await tester.pumpWidget(ProviderScope(
+        overrides: [learnApiServiceProvider.overrideWithValue(api)],
+        child: MaterialApp(
+          home: Scaffold(
+            body: SentenceCheckField(
+              word: 'walk',
+              translation: 'ходити',
+              task: LearnCheckTask.pattern,
+              extra: 'In the end, + we + [verb in Past Simple]',
+              mode: SentenceCheckMode.practice,
+              onDone: done.add,
+            ),
+          ),
+        ),
+      ));
+      await send(tester, 'In the end, we walked home.');
+      await tester.pump();
+      expect(done.single.outcome, SentenceOutcome.right);
+      expect(api.requests.single.extra, 'In the end, + we + [verb in Past Simple]');
+    });
+
     testWidgets('AC-12: Skip before sending ends as skipped with no call', (tester) async {
       await pumpField(tester, SentenceCheckMode.practice);
       await tester.enterText(find.byType(TextField), 'Some text');
