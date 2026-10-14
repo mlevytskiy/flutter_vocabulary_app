@@ -40,6 +40,9 @@ class Question {
 /// D-15 equality: lower-case, trimmed, spaces collapsed.
 String _key(String text) => text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 
+/// The meaning of a row: its definition, else its translation (D-14).
+String _meaningOf(WordPair w) => w.definition.trim().isNotEmpty ? w.definition.trim() : w.translation.trim();
+
 /// A choice question for [word] (learn-kit AC-17 – AC-19, S-09), or null when
 /// four distinct options cannot be made (the word is left out of the round).
 /// Pure: the same word, pool, kind and seed give the same question.
@@ -47,16 +50,21 @@ Question? buildQuestion(WordPair word, QuestionPool pool, QuestionKind kind, Ran
   final String prompt;
   final String right;
   final String Function(WordPair) option;
+  // S-26: a row that would be a second right answer is never a wrong option.
+  late final bool Function(WordPair) alsoRight;
   switch (kind) {
     case QuestionKind.wordToTranslation:
       prompt = word.word.trim();
       right = word.translation.trim();
       option = (w) => w.translation.trim();
+      alsoRight = (w) => _key(w.word) == _key(word.word);
     case QuestionKind.meaningToWord:
-      final meaning = word.definition.trim().isNotEmpty ? word.definition.trim() : word.translation.trim();
+      final meaning = _meaningOf(word);
       prompt = maskWord(meaning, word.word);
       right = word.word.trim();
       option = (w) => w.word.trim();
+      final asked = _key(meaning);
+      alsoRight = (w) => _key(_meaningOf(w)) == asked;
   }
   if (prompt.isEmpty || right.isEmpty) return null;
 
@@ -65,7 +73,7 @@ Question? buildQuestion(WordPair word, QuestionPool pool, QuestionKind kind, Ran
   for (final source in [pool.group, pool.others]) {
     final candidates = [
       for (final w in source)
-        if (w.rowId != word.rowId) option(w),
+        if (w.rowId != word.rowId && !alsoRight(w)) option(w),
     ]..shuffle(random);
     for (final text in candidates) {
       if (wrong.length == 3) break;

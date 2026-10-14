@@ -174,6 +174,63 @@ void main() {
       expect(buildQuestion(w('x', ''), QuestionPool(group: group, others: others), QuestionKind.wordToTranslation, Random(1)), isNull);
     });
 
+    // S-26 (learn-pick-the-answer AC-09): no second right answer.
+    test('word → translation never offers a row with the same English word (a homograph)', () {
+      final bank = w('bank', 'банк');
+      final pool = QuestionPool(
+          group: [bank, w('Bank ', 'берег'), w('dog', 'пес'), w('bird', 'птах'), w('fish', 'риба')], others: const []);
+      for (var seed = 0; seed < 50; seed++) {
+        final q = buildQuestion(bank, pool, QuestionKind.wordToTranslation, Random(seed))!;
+        expect(q.options, isNot(contains('берег')), reason: 'seed $seed');
+        expect(q.options.toSet(), {'банк', 'пес', 'птах', 'риба'});
+      }
+    });
+
+    test('meaning → word never offers a row with the same meaning', () {
+      final kitty = w('kitty', 'кіт');
+      final pet = w('cat', 'кіт');
+      final pool = QuestionPool(group: [pet, kitty, w('dog', 'пес'), w('bird', 'птах'), w('fish', 'риба')], others: const []);
+      for (var seed = 0; seed < 50; seed++) {
+        final q = buildQuestion(pet, pool, QuestionKind.meaningToWord, Random(seed))!;
+        expect(q.options, isNot(contains('kitty')), reason: 'seed $seed');
+      }
+      // Same definition, different translations: still the same meaning.
+      final a = w('car', 'авто', definition: 'A road vehicle.');
+      final b = w('auto', 'машина', definition: ' a road  vehicle. ');
+      final p2 = QuestionPool(group: [a, b, w('dog', 'пес'), w('bird', 'птах')], others: const []);
+      expect(buildQuestion(a, p2, QuestionKind.meaningToWord, Random(1)), isNull,
+          reason: 'only 2 wrong options are left once the same-meaning row is out');
+    });
+
+    test('1000 seeds on 30 words with shared meanings and homographs: never two equal or two right options', () {
+      final words = <WordPair>[
+        for (var i = 0; i < 24; i++) w('word$i', 'слово$i'),
+        w('bank', 'банк'), w('bank', 'берег'),
+        w('cat', 'кіт'), w('kitty', 'кіт'),
+        w('big', 'великий', definition: 'Of large size.'), w('large', 'значний', definition: 'of large size.'),
+      ];
+      final pool = QuestionPool(group: words.take(15).toList(), others: words.skip(15).toList());
+      for (var seed = 0; seed < 1000; seed++) {
+        final word = words[seed % words.length];
+        for (final kind in QuestionKind.values) {
+          final q = buildQuestion(word, pool, kind, Random(seed));
+          if (q == null) continue;
+          final keys = q.options.map((o) => o.trim().toLowerCase()).toSet();
+          expect(keys.length, 4, reason: 'seed $seed');
+          final rows = [...pool.group, ...pool.others];
+          String meaning(WordPair x) => (x.definition.trim().isNotEmpty ? x.definition : x.translation).trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+          for (final o in q.options.where((o) => o != q.options[q.rightIndex])) {
+            final row = rows.firstWhere((x) => (kind == QuestionKind.wordToTranslation ? x.translation : x.word).trim() == o);
+            if (kind == QuestionKind.wordToTranslation) {
+              expect(row.word.trim().toLowerCase(), isNot(word.word.trim().toLowerCase()), reason: 'seed $seed');
+            } else {
+              expect(meaning(row), isNot(meaning(word)), reason: 'seed $seed');
+            }
+          }
+        }
+      }
+    });
+
     test('the same word, candidates, kind and seed give the same question', () {
       for (final kind in QuestionKind.values) {
         final a = buildQuestion(cat, QuestionPool(group: group, others: others), kind, Random(42))!;
