@@ -19,7 +19,7 @@ Sizes: XS very small, S, M, L. Rough guess only.
 | 1 | [match-antonyms](match-antonyms.md) | Match antonyms | exercises.dart | Link a word to its opposite | S | match-synonyms board |
 | 1 | [match-definitions](match-definitions.md) | Match word and definition | exercises.dart | Link a word to its English definition | S | match-synonyms board; define endpoint |
 | 1 | [guess-my-word](guess-my-word.md) | Guess my word | Fable | Find the word from 3 clues | M | AI clues; shared-page buzzer (later) |
-| 1 | [pick-the-answer](pick-the-answer.md) | Pick the right answer | exercises.dart (proposed move from 2) | Pick the right option of 4 | S | none |
+| 1 | [pick-the-answer](pick-the-answer.md) | Pick the right answer | exercises.dart (moved from 2) | Pick the right option of 4 | S | none |
 | 2 | [fill-the-gaps](fill-the-gaps.md) | Fill the gaps | exercises.dart | Type the missing word in a sentence | M | AI sentences or dialogues |
 | 2 | [remember-or-not](remember-or-not.md) | Remember or not (flashcards) | exercises.dart + screenshot | Recall the word from its meaning, then self-rate | S | TTS |
 | 2 | [sentence-patterns](sentence-patterns.md) | Sentence patterns | screenshot | Reuse a pattern for your own sentence | M | AI sentences and check |
@@ -37,7 +37,7 @@ Sizes: XS very small, S, M, L. Rough guess only.
 - **Examples from your world** (screenshot) is a variant of the built **Mnemonic story** (a story with a theme the learner picks). Not a new file. Proposed: add "choose a theme" to the Mnemonic story spec later.
 - **Quiz** is kept as its own Stage 3 exam; it reuses the question builders of pick-the-answer and fill-the-gaps.
 - **Sentence patterns** is new in Stage 2: it scaffolds production and leads to own-sentences.
-- Proposed move: **pick-the-answer**, Stage 2 to Stage 1 (choosing is recognition).
+- Moved: **pick-the-answer**, Stage 2 to Stage 1 (choosing is recognition; agent, 2026-10-14). `exercises.dart` must change `stage: 2` to `1` at implementation.
 - Proposed move: none for fill-the-gaps (types the word: Stage 2). translate-sentences could be Stage 2 (it is production) but stays in 3 because it is scored.
 
 ## Note: the Step 3 result
