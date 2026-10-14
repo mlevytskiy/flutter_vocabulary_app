@@ -67,9 +67,10 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the thi
 
   assert.doesNotMatch(inputOf(html, "mnemonic-story"), /disabled/);
   assert.doesNotMatch(inputOf(html, "dialogs-from-movie"), /disabled/);
-  for (const x of IDS.slice(2)) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 11);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 11);
+  assert.doesNotMatch(inputOf(html, "pick-the-answer"), /disabled/);
+  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer")) assert.match(inputOf(html, x), /disabled/);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 10);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 10);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -89,6 +90,20 @@ test("AC-16, AC-22: Dialogs from movie can be ticked, and Start leads to the com
   assert.match(html, /<h1>Dialogs from movie<\/h1>/);
   assert.match(html, /Coming soon — this exercise is not ready yet\./);
   assert.match(html, new RegExp(`href="/s/${id}/learn\\?pick=dialogs-from-movie"`));
+  assert.doesNotMatch(html, /<button|<input|<form/);
+});
+
+test("learn-pick-the-answer AC-19: Pick the right answer is listed in Step 1, can be ticked, and the page has no way to play it", async () => {
+  const { id } = await publish();
+  const ticked = (await learn(id, "?pick=pick-the-answer")).html;
+  assert.match(inputOf(ticked, "pick-the-answer"), /\bchecked\b/);
+  assert.match(ticked, /Pick the right answer/);
+
+  const res = await get(`/s/${id}/learn/pick-the-answer?pick=pick-the-answer`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Pick the right answer<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
   assert.doesNotMatch(html, /<button|<input|<form/);
 });
 
