@@ -208,6 +208,7 @@ lib/
                                       example_line.dart (exampleLineFor: dialogue example line, S-31); exercise_words.dart also has exerciseDialoguesProvider
                                       match_rounds.dart (MatchPair, usableMatchPairs, MatchRound, shuffledOutOfOrder, MatchRoundsState, matchSummaryDelay; S-41)
                                       definition_text.dart (definitionText, definitionCard: definition line, mask, cut; S-40)
+                                      gap_question.dart (GapQuestion, gapFromText, gapFromDialogues, loadGapQuestions, GapPrompt; S-43..S-45)
                                       match_board.dart (MatchBoard + MatchItem + MatchCard: the two-column match round, cardText, missesText; S-35..S-37)
       pick_the_answer/                (learn-pick-the-answer) Step 1 exercise, no network, nothing saved
         pick_the_answer_notifier.dart (+.g)  PickTheAnswer notifier (usable words, rounds, kinds) + PickState
@@ -221,6 +222,9 @@ lib/
       match_definitions/              (learn-match-definitions) Step 1 match word and definition on the same board; stored definition line first, else one Worker call
         match_definitions_notifier.dart (+.g)  MatchDefinitions notifier (stored/Worker definitions, rounds, links, misses) on MatchRoundsState
         match_definitions_screen.dart MatchDefinitionsScreen: round counter, line and MatchBoard inside ExerciseScaffold
+      fill_the_gaps/                  (learn-fill-the-gaps) Step 2 type the missing word; dialogue sentence first, else one Worker call, nothing saved
+        fill_the_gaps_notifier.dart (+.g)  FillTheGaps notifier (gap questions, rounds, results, score) + FillState
+        fill_the_gaps_screen.dart     FillTheGapsScreen: GapPrompt + TypedAnswerField (practice) inside ExerciseScaffold
       widgets/group_pager.dart        the group pager on the learn page (a card per word group);
                                       step_progress.dart shows a running run's steps
     mnemonic_story/

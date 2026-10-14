@@ -293,3 +293,14 @@ The app has no usage analytics; checked at review, from the Worker's `learn data
 
 - [ ] Should an "almost" (one typo) score less than a perfect answer? Carried from the small spec. Default now: no, equal (counts as right and as its try, AC-04, AC-26). — owner: Maksym, due: any time; a change to the score mapping only.
 - [ ] Real use for words without a dialogue gap sentence needs the owner's learn-kit deploy steps (the `vocab-learn-data` KV namespace, `0006_learn_allowance.sql`, deploy); until then those groups show the error line (AC-24), groups whose words all have dialogue lines already work. Default now: build and flip `available`; the web list needs a deploy to show the row as tickable. — owner: Maksym, due: before the owner's first real use.
+
+## Implementation status
+
+Implemented 2026-10-15 on `feat/learn-exercises`, test-first (commits `feat(learn-fill-the-gaps): ...`). All 30 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults (an almost scores as a perfect answer; the owner's learn-kit deploy steps are still needed for words without a dialogue gap sentence).
+
+**Done.** Kit: `kit/gap_question.dart` (S-43 `GapQuestion`, `GapSource`, `gapFromText`, `gapFromDialogues`; S-44 `loadGapQuestions`; S-45 `GapPrompt`). Exercise: `lib/features/learn/fill_the_gaps/` (`FillTheGaps` notifier family + `FillState`, `FillTheGapsScreen`), `case 'fill-the-gaps'` in `exerciseScreen`, `available: true` in `exercises.json` and `exercises.dart`. Kit files `typed_answer_field.dart`, `typed_match.dart`, `word_marks.dart`, `example_line.dart` and the Worker code are unchanged. Tests: `learn_gap_question_test` (17), `learn_gap_loader_test` (8, incl. the exam-mode field), `learn_fill_the_gaps_notifier_test` (11), `learn_fill_the_gaps_screen_test` (17); AC-29 by a new case in `vocab-photo-api/test/learn.test.mjs`. Updated for the flip: `learn_screen_test`, `learn_exercises_test`, `exercise_route_test`, `learn.test.mjs`, `learn-exercises.test.mjs`.
+
+**Notes.**
+- A group with fewer than 3 words that have both a word and a translation shows "Not enough words" without any Worker call (the words without a translation are never sent anyway).
+- Words with an empty row id are skipped (the Worker needs unique row ids; dialogue links use them).
+- The Worker's web list shows the row as tickable and needs a deploy to match.
