@@ -67,6 +67,15 @@
 		{
 			"binding": "DEFINITIONS",
 			"id": "b01693d540114da0b1bb7167aa7945af"
+		},
+		// Exercise data cache (learn-kit, spec §6.2, S-16): AI-made exercise data, one key per
+		// kind + word + translation, written with a 30-day expirationTtl. Its own namespace, so it
+		// can be purged without touching DEFINITIONS or SESSIONS. PLACEHOLDER id: before the first
+		// deploy the owner runs `npx wrangler kv namespace create vocab-learn-data` and pastes the
+		// id it prints here; `wrangler dev` simulates it locally with any id.
+		{
+			"binding": "LEARN_DATA",
+			"id": "00000000000000000000000000000000"
 		}
 	],
 	// Raw bytes of a session's sources (the photo). R2 has no per-object TTL:

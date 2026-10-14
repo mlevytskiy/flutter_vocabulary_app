@@ -112,6 +112,8 @@ const worker = spawn(
     "--var", `HIGGSFIELD_API_URL:${higgsfieldStub.url}`,
     "--var", "HIGGSFIELD_API_KEY:test-key",
     "--var", "STORY_TEXT_TIMEOUT_MS:3000",
+    // The stub's slow learn reply (2 s) must outlast this (learn-kit AC-24, AC-34).
+    "--var", "LEARN_AI_TIMEOUT_MS:1000",
     "--var", "STORY_PICTURE_TIMEOUT_MS:3000",
     "--var", "STORY_PICTURE_POLL_MS:100",
     // GET /__scheduled runs the cron handler (the daily clean-up).

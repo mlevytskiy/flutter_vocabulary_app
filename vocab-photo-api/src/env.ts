@@ -49,6 +49,14 @@ export interface Env {
   DEFINITIONS: KVNamespace;
   /** Editable sessions, rows, cell revisions, photo slots and autofill counters (good-looking-web, ADR-0003). Schema in `migrations/`. */
   DB: D1Database;
+  /**
+   * The exercise data cache (learn-kit S-16): one key per kind + word + translation, 30-day TTL.
+   * Its own namespace, so it can be purged without touching DEFINITIONS or SESSIONS. Optional:
+   * without it POST /learn/data answers 503 no_storage.
+   */
+  LEARN_DATA?: KVNamespace;
+  /** Overrides the 25 s (data) and 12 s (check) limits on a learn AI call, in ms; unset in production. The tests shorten it. */
+  LEARN_AI_TIMEOUT_MS?: string;
   /** The story run Workflow, one instance per run, named by the app's run id (mnemonic-story, ADR-0002). */
   STORY_RUN: Workflow<StoryRunParams>;
 }

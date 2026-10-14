@@ -23,6 +23,18 @@
 //   "STUB:bad-dialogues" -> the default words, no dialogues key (a reply that breaks the asked-for shape)
 //   anything else      -> 14 ranked candidates, with a case duplicate, for the
 //                         route to drop session words and cut to the maximum
+// A learn data request (learn-kit; system names "data for vocabulary exercises", user = JSON {kind, words})
+// answers one valid item per word for its kind, in a fenced block. Markers, as a word:
+//   "STUB:none"    -> {"rowId", "none": true} for that word
+//   "STUB:broken"  -> an answer that breaks the kind's rule, for that word
+//   "STUB:missing" -> no item for that word
+//   "STUB:error" / "STUB:refusal" / "STUB:malformed" for the whole reply, "STUB:slow" -> the reply after 2 s
+// A learn check request (system names "check a learner's", user = JSON {word, translation, sentence, task, extra})
+// answers "ok" with usesWord false (the Worker computes its own). Markers inside the sentence:
+//   "STUB:wrong" -> not ok, a fixed sentence and a note of over 100 characters
+//   "STUB:same"  -> not ok, the fixed sentence equal to the learner's
+//   "STUB:notask" -> usesTask false
+//   "STUB:error" / "STUB:malformed" / "STUB:slow" as above
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
 // the last request body and its x-api-key -- so a test can tell whether the AI
 // was reached.
@@ -107,6 +119,54 @@ function groupingAnswer(model, content) {
   return { status: 200, body: message(model, "```json\n" + JSON.stringify({ groups }) + "\n```") };
 }
 
+const LEARN_VALUES = {
+  synonym: (w) => ({ synonym: `similar to ${w.word}` }),
+  definition: (w) => ({ definition: `The sense of ${w.translation || "it"}.` }),
+  clues: () => ({ clues: ["A vague clue.", "A clearer clue.", "Almost the answer."] }),
+  sentence: (w) => ({ sentence: `We saw the ${w.word} today.` }),
+  pattern: (w) => ({ sentence: `We saw the ${w.word} today.`, pattern: "We saw the [noun] today.", usage: "for things you saw" }),
+  translate: (w) => ({ source: `Ми бачили ${w.translation || "щось"} сьогодні.`, cue: w.translation || "щось", model: `We saw the ${w.word} today.` }),
+};
+const LEARN_BROKEN = {
+  synonym: (w) => ({ synonym: w.word }),
+  definition: () => ({ definition: "x".repeat(161) }),
+  clues: () => ({ clues: ["one", "two"] }),
+  sentence: () => ({ sentence: "There is no such word here." }),
+  pattern: (w) => ({ sentence: `We saw the ${w.word} today.`, pattern: `We saw the ${w.word} [noun].`, usage: "u" }),
+  translate: () => ({ source: "Ми бачили щось.", cue: "не тут", model: "We saw something." }),
+};
+
+function learnDataAnswer(model, content) {
+  const request = JSON.parse(content);
+  const marker = request.words.map((w) => w.word).find((w) => ["STUB:error", "STUB:refusal", "STUB:malformed"].includes(w));
+  if (marker) return answer(model, marker);
+  const items = [];
+  for (const w of request.words) {
+    if (w.word === "STUB:missing") continue;
+    if (w.word === "STUB:none") items.push({ rowId: w.rowId, none: true });
+    else items.push({ rowId: w.rowId, ...(w.word === "STUB:broken" ? LEARN_BROKEN : LEARN_VALUES)[request.kind](w) });
+  }
+  return { status: 200, body: message(model, "```json\n" + JSON.stringify({ items }) + "\n```") };
+}
+
+function learnCheckAnswer(model, content) {
+  const { sentence } = JSON.parse(content);
+  if (sentence.includes("STUB:error")) return answer(model, "STUB:error");
+  if (sentence.includes("STUB:malformed")) return answer(model, "STUB:malformed");
+  let reply = { usesWord: false, usesTask: true, ok: true, fixed: "", note: "" };
+  if (sentence.includes("STUB:wrong")) {
+    reply = {
+      usesWord: true, usesTask: true, ok: false, fixed: "I walked home yesterday.",
+      note: "Use the past simple here because the action finished yesterday, and remember that walk is a regular verb.",
+    };
+  } else if (sentence.includes("STUB:same")) {
+    reply = { usesWord: true, usesTask: true, ok: false, fixed: sentence, note: "Nothing to fix." };
+  } else if (sentence.includes("STUB:notask")) {
+    reply = { usesWord: true, usesTask: false, ok: false, fixed: "A sentence that follows the task.", note: "Follow the task." };
+  }
+  return { status: 200, body: message(model, JSON.stringify(reply)) };
+}
+
 export function startAnthropicStub() {
   const calls = { count: 0, last: null, lastApiKey: null };
   const server = createServer((req, res) => {
@@ -127,6 +187,18 @@ export function startAnthropicStub() {
         const { status, body: reply } = groupingAnswer(body.model, content);
         res.writeHead(status, { "content-type": "application/json" });
         return res.end(JSON.stringify(reply));
+      }
+      const learn = typeof body.system !== "string" ? undefined
+        : body.system.includes("data for vocabulary exercises") ? learnDataAnswer
+        : body.system.includes("check a learner's") ? learnCheckAnswer : undefined;
+      if (learn) {
+        const { status, body: reply } = learn(body.model, content);
+        const send = () => {
+          if (res.destroyed) return;
+          res.writeHead(status, { "content-type": "application/json" });
+          res.end(JSON.stringify(reply));
+        };
+        return content.includes("STUB:slow") ? setTimeout(send, 2000) : send();
       }
       if (typeof body.system === "string" && body.system.includes("image generator")) {
         const count = (content.match(/^\d+\. /gm) ?? []).length;

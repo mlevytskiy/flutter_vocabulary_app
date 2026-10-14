@@ -1,5 +1,5 @@
 import type { Env } from "./env";
-import { jsonResponse } from "./http";
+import { jsonResponse } from "./http.ts";
 import type { RouteContext, RouteDefinition } from "./routing";
 
 // Dictionary lookups for the app's definition field (definition-mode, ADR-0002).

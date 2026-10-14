@@ -3,6 +3,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { pageAssets, pageHeaders } from "../session/assets";
 import { renderNotFoundPage } from "../session/page";
 import { loadSession } from "../session/store";
+import { learnDataRoute } from "./data.ts";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
 import { renderComingSoonPage, renderLearnPage, renderNoWordsPage } from "./page";
 
@@ -45,4 +46,6 @@ async function handleComingSoonPage({ env, url, params }: RouteContext): Promise
 export const learnRoutes: RouteDefinition[] = [
   { method: "GET", pattern: /^\/s\/(?<id>[^/]+)\/learn$/, public: true, handler: handleLearnPage },
   { method: "GET", pattern: /^\/s\/(?<id>[^/]+)\/learn\/(?<exercise>[^/]+)$/, public: true, handler: handleComingSoonPage },
+  // The exercise services (learn-kit): app-only, behind the secret and the per-IP limiter (AC-26).
+  learnDataRoute,
 ];
