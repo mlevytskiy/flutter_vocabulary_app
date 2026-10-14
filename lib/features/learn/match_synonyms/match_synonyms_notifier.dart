@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/learn_api_service.dart';
 import '../kit/exercise_random.dart';
