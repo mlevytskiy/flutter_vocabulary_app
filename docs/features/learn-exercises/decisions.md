@@ -10,10 +10,9 @@ appends what it decided. Agent decisions are marked **(agent, date)**; the owner
 Format: `D-NN — question → decision. Why. Affects: ids.`
 
 ## Open (cross-cutting)
-- Step 3 needs a saved per-word result (known / repeat). The learn page saves nothing today; a new
-  record needs owner approval (CLAUDE.md rule 5).
-- `docs/lightning_icon_rules.md` covers only the AI-translate buttons; it does not map scores to
-  known / repeat.
+- Saving the Step 3 result (known / repeat per word) needs an owner-approved record or WordPair field (rule 5). Until then it is show-only (D-33).
+- `docs/lightning_icon_rules.md` covers only the AI-translate buttons; it does not map results to
+  known / repeat. Step 3 results do not touch the lightning icons until the owner says so.
 
 ## Decided
 
@@ -47,3 +46,7 @@ D-27 — How is generated text shown with the word emphasised? → The AI return
 D-28 — Does the app have speech-to-text for exercises? → No. The app has no speech-recognition package and rule 5 forbids new ones without the owner. Every exercise takes typed input in v1; "say it" / "dictate" parts are cut until the owner approves a package. TTS (speaking out) is unaffected. Why: no new packages. Affects: chain-story, own-sentences-spoken, translate-sentences-spoken, explain-to-friend, any spoken exercise. (agent, 2026-10-14)
 D-29 — Do exercises save a finished product of the learner (a chain, an explanation, "our version")? → No in v1: no new record or StoryRun kind (rule 5, D-04). Any "save" idea waits for an owner-approved record. Why: same as the open Step 3 record. Affects: chain-story, explain-to-friend, own-sentences. (agent, 2026-10-14)
 D-30 — Which language does an exercise show when it builds on the Mnemonic story? → The story as built (Ukrainian sentences with English words, split at "→"); the exercise never translates it. The learner writes English. Why: no extra AI cost, keeps the built story. Affects: chain-story, any later story-based exercise. (agent, 2026-10-14)
+D-31 — What is the Step 3 result scale? → Two labels per word: known, repeat. A third state "not checked" means no result (no label). No numeric score is shown or kept (replaces the 0-3 idea). Why: matches the owner's "known well / needs repeating". Affects: own-sentences, own-sentences-spoken, translate-sentences, translate-sentences-spoken, explain-to-friend, quiz. (agent, 2026-10-14)
+D-32 — How does an exam exercise map to the scale? → Sentence checks: right = known; fixed = repeat; skipped (learner tapped Skip) = repeat. Answer exercises (quiz): right on the first try = known; wrong, "almost" kept as right per D-18, shown answer or skipped = repeat. A word never examined (error, left early) = no result. Self-rated exercises give no result (D-21). Why: one rule, no half marks. Affects: all Stage 3 exercises. (agent, 2026-10-14)
+D-33 — Where is the Step 3 result stored? → Nowhere in v1: it is shown in the round summary only (extends D-04). Saving needs a new record or a WordPair field, so it waits for the owner (rule 5). Why: least invasive; the exercise still works. Affects: all Stage 3 exercises. (agent, 2026-10-14)
+D-34 — What makes a Stage 3 exercise an exam? → The screen shows only the prompt the spec names: no hint, translation, pattern, example or speaker unless the spec lists it; one checked answer per word; no edit after check and no retry of the word; Skip allowed and counts as repeat. A retry after a network error resends the same answer and is not a second try (refines D-17, D-19, D-25). Why: results must be comparable. Affects: all Stage 3 exercises. (agent, 2026-10-14)
