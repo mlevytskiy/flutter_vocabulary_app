@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../../core/services/learn_api_service.dart';
 import 'result_summary.dart';
 
@@ -54,8 +56,13 @@ class ExerciseRound extends ExercisePhase {
 
 /// A round is over: every word of it with its result (AC-06).
 class ExerciseSummary extends ExercisePhase {
-  const ExerciseSummary(this.outcomes, {required this.hasNextRound, this.heading});
+  const ExerciseSummary(this.outcomes, {required this.hasNextRound, this.heading, this.againLabel, this.onAgain});
   final List<WordOutcome> outcomes;
   final bool hasNextRound;
   final String? heading;
+
+  /// S-56: the extra summary button (an exam's "Repeat"); [onAgain] falls back
+  /// to [ExerciseScaffold.onAgain]. Null shows no button.
+  final String? againLabel;
+  final VoidCallback? onAgain;
 }

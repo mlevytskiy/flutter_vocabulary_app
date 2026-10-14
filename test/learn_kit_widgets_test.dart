@@ -134,6 +134,68 @@ void main() {
     });
   });
 
+  group('exam summary pieces (learn-quiz S-55, S-56)', () {
+    const outcomes = [
+      WordOutcome(rowId: 'a', word: 'cat', result: 'Known'),
+      WordOutcome(rowId: 'b', word: 'dog', result: 'Repeat', detail: 'Answer: dog · Yours: dig'),
+    ];
+
+    test('examHeading counts the known words', () {
+      expect(examHeading(5, 7), '5 of 7 known');
+      expect(examHeading(0, 2), '0 of 2 known');
+    });
+
+    testWidgets('a detail shows as a second line under its word only', (tester) async {
+      await pumpFrame(tester, const ExerciseSummary(outcomes, hasNextRound: false));
+      expect(find.text('Answer: dog · Yours: dig'), findsOneWidget);
+      final cat = tester.widget<ListTile>(find.byKey(const ValueKey('outcome-a')));
+      expect(cat.subtitle, isNull);
+      final dog = tester.widget<ListTile>(find.byKey(const ValueKey('outcome-b')));
+      expect(dog.subtitle, isNotNull);
+    });
+
+    testWidgets('the extra button shows above Done only with a label and a callback', (tester) async {
+      var again = 0;
+      await pumpFrame(tester, ExerciseSummary(outcomes, hasNextRound: false, againLabel: 'Repeat', onAgain: () => again++));
+      expect(find.widgetWithText(ElevatedButton, 'Repeat'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+      expect(tester.getTopLeft(find.widgetWithText(ElevatedButton, 'Repeat')).dy, lessThan(tester.getTopLeft(find.text('Done')).dy));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Repeat'));
+      expect(again, 1);
+
+      await pumpFrame(tester, const ExerciseSummary(outcomes, hasNextRound: false, againLabel: 'Repeat'));
+      expect(find.widgetWithText(ElevatedButton, 'Repeat'), findsNothing);
+    });
+
+    testWidgets('the scaffold passes its own extra button to the summary', (tester) async {
+      var again = 0;
+      await tester.pumpWidget(MaterialApp(
+        home: ExerciseScaffold(
+          title: 'Quiz',
+          phase: const ExerciseSummary(outcomes, hasNextRound: false, againLabel: 'Repeat'),
+          onRetry: () {},
+          onNextRound: () {},
+          onAgain: () => again++,
+          roundBuilder: (c, r) => const SizedBox(),
+        ),
+      ));
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Repeat'));
+      expect(again, 1);
+
+      await tester.pumpWidget(MaterialApp(
+        home: ExerciseScaffold(
+          title: 'Quiz',
+          phase: const ExerciseSummary(outcomes, hasNextRound: false),
+          onRetry: () {},
+          onNextRound: () {},
+          roundBuilder: (c, r) => const SizedBox(),
+        ),
+      ));
+      expect(find.widgetWithText(ElevatedButton, 'Repeat'), findsNothing);
+      expect(find.text('Done'), findsOneWidget);
+    });
+  });
+
   group('TypedAnswerField (S-11)', () {
     late List<TypedAnswerResult> results;
 

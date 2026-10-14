@@ -21,6 +21,8 @@ class ExerciseScaffold extends StatelessWidget {
     required this.onRetry,
     required this.roundBuilder,
     required this.onNextRound,
+    this.againLabel,
+    this.onAgain,
   });
 
   /// The exercise's name, in the top bar.
@@ -29,6 +31,11 @@ class ExerciseScaffold extends StatelessWidget {
   final VoidCallback onRetry;
   final Widget Function(BuildContext context, ExerciseRound round) roundBuilder;
   final VoidCallback onNextRound;
+
+  /// S-56: the summary's extra button; the summary phase's own values win.
+  /// Shown only when a label and a callback are both known.
+  final String? againLabel;
+  final VoidCallback? onAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +54,12 @@ class ExerciseScaffold extends StatelessWidget {
           ),
         ExerciseNotEnough(:final message) => _message(context, message ?? notEnoughWordsMessage, _back(context)),
         final ExerciseRound round => roundBuilder(context, round),
-        ExerciseSummary(:final outcomes, :final hasNextRound, :final heading) => ResultSummary(
-            heading: heading,
-            outcomes: outcomes,
-            hasNextRound: hasNextRound,
+        final ExerciseSummary summary => ResultSummary(
+            heading: summary.heading,
+            againLabel: summary.againLabel ?? againLabel,
+            onAgain: summary.onAgain ?? onAgain,
+            outcomes: summary.outcomes,
+            hasNextRound: summary.hasNextRound,
             onNextRound: onNextRound,
             onDone: () => Navigator.of(context).pop(),
           ),
