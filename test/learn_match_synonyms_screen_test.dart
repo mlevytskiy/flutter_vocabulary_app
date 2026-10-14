@@ -202,7 +202,7 @@ void main() {
   });
 
   testWidgets('AC-13: long synonyms wrap on a phone and the board scrolls without overflow', (tester) async {
-    final long = 'a rather long phrase that keeps going for a while';
+    const long = 'a rather long phrase that keeps going for a while';
     api.overrides = {for (var i = 0; i < 6; i++) 'word$i': '$long $i'};
     await pump(tester, _session(6), size: const Size(360, 640));
     expect(tester.takeException(), isNull);

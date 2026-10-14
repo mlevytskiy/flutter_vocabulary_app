@@ -262,3 +262,17 @@ The app has no usage analytics; these are checked at review, from the Worker's `
 
 - [ ] The exercise works only after the owner's learn-kit deploy steps (create the `vocab-learn-data` KV namespace, apply `0006_learn_allowance.sql`, deploy). Until then every open shows the error line (AC-18). Default now: build and flip `available` anyway; the web list also needs a deploy to show the row as tickable. — owner: Maksym, due: before the owner's first real use.
 - [ ] Synonyms may be short phrases (S-39), not only one word as the small spec said. Default now: accept the Worker's word or short phrase up to 40 characters. — owner: Maksym, due: any time; a prompt change needs a cache version bump (S-16).
+
+## Implementation status
+
+Implemented 2026-10-14 on `feat/learn-exercises`, test-first (commits `feat(learn-match-synonyms): ...`). All 24 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults (short-phrase synonyms accepted; the owner's learn-kit deploy steps are still needed for real use).
+
+**Done.** Kit: `lib/features/learn/kit/match_board.dart` — `MatchItem {id, text, hint}`, `MatchBoard({left, right, links, onPair})` exactly as S-35 (asserts 3–6 equal columns; keys `match-left-<id>` / `match-right-<id>`; one scroll view for both columns, each row an `IntrinsicHeight` pair of cards), `cardText` and `missesText` (S-37), plus a public `MatchCard` (text, hint, selected, pairNumber, shake, onTap) that the board draws. Exercise: `lib/features/learn/match_synonyms/` (`MatchSynonyms` notifier family + `MatchSynonymsState`, `usableSynonymPairs` (S-38), `MatchSynonymsScreen`), `case 'match-synonyms'` in `exerciseScreen`, `available: true` in `exercises.json` and `exercises.dart`. Tests: `learn_match_board_test` (13, driven by a non-exercise caller with its own pair rule, AC-24), `learn_match_synonyms_notifier_test` (17, incl. 1000-seed order and fairness runs), `learn_match_synonyms_screen_test` (11, counting `learnApiService` fake); AC-23 by a new case in `vocab-photo-api/test/learn.test.mjs`. Updated for the flip: `learn_screen_test`, `learn_exercises_test`, `exercise_route_test` (its coming-soon example is now `quiz`), `learn.test.mjs` (its "unavailable" examples are now `quiz`), `learn-exercises.test.mjs`.
+
+**Notes for match-definitions.**
+- The board's contract is S-35/S-36 as written; it imports nothing but Flutter. A long press never selects (every card absorbs it); a card with a non-empty `hint` shows it in a `Tooltip` (manual trigger). Locked cards keep their hint.
+- The shake is one 300 ms controller in the board's `State`; a wrong pair clears the selection at once.
+- The notifier is an `AsyncNotifier` (`Future<MatchSynonymsState>`); `pair(leftId, rightId)` is the board's `onPair` (right iff ids equal, else a miss on the left word; locked or unknown ids return false and count nothing); the summary opens `matchSummaryDelay` (500 ms) after the last link by a `Timer` cancelled on dispose; `retry()` invalidates the words and itself.
+- `usableSynonymPairs` lives in the exercise folder (S-05: only this exercise uses it as is); match-definitions masks instead of dropping (S-38), so it can cut-and-paste the clash loop into the kit when it needs it.
+- Words and translations are trimmed before they go to the Worker. Pair-number badges use `colorScheme.secondary`; a selected card `primaryContainer` with a 2 px `primary` border; a done card `surfaceContainerHighest`.
+- The Worker's web list now shows the row as tickable and needs a deploy to match.

@@ -206,12 +206,16 @@ lib/
                                       exercise_random.dart (exerciseRandomProvider: the one Random, S-27),
                                       choice_options.dart (ChoiceOptions: four-option widget, S-28)
                                       example_line.dart (exampleLineFor: dialogue example line, S-31); exercise_words.dart also has exerciseDialoguesProvider
+                                      match_board.dart (MatchBoard + MatchItem + MatchCard: the two-column match round, cardText, missesText; S-35..S-37)
       pick_the_answer/                (learn-pick-the-answer) Step 1 exercise, no network, nothing saved
         pick_the_answer_notifier.dart (+.g)  PickTheAnswer notifier (usable words, rounds, kinds) + PickState
         pick_the_answer_screen.dart   PickTheAnswerScreen: the question body inside ExerciseScaffold
       remember_or_not/               (learn-remember-or-not) Step 2 flashcards, no network, nothing saved
         remember_or_not_notifier.dart (+.g)  RememberOrNot notifier (fronts, rounds, shuffle, repeat queue) + RememberState
         remember_or_not_screen.dart   RememberOrNotScreen: card front/back, PronunciationButtons, ratings inside ExerciseScaffold
+      match_synonyms/                 (learn-match-synonyms) Step 1 match board, one Worker call per open, nothing saved
+        match_synonyms_notifier.dart (+.g)  MatchSynonyms notifier (usableSynonymPairs, rounds, shuffle, links, misses) + MatchSynonymsState
+        match_synonyms_screen.dart    MatchSynonymsScreen: round counter, line and MatchBoard inside ExerciseScaffold
       widgets/group_pager.dart        the group pager on the learn page (a card per word group);
                                       step_progress.dart shows a running run's steps
     mnemonic_story/
