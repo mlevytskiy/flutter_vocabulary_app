@@ -30,9 +30,9 @@ class FakeSubtitleWords extends SubtitleWordsService {
 
   @override
   Future<SubtitleWordsResult> pickWords({
+    required List<String> words,
+    required Map<String, String> contexts,
     required List<String> lines,
-    required ImportPurpose purpose,
-    required EnglishLevel level,
     required int maximum,
     required SubtitleModel model,
     required List<String> sessionWords,
@@ -74,7 +74,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       SharedPreferences.setMockInitialValues(
-          {DialoguesSettingNotifier.prefsKey: setting});
+          {DialoguesSettingNotifier.prefsKey: setting, 'subtitle_translator': 'ai'});
       service = FakeSubtitleWords();
       added = [];
       dialoguesAdded = [];

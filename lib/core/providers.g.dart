@@ -286,6 +286,46 @@ final subtitleWordsServiceProvider = Provider<SubtitleWordsService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SubtitleWordsServiceRef = ProviderRef<SubtitleWordsService>;
+String _$subtitleSearchServiceHash() =>
+    r'cc2abc44e30d06312b788e733574cf0709c3fcdd';
+
+/// Subtitle files found by film name, through the Worker (OpenSubtitles).
+///
+/// Copied from [subtitleSearchService].
+@ProviderFor(subtitleSearchService)
+final subtitleSearchServiceProvider = Provider<SubtitleSearchService>.internal(
+  subtitleSearchService,
+  name: r'subtitleSearchServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$subtitleSearchServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SubtitleSearchServiceRef = ProviderRef<SubtitleSearchService>;
+String _$subtitleGoogleWordsHash() =>
+    r'fca5efe9d5a66d33861f0cc0b336f3b1a60f873b';
+
+/// Subtitle words translated on the phone with Google Translate.
+///
+/// Copied from [subtitleGoogleWords].
+@ProviderFor(subtitleGoogleWords)
+final subtitleGoogleWordsProvider = Provider<SubtitleGoogleWords>.internal(
+  subtitleGoogleWords,
+  name: r'subtitleGoogleWordsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$subtitleGoogleWordsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SubtitleGoogleWordsRef = ProviderRef<SubtitleGoogleWords>;
 String _$photoUploadServiceHash() =>
     r'8c9008e9902f73f6fe215aff73ac7796edf87107';
 
@@ -587,11 +627,11 @@ final dialoguesSettingNotifierProvider =
 
 typedef _$DialoguesSettingNotifier = Notifier<bool>;
 String _$subtitleImportPrefsNotifierHash() =>
-    r'1c51c1bcfd4b6dd54478eb525338c3ba7fd99fc1';
+    r'62a46bccde782750c8ef15315e616046294235bb';
 
 /// The subtitle import values in Settings (words-from-subtitles, data-model.md
-/// Device preferences): one set of purpose, level and maximum, the "Update with
-/// each import" switch, and the model. Persisted like the word detail mode;
+/// Device preferences): one set of level and maximum, the "Update with
+/// each import" switch, the translator and the model. Persisted like the word detail mode;
 /// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
 /// values are read ([loaded]). A missing or unknown value keeps its default.
 ///

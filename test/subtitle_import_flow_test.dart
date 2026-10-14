@@ -11,6 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
+import 'package:flutter_vocabulary_app/core/services/subtitle_google_words.dart';
+import 'package:flutter_vocabulary_app/core/services/subtitle_search_service.dart';
+import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_search_dialog.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_words_service.dart';
 import 'package:flutter_vocabulary_app/features/word_input/subtitle_import_flow.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_input_speed_dial.dart';
@@ -23,17 +27,47 @@ class FakeSubtitleWords extends SubtitleWordsService {
 
   @override
   Future<SubtitleWordsResult> pickWords({
+    required List<String> words,
+    required Map<String, String> contexts,
     required List<String> lines,
-    required ImportPurpose purpose,
-    required EnglishLevel level,
     required int maximum,
     required SubtitleModel model,
     required List<String> sessionWords,
     bool dialogues = false,
   }) {
-    calls.add({'lines': lines, 'purpose': purpose, 'level': level, 'maximum': maximum, 'model': model, 'sessionWords': sessionWords});
+    calls.add({'words': words, 'contexts': contexts, 'lines': lines, 'maximum': maximum, 'model': model, 'sessionWords': sessionWords});
     pending = Completer();
     return pending!.future;
+  }
+}
+
+class FakeGoogleWords extends SubtitleGoogleWords {
+  FakeGoogleWords() : super(GoogleTranslateService());
+  final calls = <({List<String> words, Map<String, String> contexts, int maximum})>[];
+
+  @override
+  Future<List<VocabWord>> translate(List<String> words, {required Map<String, String> contexts, required int maximum}) async {
+    calls.add((words: words, contexts: contexts, maximum: maximum));
+    return [for (final w in words.take(maximum)) VocabWord(word: w, translation: 'г-$w', context: contexts[w])];
+  }
+}
+
+class FakeSearch extends SubtitleSearchService {
+  SubtitleSearchError? failDownload;
+
+  @override
+  Future<List<SubtitleSearchResult>> search(String query, {SubtitleTitle? title, int? season, int? episode}) async {
+    return const [
+        SubtitleSearchResult(
+            fileId: 11, title: 'Harbour Lights', year: 2024, release: 'Release.11', downloads: 9, hearingImpaired: false,
+            imageUrl: 'https://posters.test/501.jpg'),
+      ];
+  }
+
+  @override
+  Future<({String fileName, Uint8List bytes})> download(int fileId) async {
+    if (failDownload != null) throw SubtitleSearchException(failDownload!, 'test');
+    return (fileName: 'Release.11.srt', bytes: Uint8List.fromList(utf8.encode(srtText)));
   }
 }
 
@@ -52,6 +86,8 @@ XFile file(String text, [String name = 'film.srt']) =>
 
 void main() {
   late FakeSubtitleWords service;
+  late FakeGoogleWords google;
+  late FakeSearch search;
   late List<VocabWord> added;
   late String sessionId;
   late ProviderContainer container;
@@ -60,11 +96,17 @@ void main() {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    SharedPreferences.setMockInitialValues(prefs);
+    SharedPreferences.setMockInitialValues({'subtitle_translator': 'ai', ...prefs});
     service = FakeSubtitleWords();
+    google = FakeGoogleWords();
+    search = FakeSearch();
     added = [];
     sessionId = 'session-A';
-    container = ProviderContainer(overrides: [subtitleWordsServiceProvider.overrideWithValue(service)]);
+    container = ProviderContainer(overrides: [
+      subtitleWordsServiceProvider.overrideWithValue(service),
+      subtitleGoogleWordsProvider.overrideWithValue(google),
+      subtitleSearchServiceProvider.overrideWithValue(search),
+    ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -105,7 +147,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  const loading = 'Picking words from the subtitles…';
+  const loading = 'Translating the words…';
 
   testWidgets('happy path: loading, then the results dialog; Done appends the kept words in order (AC-02, AC-03)', (tester) async {
     await pumpHost(tester);
@@ -113,7 +155,8 @@ void main() {
 
     expect(find.text('Words from subtitles'), findsNothing, reason: 'the import dialog closed');
     expect(find.text(loading), findsOneWidget);
-    expect(service.calls.single['lines'], ['I was reluctant to leave.']);
+    expect(service.calls.single['words'], ['reluctant'], reason: 'picked on the phone, everyday words ignored');
+    expect(service.calls.single['contexts'], {'reluctant': 'I was reluctant to leave.'});
     expect(service.calls.single['sessionWords'], ['tide']);
     expect(service.calls.single['model'], SubtitleModel.sonnet5);
     expect(service.calls.single['maximum'], 20);
@@ -159,7 +202,7 @@ void main() {
   testWidgets('Update with each import on: the values used become the Settings values (AC-05)', (tester) async {
     await pumpHost(tester);
     await startImport(tester, level: 'C1');
-    expect(service.calls.single['level'], EnglishLevel.c1);
+    expect(service.calls.single.containsKey('level'), isFalse, reason: 'the level is not sent');
     expect(container.read(subtitleImportPrefsProvider).level, EnglishLevel.c1);
     service.pending!.complete(result([]));
     await tester.pumpAndSettle();
@@ -168,7 +211,6 @@ void main() {
   testWidgets('Update with each import off: Settings keep their values (AC-05b)', (tester) async {
     await pumpHost(tester, prefs: {'subtitle_update_each_import': false});
     await startImport(tester, level: 'C1');
-    expect(service.calls.single['level'], EnglishLevel.c1);
     expect(container.read(subtitleImportPrefsProvider).level, EnglishLevel.b2);
     service.pending!.complete(result([]));
     await tester.pumpAndSettle();
@@ -184,6 +226,136 @@ void main() {
       expect(find.text(SubtitleImportMessages.noEnglish), findsOneWidget);
       expect(added, isEmpty);
     }
+  });
+
+  testWidgets('Google Translate chosen: the phone picks, Google translates, the context is the phone\'s line; the Worker is not called', (tester) async {
+    await pumpHost(tester, prefs: {'subtitle_translator': 'google'});
+    await startImport(tester);
+    await tester.pumpAndSettle();
+    expect(service.calls, isEmpty);
+    expect(google.calls.single.words, ['reluctant']);
+    expect(google.calls.single.maximum, 20);
+    expect(find.text('reluctant'), findsOneWidget);
+    expect(find.text('Context: I was reluctant to leave.'), findsOneWidget);
+    expect(find.textContaining('Definition'), findsNothing);
+    expect(find.textContaining('Google Translate · '), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(added.single.translation, 'г-reluctant');
+  });
+
+  testWidgets('AI via OpenCode chosen: the Worker is asked with the OpenCode model, and the cost line names it', (tester) async {
+    await pumpHost(tester, prefs: {'subtitle_translator': 'opencode', 'subtitle_opencode_model': 'deepseekV41Flash'});
+    await startImport(tester);
+    expect(service.calls.single['model'], SubtitleModel.deepseekV41Flash);
+    expect(google.calls, isEmpty);
+    service.pending!.complete(result(['reluctant'], model: SubtitleModel.deepseekV41Flash));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('DeepSeek V4.1 Flash · '), findsOneWidget);
+  });
+
+  testWidgets('the close-repeat setting reaches the word picker', (tester) async {
+    // "fog" twice in one scene (score 2 + 3 = 5) against "lantern" three times far apart (score 3).
+    final cues = [
+      for (final (i, text) in ['The lantern.', 'Fog.', 'Fog again.', 'Okay.', 'Okay.', 'Okay.', 'The lantern.', 'Okay.', 'Okay.', 'Okay.', 'The lantern.'].indexed)
+        '${i + 1}\n00:00:${(i * 2).toString().padLeft(2, '0')},000 --> 00:00:${(i * 2 + 1).toString().padLeft(2, '0')},000\n$text\n',
+    ].join('\n');
+    for (final (on, first) in [(true, 'fog'), (false, 'lantern')]) {
+      await pumpHost(tester, pick: file(cues), prefs: {'subtitle_translator': 'google', 'subtitle_boost_close_repeats': on, 'subtitle_level': 'A1'});
+      await startImport(tester);
+      await tester.pumpAndSettle();
+      expect(google.calls.single.words.first, first, reason: 'boost $on');
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('the remove-names setting reaches the word picker', (tester) async {
+    const cues = '1\n00:00:01,000 --> 00:00:02,000\nCall Ophelia, the drizzle stopped.\n';
+    for (final (on, words) in [(true, ['drizzle']), (false, ['ophelia', 'drizzle'])]) {
+      await pumpHost(tester, pick: file(cues), prefs: {'subtitle_translator': 'google', 'subtitle_remove_names': on, 'subtitle_level': 'A1'});
+      await startImport(tester);
+      await tester.pumpAndSettle();
+      expect(google.calls.single.words, containsAll(words), reason: 'remove names $on');
+      if (on) expect(google.calls.single.words, isNot(contains('ophelia')));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('while the translation runs, the picked words show with their context lines and skeleton translations', (tester) async {
+    await pumpHost(tester);
+    await startImport(tester);
+    expect(find.text(loading), findsOneWidget);
+    expect(find.text('film.srt'), findsOneWidget);
+    expect(find.text('reluctant'), findsOneWidget);
+    expect(find.text('“I was reluctant to leave.”'), findsOneWidget);
+    expect(find.byKey(const Key('subtitle-card-skeleton')), findsOneWidget);
+    service.pending!.complete(result(['reluctant']));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('т-reluctant'), findsOneWidget, reason: 'the card fills in');
+    await tester.pumpAndSettle();
+    expect(find.text('Done'), findsOneWidget, reason: 'then the results dialog');
+  });
+
+  testWidgets('Cancel in the progress dialog ends the import without the results dialog', (tester) async {
+    await pumpHost(tester);
+    await startImport(tester);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text(loading), findsNothing);
+    service.pending!.complete(result(['reluctant']));
+    await tester.pumpAndSettle();
+    expect(find.text('Done'), findsNothing);
+    expect(added, isEmpty);
+  });
+
+  Future<void> startFoundByName(WidgetTester tester) async {
+    await tester.tap(find.text('import'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Find by name'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('subtitle-search-query')), 'harbour lights');
+    await tester.pump();
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Harbour Lights (2024)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Harbour Lights (2024)'), findsOneWidget, reason: 'back in the import dialog with the title');
+    await tester.tap(find.text('Start'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  }
+
+  testWidgets('a file found by name: its title goes through the progress dialog to the results dialog', (tester) async {
+    await pumpHost(tester);
+    await startFoundByName(tester);
+    expect(find.text(loading), findsOneWidget);
+    expect(find.text('Harbour Lights (2024)'), findsOneWidget);
+    expect(find.text('reluctant'), findsOneWidget);
+    service.pending!.complete(result(['reluctant']));
+    await tester.pumpAndSettle();
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Harbour Lights (2024)'), findsOneWidget, reason: 'the results dialog names the film');
+  });
+
+  testWidgets('a file found by name that fails to download says why, and adds nothing', (tester) async {
+    await pumpHost(tester);
+    search.failDownload = SubtitleSearchError.downloadLimit;
+    await startFoundByName(tester);
+    await tester.pumpAndSettle();
+    expect(find.text(SubtitleSearchMessages.downloadLimit), findsOneWidget);
+    expect(service.calls, isEmpty);
+    expect(added, isEmpty);
+  });
+
+  testWidgets('a file of only everyday words is refused on the phone with the AC-10 message', (tester) async {
+    await pumpHost(tester, pick: file('1\n00:00:01,000 --> 00:00:03,000\nI know what you want.\n'));
+    await startImport(tester);
+    await tester.pumpAndSettle();
+    expect(service.calls, isEmpty);
+    expect(find.text(SubtitleImportMessages.noEnglish), findsOneWidget);
   });
 
   for (final (error, message) in [

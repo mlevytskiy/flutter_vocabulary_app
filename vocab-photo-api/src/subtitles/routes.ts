@@ -5,44 +5,53 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { takeSubtitleImport } from "./allowance";
 import { checkDialogues } from "./dialogues";
 import {
-  ENGLISH_LEVELS,
-  IMPORT_PURPOSES,
   buildSubtitleRequest,
+  buildZenSubtitleRequest,
   isSubtitleModel,
+  isZenSubtitleModel,
+  joinTranslations,
   parseSubtitleReply,
-  type EnglishLevel,
-  type ImportPurpose,
+  type PickedWord,
   type SubtitleModel,
   type SubtitleWord,
+  zenAsMessages,
 } from "./prompt";
 
 // POST /subtitles/words (words-from-subtitles, docs/features/words-from-subtitles/
 // contracts/openapi.yaml). The app strips a subtitle file to its dialogue lines
-// (ADR-0002) and sends them here; the Worker checks the bounds and the model
-// allow-list, takes one import from the allowance (ADR-0003), asks the chosen
-// model once, and returns at most `maximum` words or an error -- never a partial
-// list. Secret-gated and rate-limited by the `fetch` handler like every
+// (ADR-0002), picks the most frequent words and sends them, each with one
+// context line (with dialogues asked, also the lines around their places); the
+// Worker checks the bounds and the model allow-list, takes one import from the
+// allowance (ADR-0003), asks the chosen model once to translate the words, and
+// returns at most `maximum` words or an error -- never a partial list. A
+// `purpose` or `level` an older app sends is ignored. Secret-gated and rate-limited by the `fetch` handler like every
 // non-public route (AC-13).
 
 const DEFAULT_API_URL = "https://api.anthropic.com/";
+const DEFAULT_ZEN_API_URL = "https://opencode.ai/zen/v1/";
 /** The app gives up at 240 s; answering by 225 s lets it show the Worker's message instead. */
 const AI_TIMEOUT_MS = 225_000;
 const MAX_LINE_CHARS = 200;
+/** A word's context is its line with one line on each side: three lines and two spaces. */
+const MAX_CONTEXT_CHARS = 3 * MAX_LINE_CHARS + 2;
 /** 1 MB of dialogue lines, the same 1 MB as the largest file the app accepts (AC-11). */
 const MAX_LINES_BYTES = 1_048_576;
 /** The whole body: the lines, up to 500 session words of up to 500 characters, and JSON overhead. */
 const MAX_BODY_BYTES = 2 * 1_048_576;
 const MAX_SESSION_WORDS = 500;
 const MAX_SESSION_WORD_CHARS = 500;
+/** The phone sends the maximum plus 10 spare words, so dropping session words and repeats still fills it. */
+const MAX_WORDS = 110;
+const MAX_WORD_CHARS = 100;
 
 type ErrorCode = "bad_request" | "unknown_model" | "too_large" | "no_english_lines" | "too_many_imports" | "words_not_picked";
 
 const fail = (status: number, code: ErrorCode, error: string) => jsonResponse({ error, code }, status);
 
 interface SubtitleWordsRequest {
+  words: PickedWord[];
+  /** The excerpts around the words' places; only with dialogues. */
   lines: string[];
-  purpose: ImportPurpose;
-  level: EnglishLevel;
   maximum: number;
   model: SubtitleModel;
   sessionWords: string[];
@@ -62,19 +71,21 @@ function readRequest(text: string): SubtitleWordsRequest | Response {
     return fail(400, "bad_request", "Body must be JSON");
   }
   if (typeof body !== "object" || body === null) return fail(400, "bad_request", "Body must be a JSON object");
-  const { lines, purpose, level, maximum, model, sessionWords, dialogues } = body as Record<string, unknown>;
+  const { words, lines, maximum, model, sessionWords, dialogues } = body as Record<string, unknown>;
 
-  if (!isStringArray(lines) || lines.length === 0) {
-    return fail(400, "bad_request", "lines must be a non-empty array of strings");
+  if (!isPickedWords(words)) {
+    return fail(
+      400,
+      "bad_request",
+      `words must be 1 to ${MAX_WORDS} objects of a word of 1 to ${MAX_WORD_CHARS} characters and a context of at most ${MAX_CONTEXT_CHARS}`
+    );
   }
-  if (lines.some((line) => line.length === 0 || line.length > MAX_LINE_CHARS)) {
+  if (dialogues === true ? !isStringArray(lines) || lines.length === 0 : lines !== undefined && !isStringArray(lines)) {
+    return fail(400, "bad_request", "lines must be a non-empty array of strings when dialogues are asked");
+  }
+  const excerpts = isStringArray(lines) ? lines : [];
+  if (excerpts.some((line) => line.length === 0 || line.length > MAX_LINE_CHARS)) {
     return fail(400, "bad_request", `Each line must hold 1 to ${MAX_LINE_CHARS} characters`);
-  }
-  if (typeof purpose !== "string" || !(IMPORT_PURPOSES as readonly string[]).includes(purpose)) {
-    return fail(400, "bad_request", `purpose must be one of: ${IMPORT_PURPOSES.join(", ")}`);
-  }
-  if (typeof level !== "string" || !(ENGLISH_LEVELS as readonly string[]).includes(level)) {
-    return fail(400, "bad_request", `level must be one of: ${ENGLISH_LEVELS.join(", ")}`);
   }
   if (typeof maximum !== "number" || !Number.isInteger(maximum) || maximum < 1 || maximum > 100) {
     return fail(400, "bad_request", "maximum must be a whole number from 1 to 100");
@@ -96,20 +107,38 @@ function readRequest(text: string): SubtitleWordsRequest | Response {
   }
 
   const encoder = new TextEncoder();
-  const linesBytes = lines.reduce((sum, line) => sum + encoder.encode(line).length, 0);
+  const linesBytes = excerpts.reduce((sum, line) => sum + encoder.encode(line).length, 0);
   if (linesBytes > MAX_LINES_BYTES) return fail(413, "too_large", "The subtitle lines are too large");
 
   if (!isSubtitleModel(model)) return fail(400, "unknown_model", "This model is not offered for subtitle imports");
 
   return {
-    lines,
-    purpose: purpose as ImportPurpose,
-    level: level as EnglishLevel,
+    words,
+    lines: excerpts,
     maximum,
     model,
     sessionWords,
     ...(dialogues === undefined ? {} : { dialogues }),
   };
+}
+
+function isPickedWords(value: unknown): value is PickedWord[] {
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= MAX_WORDS &&
+    value.every((item) => {
+      if (typeof item !== "object" || item === null) return false;
+      const { word, context } = item as Record<string, unknown>;
+      return (
+        typeof word === "string" &&
+        word.trim() !== "" &&
+        word.length <= MAX_WORD_CHARS &&
+        typeof context === "string" &&
+        context.length <= MAX_CONTEXT_CHARS
+      );
+    })
+  );
 }
 
 /**
@@ -133,6 +162,21 @@ async function callModel(env: Env, req: SubtitleWordsRequest): Promise<{ reply: 
   const asked = req.dialogues === true;
   const timeoutMs = Number(env.SUBTITLE_AI_TIMEOUT_MS) || AI_TIMEOUT_MS;
   const startedAt = Date.now();
+  if (isZenSubtitleModel(req.model)) {
+    const base = env.OPENCODE_ZEN_API_URL || DEFAULT_ZEN_API_URL;
+    const zen = await fetch(new URL("chat/completions", base.endsWith("/") ? base : base + "/"), {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.OPENCODE_ZEN_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify(buildZenSubtitleRequest({ ...req, dialogues: asked })),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!zen.ok) {
+      const detail = await zen.text().catch(() => "");
+      throw new Error(`OpenCode Zen error (${zen.status}): ${detail.slice(0, 300)}`);
+    }
+    const reply = parseSubtitleReply(zenAsMessages(await zen.json()), { dialogues: asked });
+    return { reply, aiMs: Date.now() - startedAt };
+  }
   const response = await fetch(new URL("v1/messages", env.ANTHROPIC_API_URL || DEFAULT_API_URL), {
     method: "POST",
     headers: {
@@ -176,11 +220,7 @@ async function handleSubtitleWords({ request, env }: RouteContext): Promise<Resp
   }
 
   const { reply, aiMs } = result;
-  if (reply.kind === "no_english") {
-    logEvent("subtitle import", { model: req.model, outcome: "no_english", aiMs, ...tokens(reply.usage) });
-    return fail(422, "no_english_lines", "No English subtitles to read in this file");
-  }
-  const words = keepWords(reply.words, req.sessionWords, req.maximum);
+  const words = keepWords(joinTranslations(reply.translations, req.words), req.sessionWords, req.maximum);
   const base = { model: req.model, outcome: "words", aiMs, words: words.length, ...tokens(reply.usage) };
   if (!req.dialogues) {
     logEvent("subtitle import", base);

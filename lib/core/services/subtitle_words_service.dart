@@ -55,8 +55,10 @@ class SubtitleWordsResult {
   });
 }
 
-/// Asks the Worker's POST /subtitles/words to pick words from a subtitle
-/// file's dialogue lines (words-from-subtitles, contracts/openapi.yaml). A
+/// Asks the Worker's POST /subtitles/words to translate the words the phone
+/// picked from a subtitle file ([SubtitleWordCounter]), sent as JSON with one
+/// context line each — never the file. With dialogues asked, the excerpts
+/// around the words' places go too (words-from-subtitles, contracts/openapi.yaml). A
 /// response is complete or a [SubtitleWordsException] — never a partial list.
 class SubtitleWordsService {
   /// sad §4: the Worker aborts its AI call at 225 s, so it answers first.
@@ -70,9 +72,9 @@ class SubtitleWordsService {
         _timeout = timeout;
 
   Future<SubtitleWordsResult> pickWords({
+    required List<String> words,
+    required Map<String, String> contexts,
     required List<String> lines,
-    required ImportPurpose purpose,
-    required EnglishLevel level,
     required int maximum,
     required SubtitleModel model,
     required List<String> sessionWords,
@@ -88,14 +90,15 @@ class SubtitleWordsService {
               'x-app-secret': VocabApiConfig.appSecret,
             },
             body: jsonEncode({
-              'lines': lines,
-              'purpose': purpose.wire,
-              'level': level.wire,
+              'words': [
+                for (final word in words) {'word': word, 'context': contexts[word] ?? ''},
+              ],
               'maximum': maximum,
               'model': model.id,
               'sessionWords': sessionWords,
-              // Off sends today's body: no key at all (AC-01).
+              // Off sends no dialogues key and no lines (AC-01).
               if (dialogues) 'dialogues': true,
+              if (dialogues) 'lines': lines,
             }),
           )
           .timeout(_timeout);

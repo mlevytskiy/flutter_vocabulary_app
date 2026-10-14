@@ -73,21 +73,17 @@ void main() {
     testWidgets('shows the first-launch values', (tester) async {
       await pumpTall(tester);
       expect(find.text('Subtitle import'), findsOneWidget);
-      expect(tester.widget<RadioGroup<ImportPurpose>>(find.byType(RadioGroup<ImportPurpose>)).groupValue,
-          ImportPurpose.understandFilm);
-      expect(find.text('Understand this film'), findsOneWidget);
-      expect(find.text('Frequent words for the future'), findsOneWidget);
+      expect(find.text('Understand this film'), findsNothing, reason: 'the purpose option is gone');
+      expect(find.text('Frequent words for the future'), findsNothing);
       expect(tester.widget<DropdownButton<EnglishLevel>>(find.byType(DropdownButton<EnglishLevel>)).value, EnglishLevel.b2);
       expect(find.widgetWithText(TextField, '20'), findsOneWidget);
       expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Update with each import')).value, isTrue);
-      expect(tester.widget<DropdownButton<SubtitleModel>>(find.byType(DropdownButton<SubtitleModel>)).value, SubtitleModel.sonnet5);
+      expect(tester.widget<DropdownButton<SubtitleModel>>(find.byKey(const Key('subtitle-ai-model'))).value, SubtitleModel.sonnet5);
+      expect(tester.widget<DropdownButton<SubtitleModel>>(find.byKey(const Key('subtitle-opencode-model'))).value, SubtitleModel.glm53Flash);
     });
 
     testWidgets('each change is saved through the notifier', (tester) async {
       final container = await pumpTall(tester);
-
-      await tester.tap(find.text('Frequent words for the future'));
-      await tester.pumpAndSettle();
 
       await tester.tap(find.byType(DropdownButton<EnglishLevel>));
       await tester.pumpAndSettle();
@@ -100,25 +96,58 @@ void main() {
       await tester.tap(find.widgetWithText(SwitchListTile, 'Update with each import'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButton<SubtitleModel>));
+      expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Rank words repeated close together higher')).value,
+          isTrue, reason: 'on by default');
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Rank words repeated close together higher'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Remove names')).value, isTrue,
+          reason: 'on by default');
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Remove names'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('subtitle-ai-model')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Haiku 4.5').last);
       await tester.pumpAndSettle();
 
+      await tester.tap(find.byKey(const Key('subtitle-opencode-model')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Kimi K3').last);
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<DropdownButton<SubtitleTranslator>>(find.byType(DropdownButton<SubtitleTranslator>)).value,
+          SubtitleTranslator.google, reason: 'Google Translate is the default');
+      await tester.tap(find.byType(DropdownButton<SubtitleTranslator>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('AI').last);
+      await tester.pumpAndSettle();
+
       expect(container.read(subtitleImportPrefsProvider), const SubtitleImportPrefs(
-        purpose: ImportPurpose.frequentWords,
         level: EnglishLevel.c1,
         maximum: 35,
         updateEachImport: false,
         model: SubtitleModel.haiku45,
+        translator: SubtitleTranslator.ai,
+        opencodeModel: SubtitleModel.kimiK3,
+        boostCloseRepeats: false,
+        removeNames: false,
       ));
     });
 
-    testWidgets('the four offered models are listed', (tester) async {
+    testWidgets('the four Anthropic models and the five OpenCode models are listed apart', (tester) async {
       await pumpTall(tester);
-      await tester.tap(find.byType(DropdownButton<SubtitleModel>));
+      await tester.tap(find.byKey(const Key('subtitle-ai-model')));
       await tester.pumpAndSettle();
       for (final label in ['Sonnet 5', 'Sonnet 5.5', 'Haiku 4.5', 'Opus 5.5']) {
+        expect(find.text(label), findsWidgets, reason: label);
+      }
+      expect(find.text('Kimi K3'), findsNothing);
+      await tester.tap(find.text('Sonnet 5').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('subtitle-opencode-model')));
+      await tester.pumpAndSettle();
+      for (final label in ['GLM 5.3 Flash', 'DeepSeek V4.1 Flash', 'MiniMax M3', 'DeepSeek V4 Pro', 'Kimi K3']) {
         expect(find.text(label), findsWidgets, reason: label);
       }
     });

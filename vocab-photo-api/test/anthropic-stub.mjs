@@ -136,7 +136,9 @@ export function startAnthropicStub() {
         res.writeHead(200, { "content-type": "application/json" });
         return res.end(JSON.stringify(message(body.model, text)));
       }
-      const firstLine = content.replace(/^<subtitle_lines>\n/, "").split("\n")[0];
+      // A subtitle import: the scenario is the first word of the <words> JSON block.
+      const wordsBlock = content.match(/^<words>\n(.*)\n<\/words>/);
+      const firstLine = wordsBlock ? (JSON.parse(wordsBlock[1])[0]?.word ?? "") : content.split("\n")[0];
       const slow = firstLine.match(/^STUB:slow:(\d+)$/);
       const { status, body: reply } = answer(body.model, slow ? "" : firstLine);
       const send = () => {

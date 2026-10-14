@@ -6,14 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/import_loading_dialog.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_import_dialog.dart';
 
-/// words-from-subtitles T10: the import dialog (SCR-02) and the loading
-/// dialog (SCR-04) — ux-flows; sad §6 F1; AC-01, AC-09, AC-11.
+/// words-from-subtitles T10: the import dialog (SCR-02) — ux-flows; sad §6 F1;
+/// AC-01, AC-09, AC-11.
 void main() {
   const initial = SubtitleImportPrefs(
-    purpose: ImportPurpose.understandFilm,
     level: EnglishLevel.b2,
     maximum: 20,
     updateEachImport: true,
@@ -54,8 +52,8 @@ void main() {
   testWidgets('opens with the values from Settings and asks for a file (AC-01)', (tester) async {
     await openDialog(tester, pickFile: () async => null);
     expect(find.text('Words from subtitles'), findsOneWidget);
-    expect(tester.widget<RadioGroup<ImportPurpose>>(find.byType(RadioGroup<ImportPurpose>)).groupValue,
-        ImportPurpose.understandFilm);
+    expect(find.text('Understand this film'), findsNothing, reason: 'the purpose option is gone');
+    expect(find.text('Frequent words for the future'), findsNothing);
     expect(tester.widget<DropdownButton<EnglishLevel>>(find.byType(DropdownButton<EnglishLevel>)).value, EnglishLevel.b2);
     expect(find.widgetWithText(TextField, '20'), findsOneWidget);
     expect(find.text('Choose file'), findsOneWidget);
@@ -77,7 +75,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('film.srt'), findsOneWidget);
 
-    await tester.tap(find.text('Frequent words for the future'));
     await tester.tap(find.byType(DropdownButton<EnglishLevel>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('C1').last);
@@ -91,8 +88,7 @@ void main() {
     expect(find.text('Words from subtitles'), findsNothing);
     expect(result!.fileName, 'film.srt');
     expect(result!.extension, 'srt');
-    expect(utf8.decode(result!.bytes), contains('Hello.'));
-    expect(result!.purpose, ImportPurpose.frequentWords);
+    expect(utf8.decode(await result!.bytes), contains('Hello.'));
     expect(result!.level, EnglishLevel.c1);
     expect(result!.maximum, 30);
   });
@@ -138,28 +134,4 @@ void main() {
     expect(result, isNull);
   });
 
-  testWidgets('the loading dialog cannot be dismissed by the barrier or back (SCR-04)', (tester) async {
-    late BuildContext ctx;
-    await tester.pumpWidget(MaterialApp(
-      home: Builder(builder: (context) {
-        ctx = context;
-        return const SizedBox.expand();
-      }),
-    ));
-    showImportLoadingDialog(ctx);
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Picking words from the subtitles…'), findsOneWidget);
-
-    await tester.tapAt(const Offset(5, 5)); // the barrier
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Picking words from the subtitles…'), findsOneWidget);
-
-    await tester.binding.handlePopRoute(); // Android back
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Picking words from the subtitles…'), findsOneWidget);
-
-    closeImportLoadingDialog(ctx);
-    await tester.pumpAndSettle();
-    expect(find.text('Picking words from the subtitles…'), findsNothing);
-  });
 }

@@ -26,9 +26,9 @@ void main() {
       );
 
   Future<SubtitleWordsResult> pick(SubtitleWordsService service) => service.pickWords(
+        words: const ['reluctant', 'leave'],
+        contexts: const {'reluctant': 'I was reluctant to leave.', 'leave': 'I was reluctant to leave.'},
         lines: const ['I was reluctant to leave.'],
-        purpose: ImportPurpose.frequentWords,
-        level: EnglishLevel.c1,
         maximum: 30,
         model: SubtitleModel.haiku45,
         sessionWords: const ['tide'],
@@ -50,9 +50,10 @@ void main() {
     expect(sent.headers['x-app-secret'], VocabApiConfig.appSecret);
     expect(sent.headers['content-type'], startsWith('application/json'));
     expect(jsonDecode(sent.body), {
-      'lines': ['I was reluctant to leave.'],
-      'purpose': 'frequent_words',
-      'level': 'C1',
+      'words': [
+        {'word': 'reluctant', 'context': 'I was reluctant to leave.'},
+        {'word': 'leave', 'context': 'I was reluctant to leave.'},
+      ],
       'maximum': 30,
       'model': 'claude-haiku-4-5-20251001',
       'sessionWords': ['tide'],
@@ -62,7 +63,7 @@ void main() {
   test('200 becomes the words, the model, the AI time and the token counts', () async {
     final result = await pick(serviceAnswering(200, {
       'words': [
-        {'word': 'reluctant', 'translation': 'неохочий', 'description': 'Unwilling.', 'context': 'I was reluctant to leave.'},
+        {'word': 'reluctant', 'translation': 'неохочий', 'context': 'I was reluctant to leave.'},
       ],
       'model': 'claude-haiku-4-5-20251001',
       'timings': {'aiMs': 18450},
@@ -70,7 +71,7 @@ void main() {
     }));
     expect(result.words.single.word, 'reluctant');
     expect(result.words.single.translation, 'неохочий');
-    expect(result.words.single.description, 'Unwilling.');
+    expect(result.words.single.description, isNull, reason: 'the AI only translates');
     expect(result.words.single.context, 'I was reluctant to leave.');
     expect(result.model, SubtitleModel.haiku45);
     expect(result.aiDuration, const Duration(milliseconds: 18450));
@@ -127,9 +128,9 @@ void main() {
     };
 
     Future<SubtitleWordsResult> pickWith(SubtitleWordsService service, bool dialogues) => service.pickWords(
+          words: const ['reluctant', 'leave'],
+          contexts: const {'reluctant': 'I was reluctant to leave.', 'leave': 'I was reluctant to leave.'},
           lines: const ['I was reluctant to leave.'],
-          purpose: ImportPurpose.frequentWords,
-          level: EnglishLevel.c1,
           maximum: 30,
           model: SubtitleModel.haiku45,
           sessionWords: const ['tide'],
@@ -139,12 +140,13 @@ void main() {
     test('off sends today\'s body, with no dialogues key (AC-01)', () async {
       await pickWith(serviceAnswering(200, ok), false);
       expect((jsonDecode(sent.body) as Map).keys,
-          ['lines', 'purpose', 'level', 'maximum', 'model', 'sessionWords']);
+          ['words', 'maximum', 'model', 'sessionWords'], reason: 'no lines without dialogues');
     });
 
     test('on asks for dialogues', () async {
       await pickWith(serviceAnswering(200, ok), true);
       expect(jsonDecode(sent.body)['dialogues'], true);
+      expect(jsonDecode(sent.body)['lines'], ['I was reluctant to leave.'], reason: 'the excerpts go only with dialogues');
     });
 
     test('the checked dialogues come back with the words', () async {

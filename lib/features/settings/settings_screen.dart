@@ -77,21 +77,6 @@ class SettingsScreen extends ConsumerWidget {
             title: Text('Subtitle import'),
             subtitle: Text('What the import dialog starts with'),
           ),
-          RadioGroup<ImportPurpose>(
-            groupValue: subtitle.purpose,
-            onChanged: (purpose) {
-              if (purpose != null) subtitleNotifier.setPurpose(purpose);
-            },
-            child: Column(
-              children: [
-                for (final purpose in ImportPurpose.values)
-                  RadioListTile<ImportPurpose>(
-                    title: Text(purpose.label),
-                    value: purpose,
-                  ),
-              ],
-            ),
-          ),
           ListTile(
             title: const Text('English level'),
             trailing: DropdownButton<EnglishLevel>(
@@ -116,27 +101,70 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           SwitchListTile(
+            title: const Text('Rank words repeated close together higher'),
+            subtitle: const Text('A word used again within 2 lines counts extra; off ranks by how often a word is used'),
+            value: subtitle.boostCloseRepeats,
+            onChanged: subtitleNotifier.setBoostCloseRepeats,
+          ),
+          SwitchListTile(
+            title: const Text('Remove names'),
+            subtitle: const Text('Skip words that are never written in lower case and look like names'),
+            value: subtitle.removeNames,
+            onChanged: subtitleNotifier.setRemoveNames,
+          ),
+          SwitchListTile(
             title: const Text('Update with each import'),
-            subtitle: const Text('Starting an import saves its purpose, level and maximum here'),
+            subtitle: const Text('Starting an import saves its level and maximum here'),
             value: subtitle.updateEachImport,
             onChanged: subtitleNotifier.setUpdateEachImport,
           ),
           ListTile(
+            title: const Text('Translate with'),
+            subtitle: const Text('Google: free, no definitions or dialogues'),
+            trailing: DropdownButton<SubtitleTranslator>(
+              value: subtitle.translator,
+              onChanged: (translator) {
+                if (translator != null) subtitleNotifier.setTranslator(translator);
+              },
+              items: [
+                for (final translator in SubtitleTranslator.values)
+                  DropdownMenuItem(value: translator, child: Text(translator.label)),
+              ],
+            ),
+          ),
+          ListTile(
             title: const Text('AI model'),
-            subtitle: const Text('Picks the subtitle words'),
+            subtitle: const Text('Translates the subtitle words when AI is chosen'),
             trailing: DropdownButton<SubtitleModel>(
+              key: const Key('subtitle-ai-model'),
               value: subtitle.model,
               onChanged: (model) {
                 if (model != null) subtitleNotifier.setModel(model);
               },
               items: [
-                for (final model in SubtitleModel.values)
+                for (final model in SubtitleModel.offeredBy(SubtitleTranslator.ai))
+                  DropdownMenuItem(value: model, child: Text(model.label)),
+              ],
+            ),
+          ),
+          ListTile(
+            title: const Text('OpenCode model'),
+            subtitle: const Text('Translates the subtitle words when AI via OpenCode is chosen'),
+            trailing: DropdownButton<SubtitleModel>(
+              key: const Key('subtitle-opencode-model'),
+              value: subtitle.opencodeModel,
+              onChanged: (model) {
+                if (model != null) subtitleNotifier.setOpencodeModel(model);
+              },
+              items: [
+                for (final model in SubtitleModel.offeredBy(SubtitleTranslator.opencode))
                   DropdownMenuItem(value: model, child: Text(model.label)),
               ],
             ),
           ),
           SwitchListTile(
             title: const Text('Get dialogues from subtitles'),
+            subtitle: const Text('Only when an AI translates'),
             value: dialogues,
             onChanged: ref.read(dialoguesSettingProvider.notifier).set,
           ),

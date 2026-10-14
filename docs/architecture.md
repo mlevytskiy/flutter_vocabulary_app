@@ -116,7 +116,8 @@ lib/
                                       stamping it (edit-session-from-history); every save runs the
                                       dialogue edit rule; addImportDialogues keeps an import's
                                       dialogues (get-words-from-subtitles-improvment)
-      subtitle_import_flow.dart       runSubtitleImport: import dialog → loading → results → Done;
+      subtitle_import_flow.dart       runSubtitleImport: import dialog → the phone picks the words →
+                                      progress dialog while they are translated → results → Done;
                                       with "Get dialogues from subtitles" on it also asks for film
                                       dialogues and hands them over after the words
       photo_panel/                    (side-bar-for-main-screen) the photo tab and panel on the words
@@ -142,6 +143,15 @@ lib/
         quizlet_link_how_to.dart        the link dialog's animation (open set, Share, Copy link, paste)
         quizlet_logo_icon.dart          the + menu's painted white Quizlet-like "Q"
         photo_source_dialog.dart        showPhotoSourceDialog: Camera / Photos as two side-by-side cards
+        subtitle_search_dialog.dart     showSubtitleSearchDialog: "Find by name" in the import dialog —
+                                        English subtitle files found by film or series name
+                                        (OpenSubtitles through the Worker's GET /subtitles/search and
+                                        POST /subtitles/file, SubtitleSearchService); the picked file
+                                        is imported like one chosen from the phone
+        subtitle_progress_dialog.dart   showSubtitleProgressDialog: a pager of the picked words with
+                                        their context lines and skeleton translations, swipeable
+                                        while the translation runs; then filled and scrolled on to
+                                        the last card
         quizlet_progress_dialog.dart    showQuizletProgressDialog: a pager of skeleton cards, then the
                                         set's cards (scrolled first to last), over a hidden web view
                                         of the set page (webview_flutter); the page is shown full
