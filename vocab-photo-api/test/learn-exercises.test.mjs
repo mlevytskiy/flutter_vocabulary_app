@@ -38,11 +38,12 @@ test("every entry has exactly id, name, stage and available", () => {
   }
 });
 
-test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions, pick-the-answer, fill-the-gaps and remember-or-not are available", () => {
-  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "match-synonyms", "match-definitions", "pick-the-answer", "fill-the-gaps", "remember-or-not"]);
+test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions, pick-the-answer, fill-the-gaps, remember-or-not and sentence-patterns are available", () => {
+  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "match-synonyms", "match-definitions", "pick-the-answer", "fill-the-gaps", "remember-or-not", "sentence-patterns"]);
   assert.equal(findAvailable("match-synonyms")?.name, "Match synonyms");
   assert.equal(findAvailable("match-definitions")?.name, "Match word and definition");
   assert.equal(findAvailable("fill-the-gaps")?.name, "Fill the gaps");
+  assert.equal(findAvailable("sentence-patterns")?.name, "Sentence patterns");
   assert.equal(findAvailable("remember-or-not")?.name, "Remember or not");
   assert.equal(findAvailable("pick-the-answer")?.name, "Pick the right answer");
   assert.equal(findAvailable("mnemonic-story")?.name, "Mnemonic story");

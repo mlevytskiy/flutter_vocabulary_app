@@ -6,6 +6,7 @@ import 'match_definitions/match_definitions_screen.dart';
 import 'match_synonyms/match_synonyms_screen.dart';
 import 'pick_the_answer/pick_the_answer_screen.dart';
 import 'remember_or_not/remember_or_not_screen.dart';
+import 'sentence_patterns/sentence_patterns_screen.dart';
 
 /// The screen of one exercise for one word group (learn-kit S-03), built by
 /// `ExerciseRoute`. A `switch` on the frozen exercise id: each exercise adds
@@ -24,6 +25,8 @@ Widget exerciseScreen(String exercise, String? sessionId, String groupId) {
       return PickTheAnswerScreen(sessionId: sessionId, groupId: groupId);
     case 'remember-or-not':
       return RememberOrNotScreen(sessionId: sessionId, groupId: groupId);
+    case 'sentence-patterns':
+      return SentencePatternsScreen(sessionId: sessionId, groupId: groupId);
     default:
       return ComingSoonScreen(exerciseId: exercise);
   }

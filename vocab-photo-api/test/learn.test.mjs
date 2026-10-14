@@ -72,9 +72,10 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the thi
   assert.doesNotMatch(inputOf(html, "match-synonyms"), /disabled/);
   assert.doesNotMatch(inputOf(html, "match-definitions"), /disabled/);
   assert.doesNotMatch(inputOf(html, "fill-the-gaps"), /disabled/);
-  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps")) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 6);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 6);
+  assert.doesNotMatch(inputOf(html, "sentence-patterns"), /disabled/);
+  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps" && x !== "sentence-patterns")) assert.match(inputOf(html, x), /disabled/);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 5);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 5);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -159,6 +160,20 @@ test("learn-fill-the-gaps AC-29: Fill the gaps is listed in Step 2, can be ticke
   const html = withoutStyle(await res.text());
   assert.equal(res.status, 200);
   assert.match(html, /<h1>Fill the gaps<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
+  assert.doesNotMatch(html, /<button|<input|<form/);
+});
+
+test("learn-sentence-patterns AC-29: Sentence patterns is listed in Step 2, can be ticked, and the page has no way to play it", async () => {
+  const { id } = await publish();
+  const ticked = (await learn(id, "?pick=sentence-patterns")).html;
+  assert.match(inputOf(ticked, "sentence-patterns"), /\bchecked\b/);
+  assert.match(ticked, /Sentence patterns/);
+  assert.ok(ticked.indexOf("Step 2") < ticked.indexOf('value="sentence-patterns"') && ticked.indexOf('value="sentence-patterns"') < ticked.indexOf("Step 3"));
+  const res = await get(`/s/${id}/learn/sentence-patterns?pick=sentence-patterns`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Sentence patterns<\/h1>/);
   assert.match(html, /Coming soon — this exercise is not ready yet\./);
   assert.doesNotMatch(html, /<button|<input|<form/);
 });
