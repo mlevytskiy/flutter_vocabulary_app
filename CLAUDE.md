@@ -14,8 +14,8 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    learn page, and the story, story runs and run details screens; get-words-from-subtitles-improvment added the "Get dialogues from
    subtitles" switch in Settings, the main screen pager with its dialogue pages, the dialogue pages and scene pictures on
    the shared page, the "Dialogs from movie" exercise and its dialogue screen; side-bar-for-main-screen adds the photo tab
-   and photo panel on the main screen's words page, the highlighted word rows of a selected photo, and, until the design
-   pick, the "Photo panel design" choice in Settings; photo-panel-glass (owner, 2026-10-13) puts look A's tab and half-open
+   and photo panel on the main screen's words page and
+   the highlighted word rows of a selected photo (look A, picked by the owner 2026-10-14); photo-panel-glass (owner, 2026-10-13) puts look A's tab and half-open
    panel on liquid glass (a frosted blur on Android) stuck to the screen edge with concave flares (which may cover the top bar) and turns every word row into one line, "word — translation", while the panel is open). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.

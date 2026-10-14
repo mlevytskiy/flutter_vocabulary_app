@@ -139,26 +139,4 @@ void main() {
       expect(container.read(subtitleImportPrefsProvider).maximum, 100);
     });
   });
-
-  /// side-bar-for-main-screen T18: the temporary "Photo panel design" choice
-  /// for the owner's design review (spec AC-19; removed at the pick, T20).
-  testWidgets('the Photo panel design choice lists the variants and applies at once',
-      (tester) async {
-    tester.view.physicalSize = const Size(800, 4000);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.reset);
-    final container = await pump(tester);
-
-    expect(find.text('Photo panel design'), findsOneWidget);
-    expect(find.byType(RadioListTile<PhotoPanelVariant>), findsNWidgets(3));
-    final group = tester.widget<RadioGroup<PhotoPanelVariant>>(
-        find.byType(RadioGroup<PhotoPanelVariant>));
-    expect(group.groupValue, PhotoPanelVariant.a);
-
-    await tester.tap(find.text('Design B'));
-    await tester.pumpAndSettle();
-    expect(container.read(photoPanelVariantProvider), PhotoPanelVariant.b);
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('photo_panel_variant'), 'b');
-  });
 }

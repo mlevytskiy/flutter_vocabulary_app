@@ -23,7 +23,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDragMode = ref.watch(dragModeProvider);
     final detailMode = ref.watch(wordDetailModeProvider);
-    final photoPanelVariant = ref.watch(photoPanelVariantProvider);
     final subtitle = ref.watch(subtitleImportPrefsProvider);
     final subtitleNotifier = ref.read(subtitleImportPrefsProvider.notifier);
     final dialogues = ref.watch(dialoguesSettingProvider);
@@ -68,38 +67,6 @@ class SettingsScreen extends ConsumerWidget {
                 RadioListTile<WordDetailMode>(
                   title: Text('Translation + definition'),
                   value: WordDetailMode.both,
-                ),
-              ],
-            ),
-          ),
-          const Divider(),
-          // side-bar-for-main-screen: temporary, for the owner's design
-          // review only (spec AC-19). Removed at the design pick (T20).
-          const ListTile(
-            leading: Icon(Icons.photo_library_outlined),
-            title: Text('Photo panel design'),
-            subtitle: Text('Review only: the look of the photo tab and panel'),
-          ),
-          RadioGroup<PhotoPanelVariant>(
-            groupValue: photoPanelVariant,
-            onChanged: (variant) {
-              if (variant != null) {
-                ref.read(photoPanelVariantProvider.notifier).set(variant);
-              }
-            },
-            child: const Column(
-              children: [
-                RadioListTile<PhotoPanelVariant>(
-                  title: Text('Design A'),
-                  value: PhotoPanelVariant.a,
-                ),
-                RadioListTile<PhotoPanelVariant>(
-                  title: Text('Design B'),
-                  value: PhotoPanelVariant.b,
-                ),
-                RadioListTile<PhotoPanelVariant>(
-                  title: Text('Design C'),
-                  value: PhotoPanelVariant.c,
                 ),
               ],
             ),

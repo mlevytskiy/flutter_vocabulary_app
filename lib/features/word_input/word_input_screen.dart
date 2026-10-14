@@ -20,7 +20,7 @@ import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import 'lightning_rules.dart';
-import 'photo_panel/looks/looks.dart';
+import 'photo_panel/looks/look_a.dart';
 import 'photo_panel/photo_panel.dart';
 import 'photo_panel/photo_panel_controller.dart';
 import 'photo_panel/photos_with_words.dart';
@@ -1635,8 +1635,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     if (id == null) return (const {}, null);
     final rows = photos.where((p) => p.source.id == id).firstOrNull?.rows;
     if (rows == null) return (const {}, null);
-    final look = lookFor(ref.watch(photoPanelVariantProvider));
-    return (rows.toSet(), look.rowHighlight(context));
+    return (rows.toSet(), const LookA().rowHighlight(context));
   }
 
   /// Drops the keyboard as the dots popup opens, so its body gets the full
@@ -1709,8 +1708,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     ref.listen(photosWithWordsProvider, (_, photos) {
       _photoPanel.retain([for (final p in photos) p.source.id]);
     });
-    _compactEndInset =
-        lookFor(ref.watch(photoPanelVariantProvider)).halfOpenWidth - 16;
+    _compactEndInset = const LookA().halfOpenWidth - 16;
     final (highlightedRows, highlight) =
         _photoHighlight(ref.watch(photosWithWordsProvider));
     Decoration? highlightFor(int index) =>

@@ -73,7 +73,7 @@ Fill one table per design. A row passes when **Result** meets **Target**.
 
 | Picked design | Date | Why | Notes for T20 |
 |---|---|---|---|
-| | | | |
+| A | 2026-10-14 | Owner: "I will use design A always" | B, C, `looks.dart`, the Settings choice and `photo_panel_variant` removed (T20) |
 
 After the pick, T20 keeps that look and removes the others, the "Photo panel design" choice in Settings
 and the `photo_panel_variant` key (AC-20). The checks for the picked design are repeated on the release
