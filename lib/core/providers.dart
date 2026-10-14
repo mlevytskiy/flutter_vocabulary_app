@@ -12,6 +12,7 @@ import 'models/session.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
 import 'services/google_translate_service.dart';
+import 'services/learn_api_service.dart';
 import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
@@ -77,6 +78,10 @@ DictionaryService dictionaryService(Ref ref) => DictionaryService();
 /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
 @Riverpod(keepAlive: true)
 StoryApiService storyApiService(Ref ref) => StoryApiService();
+
+/// The Worker's exercise services: data and sentence checks (learn-kit S-13).
+@Riverpod(keepAlive: true)
+LearnApiService learnApiService(Ref ref) => LearnApiService();
 
 /// The AIs on the Worker's offered list. Fetched on first use and cached in
 /// preferences; when the fetch fails, the cached list is used, and when there is

@@ -228,6 +228,25 @@ final storyApiServiceProvider = Provider<StoryApiService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef StoryApiServiceRef = ProviderRef<StoryApiService>;
+String _$learnApiServiceHash() => r'2da4556e695e318b873e02fe83b565960e790244';
+
+/// The Worker's exercise services: data and sentence checks (learn-kit S-13).
+///
+/// Copied from [learnApiService].
+@ProviderFor(learnApiService)
+final learnApiServiceProvider = Provider<LearnApiService>.internal(
+  learnApiService,
+  name: r'learnApiServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$learnApiServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef LearnApiServiceRef = ProviderRef<LearnApiService>;
 String _$offeredAisHash() => r'5a7c2096143ae6f5c0db6e33b3300caccad2a625';
 
 /// The AIs on the Worker's offered list. Fetched on first use and cached in
