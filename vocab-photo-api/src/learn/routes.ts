@@ -3,6 +3,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { pageAssets, pageHeaders } from "../session/assets";
 import { renderNotFoundPage } from "../session/page";
 import { loadSession } from "../session/store";
+import { learnCheckRoute } from "./check.ts";
 import { learnDataRoute } from "./data.ts";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
 import { renderComingSoonPage, renderLearnPage, renderNoWordsPage } from "./page";
@@ -48,4 +49,5 @@ export const learnRoutes: RouteDefinition[] = [
   { method: "GET", pattern: /^\/s\/(?<id>[^/]+)\/learn\/(?<exercise>[^/]+)$/, public: true, handler: handleComingSoonPage },
   // The exercise services (learn-kit): app-only, behind the secret and the per-IP limiter (AC-26).
   learnDataRoute,
+  learnCheckRoute,
 ];
