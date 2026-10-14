@@ -1,5 +1,5 @@
 ---
-status: draft
+status: clarified
 updated_at: "2026-10-14"
 ---
 
@@ -29,7 +29,7 @@ Sizes: XS very small, S, M, L. Rough guess only.
 | 3 | [translate-sentences](translate-sentences.md) | Translate sentences | exercises.dart | Translate into English with the word; scored | M | AI sentences and scoring; result record |
 | 3 | [translate-sentences-spoken](translate-sentences-spoken.md) | Speak mode of translate-sentences (blocked: owner) | exercises.dart | Same, said aloud (D-35) | M | translate-sentences; speech-to-text |
 | 3 | [explain-to-friend](explain-to-friend.md) | Explain it to a friend | Fable | Explain the word, typed or aloud to a friend; known or repeat | M | AI check (task explain); no speech, no shared page |
-| 3 | [quiz](quiz.md) | Quiz | screenshot | 5–7 mixed questions; known or repeat | M | pick-the-answer, fill-the-gaps builders; result record |
+| 3 | [quiz](quiz.md) | Quiz | screenshot | Up to 7 mixed questions (min 3); known or repeat | M | pick-the-answer, fill-the-gaps builders; result record (D-33) |
 
 ## Merged / moved
 - **Flashcards** (screenshot) merged into **remember-or-not**: same card flip, meaning to word.
