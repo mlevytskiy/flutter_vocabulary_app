@@ -66,6 +66,9 @@ lib/
                                 photo_upload_service.dart (background POST /sessions/<id>/sources/
                                 <sourceId> after a publish, retried with growing pauses; the link
                                 dialog never waits for it, good-looking-web)
+                                system_gesture_exclusion.dart (side-bar-for-main-screen ADR-0002:
+                                the vocab/system_gesture_exclusion channel; MainActivity keeps the
+                                photo tab's screen edge from Android's Back gesture)
                                 quizlet_link.dart (import-from-quizlet: pure rules — find a set link
                                 in pasted text, the plain https://quizlet.com/<id>/<name>/ form the
                                 Worker accepts, which web view navigations may be followed)
@@ -116,6 +119,13 @@ lib/
       subtitle_import_flow.dart       runSubtitleImport: import dialog → loading → results → Done;
                                       with "Get dialogues from subtitles" on it also asks for film
                                       dialogues and hands them over after the words
+      photo_panel/                    (side-bar-for-main-screen) the photo tab and panel on the words
+                                      page: photo_panel.dart (behaviour: closed / half-open /
+                                      full-open), photo_panel_controller.dart, photo_panel_stops.dart,
+                                      photos_with_words.dart (+.g), photo_preview.dart, row_jump.dart;
+                                      looks/: photo_panel_look.dart (the interface, tab ≤ 200 dp),
+                                      look_a.dart (the one look, picked 2026-10-14) and edge_glass.dart
+                                      (photo-panel-glass)
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem

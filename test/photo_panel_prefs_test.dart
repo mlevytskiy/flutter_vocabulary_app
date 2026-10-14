@@ -46,12 +46,6 @@ void main() {
     return c.read(photoTabTopProvider);
   }
 
-  Future<PhotoPanelVariant> variantAfterLoad(ProviderContainer c) async {
-    c.read(photoPanelVariantProvider);
-    await c.read(photoPanelVariantProvider.notifier).loaded;
-    return c.read(photoPanelVariantProvider);
-  }
-
   group('photo_tab_top', () {
     test('no stored value gives the first default, beside the first word rows', () async {
       final c = ProviderContainer();
@@ -93,38 +87,4 @@ void main() {
     });
   });
 
-  group('photo_panel_variant (until the pick)', () {
-    test('defaults to a, and an unknown stored value falls back to a', () async {
-      final c = ProviderContainer();
-      addTearDown(c.dispose);
-      expect(await variantAfterLoad(c), PhotoPanelVariant.a);
-
-      stored['flutter.photo_panel_variant'] = 'zzz';
-      SharedPreferences.resetStatic();
-      final d = ProviderContainer();
-      addTearDown(d.dispose);
-      expect(await variantAfterLoad(d), PhotoPanelVariant.a);
-    });
-
-    test('the chosen variant survives a restart', () async {
-      final first = ProviderContainer();
-      await variantAfterLoad(first);
-      await first.read(photoPanelVariantProvider.notifier).set(PhotoPanelVariant.c);
-      first.dispose();
-
-      SharedPreferences.resetStatic();
-      final second = ProviderContainer();
-      addTearDown(second.dispose);
-      expect(await variantAfterLoad(second), PhotoPanelVariant.c);
-    });
-
-    test('a failed write keeps the chosen variant in memory', () async {
-      final c = ProviderContainer();
-      addTearDown(c.dispose);
-      await variantAfterLoad(c);
-      failWrites = true;
-      await c.read(photoPanelVariantProvider.notifier).set(PhotoPanelVariant.b);
-      expect(c.read(photoPanelVariantProvider), PhotoPanelVariant.b);
-    });
-  });
 }

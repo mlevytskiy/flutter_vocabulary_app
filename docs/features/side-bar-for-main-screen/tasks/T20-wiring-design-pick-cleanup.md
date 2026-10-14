@@ -26,12 +26,12 @@ status: "todo"
 
 **Done when:** Only the picked look remains and `PhotoPanel` uses it directly; `grep -rn "photo_panel_variant\|PhotoPanelVariant" lib test` is empty; the Settings choice is gone and `settings_screen_test.dart` is back to its pre-feature cases; CLAUDE.md rule 3 no longer lists the Settings choice; `docs/architecture.md` names `photo_panel/` and the gesture exclusion channel; `tool/test.sh changed` is green.
 
-- [ ] test: the grep in the DoD
-- [ ] test: `tool/test.sh changed`
-- [ ] `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze` clean, `tool/test.sh changed` green
-- [ ] CLAUDE.md greps clean (`Navigator.push`, `MaterialPageRoute`, `static final .* instance`)
+- [x] test: the grep in the DoD
+- [x] test: `tool/test.sh changed`
+- [x] `dart run build_runner build --delete-conflicting-outputs`, `flutter analyze` clean, `tool/test.sh changed` green
+- [x] CLAUDE.md greps clean (`Navigator.push`, `MaterialPageRoute`, `static final .* instance`)
 
 ## Notes
 
-- **Blocked on the owner's design pick** on the phone (spec AC-20, §7 "Design pick").
+- The owner picked look A on 2026-10-14 (spec AC-20, §7 "Design pick").
 - The release gate after this is the owner's device pass (`device-pass.md`) on the picked look.

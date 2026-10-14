@@ -631,26 +631,5 @@ final photoTabTopNotifierProvider =
 );
 
 typedef _$PhotoTabTopNotifier = Notifier<double>;
-String _$photoPanelVariantNotifierHash() =>
-    r'31d537bb62fec4bd9960dd3e749ba1f934d3412e';
-
-/// The review-only design variant, written by the temporary "Photo panel
-/// design" choice in Settings and read by the photo panel. Persisted like the
-/// word detail mode; starts at [PhotoPanelVariant.a]. Removed at the pick.
-///
-/// Copied from [PhotoPanelVariantNotifier].
-@ProviderFor(PhotoPanelVariantNotifier)
-final photoPanelVariantNotifierProvider =
-    NotifierProvider<PhotoPanelVariantNotifier, PhotoPanelVariant>.internal(
-  PhotoPanelVariantNotifier.new,
-  name: r'photoPanelVariantNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$photoPanelVariantNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$PhotoPanelVariantNotifier = Notifier<PhotoPanelVariant>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

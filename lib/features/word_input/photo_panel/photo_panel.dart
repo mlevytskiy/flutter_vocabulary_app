@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/services/system_gesture_exclusion.dart';
-import 'looks/looks.dart';
+import 'looks/look_a.dart';
 import 'looks/photo_panel_look.dart';
 import 'photo_panel_controller.dart';
 import 'photo_panel_stops.dart';
@@ -65,7 +65,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// screen highlights its rows and jumps to the first (spec AC-04, AC-05).
   final ValueChanged<String?>? onSelected;
 
-  /// Overrides the design variant's look; tests only.
+  /// Overrides look A; tests only.
   final PhotoPanelLook? look;
 
   @override
@@ -133,8 +133,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   double _devicePixelRatio = 1;
   bool _sendScheduled = false;
 
-  PhotoPanelLook get _look =>
-      widget.look ?? lookFor(ref.watch(photoPanelVariantProvider));
+  PhotoPanelLook get _look => widget.look ?? const LookA();
 
   @override
   void initState() {
