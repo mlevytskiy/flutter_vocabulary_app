@@ -46,13 +46,13 @@ void main() {
 
   group('exerciseScreen (S-03, AC-04)', () {
     testWidgets('an exercise whose screen is not built opens the coming-soon screen, never an empty one', (tester) async {
-      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not')) {
+      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms')) {
         final screen = exerciseScreen(e.id, null, 'g');
         expect(screen, isA<ComingSoonScreen>(), reason: e.id);
         expect((screen as ComingSoonScreen).exerciseId, e.id);
       }
-      await tester.pumpWidget(MaterialApp(home: exerciseScreen('match-synonyms', 's', 'g')));
-      expect(find.text('Match synonyms'), findsOneWidget);
+      await tester.pumpWidget(MaterialApp(home: exerciseScreen('quiz', 's', 'g')));
+      expect(find.text('Quiz'), findsOneWidget);
       expect(find.text('Coming soon — this exercise is not ready yet.'), findsOneWidget);
     });
 
