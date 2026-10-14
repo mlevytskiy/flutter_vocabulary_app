@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../photos_with_words.dart';
 
 /// Builds one photo's preview at a logical [width] (a `PhotoPreview` with the
-/// look's placeholder); the panel hands it to the look.
-typedef PreviewBuilder = Widget Function(PhotoWithWords photo, double width);
+/// look's placeholder), or a non-photo source's mini tile (side-panel-sources);
+/// the panel hands it to the look.
+typedef PreviewBuilder = Widget Function(SourceWithWords photo, double width);
 
 /// The drawing part of a design variant (side-bar-for-main-screen ADR-0003).
 ///
@@ -30,7 +31,7 @@ abstract class PhotoPanelLook {
   double tabHeight(int count);
 
   /// The tab's content: at most three mini previews (built with [preview])
-  /// and the photo count. It fills the size [tabSizeFor] gives.
+  /// and the count. [photos] are the sources with words, sets included. It fills the size [tabSizeFor] gives.
   Widget buildTab(
     BuildContext context, {
     required List<PhotoWithWords> photos,

@@ -48,6 +48,12 @@ class PublishedSession {
   });
 }
 
+/// The source kinds the Worker accepts in `sources` (photo, set). The Worker
+/// refuses the whole publish for any other kind, so a film's subtitles source
+/// is never declared and its rows go without a `sourceId`, as before
+/// (side-panel-sources, spec AC-22).
+const publishedSourceKinds = {SourceKind.photo, SourceKind.set};
+
 /// Publishes the current word list to the Worker as a public, read-only page
 /// (task-05). Sits beside [VocabPhotoService] and reuses the same base URL and
 /// shared secret; the file share stays the guaranteed return path, this is
@@ -73,7 +79,7 @@ class SessionPublishService {
   /// photos" is on; empty means none, and then neither `sources` nor any
   /// `sourceId` is sent (AC-24). Only sources with a linked row are declared, all of them,
   /// by taken time; each goes with its kind, and a set with its name and link
-  /// (ADR-0006). [publishedId] and [editToken] ask the Worker to
+  /// (ADR-0006). A kind outside [publishedSourceKinds] is left out (AC-22). [publishedId] and [editToken] ask the Worker to
   /// overwrite the earlier link (ADR-0008).
   ///
   /// [dialogues] are the session's film dialogues: each visible one with a
@@ -102,7 +108,9 @@ class SessionPublishService {
     final linkedIds = {for (final pair in kept) pair.sourceId};
     final linked = [
       for (final source in sources)
-        if (linkedIds.contains(source.id)) source,
+        if (publishedSourceKinds.contains(source.kind) &&
+            linkedIds.contains(source.id))
+          source,
     ];
     // List.sort is not stable: the position breaks ties between equal times.
     final declared = [
