@@ -33,7 +33,7 @@ void main() {
     });
 
     test('AC-03, AC-05: every other exercise opens for the selected group of the session shown', () {
-      for (final id in ['pick-the-answer', 'remember-or-not', 'quiz', 'match-synonyms']) {
+      for (final id in ['pick-the-answer', 'remember-or-not', 'quiz', 'match-synonyms', 'match-definitions']) {
         expect(startRouteFor(id, sessionId: 'history', groupId: 'g', group: wordGroup('g')).location,
             ExerciseRoute(sessionId: 'history', exercise: id, groupId: 'g').location);
       }
@@ -46,7 +46,7 @@ void main() {
 
   group('exerciseScreen (S-03, AC-04)', () {
     testWidgets('an exercise whose screen is not built opens the coming-soon screen, never an empty one', (tester) async {
-      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms')) {
+      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms' && e.id != 'match-definitions')) {
         final screen = exerciseScreen(e.id, null, 'g');
         expect(screen, isA<ComingSoonScreen>(), reason: e.id);
         expect((screen as ComingSoonScreen).exerciseId, e.id);
