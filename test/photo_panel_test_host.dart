@@ -25,6 +25,17 @@ List<PhotoWithWords> fakePhotos(int n, {int rowsEach = 1}) => [
         ),
     ];
 
+/// A Quizlet set with words, for the side-panel-sources tests.
+SourceWithWords fakeSet(String id, {String name = 'Set', int at = 0, List<int> rows = const [40]}) => (
+      source: SessionSource()
+        ..id = id
+        ..kind = SourceKind.set
+        ..name = name
+        ..url = 'https://quizlet.com/$id/x/'
+        ..takenAt = DateTime(2026, 10, 13, 9, at),
+      rows: rows,
+    );
+
 class PanelHost {
   PanelHost({
     List<PhotoWithWords>? photos,
@@ -51,7 +62,9 @@ class PanelHost {
   Widget build({Key? key}) => ProviderScope(
         key: key,
         overrides: [
-          photosWithWordsProvider.overrideWith((ref) {
+          // The panel's sources (photos and sets); photosWithWords derives
+          // from it.
+          sourcesWithWordsProvider.overrideWith((ref) {
             void update() => ref.state = photos.value;
             photos.addListener(update);
             ref.onDispose(() => photos.removeListener(update));

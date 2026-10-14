@@ -2,7 +2,7 @@
 status: Final
 owner: "Maksym"
 reviewers: ["Tech Lead", "Security Lead"]
-updated_at: "2026-10-13"
+updated_at: "2026-10-14"
 feature_size: "M"
 ---
 
@@ -35,7 +35,7 @@ Committed approach: on the words page of the main screen, while the current sess
 
 - Narrowing or rearranging the word rows while the panel is half-open. The owner left this for a later feature.
 - Editing, deleting or adding word rows while the photo panel is open. The owner decided an open panel is only for looking.
-- Showing Quizlet sets in the panel. A set has no picture, and the panel is for photos.
+- ~~Showing Quizlet sets in the panel.~~ Reversed by the owner, 2026-10-14 (side-panel-sources): the tab and the half-open panel also list Quizlet sets with words, as tiles; full-open stays photos only (AC-21).
 - Editing, deleting, cropping or re-taking photos from the panel. The panel only shows photos; changing them is a separate feature.
 - The photo panel on the dialogue pages of the main screen (from get-words-from-subtitles-improvment), and the tab and panel on the Words screen, on History, or on the shared page. The tab is shown on the dialogue pages, but opening it returns to the words page first (AC-13).
 
@@ -87,9 +87,9 @@ Committed approach: on the words page of the main screen, while the current sess
 
 ### AC-02 (US-01) — domain invariant
 
-**Given** the current session has no photo with words: it was typed by hand, came only from a Quizlet set, or every word row from its photos was deleted
+**Given** the current session has no source with words (no photo and no Quizlet set with words): it was typed by hand, or every word row from its photos and sets was deleted
 **When** the learner is on the main screen
-**Then** no photo tab is shown, and nothing on the screen changes from today
+**Then** no photo tab is shown, and nothing on the screen changes from today (a session that came only from a Quizlet set shows the tab, AC-21)
 
 ### AC-03 (US-02) — happy path
 
@@ -210,6 +210,12 @@ Committed approach: on the words page of the main screen, while the current sess
 **Given** the owner has picked one design variant
 **When** the feature is released
 **Then** only the picked variant remains, the switch is removed from Settings, the learner sees no switch between designs, and nothing about the picked look changes without the owner's approval
+
+### AC-21 (US-02) — happy path (side-panel-sources, owner 2026-10-14)
+
+**Given** the current session has at least one source with words: a photo with words or a Quizlet set with words (a set whose word rows are linked to it)
+**When** the learner looks at the photo tab and opens the panel half-open
+**Then** the tab is shown (also for a session that came only from a Quizlet set), and its mini previews show a set as a small tile with the Quizlet logo; half-open lists photos and sets mixed, oldest first by when each was added to the session, a set as a tile the size of a small photo with the Quizlet logo and the set's name (cut short with "…" when long), which a screen reader announces as a Quizlet set with its name; tapping a set selects it, scrolls to and highlights its word rows exactly as for a photo (AC-04 to AC-06); full-open shows the photos only, starting at the first photo when a set is selected, and with no photo with words full-open cannot be reached: a drag or flick stops at half-open and the expand control is not shown
 
 ## 6. Non-functional requirements
 

@@ -90,6 +90,37 @@ void main() {
     expect(listed(), isEmpty);
   });
 
+  List<String> sourcesListed() => [
+        for (final p in container.read(sourcesWithWordsProvider))
+          '${p.source.id}:${p.rows.join(',')}',
+      ];
+
+  test('a Quizlet-only session lists its set among the sources (AC-21)', () async {
+    final notifier = await seeded();
+    final setId = notifier.upsertSetSource('123', 'Set', 'https://quizlet.com/123/x/');
+    notifier.setPairs([WordPair(word: 'cat', sourceId: setId), WordPair(word: 'typed')]);
+    expect(sourcesListed(), ['quizlet-123:0']);
+  });
+
+  test('photos and sets are mixed, oldest first by takenAt (AC-21)', () async {
+    SessionSource at(String id, int minute, {bool set = false}) => SessionSource()
+      ..id = id
+      ..kind = set ? SourceKind.set : SourceKind.photo
+      ..takenAt = DateTime(2026, 10, 13, 9, minute);
+    await seeded(
+      // Listed out of time order on purpose.
+      sources: [at('p2', 3), at('s1', 2, set: true), at('p1', 1), at('s0', 9, set: true)],
+      pairs: [
+        WordPair(word: 'a', sourceId: 'p1'),
+        WordPair(word: 'b', sourceId: 's1'),
+        WordPair(word: 'c', sourceId: 'p2'),
+        WordPair(word: '  ', sourceId: 's0'), // cleared: s0 has no words
+      ],
+    );
+    expect(sourcesListed(), ['p1:0', 's1:1', 'p2:2']);
+    expect(listed(), ['p1:0', 'p2:2'], reason: 'photos only, for full-open');
+  });
+
   test('a mixed session lists only linked photos, in the order added, with their rows', () async {
     await seeded(
       sources: [photo('p1'), photo('p2'), photo('p3')],

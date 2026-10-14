@@ -198,13 +198,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     );
   }
 
-  /// A photo was selected in the half-open panel: the list scrolls as little
-  /// as needed to its first row in the list's current order (spec AC-04).
-  /// Unselecting never scrolls (spec AC-05).
+  /// A photo or a set was selected in the half-open panel: the list scrolls
+  /// as little as needed to its first row in the list's current order (spec
+  /// AC-04, AC-21). Unselecting never scrolls (spec AC-05).
   void _onPhotoSelected(String? id) {
     if (id == null) return;
     final photo = ref
-        .read(photosWithWordsProvider)
+        .read(sourcesWithWordsProvider)
         .where((p) => p.source.id == id)
         .firstOrNull;
     if (photo == null || photo.rows.isEmpty) return;
@@ -1630,7 +1630,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
 
   /// The selected photo's rows and the look's highlight for them (spec AC-04);
   /// with nothing selected every row is today's row.
-  (Set<int>, Decoration?) _photoHighlight(List<PhotoWithWords> photos) {
+  (Set<int>, Decoration?) _photoHighlight(List<SourceWithWords> photos) {
     final id = _photoPanel.selectedId;
     if (id == null) return (const {}, null);
     final rows = photos.where((p) => p.source.id == id).firstOrNull?.rows;
@@ -1703,14 +1703,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
     final isDragMode = ref.watch(dragModeProvider);
     final detailMode = ref.watch(wordDetailModeProvider);
 
-    // side-bar-for-main-screen: the panel follows the photos with words; a
-    // vanished selected photo is unselected, none left closes it (AC-15).
-    ref.listen(photosWithWordsProvider, (_, photos) {
+    // side-bar-for-main-screen: the panel follows the sources with words
+    // (photos and sets); a vanished selected one is unselected, none left
+    // closes it (AC-15, AC-21).
+    ref.listen(sourcesWithWordsProvider, (_, photos) {
       _photoPanel.retain([for (final p in photos) p.source.id]);
     });
     _compactEndInset = const LookA().halfOpenWidth - 16;
     final (highlightedRows, highlight) =
-        _photoHighlight(ref.watch(photosWithWordsProvider));
+        _photoHighlight(ref.watch(sourcesWithWordsProvider));
     Decoration? highlightFor(int index) =>
         highlightedRows.contains(index) ? highlight : null;
 

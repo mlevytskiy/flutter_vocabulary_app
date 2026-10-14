@@ -67,7 +67,10 @@ void main() {
   }
 
   Future<Session> pumpMain(WidgetTester tester,
-      {List<WordPair>? words, bool photos = true, Session? otherSession}) async {
+      {List<WordPair>? words,
+      bool photos = true,
+      List<SessionSource>? sources,
+      Session? otherSession}) async {
     SharedPreferences.setMockInitialValues({});
     late Session current;
     await tester.runAsync(() async {
@@ -77,7 +80,7 @@ void main() {
         ..updatedAt = now
         ..lastLocalModifiedAt = now
         ..words = words ?? twentyRows()
-        ..sources = photos ? [photo('p1', 1), photo('p2', 2)] : [];
+        ..sources = sources ?? (photos ? [photo('p1', 1), photo('p2', 2)] : []);
       await store.put(current);
       await store.setCurrentSessionId(current.sessionId);
     });
@@ -392,6 +395,40 @@ void main() {
     await pumpMain(tester, photos: false, words: [WordPair(word: 'typed')]);
     expect(find.byKey(PhotoPanel.tabKey), findsNothing);
     expect(await tester.binding.handlePopRoute(), isFalse);
+    await tearDownMain(tester);
+  });
+
+  testWidgets('a Quizlet-only session shows the tab; its set highlights its rows and jumps (AC-21)',
+      (tester) async {
+    final set = SessionSource()
+      ..id = 'quizlet-9'
+      ..kind = SourceKind.set
+      ..name = 'Irregular verbs'
+      ..url = 'https://quizlet.com/9/x/'
+      ..takenAt = DateTime(2026, 10, 13, 9);
+    await pumpMain(tester, sources: [set], words: [
+      for (var i = 0; i < 20; i++)
+        WordPair(
+            word: 'word$i',
+            translation: 'слово$i',
+            sourceId: i == 4 || i == 17 ? 'quizlet-9' : null),
+    ]);
+    expect(find.byKey(PhotoPanel.tabKey), findsOneWidget);
+    await openHalf(tester);
+    expect(find.byKey(PhotoPanel.expandKey), findsNothing);
+    await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('quizlet-9')));
+    await tester.pumpAndSettle();
+    expect(selected(tester), 'quizlet-9');
+    expect(highlighted(tester), containsAll([4]));
+    final rect = tester.getRect(row(4));
+    expect(rect.top, greaterThanOrEqualTo(listRect(tester).top));
+    expect(rect.bottom, lessThanOrEqualTo(listRect(tester).bottom));
+
+    // Back goes straight to closed: there is no full-open without a photo.
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(stop(tester), PanelStop.closed);
+    expect(highlighted(tester), isEmpty);
     await tearDownMain(tester);
   });
 

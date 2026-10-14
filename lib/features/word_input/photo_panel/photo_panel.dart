@@ -13,6 +13,7 @@ import 'photo_panel_controller.dart';
 import 'photo_panel_stops.dart';
 import 'photo_preview.dart';
 import 'photos_with_words.dart';
+import 'source_tile.dart';
 
 /// The photo tab and photo panel over the main screen's words page
 /// (side-bar-for-main-screen, ADR-0001).
@@ -21,7 +22,11 @@ import 'photos_with_words.dart';
 /// that child only marks the words page's place. The tab and the panel are
 /// drawn through an [OverlayPortal] above the route, so a touch that starts on
 /// them is hit-tested first and never reaches the rows or the pager (spec
-/// AC-13, AC-14). With no photo with words nothing is drawn (spec AC-02).
+/// AC-13, AC-14). With no source with words nothing is drawn (spec AC-02).
+///
+/// The tab and the half-open column list the sources with words, photos and
+/// Quizlet sets mixed; full-open shows the photos only, and with no photo it
+/// cannot be reached (side-panel-sources, spec AC-21).
 class PhotoPanel extends ConsumerStatefulWidget {
   const PhotoPanel({
     super.key,
@@ -135,6 +140,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   PhotoPanelLook get _look => widget.look ?? const LookA();
 
+  /// The session has a photo with words, so full-open can be reached (spec
+  /// AC-21). Set in build.
+  bool _hasPhotos = true;
+
+  /// The highest stop the panel can reach now.
+  PanelStop _limit(PanelStop stop) =>
+      !_hasPhotos && stop == PanelStop.fullOpen ? PanelStop.halfOpen : stop;
+
   @override
   void initState() {
     super.initState();
@@ -234,7 +247,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   void _open(PanelStop stop) {
     if (widget.busy) return;
-    widget.controller.setStop(stop);
+    widget.controller.setStop(_limit(stop));
   }
 
   double get _halfWidth => _look.halfOpenWidth;
@@ -265,7 +278,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   void _panelDragBy(double dx) {
     if (!_panelDragging) return;
-    _openness.value = _opennessOf(_widthOf(_openness.value) - dx);
+    final t = _opennessOf(_widthOf(_openness.value) - dx);
+    _openness.value = _hasPhotos ? t : math.min(t, PanelStop.halfOpen.openness);
   }
 
   /// Settles at a stop by the rule (spec AC-08).
@@ -273,7 +287,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     if (!_panelDragging) return;
     _panelDragging = false;
     final velocity = -velocityX / _pixelsPerOpenness(_openness.value);
-    final stop = settle(_dragStartStop, _openness.value, velocity);
+    final stop = _limit(settle(_dragStartStop, _openness.value, velocity));
     _animateTo(stop.openness);
     widget.controller.setStop(stop);
     // The same stop again does not notify; settle back to it anyway.
@@ -347,6 +361,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     widget.onSelected?.call(widget.controller.selectedId);
   }
 
+  /// Full-open starts at the selected photo, or at the first photo when no
+  /// photo (or a set) is selected (spec AC-07b, AC-21).
   int _startIndex(List<PhotoWithWords> photos) {
     final i =
         photos.indexWhere((p) => p.source.id == widget.controller.selectedId);
@@ -364,7 +380,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   /// What Android should leave to the app now: the tab while closed, the
   /// handle while half-open, nothing in full-open or with no tab.
-  List<Rect> _exclusionFor(List<PhotoWithWords> photos) {
+  List<Rect> _exclusionFor(List<SourceWithWords> photos) {
     if (photos.isEmpty || widget.hidden || !_routeIsCurrent) return const [];
     final look = _look;
     switch (widget.controller.stop) {
@@ -406,9 +422,13 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   // Drawing.
 
-  Widget _preview(PhotoWithWords photo, double width,
+  /// A photo's preview, or a non-photo source's mini tile (the tab's
+  /// previews, spec AC-21).
+  Widget _preview(SourceWithWords photo, double width,
           {BoxFit fit = BoxFit.cover}) =>
-      PhotoPreview(
+      !photo.isPhoto
+          ? SourceTile(source: photo.source, mini: true)
+          : PhotoPreview(
         key: ValueKey('photo-panel-preview-${photo.source.id}-$width'),
         source: photo.source,
         width: width,
@@ -443,9 +463,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         ),
       );
 
-  /// The half-open column: the handle bar with close and expand, then the
-  /// small photos, oldest first (spec AC-03).
-  Widget _halfContent(BuildContext context, List<PhotoWithWords> photos) {
+  /// The half-open column: the handle bar with close and expand (expand only
+  /// with a photo to show large), then the small photos and set tiles, oldest
+  /// first (spec AC-03, AC-21).
+  Widget _halfContent(BuildContext context, List<SourceWithWords> photos) {
     final look = _look;
     final selected = widget.controller.selectedId;
     final photoWidth = look.halfOpenWidth;
@@ -469,11 +490,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                     child: ColoredBox(
                         color: Colors.transparent,
                         child: Center(child: look.buildGrip(context)))),
-                _control(context,
-                    key: PhotoPanel.expandKey,
-                    label: 'Show photos large',
-                    icon: look.buildExpandIcon(context),
-                    onTap: () => _open(PanelStop.fullOpen)),
+                if (_hasPhotos)
+                  _control(context,
+                      key: PhotoPanel.expandKey,
+                      label: 'Show photos large',
+                      icon: look.buildExpandIcon(context),
+                      onTap: () => _open(PanelStop.fullOpen))
+                else
+                  const SizedBox(width: 48),
               ],
             ),
           ),
@@ -484,13 +508,17 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
               itemExtent: look.smallPhotoExtent,
               itemCount: photos.length,
               itemBuilder: (context, i) {
-                final id = photos[i].source.id;
-                // A selectable button for a screen reader (spec AC-18).
+                final item = photos[i];
+                final id = item.source.id;
+                // A selectable button for a screen reader (spec AC-18); a
+                // photo is counted among the photos, a set named (AC-21).
                 return Semantics(
                   container: true,
                   button: true,
                   selected: id == selected,
-                  label: 'Photo ${i + 1} of ${photos.length}',
+                  label: item.isPhoto
+                      ? 'Photo ${_photoCount(photos, i) + 1} of ${_photoCount(photos, photos.length)}'
+                      : SourceTile.semanticsLabel(item.source),
                   excludeSemantics: true,
                   onTap: () => _select(id),
                   child: GestureDetector(
@@ -499,7 +527,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                     onTap: () => _select(id),
                     child: look.buildSmallPhoto(
                       context,
-                      _preview(photos[i], photoWidth),
+                      item.isPhoto
+                          ? _preview(item, photoWidth)
+                          : SourceTile(source: item.source),
                       selected: id == selected,
                     ),
                   ),
@@ -581,15 +611,17 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   /// On the way from half-open to full-open the start photo grows from its
   /// small place into its large one (spec AC-07).
-  Widget _growingPhoto(
-      BuildContext context, List<PhotoWithWords> photos, Size panel, double p) {
+  Widget _growingPhoto(BuildContext context, List<SourceWithWords> sources,
+      List<PhotoWithWords> photos, Size panel, double p) {
     final look = _look;
     final i = _startIndex(photos);
+    // Its small place in the half-open column, where sets are listed too.
+    final at = math.max(0, sources.indexWhere((s) => s.source.id == photos[i].source.id));
     final offset = _column.hasClients ? _column.offset : 0.0;
     final top = MediaQuery.paddingOf(context).top * p;
     final small = Rect.fromLTWH(
       8,
-      (look.handleBarHeight + i * look.smallPhotoExtent - offset + 4)
+      (look.handleBarHeight + at * look.smallPhotoExtent - offset + 4)
           .clamp(look.handleBarHeight, panel.height),
       look.halfOpenWidth - 16,
       look.smallPhotoExtent - 8,
@@ -605,7 +637,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     );
   }
 
-  Widget _panel(BuildContext context, List<PhotoWithWords> photos, double t) {
+  Widget _panel(BuildContext context, List<SourceWithWords> sources,
+      List<PhotoWithWords> photos, double t) {
     final look = _look;
     final rect = _panelRect(t);
     final p = t <= 0.5 ? 0.0 : (t - 0.5) / 0.5;
@@ -638,11 +671,12 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                   alignment: Alignment.topLeft,
                   minWidth: look.halfOpenWidth,
                   maxWidth: look.halfOpenWidth,
-                  child: _halfContent(context, photos),
+                  child: _halfContent(context, sources),
                 ),
               ),
-            if (p > 0 && p < 1) _growingPhoto(context, photos, rect.size, p),
-            if (keepFull)
+            if (p > 0 && p < 1 && photos.isNotEmpty)
+              _growingPhoto(context, sources, photos, rect.size, p),
+            if (keepFull && photos.isNotEmpty)
               Offstage(
                 key: const ValueKey('full'),
                 offstage: half,
@@ -671,7 +705,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     );
   }
 
-  Widget _tab(BuildContext context, List<PhotoWithWords> photos, double t) {
+  Widget _tab(BuildContext context, List<SourceWithWords> photos, double t) {
     final look = _look;
     final tabSize = tabSizeFor(look, photos.length);
     final top = _tabTop(_page.size, tabSize);
@@ -693,12 +727,15 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
             ignoring: hidden || (open && _tabDrag != _TabDrag.open),
             child: AbsorbPointer(
               absorbing: widget.busy,
-              // One node for a screen reader: "Session photos, N", whose
-              // double-tap opens half-open, except while busy (spec AC-18).
+              // One node for a screen reader: "Session photos, N" ("Session
+              // sources, N" with a set among them), whose double-tap opens
+              // half-open, except while busy (spec AC-18, AC-21).
               child: Semantics(
                 container: true,
                 button: true,
-                label: 'Session photos, ${photos.length}',
+                label: photos.every((p) => p.isPhoto)
+                    ? 'Session photos, ${photos.length}'
+                    : 'Session sources, ${photos.length}',
                 excludeSemantics: true,
                 onTap: widget.busy || open
                     ? null
@@ -724,7 +761,8 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     );
   }
 
-  Widget _buildOverlay(BuildContext context, List<PhotoWithWords> photos) =>
+  Widget _buildOverlay(BuildContext context, List<SourceWithWords> sources,
+          List<PhotoWithWords> photos) =>
       AnimatedBuilder(
         animation: _openness,
         builder: (context, _) {
@@ -738,11 +776,11 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                 if (t < 0.5 || _tabDrag == _TabDrag.open)
                   KeyedSubtree(
                       key: const ValueKey('tab'),
-                      child: _tab(context, photos, t)),
+                      child: _tab(context, sources, t)),
                 if (t > 0)
                   KeyedSubtree(
                       key: const ValueKey('panel'),
-                      child: _panel(context, photos, t)),
+                      child: _panel(context, sources, photos, t)),
               ],
             ),
           );
@@ -766,7 +804,18 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   @override
   Widget build(BuildContext context) {
+    final sources = ref.watch(sourcesWithWordsProvider);
     final photos = ref.watch(photosWithWordsProvider);
+    _hasPhotos = photos.isNotEmpty;
+    // The last photo went while full-open, a set is left: back to half-open
+    // (spec AC-15, AC-21).
+    if (!_hasPhotos &&
+        sources.isNotEmpty &&
+        widget.controller.stop == PanelStop.fullOpen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_hasPhotos) widget.controller.setStop(PanelStop.halfOpen);
+      });
+    }
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayChildBuilder: (context, info) {
@@ -775,9 +824,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         _page = origin & info.childSize;
         _overlay = info.overlaySize;
         _devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
-        _want(_exclusionFor(photos));
-        if (photos.isEmpty || widget.hidden) return const SizedBox.shrink();
-        return _buildOverlay(context, photos);
+        _want(_exclusionFor(sources));
+        if (sources.isEmpty || widget.hidden) return const SizedBox.shrink();
+        return _buildOverlay(context, sources, photos);
       },
       child: const SizedBox.expand(),
     );
@@ -785,3 +834,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 }
 
 enum _TabDrag { none, undecided, move, open }
+
+/// How many of [items] before [end] are photos.
+int _photoCount(List<SourceWithWords> items, int end) =>
+    items.take(end).where((i) => i.isPhoto).length;

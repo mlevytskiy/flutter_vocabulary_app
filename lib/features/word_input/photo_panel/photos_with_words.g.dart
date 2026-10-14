@@ -6,13 +6,35 @@ part of 'photos_with_words.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$photosWithWordsHash() => r'83416b42c77474cd8508e15eb43fd30a0fe7b609';
+String _$sourcesWithWordsHash() => r'bc101a896579c5171e64e05ad48a6a320e8f98bf';
 
-/// The current session's photos with words, oldest first (the order of
-/// `Session.sources`), derived in one pass over the rows (sad §4). Only the
-/// current session is read, so another session's photos never appear
-/// (spec AC-16); a set is never listed, and a row whose word is cleared does
-/// not count (spec AC-15).
+/// The current session's sources with words that the photo panel lists,
+/// photos and sets mixed, oldest first by `takenAt` (sources added at the
+/// same time keep the order of `Session.sources`), derived in one pass over
+/// the rows (sad §4). Only the current session is read, so another session's
+/// sources never appear (spec AC-16); a row whose word is cleared does not
+/// count (spec AC-15).
+///
+/// Copied from [sourcesWithWords].
+@ProviderFor(sourcesWithWords)
+final sourcesWithWordsProvider =
+    AutoDisposeProvider<List<SourceWithWords>>.internal(
+  sourcesWithWords,
+  name: r'sourcesWithWordsProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$sourcesWithWordsHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SourcesWithWordsRef = AutoDisposeProviderRef<List<SourceWithWords>>;
+String _$photosWithWordsHash() => r'0860e55a8b2da02dbdf17103901679a5f2f7d16b';
+
+/// The current session's photos with words, oldest first: the photos of
+/// [sourcesWithWords]. Full-open shows only these (spec AC-21).
 ///
 /// Copied from [photosWithWords].
 @ProviderFor(photosWithWords)
