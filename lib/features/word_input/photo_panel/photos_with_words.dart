@@ -14,11 +14,12 @@ typedef SourceWithWords = ({SessionSource source, List<int> rows});
 /// A [SourceWithWords] whose source is a photo.
 typedef PhotoWithWords = SourceWithWords;
 
-/// The source kinds the photo panel lists (side-panel-sources, spec AC-21).
+/// The source kinds the photo panel lists (side-panel-sources, spec AC-21,
+/// AC-22: film subtitles).
 /// A photo is drawn from its kept file; every other kind is a tile with its
 /// icon and name (`SourceTile`). To list a new kind, add it here and give it
 /// an icon and a screen-reader name in `SourceTile`.
-const panelSourceKinds = {SourceKind.photo, SourceKind.set};
+const panelSourceKinds = {SourceKind.photo, SourceKind.set, SourceKind.subtitles};
 
 extension SourceWithWordsKind on SourceWithWords {
   /// A photo has a picture; every other kind is shown as a tile, and only

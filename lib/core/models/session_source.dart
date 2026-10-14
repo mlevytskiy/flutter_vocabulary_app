@@ -4,12 +4,16 @@ part 'session_source.g.dart';
 
 /// Which kind of source a [SessionSource] is. Stored as the ordinal: keep
 /// `photo` first so records saved before `kind` existed read back as photos.
-enum SourceKind { photo, set }
+/// New kinds go at the end, never in between: `subtitles` is a film or
+/// episode whose subtitles the words were picked from (side-panel-sources,
+/// spec AC-22).
+enum SourceKind { photo, set, subtitles }
 
 /// Where a session's words came from: a photo the learner took, kept on the
 /// phone so it can be published with the rows recognised from it
 /// (good-looking-web, sad §5), or a Quizlet set the learner imported
-/// (import-from-quizlet, ADR-0005).
+/// (import-from-quizlet, ADR-0005), or a film's subtitles the learner
+/// imported (side-panel-sources, spec AC-22).
 /// Embedded inside [Session]: a source lives exactly as long as its session.
 /// A photo's bytes are a file in the app documents dir (`SourcePhotoStore`);
 /// this is only the reference.
@@ -31,7 +35,8 @@ class SessionSource {
   @enumerated
   SourceKind kind = SourceKind.photo;
 
-  /// A set's title on Quizlet (set sources only).
+  /// A set's title on Quizlet, or the film's or episode's title shown to the
+  /// learner (set and subtitles sources only).
   String? name;
 
   /// A set's plain address, `https://quizlet.com/<id>/<slug>/` (set sources

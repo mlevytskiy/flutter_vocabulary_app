@@ -40,10 +40,13 @@ lib/
                                 order) and the publishedId + editToken a republish overwrites
                                 (good-looking-web, ADR-0008)
                                 session_source.dart (+.g) — Isar @embedded SessionSource: where words came from.
-                                SourceKind { photo, set } (photo first, so older records read as
-                                photos); id (the declared source id), fileName, takenAt, and for a
-                                set its name + plain url. Stored name stays SourcePhoto
-                                (good-looking-web; import-from-quizlet, ADR-0005)
+                                SourceKind { photo, set, subtitles } (stored as the ordinal: photo
+                                first, so older records read as photos; new kinds only appended);
+                                id (the declared source id), fileName, takenAt, for a set its
+                                name + plain url, for subtitles the film/episode title as name
+                                (never published: the Worker knows photo and set only). Stored
+                                name stays SourcePhoto (good-looking-web; import-from-quizlet,
+                                ADR-0005; side-panel-sources AC-22)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)

@@ -353,6 +353,30 @@ class WordInputNotifier extends _$WordInputNotifier {
     return id;
   }
 
+  /// Adds the film or episode whose subtitles the kept words came from
+  /// (side-panel-sources, spec AC-22) and returns its source id. A film the
+  /// session already lists under the same [title] keeps its place and its id,
+  /// so importing it again adds the new rows to the same source; a new one
+  /// goes after the existing sources. The screen calls it before adding the
+  /// rows, so the rows never point at a source the session does not list.
+  String upsertSubtitlesSource(String title) {
+    final session = state.valueOrNull;
+    final existing = session?.sources
+        .where((s) => s.kind == SourceKind.subtitles && s.name == title)
+        .firstOrNull;
+    if (existing != null) return existing.id;
+    final id = 'subtitles-${uuidV4()}';
+    if (session == null) return id;
+    session.sources.add(SessionSource()
+      ..id = id
+      ..takenAt = DateTime.now()
+      ..kind = SourceKind.subtitles
+      ..name = title);
+    state = AsyncData(session);
+    _scheduleSave();
+    return id;
+  }
+
   /// Records that a shared link now exists for the current session (task-05),
   /// and the published id and edit token a republish sends back (ADR-0008).
   /// Not a content change: the timestamps are left alone so publishing does

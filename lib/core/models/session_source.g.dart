@@ -134,10 +134,12 @@ P _sessionSourceDeserializeProp<P>(
 const _SessionSourcekindEnumValueMap = {
   'photo': 0,
   'set': 1,
+  'subtitles': 2,
 };
 const _SessionSourcekindValueEnumMap = {
   0: SourceKind.photo,
   1: SourceKind.set,
+  2: SourceKind.subtitles,
 };
 
 extension SessionSourceQueryFilter

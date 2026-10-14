@@ -19,12 +19,15 @@ class SourceTile extends StatelessWidget {
   /// What a screen reader says for this source in the half-open column.
   static String semanticsLabel(SessionSource source) => switch (source.kind) {
         SourceKind.set => 'Quizlet set ${source.name ?? ''}'.trim(),
+        SourceKind.subtitles => 'Film ${source.name ?? ''}'.trim(),
         SourceKind.photo => 'Photo',
       };
 
   static Widget _icon(SessionSource source, double size, Color color) =>
       switch (source.kind) {
         SourceKind.set => QuizletLogoIcon(size: size, color: color),
+        // No poster is kept on the phone, so a film is its icon (AC-22).
+        SourceKind.subtitles => Icon(Icons.movie_outlined, size: size, color: color),
         SourceKind.photo => Icon(Icons.photo_outlined, size: size, color: color),
       };
 

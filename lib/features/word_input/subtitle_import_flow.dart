@@ -39,13 +39,15 @@ abstract final class SubtitleImportMessages {
 /// subtitles" on, the import also asks for film dialogues; they ride with the result, unseen by
 /// the results dialog, and right after [addWords] go to [addDialogues] with
 /// the number of words kept, so one save holds both
-/// (get-words-from-subtitles-improvment AC-02, AC-03).
+/// (get-words-from-subtitles-improvment AC-02, AC-03). [addWords] also gets
+/// the film's title ([subtitleFilmTitle]), the source the screen records the
+/// kept rows under (side-panel-sources, spec AC-22).
 Future<void> runSubtitleImport({
   required BuildContext context,
   required WidgetRef ref,
   required String? Function() currentSessionId,
   required List<String> Function() sessionWords,
-  required void Function(List<VocabWord> words) addWords,
+  required void Function(List<VocabWord> words, String film) addWords,
   void Function(List<ImportedDialogue> dialogues, int keptCount)? addDialogues,
   Future<XFile?> Function()? pickFile,
 }) async {
@@ -163,12 +165,24 @@ Future<void> runSubtitleImport({
           ),
   );
   if (kept != null && kept.isNotEmpty && context.mounted && currentSessionId() == startedIn) {
-    addWords(kept);
+    addWords(kept, subtitleFilmTitle(request));
     final dialogues = result?.dialogues ?? const [];
     if (withDialogues && dialogues.isNotEmpty) {
       addDialogues?.call(dialogues, kept.length);
     }
   }
+}
+
+/// The title the learner sees for the film or episode of [request] (spec
+/// AC-22): the one found by name, else the picked file's name without its
+/// extension.
+String subtitleFilmTitle(SubtitleImportRequest request) {
+  final title = request.title?.trim();
+  if (title != null && title.isNotEmpty) return title;
+  final name = request.fileName;
+  final dot = name.lastIndexOf('.');
+  final bare = (dot > 0 ? name.substring(0, dot) : name).trim();
+  return bare.isEmpty ? name : bare;
 }
 
 /// The file holds no word to propose: no English dialogue, or only words the

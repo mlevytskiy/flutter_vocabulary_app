@@ -35,7 +35,7 @@ Committed approach: on the words page of the main screen, while the current sess
 
 - Narrowing or rearranging the word rows while the panel is half-open. The owner left this for a later feature.
 - Editing, deleting or adding word rows while the photo panel is open. The owner decided an open panel is only for looking.
-- ~~Showing Quizlet sets in the panel.~~ Reversed by the owner, 2026-10-14 (side-panel-sources): the tab and the half-open panel also list Quizlet sets with words, as tiles; full-open stays photos only (AC-21).
+- ~~Showing Quizlet sets in the panel.~~ Reversed by the owner, 2026-10-14 (side-panel-sources): the tab and the half-open panel also list Quizlet sets with words, as tiles; full-open stays photos only (AC-21). Extended by the owner, 2026-10-14: words from film subtitles are listed the same way (AC-22); full-open is not extended. Showing a film's poster on its tile, and sending film sources to the shared page, stay out of scope.
 - Editing, deleting, cropping or re-taking photos from the panel. The panel only shows photos; changing them is a separate feature.
 - The photo panel on the dialogue pages of the main screen (from get-words-from-subtitles-improvment), and the tab and panel on the Words screen, on History, or on the shared page. The tab is shown on the dialogue pages, but opening it returns to the words page first (AC-13).
 
@@ -216,6 +216,16 @@ Committed approach: on the words page of the main screen, while the current sess
 **Given** the current session has at least one source with words: a photo with words or a Quizlet set with words (a set whose word rows are linked to it)
 **When** the learner looks at the photo tab and opens the panel half-open
 **Then** the tab is shown (also for a session that came only from a Quizlet set), and its mini previews show a set as a small tile with the Quizlet logo; half-open lists photos and sets mixed, oldest first by when each was added to the session, a set as a tile the size of a small photo with the Quizlet logo and the set's name (cut short with "…" when long), which a screen reader announces as a Quizlet set with its name; tapping a set selects it, scrolls to and highlights its word rows exactly as for a photo (AC-04 to AC-06); full-open shows the photos only, starting at the first photo when a set is selected, and with no photo with words full-open cannot be reached: a drag or flick stops at half-open and the expand control is not shown
+
+### AC-22 (US-02) — happy path (side-panel-sources, owner 2026-10-14)
+
+**Given** the learner imported words from a film's or episode's subtitles into the current session (found by name, or from a picked file) and kept at least one at Done
+**When** the learner looks at the photo tab and opens the panel half-open
+**Then** the film is one source of the session, named by the title found by name or else by the picked file's name without its extension, and its kept rows point at it; importing the same title again into the same session adds the new rows to that same source; the tab and half-open list it exactly like a Quizlet set (AC-21): a tile the size of a small photo with a film icon and the title (cut short with "…" when long), which a screen reader announces as "Film <title>"; tapping it selects it and highlights its rows; full-open stays photos only. No poster is shown: the subtitle import keeps none on the phone
+
+Implementation notes (2026-10-14):
+- Model: `SourceKind.subtitles` appended after `photo` and `set` (the ordinal is stored); `name` holds the title; no new field. Sessions saved before read back unchanged (photo 0, set 1).
+- Publishing: the Worker (`parseSources`) refuses the whole publish for a `kind` other than `photo` or `set` (`invalid_source`). So the app never declares a subtitles source (`publishedSourceKinds` in `session_publish_service.dart`), and its rows publish as before, without a `sourceId`. The Worker is not changed; showing films on the shared page is a later decision for the owner.
 
 ## 6. Non-functional requirements
 

@@ -89,6 +89,7 @@ void main() {
   late FakeGoogleWords google;
   late FakeSearch search;
   late List<VocabWord> added;
+  late List<String> films;
   late String sessionId;
   late ProviderContainer container;
 
@@ -101,6 +102,7 @@ void main() {
     google = FakeGoogleWords();
     search = FakeSearch();
     added = [];
+    films = [];
     sessionId = 'session-A';
     container = ProviderContainer(overrides: [
       subtitleWordsServiceProvider.overrideWithValue(service),
@@ -119,7 +121,10 @@ void main() {
                 ref: ref,
                 currentSessionId: () => sessionId,
                 sessionWords: () => ['tide'],
-                addWords: added.addAll,
+                addWords: (words, film) {
+                  added.addAll(words);
+                  films.add(film);
+                },
                 pickFile: () async => pick ?? file(srtText),
               ),
               child: const Text('import'),
@@ -174,6 +179,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(added.map((w) => w.word), ['reluctant', 'fog']);
+    expect(films, ['film'], reason: 'side-panel-sources AC-22: a picked file is named by its file name');
   });
 
   testWidgets('removing every word, or closing, adds nothing (AC-04)', (tester) async {
@@ -338,6 +344,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Done'), findsOneWidget);
     expect(find.text('Harbour Lights (2024)'), findsOneWidget, reason: 'the results dialog names the film');
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(films, ['Harbour Lights (2024)'], reason: 'side-panel-sources AC-22: the rows go under the film found by name');
   });
 
   testWidgets('a file found by name that fails to download says why, and adds nothing', (tester) async {

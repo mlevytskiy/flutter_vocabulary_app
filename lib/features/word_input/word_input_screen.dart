@@ -1309,8 +1309,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen> with WidgetsB
           for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty && pair.word.trim().length <= 500) pair.word.trim(),
         ].take(500).toList(),
-        addWords: (words) {
-          if (mounted) _addWordsFromPhoto(words);
+        addWords: (words, film) {
+          if (!mounted) return;
+          // side-panel-sources AC-22: the film joins the session's sources
+          // (or the one already there is reused), and the rows point at it.
+          final sourceId = ref.read(wordInputNotifierProvider.notifier).upsertSubtitlesSource(film);
+          _addWordsFromPhoto(words, sourceId: sourceId);
         },
         addDialogues: (dialogues, keptCount) {
           if (mounted) ref.read(wordInputNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
