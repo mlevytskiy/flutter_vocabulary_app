@@ -16,3 +16,9 @@ Format: `D-NN — question → decision. Why. Affects: ids.`
   known / repeat.
 
 ## Decided
+
+D-01 — Which board widget do the match exercises share? → One "match board": two columns, tap-then-tap, right pair locks, wrong pair shakes and unselects, per-word miss count, summary at the end. match-synonyms builds it; antonyms and definitions reuse it with different pair data. Why: same interaction, avoids three copies. Affects: match-synonyms, match-antonyms, match-definitions. (agent, 2026-10-14)
+D-02 — How many words per round in match exercises? → 3 to 6 pairs; larger groups split into rounds, never a round under 3; fewer than 3 usable words shows a "not enough words" screen. Why: fits one phone screen and keeps the round meaningful. Affects: match-synonyms, match-antonyms, match-definitions. (agent, 2026-10-14)
+D-03 — Where is AI exercise data (synonyms, antonyms, definitions, clues) generated and cached? → On the Worker: one call per group, cached per word there. The app keeps nothing new on disk and adds no field to WordPair (CLAUDE.md rule 5). Why: no new model; repeat opens are free. Affects: match-synonyms, match-antonyms, match-definitions, guess-my-word, fill-the-gaps. (agent, 2026-10-14)
+D-04 — What does a Stage 1 exercise record? → Per-word misses for the round, shown in the end summary only; nothing saved. Step 3 owns saved results. Why: matches the open Step 3 decision. Affects: all Stage 1 and 2 exercises. (agent, 2026-10-14)
+D-05 — What happens when exercise data cannot load? → An error line with Retry; no partial round. Why: one predictable behaviour. Affects: all exercises using AI data. (agent, 2026-10-14)
