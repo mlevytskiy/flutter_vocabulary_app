@@ -47,7 +47,7 @@ void main() {
     });
 
     test('AC-14: first sentence within 120, else cut at a whole word plus …', () {
-      final first = 'A' * 79 + '. ' + 'b' * 218;
+      final first = '${'A' * 79}. ${'b' * 218}';
       expect(definitionCard(first, 'zzz'), 'A' * 79 + '.');
       final long = List.filled(60, 'word').join(' ');
       final card = definitionCard(long, 'zzz')!;
