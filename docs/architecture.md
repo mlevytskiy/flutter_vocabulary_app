@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-10-14"
+updated_at: "2026-10-15"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -197,7 +197,9 @@ lib/
       kit/                            (learn-kit) the frame and helpers every exercise shares:
                                       exercise_phase.dart (ExercisePhase states, ExerciseFailure, failureOf),
                                       exercise_scaffold.dart (ExerciseScaffold: loading / failed / not enough /
-                                      round / summary), result_summary.dart (ResultSummary, WordOutcome),
+                                      round / summary; optional againLabel / onAgain extra summary button, S-56),
+                                      result_summary.dart (ResultSummary, WordOutcome with optional detail line,
+                                      examHeading "N of n known"; S-55, S-56),
                                       split_rounds.dart, question_builder.dart (buildQuestion, QuestionPool),
                                       typed_match.dart (matchTyped), typed_answer_field.dart (practice / exam),
                                       word_marks.dart (maskWord, boldWord, holdsWordOnce), check_verdict.dart
@@ -229,6 +231,9 @@ lib/
       fill_the_gaps/                  (learn-fill-the-gaps) Step 2 type the missing word; dialogue sentence first, else one Worker call, nothing saved
         fill_the_gaps_notifier.dart (+.g)  FillTheGaps notifier (gap questions, rounds, results, score) + FillState
         fill_the_gaps_screen.dart     FillTheGapsScreen: GapPrompt + TypedAnswerField (practice) inside ExerciseScaffold
+      quiz/                           (learn-quiz) Step 3 exam: up to 7 mixed choice + gap questions (S-53, S-54); one sentence data call per open, a failure runs choice only; the first Step 3 writer of word results (S-55 exam-result pattern)
+        quiz_notifier.dart (+.g)      Quiz notifier (usable words, quizLayout, answers recorded through examResultSinkProvider at once, Repeat) + QuizState, QuizQuestion, QuizAnswer, choiceLabel, typedLabel
+        quiz_screen.dart              QuizScreen: ChoiceOptions (reveal: false) + Skip, or GapPrompt + TypedAnswerField (exam) inside ExerciseScaffold; summary with details and Repeat
       sentence_patterns/              (learn-sentence-patterns) Step 2 model sentence + pattern, then the learner's own sentence checked by the Worker; one data call per open, nothing saved
         sentence_patterns_notifier.dart (+.g)  SentencePatterns notifier (pattern cards, rounds, My turn, results) + PatternsState, PatternCard
         sentence_patterns_screen.dart SentencePatternsScreen: card, PronunciationButtons (read the sentence), SentenceCheckField (practice) inside ExerciseScaffold
