@@ -1,5 +1,6 @@
 ---
-status: clarified
+status: cancelled
+cancelled_by: H-08
 stage: 2
 updated_at: "2026-10-14"
 source: "Fable ideas (fable-ideas.md §2)"

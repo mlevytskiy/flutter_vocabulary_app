@@ -1,5 +1,6 @@
 ---
-status: clarified
+status: cancelled
+cancelled_by: H-08
 stage: 1
 updated_at: "2026-10-14"
 source: "lib/features/learn/exercises.dart (plan from learn-part-step-1 §1)"

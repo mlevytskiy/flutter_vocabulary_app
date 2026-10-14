@@ -1,5 +1,6 @@
 ---
-status: clarified
+status: cancelled
+cancelled_by: H-06
 blocked: "owner"
 stage: 3
 updated_at: "2026-10-14"
