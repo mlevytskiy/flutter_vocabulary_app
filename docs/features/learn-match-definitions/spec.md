@@ -258,3 +258,14 @@ The app has no usage analytics; checked at review, from the Worker's `learn data
 - [ ] Should a long press read a card aloud, as the small spec asked? It needs a board change (a long-press callback) shared with match-synonyms. Default now: no sound, long press does nothing (AC-06). — owner: Maksym, due: any time; a later change to S-36.
 - [ ] Real use needs the owner's learn-kit deploy steps (the `vocab-learn-data` KV namespace, `0006_learn_allowance.sql`, deploy) for words without a stored definition; until then those groups show the error line (AC-19), groups with all stored definitions already work. Default now: build and flip `available`; the web list needs a deploy to show the row as tickable. — owner: Maksym, due: before the owner's first real use.
 - [ ] pick-the-answer's kind B shows the stored definition as is (a picked sense still carries "definition:" and its example). Default now: unchanged here (no visible change outside this exercise); S-40 says later users of a stored definition take the definition line. — owner: Maksym (a visible change to a built exercise), due: before pick-the-answer is next touched.
+
+## Implementation status
+
+Implemented 2026-10-15 on `feat/learn-exercises`, test-first. All 25 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults (long press does nothing; the owner's learn-kit deploy steps are still needed for words without a stored definition).
+
+**Done.** S-41 refactor: `lib/features/learn/kit/match_rounds.dart` (`MatchPair`, `usableMatchPairs`, `MatchRound`, `shuffledOutOfOrder`, `MatchRoundsState`, `matchSummaryDelay`), cut from match-synonyms; its tests changed only names (a local `usableSynonymPairs` wrapper in the test). S-40: `kit/definition_text.dart` (`definitionText`, `definitionCard` = line, mask, cut; null when empty or only "___"). Exercise: `lib/features/learn/match_definitions/` (`MatchDefinitions` notifier, `MatchDefinitionsScreen`), `case 'match-definitions'`, `available: true` in `exercises.json` and `exercises.dart`. `match_board.dart` is unchanged. Tests: `learn_definition_text_test` (9), `learn_match_definitions_notifier_test` (18, incl. 1000-seed fairness), `learn_match_definitions_screen_test` (11); AC-24 by a new case in `vocab-photo-api/test/learn.test.mjs`. Updated for the flip: `learn_screen_test`, `learn_exercises_test`, `exercise_route_test`, `learn.test.mjs`, `learn-exercises.test.mjs`.
+
+**Notes.**
+- A stored line that is only the word ("Echo.") leaves the word out; the Worker is asked only for words whose stored definition line is empty.
+- The right card text is the shown form (`definitionCard`) and is not passed through `cardText` again: a cut text can be one character over 120 and would be cut twice.
+- The Worker's web list shows the row as tickable and needs a deploy to match.
