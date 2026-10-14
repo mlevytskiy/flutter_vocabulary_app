@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import 'coming_soon_screen.dart';
 import 'fill_the_gaps/fill_the_gaps_screen.dart';
+import 'guess_my_word/guess_my_word_screen.dart';
 import 'match_definitions/match_definitions_screen.dart';
 import 'match_synonyms/match_synonyms_screen.dart';
 import 'pick_the_answer/pick_the_answer_screen.dart';
@@ -17,6 +18,8 @@ Widget exerciseScreen(String exercise, String? sessionId, String groupId) {
   switch (exercise) {
     case 'fill-the-gaps':
       return FillTheGapsScreen(sessionId: sessionId, groupId: groupId);
+    case 'guess-my-word':
+      return GuessMyWordScreen(sessionId: sessionId, groupId: groupId);
     case 'match-definitions':
       return MatchDefinitionsScreen(sessionId: sessionId, groupId: groupId);
     case 'match-synonyms':
