@@ -220,6 +220,9 @@ lib/
       match_synonyms/                 (learn-match-synonyms) Step 1 match board, one Worker call per open, nothing saved
         match_synonyms_notifier.dart (+.g)  MatchSynonyms notifier (own build/retry/pair/nextRound; shared round code in kit/match_rounds.dart)
         match_synonyms_screen.dart    MatchSynonymsScreen: round counter, line and MatchBoard inside ExerciseScaffold
+      guess_my_word/                  (learn-guess-my-word) Step 1 graded-clue riddle: three masked clues per word, tap the word in a grid; one data call (kind clues) per open, nothing saved
+        guess_my_word_notifier.dart (+.g)  GuessMyWord notifier (clues S-51, rounds and scoring S-52) + GuessState, GuessRound, GuessWord
+        guess_my_word_screen.dart     GuessMyWordScreen: counter, clues so far, 3-per-row grid with long-press translation, outcome line inside ExerciseScaffold
       match_definitions/              (learn-match-definitions) Step 1 match word and definition on the same board; stored definition line first, else one Worker call
         match_definitions_notifier.dart (+.g)  MatchDefinitions notifier (stored/Worker definitions, rounds, links, misses) on MatchRoundsState
         match_definitions_screen.dart MatchDefinitionsScreen: round counter, line and MatchBoard inside ExerciseScaffold

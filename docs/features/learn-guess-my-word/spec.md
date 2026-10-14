@@ -259,3 +259,16 @@ The app has no usage analytics; checked at review, from the Worker's `learn data
 - [ ] When the shared page gets live state, should people-written clues replace the AI clues or sit beside them? Carried from the small spec. Default now: beside; nothing is built (D-11). — owner: Maksym, due: when a shared-page live-state spec is started.
 - [ ] Irregular forms ("ran" for "run", "went" for "go") are not masked by the shared matching rule. Add a Worker clue check that rejects a clue with any form of the word, with a cache key bump? Default now: no; the prompt says "never the word itself" and §7 measures leaks. — owner: Maksym, due: after the first debug run of §7.
 - [ ] Real use needs the owner's learn-kit deploy steps (the `vocab-learn-data` KV namespace, the learn allowance migration, deploy); until then the exercise shows the load error line (AC-19). Default now: build and flip `available`; the web list needs a deploy to show the row as tickable. — owner: Maksym, due: before the owner's first real use.
+
+## Implementation status
+
+Implemented 2026-10-15 on `feat/learn-exercises`, test-first (commits `feat(learn-guess-my-word): ...`). All 25 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults (people-written clues beside AI clues, nothing built; irregular forms not masked; the owner's learn-kit deploy steps are still needed for real use).
+
+**Done.** `lib/features/learn/guess_my_word/` (`GuessMyWord` notifier family + `GuessState`, `GuessRound`, `GuessWord`; `GuessMyWordScreen` with the grid and tile), `case 'guess-my-word'` in `exerciseScreen`, `available: true` in `exercises.json` and `exercises.dart`. No kit file and no Worker code changed (only the exercise list flipped). Tests: `learn_guess_my_word_notifier_test.dart` (17), `learn_guess_my_word_screen_test.dart` (13), AC-25 in `vocab-photo-api/test/learn.test.mjs`; the flip updated `learn_screen_test`, `exercise_route_test`, `learn_exercises_test`, `learn.test.mjs` and `learn-exercises.test.mjs`.
+
+**Notes.**
+- A target's right tap and the pause live in the notifier (`Timer` of 600 ms, cancelled on dispose); the screen only draws.
+- Candidates, clue masking and the usable rule follow S-51; the stored definition is clue 3 via `definitionCard`, so no `definition` call is made.
+- Found words show a points badge, the answer of a missed target is tinted red, a greyed word is dimmed and struck through (look chosen here, same card style as `MatchCard`).
+- Long press on a tile uses a manual `Tooltip` (translation); clues have none.
+- The Worker's web list shows the row as tickable and needs a deploy to match.
