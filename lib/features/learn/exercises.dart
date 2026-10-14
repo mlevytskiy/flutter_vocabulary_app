@@ -20,7 +20,7 @@ class Exercise {
 const exercises = <Exercise>[
   Exercise(id: 'mnemonic-story', name: 'Mnemonic story', stage: 1, available: true),
   Exercise(id: 'dialogs-from-movie', name: 'Dialogs from movie', stage: 1, available: true),
-  Exercise(id: 'match-synonyms', name: 'Match synonyms', stage: 1, available: false),
+  Exercise(id: 'match-synonyms', name: 'Match synonyms', stage: 1, available: true),
   Exercise(id: 'match-definitions', name: 'Match word and definition', stage: 1, available: false),
   Exercise(id: 'guess-my-word', name: 'Guess my word', stage: 1, available: false),
   Exercise(id: 'pick-the-answer', name: 'Pick the right answer', stage: 1, available: true),

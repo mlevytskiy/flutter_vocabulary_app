@@ -226,13 +226,13 @@ void main() {
   });
 
   testWidgets(
-      'AC-06: only Mnemonic, Pick the right answer and Remember or not are enabled; coming-soon taps change nothing',
+      'AC-06: only Mnemonic, Match synonyms, Pick the right answer and Remember or not are enabled; coming-soon taps change nothing',
       (tester) async {
     await pump(tester);
     final tiles =
         tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile));
-    expect(tiles.where((t) => t.enabled ?? true).length, 3);
-    expect(inCard(1, find.text('Coming soon')), findsNWidgets(3));
+    expect(tiles.where((t) => t.enabled ?? true).length, 4);
+    expect(inCard(1, find.text('Coming soon')), findsNWidgets(2));
     await next(tester);
     await next(tester);
     final soon = find.widgetWithText(CheckboxListTile, 'Translate sentences');

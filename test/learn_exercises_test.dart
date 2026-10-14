@@ -37,6 +37,6 @@ void main() {
       '3 explain-to-friend Explain it to a friend',
       '3 quiz Quiz',
     ]);
-    expect([for (final e in exercises) if (e.available) e.id], ['mnemonic-story', 'dialogs-from-movie', 'pick-the-answer', 'remember-or-not']);
+    expect([for (final e in exercises) if (e.available) e.id], ['mnemonic-story', 'dialogs-from-movie', 'match-synonyms', 'pick-the-answer', 'remember-or-not']);
   });
 }
