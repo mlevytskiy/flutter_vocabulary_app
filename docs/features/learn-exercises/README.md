@@ -25,7 +25,7 @@ Sizes: XS very small, S, M, L. Rough guess only.
 | 2 | [sentence-patterns](sentence-patterns.md) | Sentence patterns | screenshot | Reuse a pattern for your own sentence | M | AI sentences and check |
 | 2 | [chain-story](chain-story.md) | Chain story | Fable | Continue a story with each word | L | mnemonic story; speech; AI check; shared-page turns |
 | 3 | [own-sentences](own-sentences.md) | Make your own sentences | exercises.dart + screenshot | Write a sentence per word; scored | M | AI scoring; word result record |
-| 3 | [own-sentences-spoken](own-sentences-spoken.md) | Make your own sentences (speak) | exercises.dart | Same, said aloud | M | own-sentences; speech-to-text |
+| 3 | [own-sentences-spoken](own-sentences-spoken.md) | Speak mode of own-sentences (blocked: owner) | exercises.dart | Same, said aloud (D-35) | M | own-sentences; speech-to-text |
 | 3 | [translate-sentences](translate-sentences.md) | Translate sentences | exercises.dart | Translate into English with the word; scored | M | AI sentences and scoring; result record |
 | 3 | [translate-sentences-spoken](translate-sentences-spoken.md) | Translate sentences (speak) | exercises.dart | Same, said aloud | M | translate-sentences; speech-to-text |
 | 3 | [explain-to-friend](explain-to-friend.md) | Explain it to a friend | Fable | Explain the word with no cues; scored | L | speech-to-text; AI scoring; shared-page vote (later) |
