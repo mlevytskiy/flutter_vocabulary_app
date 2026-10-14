@@ -250,6 +250,21 @@ void main() {
     expect(find.textContaining('30 days'), findsNothing);
   });
 
+  testWidgets('Share file offers the five formats, Anki first',
+      (tester) async {
+    await pumpTable(tester, WordDetailMode.translation);
+    await openSheet(tester);
+    expect(find.text('Anki, CSV, PDF, Quizlet or word list'), findsOneWidget);
+    await tester.tap(find.text('Share file'));
+    await tester.pumpAndSettle();
+    final titles = [
+      for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
+        if (tile.title case Text(:final data?)) data,
+    ];
+    expect(titles, ['Anki', 'CSV', 'PDF', 'Quizlet', 'Word list']);
+    expect(find.text('Text file for AnkiDroid'), findsOneWidget);
+  });
+
   testWidgets('photos only on blank rows count as none: no switch',
       (tester) async {
     final shown = Session.create()

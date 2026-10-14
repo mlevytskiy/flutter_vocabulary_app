@@ -18,6 +18,7 @@ import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'anki_export.dart';
 import 'photo_viewer.dart';
+import 'share_formats.dart';
 import 'widgets/learn_share_bar.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
@@ -74,10 +75,34 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       return;
     }
 
-    try {
-      // Generate content
-      final content = _generateCloseUpB2Format(wordPairs);
+    final format = await showModalBottomSheet<ShareFormat>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final format in ShareFormat.values)
+                ListTile(
+                  leading: Icon(format == ShareFormat.pdf
+                      ? Icons.picture_as_pdf_outlined
+                      : format == ShareFormat.csv
+                          ? Icons.table_chart_outlined
+                          : Icons.insert_drive_file_outlined),
+                  title: Text(format.title),
+                  subtitle: Text(format.subtitle),
+                  onTap: () => Navigator.pop(sheetContext, format),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!mounted || format == null) return;
 
+    final origin = _shareOrigin(context);
+    final detail = ref.read(wordDetailModeProvider);
+    try {
       // Get current date for filename
       final now = DateTime.now();
       final dateStr =
@@ -85,16 +110,34 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
       // Get temporary directory
       final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/vocabulary_$dateStr.txt';
+      final filePath = '${directory.path}/${format.fileName(dateStr)}';
 
       // Create file
       final file = File(filePath);
-      await file.writeAsString(content);
+      switch (format) {
+        case ShareFormat.anki:
+          await file.writeAsString(_generateCloseUpB2Format(wordPairs));
+        case ShareFormat.csv:
+          await file
+              .writeAsString(generateCsvFile(wordPairs, detail: detail));
+        case ShareFormat.quizlet:
+          await file
+              .writeAsString(generateQuizletFile(wordPairs, detail: detail));
+        case ShareFormat.wordList:
+          await file
+              .writeAsString(generateWordListFile(wordPairs, detail: detail));
+        case ShareFormat.pdf:
+          await file.writeAsBytes(await generatePdfFile(wordPairs,
+              font: await loadPdfFont(), detail: detail));
+      }
 
       // Share file
       await Share.shareXFiles(
-        [XFile(filePath)],
-        subject: 'English Vocabulary - Close-up B2 Format',
+        [XFile(filePath, mimeType: format.mimeType)],
+        subject: format == ShareFormat.anki
+            ? 'English Vocabulary - Close-up B2 Format'
+            : 'English Vocabulary',
+        sharePositionOrigin: origin,
       );
     } catch (e) {
       if (mounted) {
@@ -103,6 +146,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         );
       }
     }
+  }
+
+  /// Where the iOS share sheet points. On iOS 26 iPhones present it as a
+  /// popover too, and share_plus 7 refuses to share without this rect.
+  Rect? _shareOrigin(BuildContext context) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
   }
 
   /// Learn (learn-part-step-1): like Share, nothing to do without a filled row.
@@ -159,7 +210,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
               ListTile(
                 leading: const Icon(Icons.insert_drive_file_outlined),
                 title: const Text('Share file'),
-                subtitle: const Text('Text file for AnkiDroid'),
+                subtitle: const Text('Anki, CSV, PDF, Quizlet or word list'),
                 onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
               ),
               ListTile(
@@ -390,8 +441,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
             child: const Text('Copy'),
           ),
           TextButton(
-            onPressed: () =>
-                Share.share(published.url, subject: 'English Vocabulary'),
+            onPressed: () => Share.share(published.url,
+                subject: 'English Vocabulary',
+                sharePositionOrigin: _shareOrigin(dialogContext)),
             child: const Text('Share…'),
           ),
           TextButton(

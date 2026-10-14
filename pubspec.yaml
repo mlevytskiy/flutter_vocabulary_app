@@ -1,7 +1,7 @@
 name: flutter_vocabulary_app
 description: A Flutter app for learning English words with translations
 publish_to: 'none'
-version: 1.1.0+5
+version: 1.1.0+6
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -39,6 +39,8 @@ dependencies:
   # releases exist and their API moves between them. Real refraction on
   # Impeller; on Skia (and in widget tests) it falls back to a blur.
   liquid_glass_renderer: 0.2.0-dev.4
+  # The PDF share format (owner, 2026-10-14). Pinned, pure Dart.
+  pdf: 3.11.3
 
 dev_dependencies:
   flutter_test:
@@ -51,3 +53,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # The PDF export's font: the PDF base fonts have no Cyrillic.
+  assets:
+    - assets/fonts/NotoSans-Regular.ttf
