@@ -54,29 +54,35 @@ const SessionSchema = CollectionSchema(
       name: r'publishedId',
       type: IsarType.string,
     ),
-    r'selectedGroupId': PropertySchema(
+    r'results': PropertySchema(
       id: 7,
+      name: r'results',
+      type: IsarType.objectList,
+      target: r'WordResult',
+    ),
+    r'selectedGroupId': PropertySchema(
+      id: 8,
       name: r'selectedGroupId',
       type: IsarType.string,
     ),
     r'sessionId': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'sources': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'sources',
       type: IsarType.objectList,
       target: r'SourcePhoto',
     ),
     r'updatedAt': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -107,7 +113,8 @@ const SessionSchema = CollectionSchema(
     r'WordPair': WordPairSchema,
     r'SourcePhoto': SessionSourceSchema,
     r'WordGroup': WordGroupSchema,
-    r'FilmDialogue': FilmDialogueSchema
+    r'FilmDialogue': FilmDialogueSchema,
+    r'WordResult': WordResultSchema
   },
   getId: _sessionGetId,
   getLinks: _sessionGetLinks,
@@ -153,6 +160,14 @@ int _sessionEstimateSize(
     final value = object.publishedId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.results.length * 3;
+  {
+    final offsets = allOffsets[WordResult]!;
+    for (var i = 0; i < object.results.length; i++) {
+      final value = object.results[i];
+      bytesCount += WordResultSchema.estimateSize(value, offsets, allOffsets);
     }
   }
   {
@@ -205,17 +220,23 @@ void _sessionSerialize(
   writer.writeBool(offsets[4], object.isShared);
   writer.writeDateTime(offsets[5], object.lastLocalModifiedAt);
   writer.writeString(offsets[6], object.publishedId);
-  writer.writeString(offsets[7], object.selectedGroupId);
-  writer.writeString(offsets[8], object.sessionId);
+  writer.writeObjectList<WordResult>(
+    offsets[7],
+    allOffsets,
+    WordResultSchema.serialize,
+    object.results,
+  );
+  writer.writeString(offsets[8], object.selectedGroupId);
+  writer.writeString(offsets[9], object.sessionId);
   writer.writeObjectList<SessionSource>(
-    offsets[9],
+    offsets[10],
     allOffsets,
     SessionSourceSchema.serialize,
     object.sources,
   );
-  writer.writeDateTime(offsets[10], object.updatedAt);
+  writer.writeDateTime(offsets[11], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[11],
+    offsets[12],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -249,18 +270,25 @@ Session _sessionDeserialize(
   object.isShared = reader.readBool(offsets[4]);
   object.lastLocalModifiedAt = reader.readDateTime(offsets[5]);
   object.publishedId = reader.readStringOrNull(offsets[6]);
-  object.selectedGroupId = reader.readStringOrNull(offsets[7]);
-  object.sessionId = reader.readString(offsets[8]);
+  object.results = reader.readObjectList<WordResult>(
+        offsets[7],
+        WordResultSchema.deserialize,
+        allOffsets,
+        WordResult(),
+      ) ??
+      [];
+  object.selectedGroupId = reader.readStringOrNull(offsets[8]);
+  object.sessionId = reader.readString(offsets[9]);
   object.sources = reader.readObjectList<SessionSource>(
-        offsets[9],
+        offsets[10],
         SessionSourceSchema.deserialize,
         allOffsets,
         SessionSource(),
       ) ??
       [];
-  object.updatedAt = reader.readDateTime(offsets[10]);
+  object.updatedAt = reader.readDateTime(offsets[11]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[11],
+        offsets[12],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -303,10 +331,18 @@ P _sessionDeserializeProp<P>(
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readObjectList<WordResult>(
+            offset,
+            WordResultSchema.deserialize,
+            allOffsets,
+            WordResult(),
+          ) ??
+          []) as P;
     case 8:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
       return (reader.readObjectList<SessionSource>(
             offset,
             SessionSourceSchema.deserialize,
@@ -314,9 +350,9 @@ P _sessionDeserializeProp<P>(
             SessionSource(),
           ) ??
           []) as P;
-    case 10:
-      return (reader.readDateTime(offset)) as P;
     case 11:
+      return (reader.readDateTime(offset)) as P;
+    case 12:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -1250,6 +1286,91 @@ extension SessionQueryFilter
     });
   }
 
+  QueryBuilder<Session, Session, QAfterFilterCondition> resultsLengthEqualTo(
+      int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'results',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> resultsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'results',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> resultsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'results',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> resultsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'results',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition>
+      resultsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'results',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<Session, Session, QAfterFilterCondition> resultsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'results',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition>
       selectedGroupIdIsNull() {
     return QueryBuilder.apply(this, (query) {
@@ -1771,6 +1892,13 @@ extension SessionQueryObject
     });
   }
 
+  QueryBuilder<Session, Session, QAfterFilterCondition> resultsElement(
+      FilterQuery<WordResult> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'results');
+    });
+  }
+
   QueryBuilder<Session, Session, QAfterFilterCondition> sourcesElement(
       FilterQuery<SessionSource> q) {
     return QueryBuilder.apply(this, (query) {
@@ -2105,6 +2233,12 @@ extension SessionQueryProperty
   QueryBuilder<Session, String?, QQueryOperations> publishedIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'publishedId');
+    });
+  }
+
+  QueryBuilder<Session, List<WordResult>, QQueryOperations> resultsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'results');
     });
   }
 

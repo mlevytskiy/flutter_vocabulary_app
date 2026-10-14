@@ -6,6 +6,7 @@ import 'film_dialogue.dart';
 import 'session_source.dart';
 import 'word_group.dart';
 import 'word_pair.dart';
+import 'word_result.dart';
 
 part 'session.g.dart';
 
@@ -59,6 +60,15 @@ class Session {
   /// has none.
   List<FilmDialogue> dialogues = [];
 
+  /// The Step 3 word results (learn-kit, S-22), append-only, newest last, at
+  /// most [maxResults]. Written only through `SessionStore.appendResult` — a
+  /// result is not a word edit, so it moves neither time — and read through
+  /// the `ExamResultSink`. A session from before has none.
+  List<WordResult> results = [];
+
+  /// The most results a session keeps; the oldest goes first (AC-38).
+  static const maxResults = 2000;
+
   Session();
 
   static Session create() {
@@ -98,7 +108,11 @@ class Session {
     ..dialogues = (json['dialogues'] as List<dynamic>?)
             ?.map((d) => FilmDialogue.fromJson(d as Map<String, dynamic>))
             .toList() ??
-        <FilmDialogue>[];
+        <FilmDialogue>[]
+    ..results = (json['results'] as List<dynamic>?)
+            ?.map((r) => WordResult.fromJson(r as Map<String, dynamic>))
+            .toList() ??
+        <WordResult>[];
 
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,
@@ -113,5 +127,6 @@ class Session {
         'selectedGroupId': selectedGroupId,
         'groupedWordsKey': groupedWordsKey,
         'dialogues': dialogues.map((d) => d.toJson()).toList(),
+        'results': results.map((r) => r.toJson()).toList(),
       };
 }

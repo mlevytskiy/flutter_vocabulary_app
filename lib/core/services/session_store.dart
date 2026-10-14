@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/session.dart';
 import '../models/story_run.dart';
+import '../models/word_result.dart';
 import 'source_photo_store.dart' show uuidV4;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
@@ -135,11 +136,39 @@ class SessionStore {
           ..groups = [for (final g in s.groups) g.copy()]
           ..selectedGroupId = s.selectedGroupId
           ..groupedWordsKey = s.groupedWordsKey
-          ..dialogues = [for (final d in s.dialogues) d.copy()];
+          ..dialogues = [for (final d in s.dialogues) d.copy()]
+          // Results are written only by [appendResult]: a caller holding an
+          // older copy of the session must not wipe them (learn-kit S-22).
+          ..results = existing?.results ?? [for (final r in s.results) r.copy()];
         s.id = await _isar.sessions.put(toWrite);
       });
     } catch (_) {
       // Losing one debounced write is survivable; crashing the app is not.
+    }
+  }
+
+  /// Appends a Step 3 word result to the stored session (learn-kit S-22,
+  /// S-23), dropping the oldest past [Session.maxResults]. Neither
+  /// `updatedAt` nor `lastLocalModifiedAt` moves, so History order stays
+  /// (AC-37). False when there is no such session or the write failed.
+  Future<bool> appendResult(String sessionId, WordResult result) async {
+    try {
+      return await _isar.writeTxn(() async {
+        final existing = await _isar.sessions
+            .filter()
+            .sessionIdEqualTo(sessionId)
+            .findFirst();
+        if (existing == null) return false;
+        final results = [...existing.results, result.copy()];
+        if (results.length > Session.maxResults) {
+          results.removeRange(0, results.length - Session.maxResults);
+        }
+        existing.results = results;
+        await _isar.sessions.put(existing);
+        return true;
+      });
+    } catch (_) {
+      return false;
     }
   }
 
