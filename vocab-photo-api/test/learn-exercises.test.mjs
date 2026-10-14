@@ -38,8 +38,8 @@ test("every entry has exactly id, name, stage and available", () => {
   }
 });
 
-test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions, guess-my-word, pick-the-answer, fill-the-gaps, remember-or-not and sentence-patterns are available", () => {
-  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "match-synonyms", "match-definitions", "guess-my-word", "pick-the-answer", "fill-the-gaps", "remember-or-not", "sentence-patterns"]);
+test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions, guess-my-word, pick-the-answer, fill-the-gaps, remember-or-not, sentence-patterns and quiz are available", () => {
+  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "match-synonyms", "match-definitions", "guess-my-word", "pick-the-answer", "fill-the-gaps", "remember-or-not", "sentence-patterns", "quiz"]);
   assert.equal(findAvailable("match-synonyms")?.name, "Match synonyms");
   assert.equal(findAvailable("match-definitions")?.name, "Match word and definition");
   assert.equal(findAvailable("fill-the-gaps")?.name, "Fill the gaps");
@@ -49,7 +49,8 @@ test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions
   assert.equal(findAvailable("pick-the-answer")?.name, "Pick the right answer");
   assert.equal(findAvailable("mnemonic-story")?.name, "Mnemonic story");
   assert.equal(findAvailable("dialogs-from-movie")?.name, "Dialogs from movie");
-  assert.equal(findAvailable("quiz"), undefined);
+  assert.equal(findAvailable("quiz")?.name, "Quiz");
+  assert.equal(findAvailable("explain-to-friend"), undefined);
   assert.equal(findAvailable("nope"), undefined);
 });
 

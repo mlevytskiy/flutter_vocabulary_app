@@ -225,6 +225,19 @@ void main() {
     expect(find.widgetWithText(SnackBar, hint), findsOneWidget);
   });
 
+  testWidgets('learn-quiz AC-01: Quiz in Step 3 can be ticked and enables Start; no Coming soon on it', (tester) async {
+    await pump(tester);
+    await next(tester);
+    await next(tester);
+    final quiz = inCard(3, find.widgetWithText(CheckboxListTile, 'Quiz'));
+    expect(tester.widget<CheckboxListTile>(quiz).enabled ?? true, isTrue);
+    expect(find.descendant(of: quiz, matching: find.text('Coming soon')), findsNothing);
+    await tester.tap(find.descendant(of: quiz, matching: find.byType(Checkbox)));
+    await tester.pump();
+    expect(tester.widget<CheckboxListTile>(quiz).value, isTrue);
+    expect(tester.widget<ElevatedButton>(start).onPressed, isNotNull);
+  });
+
   testWidgets(
       'AC-06: only Mnemonic, Match word and definition, Match synonyms, Guess my word, Pick the right answer, Fill the gaps, Sentence patterns and Remember or not are enabled; coming-soon taps change nothing',
       (tester) async {

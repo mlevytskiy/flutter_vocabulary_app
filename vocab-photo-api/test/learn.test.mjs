@@ -74,9 +74,10 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the thi
   assert.doesNotMatch(inputOf(html, "fill-the-gaps"), /disabled/);
   assert.doesNotMatch(inputOf(html, "sentence-patterns"), /disabled/);
   assert.doesNotMatch(inputOf(html, "guess-my-word"), /disabled/);
-  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps" && x !== "sentence-patterns" && x !== "guess-my-word")) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 4);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 4);
+  assert.doesNotMatch(inputOf(html, "quiz"), /disabled/);
+  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps" && x !== "sentence-patterns" && x !== "guess-my-word" && x !== "quiz")) assert.match(inputOf(html, x), /disabled/);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 3);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 3);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -135,6 +136,21 @@ test("learn-match-synonyms AC-23: Match synonyms is listed in Step 1, can be tic
   const html = withoutStyle(await res.text());
   assert.equal(res.status, 200);
   assert.match(html, /<h1>Match synonyms<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
+  assert.doesNotMatch(html, /<button|<input|<form/);
+});
+
+test("learn-quiz AC-27: Quiz is listed in Step 3, can be ticked, and the page has no way to play it or to send a result", async () => {
+  const { id } = await publish();
+  const page = (await learn(id)).html;
+  assert.ok(page.indexOf("Step 3") < page.indexOf('value="quiz"'));
+  const ticked = (await learn(id, "?pick=quiz")).html;
+  assert.match(inputOf(ticked, "quiz"), /\bchecked\b/);
+  assert.match(ticked, /Quiz/);
+  const res = await get(`/s/${id}/learn/quiz?pick=quiz`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Quiz<\/h1>/);
   assert.match(html, /Coming soon — this exercise is not ready yet\./);
   assert.doesNotMatch(html, /<button|<input|<form/);
 });
@@ -215,7 +231,7 @@ test("AC-06: pick=mnemonic-story ticks it; coming-soon, unknown, empty and repea
   assert.equal((ticked.match(/\bchecked\b/g) ?? []).length, 1);
   assert.match(ticked, /href="\/s\/[^"]*\/learn\/mnemonic-story\?pick=mnemonic-story"[^>]*class="btn start"|class="btn start"[^>]*href="\/s\/[^"]*\/learn\/mnemonic-story\?pick=mnemonic-story"/);
 
-  for (const q of ["?pick=quiz", "?pick=nope", "?pick=", "?pick=%3Cb%3E"]) {
+  for (const q of ["?pick=explain-to-friend", "?pick=nope", "?pick=", "?pick=%3Cb%3E"]) {
     const { res, html } = await learn(id, q);
     assert.equal(res.status, 200, q);
     assert.doesNotMatch(html, /\bchecked\b/, q);
@@ -308,7 +324,7 @@ test("AC-09: a dead session or an unusable exercise answers byte-for-byte the sh
   const paths = [
     `/s/${randomUUID()}/learn`,
     `/s/${randomUUID()}/learn/mnemonic-story`,
-    `/s/${live.id}/learn/quiz`,
+    `/s/${live.id}/learn/explain-to-friend`,
     `/s/${live.id}/learn/nope`,
     `/s/${randomUUID()}/learn/nope`,
   ];

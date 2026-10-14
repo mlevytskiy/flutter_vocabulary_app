@@ -30,5 +30,5 @@ const exercises = <Exercise>[
   Exercise(id: 'own-sentences', name: 'Make your own sentences', stage: 3, available: false),
   Exercise(id: 'translate-sentences', name: 'Translate sentences', stage: 3, available: false),
   Exercise(id: 'explain-to-friend', name: 'Explain it to a friend', stage: 3, available: false),
-  Exercise(id: 'quiz', name: 'Quiz', stage: 3, available: false),
+  Exercise(id: 'quiz', name: 'Quiz', stage: 3, available: true),
 ];

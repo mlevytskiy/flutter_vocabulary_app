@@ -6,6 +6,7 @@ import 'package:flutter_vocabulary_app/features/learn/coming_soon_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercises.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
+import 'package:flutter_vocabulary_app/features/learn/quiz/quiz_screen.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 /// learn-kit S-03, S-04: one way to open an exercise for a word group
@@ -40,24 +41,29 @@ void main() {
     });
 
     test('without a group the coming-soon screen opens', () {
-      expect(startRouteFor('quiz', groupId: null, group: null).location, const ComingSoonRoute(exercise: 'quiz').location);
+      expect(startRouteFor('explain-to-friend', groupId: null, group: null).location,
+          const ComingSoonRoute(exercise: 'explain-to-friend').location);
     });
   });
 
   group('exerciseScreen (S-03, AC-04)', () {
     testWidgets('an exercise whose screen is not built opens the coming-soon screen, never an empty one', (tester) async {
-      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms' && e.id != 'match-definitions' && e.id != 'fill-the-gaps' && e.id != 'sentence-patterns' && e.id != 'guess-my-word')) {
+      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms' && e.id != 'match-definitions' && e.id != 'fill-the-gaps' && e.id != 'sentence-patterns' && e.id != 'guess-my-word' && e.id != 'quiz')) {
         final screen = exerciseScreen(e.id, null, 'g');
         expect(screen, isA<ComingSoonScreen>(), reason: e.id);
         expect((screen as ComingSoonScreen).exerciseId, e.id);
       }
-      await tester.pumpWidget(MaterialApp(home: exerciseScreen('quiz', 's', 'g')));
-      expect(find.text('Quiz'), findsOneWidget);
+      await tester.pumpWidget(MaterialApp(home: exerciseScreen('explain-to-friend', 's', 'g')));
+      expect(find.text('Explain it to a friend'), findsOneWidget);
       expect(find.text('Coming soon — this exercise is not ready yet.'), findsOneWidget);
     });
 
     test('an unknown id opens the coming-soon screen too', () {
       expect(exerciseScreen('nope', null, 'g'), isA<ComingSoonScreen>());
+    });
+
+    test('learn-quiz AC-01: the quiz opens its own screen', () {
+      expect(exerciseScreen('quiz', 's', 'g'), isA<QuizScreen>());
     });
   });
 }
