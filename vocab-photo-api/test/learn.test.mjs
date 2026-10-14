@@ -68,9 +68,10 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the thi
   assert.doesNotMatch(inputOf(html, "mnemonic-story"), /disabled/);
   assert.doesNotMatch(inputOf(html, "dialogs-from-movie"), /disabled/);
   assert.doesNotMatch(inputOf(html, "pick-the-answer"), /disabled/);
-  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer")) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 10);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 10);
+  assert.doesNotMatch(inputOf(html, "remember-or-not"), /disabled/);
+  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not")) assert.match(inputOf(html, x), /disabled/);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 9);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 9);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -103,6 +104,19 @@ test("learn-pick-the-answer AC-19: Pick the right answer is listed in Step 1, ca
   const html = withoutStyle(await res.text());
   assert.equal(res.status, 200);
   assert.match(html, /<h1>Pick the right answer<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
+  assert.doesNotMatch(html, /<button|<input|<form/);
+});
+
+test("learn-remember-or-not AC-20: Remember or not is listed in Step 2, can be ticked, and the page has no way to play it", async () => {
+  const { id } = await publish();
+  const ticked = (await learn(id, "?pick=remember-or-not")).html;
+  assert.match(inputOf(ticked, "remember-or-not"), /\bchecked\b/);
+  assert.match(ticked, /Remember or not/);
+  const res = await get(`/s/${id}/learn/remember-or-not?pick=remember-or-not`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Remember or not<\/h1>/);
   assert.match(html, /Coming soon — this exercise is not ready yet\./);
   assert.doesNotMatch(html, /<button|<input|<form/);
 });

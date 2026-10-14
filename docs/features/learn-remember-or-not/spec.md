@@ -239,3 +239,11 @@ The app has no usage analytics; these are checked at review and by the owner's o
 
 - [ ] Should "Not yet" ratings ever feed the Step 3 word result (for example "Practise repeat words")? Default now: no, never saved (D-21, H-05). — owner: Maksym, due: any time; a later small change once Step 3 exams ship.
 - [ ] Should the app get a "my accent" setting so exercises show one speaker instead of the US / UK pair? Default now: no setting; the two existing flag buttons (S-32). — owner: Maksym, due: any time; a setting is a visible change (rule 3).
+
+## Implementation status
+
+Implemented 2026-10-14 on `feat/learn-exercises`, test-first (commits `feat(learn-remember-or-not): ...`). All 21 ACs have code and tests; no AC needed an Implementation note.
+
+**Done.** Kit: `exampleLineFor` (S-31, `kit/example_line.dart`), `exerciseDialoguesProvider` (in `exercise_words.dart`), optional `heading` on `ResultSummary` and `ExerciseSummary` (S-33). Exercise: `lib/features/learn/remember_or_not/` (`RememberOrNot` notifier family + `RememberOrNotScreen`), `case 'remember-or-not'` in `exerciseScreen`, `available: true` in `exercises.json` and `exercises.dart`. Tests: `learn_remember_kit_test`, `learn_remember_notifier_test` (incl. all rating sequences of a 3-card round), `learn_remember_screen_test` (fake speech service, `learnApiService` that throws on any call); AC-20 by a new case in `vocab-photo-api/test/learn.test.mjs`. Updated for the flip: `learn_screen_test`, `learn_exercises_test`, `exercise_route_test`, `learn.test.mjs`, `learn-exercises.test.mjs`.
+
+**Notes.** The notifier is an `AsyncNotifier` (`Future<RememberState>`); `retry()` invalidates words, dialogues and itself. The screen is a `ConsumerStatefulWidget` (keeps the `PronunciationService` for `stop()` in `dispose`); it stops speech on every change of the shown-card count. A snackbar shows `PronunciationException.message` as is (it already starts "Could not play pronunciation"). The front card is a tappable `InkWell` (key `card-front`). The Worker's web list now shows the row as tickable and needs a deploy to match. Open questions in section 8 keep their defaults.

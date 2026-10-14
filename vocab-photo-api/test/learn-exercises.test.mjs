@@ -38,8 +38,9 @@ test("every entry has exactly id, name, stage and available", () => {
   }
 });
 
-test("only mnemonic-story, dialogs-from-movie and pick-the-answer are available", () => {
-  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "pick-the-answer"]);
+test("only mnemonic-story, dialogs-from-movie, pick-the-answer and remember-or-not are available", () => {
+  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "pick-the-answer", "remember-or-not"]);
+  assert.equal(findAvailable("remember-or-not")?.name, "Remember or not");
   assert.equal(findAvailable("pick-the-answer")?.name, "Pick the right answer");
   assert.equal(findAvailable("mnemonic-story")?.name, "Mnemonic story");
   assert.equal(findAvailable("dialogs-from-movie")?.name, "Dialogs from movie");
