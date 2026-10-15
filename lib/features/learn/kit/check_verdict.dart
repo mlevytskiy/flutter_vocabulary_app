@@ -22,6 +22,9 @@ class CheckFixed extends CheckVerdict {
   final String note;
 }
 
+/// A Cyrillic letter (U+0400–U+04FF), S-62.
+final _cyrillic = RegExp('[\u0400-\u04FF]');
+
 final _endPunctuation = RegExp(r'[.!?…;:,]+$');
 
 /// Trim, lower-case, drop end punctuation.
@@ -33,8 +36,18 @@ CheckVerdict judgeCheck(CheckReply reply,
     {required String sentence, required String word, required LearnCheckTask task}) {
   final appUses = matchPlaces(sentence, word).isNotEmpty;
   if (task == LearnCheckTask.explain) {
-    // An explanation must not hold the word in any form; grammar is not judged.
-    return !appUses && reply.usesTask ? const CheckRight() : CheckFixed(fixed: '', note: reply.note);
+    // S-62: an explanation must not hold the word in any form nor a Ukrainian
+    // letter; grammar is not judged. A not-right one always has one note.
+    final cyrillic = _cyrillic.hasMatch(sentence);
+    if (!appUses && !cyrillic && reply.usesTask) return const CheckRight();
+    final note = appUses
+        ? 'Do not use “$word” in your explanation.'
+        : cyrillic
+            ? 'Explain it in English only.'
+            : reply.note.trim().isNotEmpty
+                ? reply.note
+                : 'This does not explain “$word”.';
+    return CheckFixed(fixed: '', note: note);
   }
   final aiFine = reply.usesTask && (reply.ok || reply.fixed.trim().isEmpty || _norm(reply.fixed) == _norm(sentence));
   if (appUses && aiFine) return const CheckRight();

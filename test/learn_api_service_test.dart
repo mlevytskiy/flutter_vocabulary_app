@@ -209,5 +209,44 @@ void main() {
       expect((missed as CheckFixed).fixed, '');
       expect(missed.note, 'Explain the meaning.');
     });
+
+    // learn-explain-to-friend S-62 (AC-14 – AC-18): the app's rules first, and a not-right
+    // explanation always has one note.
+    String noteOf(CheckVerdict v) => (v as CheckFixed).note;
+    CheckVerdict explain(String text, CheckReply r, {String word = 'shore'}) =>
+        judgeCheck(r, sentence: text, word: word, task: LearnCheckTask.explain);
+
+    test('S-62 AC-14, AC-15: English without the word that does the task is right, grammar not judged', () {
+      expect(explain('The land along the edge of the sea or a lake.', reply(usesWord: false)), isA<CheckRight>());
+      expect(explain('the land wich is near see', reply(usesWord: false, ok: false, fixed: 'x')), isA<CheckRight>());
+    });
+
+    test('S-62 AC-16: the word in any case or with -s is refused with its note, even when the check calls it fine', () {
+      for (final text in ['The shore is land.', 'Shores are land by the sea.', 'SHORE means land.']) {
+        final v = explain(text, reply(usesWord: false));
+        expect(noteOf(v), 'Do not use “shore” in your explanation.', reason: text);
+        expect((v as CheckFixed).fixed, '');
+      }
+    });
+
+    test('S-62 AC-17: any Cyrillic letter is refused, even when the check calls it fine', () {
+      expect(noteOf(explain('it is берег, where sea meets land', reply(usesWord: false))), 'Explain it in English only.');
+      expect(noteOf(explain('the land by the sea є', reply(usesWord: false))), 'Explain it in English only.');
+      // The word wins over Cyrillic.
+      expect(noteOf(explain('shore is берег', reply(usesWord: false))), 'Do not use “shore” in your explanation.');
+    });
+
+    test("S-62 AC-18: a wrong meaning shows the check's note, else the fixed note; never empty", () {
+      expect(noteOf(explain('A place where you keep your money.', reply(usesWord: false, usesTask: false, note: 'That is a money bank.'), word: 'bank')),
+          'That is a money bank.');
+      for (final note in ['', '   ']) {
+        expect(noteOf(explain('A place where you keep your money.', reply(usesWord: false, usesTask: false, note: note), word: 'bank')),
+            'This does not explain “bank”.');
+      }
+    });
+
+    test('S-62: the non-explain branches are unchanged by a Cyrillic letter', () {
+      expect(judgeCheck(reply(), sentence: 'I walk home, друже.', word: 'walk', task: LearnCheckTask.own), isA<CheckRight>());
+    });
   });
 }
