@@ -5,6 +5,7 @@ import 'fill_the_gaps/fill_the_gaps_screen.dart';
 import 'guess_my_word/guess_my_word_screen.dart';
 import 'match_definitions/match_definitions_screen.dart';
 import 'match_synonyms/match_synonyms_screen.dart';
+import 'own_sentences/own_sentences_screen.dart';
 import 'pick_the_answer/pick_the_answer_screen.dart';
 import 'quiz/quiz_screen.dart';
 import 'remember_or_not/remember_or_not_screen.dart';
@@ -26,6 +27,8 @@ Widget exerciseScreen(String exercise, String? sessionId, String groupId) {
       return MatchDefinitionsScreen(sessionId: sessionId, groupId: groupId);
     case 'match-synonyms':
       return MatchSynonymsScreen(sessionId: sessionId, groupId: groupId);
+    case 'own-sentences':
+      return OwnSentencesScreen(sessionId: sessionId, groupId: groupId);
     case 'pick-the-answer':
       return PickTheAnswerScreen(sessionId: sessionId, groupId: groupId);
     case 'quiz':
