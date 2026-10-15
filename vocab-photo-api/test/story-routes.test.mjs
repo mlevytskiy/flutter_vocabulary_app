@@ -296,7 +296,8 @@ test("AC-18: the web learn page and its coming-soon link answer as before, with 
   const page = await get(`/s/${id}/learn`);
   assert.equal(page.status, 200);
   const html = await page.text();
-  assert.match(html, /Coming soon/);
+  // Every exercise is available since explain-to-friend (learn-exercises), so no row says Coming soon.
+  assert.match(html, /Mnemonic story/);
   assert.doesNotMatch(html.replace(/<style>[\s\S]*?<\/style>/, ""), /\/story|<form|runs/i);
   const soon = await get(`/s/${id}/learn/mnemonic-story`);
   assert.equal(soon.status, 200);
