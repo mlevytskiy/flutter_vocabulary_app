@@ -7,6 +7,7 @@ import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercises.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/quiz/quiz_screen.dart';
+import 'package:flutter_vocabulary_app/features/learn/translate_sentences/translate_sentences_screen.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 /// learn-kit S-03, S-04: one way to open an exercise for a word group
@@ -48,7 +49,7 @@ void main() {
 
   group('exerciseScreen (S-03, AC-04)', () {
     testWidgets('an exercise whose screen is not built opens the coming-soon screen, never an empty one', (tester) async {
-      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms' && e.id != 'match-definitions' && e.id != 'fill-the-gaps' && e.id != 'sentence-patterns' && e.id != 'guess-my-word' && e.id != 'quiz')) {
+      for (final e in exercises.where((e) => e.id != 'mnemonic-story' && e.id != 'dialogs-from-movie' && e.id != 'pick-the-answer' && e.id != 'remember-or-not' && e.id != 'match-synonyms' && e.id != 'match-definitions' && e.id != 'fill-the-gaps' && e.id != 'sentence-patterns' && e.id != 'guess-my-word' && e.id != 'quiz' && e.id != 'translate-sentences')) {
         final screen = exerciseScreen(e.id, null, 'g');
         expect(screen, isA<ComingSoonScreen>(), reason: e.id);
         expect((screen as ComingSoonScreen).exerciseId, e.id);
@@ -60,6 +61,10 @@ void main() {
 
     test('an unknown id opens the coming-soon screen too', () {
       expect(exerciseScreen('nope', null, 'g'), isA<ComingSoonScreen>());
+    });
+
+    test('learn-translate-sentences AC-01: translate sentences opens its own screen', () {
+      expect(exerciseScreen('translate-sentences', 's', 'g'), isA<TranslateSentencesScreen>());
     });
 
     test('learn-quiz AC-01: the quiz opens its own screen', () {

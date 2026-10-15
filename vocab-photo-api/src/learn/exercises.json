@@ -9,7 +9,7 @@
   { "id": "remember-or-not", "name": "Remember or not", "stage": 2, "available": true },
   { "id": "sentence-patterns", "name": "Sentence patterns", "stage": 2, "available": true },
   { "id": "own-sentences", "name": "Make your own sentences", "stage": 3, "available": false },
-  { "id": "translate-sentences", "name": "Translate sentences", "stage": 3, "available": false },
+  { "id": "translate-sentences", "name": "Translate sentences", "stage": 3, "available": true },
   { "id": "explain-to-friend", "name": "Explain it to a friend", "stage": 3, "available": false },
   { "id": "quiz", "name": "Quiz", "stage": 3, "available": true }
 ]
