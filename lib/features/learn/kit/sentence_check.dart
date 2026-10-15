@@ -7,6 +7,7 @@ import '../../../core/providers.dart';
 import '../../../core/services/learn_api_service.dart';
 import 'check_result_line.dart';
 import 'check_verdict.dart';
+import 'exam_countdown.dart';
 import 'exercise_phase.dart';
 
 /// Practice (Step 2) or exam (Step 3) sentence check (S-47).
@@ -19,8 +20,9 @@ enum SentenceOutcome { right, fixed, skipped, notChecked }
 
 /// The final result of one word's sentence (S-48): [sentence] is the text sent
 /// ("" when skipped before sending), [verdict] is null unless checked.
+/// [timedOut] (S-61): the time limit ran out with nothing sent (a skip).
 class SentenceResult {
-  const SentenceResult({required this.outcome, required this.sentence, this.verdict});
+  const SentenceResult({required this.outcome, required this.sentence, this.verdict, this.timedOut = false});
 
   /// A checked sentence: right or fixed by [verdict].
   factory SentenceResult.checked(String sentence, CheckVerdict verdict) => SentenceResult(
@@ -32,6 +34,7 @@ class SentenceResult {
   final SentenceOutcome outcome;
   final String sentence;
   final CheckVerdict? verdict;
+  final bool timedOut;
 }
 
 /// Practice labels (S-48): a failed check never retried counts as skipped.
@@ -70,6 +73,7 @@ class SentenceCheckField extends ConsumerStatefulWidget {
     this.extra = '',
     required this.mode,
     required this.onDone,
+    this.timeLimitSeconds,
   });
 
   final String word;
@@ -78,6 +82,12 @@ class SentenceCheckField extends ConsumerStatefulWidget {
   final String extra;
   final SentenceCheckMode mode;
   final ValueChanged<SentenceResult> onDone;
+
+  /// S-61: with a limit, an [ExamCountdown] shows above the text until the
+  /// first valid Send, a Skip or the end of the word; at zero a text the
+  /// pre-check accepts is sent, anything else ends the word as a timed-out
+  /// skip. Null (the default): no countdown.
+  final int? timeLimitSeconds;
 
   @override
   ConsumerState<SentenceCheckField> createState() => _SentenceCheckFieldState();
@@ -152,6 +162,17 @@ class _SentenceCheckFieldState extends ConsumerState<SentenceCheckField> {
     }
   }
 
+  /// S-61: the time is up before any valid Send.
+  void _timeUp() {
+    if (_final != null || _checking || _sent != null) return;
+    if (sentenceProblem(_controller.text, widget.task) == null) {
+      _focus.unfocus();
+      _send();
+    } else {
+      _finish(const SentenceResult(outcome: SentenceOutcome.skipped, sentence: '', timedOut: true));
+    }
+  }
+
   void _skip() {
     if (_final != null || _checking) return;
     final failed = _failure != null;
@@ -166,11 +187,19 @@ class _SentenceCheckFieldState extends ConsumerState<SentenceCheckField> {
     final result = _final;
     final locked = result != null || _checking || (_exam && _sent != null);
     final failure = _failure;
+    final limit = widget.timeLimitSeconds;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (limit != null && result == null && !_checking && _sent == null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: ExamCountdown(seconds: limit, onZero: _timeUp),
+          ),
         TextField(
+          // Keyed so the field keeps its element when the countdown above it goes.
+          key: const ValueKey('sentence-field'),
           controller: _controller,
           focusNode: _focus,
           autofocus: true,
