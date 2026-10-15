@@ -16,6 +16,7 @@ import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/quiz/quiz_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/check_verdict.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/sentence_check.dart';
+import 'package:flutter_vocabulary_app/features/learn/own_sentences/own_sentences_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/translate_sentences/translate_sentences_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/anki_export.dart';
 
@@ -247,6 +248,35 @@ void main() {
       }
       final r = read.results.single;
       expect((r.rowId, r.exerciseId, r.label), (asked.rowId, 'translate-sentences', WordResultLabel.known));
+      expect(read.updatedAt.isAtSameMomentAs(t0), isTrue);
+      expect(read.lastLocalModifiedAt.isAtSameMomentAs(t0), isTrue);
+      expect(generateAnkiFile(read.words), anki);
+    });
+
+    test('learn-own-sentences AC-24, AC-28: a final word saves one result and moves no time, row or export', () async {
+      final words = [
+        for (var i = 0; i < 3; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 'o$i'),
+      ];
+      final s = session('own')..words = words;
+      await store.put(s);
+      final anki = generateAnkiFile((await store.byId('own'))!.words);
+      final container = ProviderContainer(overrides: [
+        sessionStoreProvider.overrideWith((ref) async => store),
+        exerciseWordsProvider('own', 'g').overrideWith((ref) async => (group: words, others: const <WordPair>[])),
+      ]);
+      addTearDown(container.dispose);
+      final state = await container.read(ownSentencesProvider('own', 'g').future);
+      final asked = state.card!;
+      container
+          .read(ownSentencesProvider('own', 'g').notifier)
+          .done(SentenceResult.checked('We saw it.', const CheckFixed(fixed: 'We saw it!', note: 'n')));
+      var read = (await store.byId('own'))!;
+      for (var i = 0; i < 100 && read.results.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        read = (await store.byId('own'))!;
+      }
+      final r = read.results.single;
+      expect((r.rowId, r.exerciseId, r.label), (asked.rowId, 'own-sentences', WordResultLabel.repeat));
       expect(read.updatedAt.isAtSameMomentAs(t0), isTrue);
       expect(read.lastLocalModifiedAt.isAtSameMomentAs(t0), isTrue);
       expect(generateAnkiFile(read.words), anki);

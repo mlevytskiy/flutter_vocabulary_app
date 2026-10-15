@@ -322,3 +322,13 @@ The app has no usage analytics; checked at review from the owner's own use, save
 - Size S, route quick (as translate-sentences: one notifier, one screen, a registry flip, no kit, Worker or model change).
 - Ideation suite skipped (easy); the approach is the built translate-sentences pattern minus the data call.
 - Critic pass done inline by the agent: checked §4↔§5 (every US has an AC), the 5 coverage types (happy AC-01/10/11/12/18/20/29/30; error AC-04/06/08/09/19/21/22/23; authorization AC-31; domain invariant AC-02/03/13..17/25/26; cross-context AC-05/24/27/28), the S-55 (7) required ACs (AC-24..AC-27), and the forbidden-token rule for §5. Findings fixed: the small spec's "any form" overstated the matcher (→ AC-15, S-60, §8 q1); the small spec's two-list summary is the kit's one list with labels (as translate-sentences); the day cap during play needed its own AC (AC-22).
+
+## Implementation status
+
+Implemented 2026-10-15 on `feat/learn-exercises`, test-first (commits `feat(learn-own-sentences): ...`). All 31 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults.
+
+**Done.** `lib/features/learn/own_sentences/`: `OwnSentences` notifier family with `OwnState`, `OwnCard` and pure `ownDetail` (S-60); `OwnSentencesScreen` (word, prompt, kit `SentenceCheckField` in exam mode with task `own` and empty extra, "Skipped" / "Not checked" line, "Next"). Word results use the Quiz pattern: `done(result)` stores and in the same step calls `unawaited(examResultSinkProvider.record(...))`, nothing for not checked. No Worker call on open. `case 'own-sentences'` in `exerciseScreen`; `available: true` in `exercises.json` and `exercises.dart`. Unchanged: every kit file, `learn_api_service.dart`, `exam_result_sink.dart`, `word_result.dart`, the Worker code except the registry flip.
+
+**Tests.** `learn_own_sentences_notifier_test` (16), `learn_own_sentences_screen_test` (17), `word_result_test` (+1, AC-24/AC-28 over the real store), `learn_screen_test` (+1), `exercise_route_test` (+1); AC-31 by a new case in `vocab-photo-api/test/learn.test.mjs`. Updated for the flip (`explain-to-friend` stays the unavailable example): `learn_exercises_test`, `exercise_route_test`, `learn.test.mjs`, `learn-exercises.test.mjs`.
+
+**Notes.** The Worker's web list shows the row as tickable and needs a deploy to match.

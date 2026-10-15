@@ -252,6 +252,20 @@ void main() {
     expect(tester.widget<ElevatedButton>(start).onPressed, isNotNull);
   });
 
+  testWidgets('learn-own-sentences AC-01: Make your own sentences in Step 3 can be ticked and enables Start; no Coming soon on it',
+      (tester) async {
+    await pump(tester);
+    await next(tester);
+    await next(tester);
+    final row = inCard(3, find.widgetWithText(CheckboxListTile, 'Make your own sentences'));
+    expect(tester.widget<CheckboxListTile>(row).enabled ?? true, isTrue);
+    expect(find.descendant(of: row, matching: find.text('Coming soon')), findsNothing);
+    await tester.tap(find.descendant(of: row, matching: find.byType(Checkbox)));
+    await tester.pump();
+    expect(tester.widget<CheckboxListTile>(row).value, isTrue);
+    expect(tester.widget<ElevatedButton>(start).onPressed, isNotNull);
+  });
+
   testWidgets(
       'AC-06: only Mnemonic, Match word and definition, Match synonyms, Guess my word, Pick the right answer, Fill the gaps, Sentence patterns and Remember or not are enabled; coming-soon taps change nothing',
       (tester) async {

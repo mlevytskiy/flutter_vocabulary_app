@@ -237,6 +237,9 @@ lib/
       translate_sentences/            (learn-translate-sentences) Step 3 exam: a Ukrainian sentence with the cue in bold, the learner's English translation checked by the Worker; one translate data call per open; each final word recorded through examResultSinkProvider (S-55); no Repeat (S-58)
         translate_sentences_notifier.dart (+.g)  TranslateSentences notifier (usable cards S-57, rounds of 3–5 shuffled once, done/next/nextRound) + TranslateState, TranslateCard, pure cueSpans, translateDetail
         translate_sentences_screen.dart TranslateSentencesScreen: cue card + SentenceCheckField (exam, task translate) + model translation inside ExerciseScaffold
+      own_sentences/                  (learn-own-sentences) Step 3 exam: the word and a prompt only, the learner's own English sentence checked by the Worker (task own); no Worker data call; each final word recorded through examResultSinkProvider (S-55); no Repeat (S-60)
+        own_sentences_notifier.dart (+.g)  OwnSentences notifier (usable words S-59, rounds of 3–5 shuffled once, done/next/nextRound) + OwnState, OwnCard, pure ownDetail
+        own_sentences_screen.dart     OwnSentencesScreen: word card + SentenceCheckField (exam, task own) inside ExerciseScaffold
       sentence_patterns/              (learn-sentence-patterns) Step 2 model sentence + pattern, then the learner's own sentence checked by the Worker; one data call per open, nothing saved
         sentence_patterns_notifier.dart (+.g)  SentencePatterns notifier (pattern cards, rounds, My turn, results) + PatternsState, PatternCard
         sentence_patterns_screen.dart SentencePatternsScreen: card, PronunciationButtons (read the sentence), SentenceCheckField (practice) inside ExerciseScaffold

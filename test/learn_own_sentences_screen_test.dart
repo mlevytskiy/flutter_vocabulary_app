@@ -136,17 +136,6 @@ void main() {
     await tester.pump();
   }
 
-  /// All bold text in the Text.rich with [key].
-  List<String> boldIn(WidgetTester tester, String key) {
-    final t = tester.widget<RichText>(find.descendant(of: find.byKey(ValueKey(key)), matching: find.byType(RichText)).first);
-    final out = <String>[];
-    t.text.visitChildren((s) {
-      if (s is TextSpan && s.style?.fontWeight == FontWeight.bold && s.text != null) out.add(s.text!);
-      return true;
-    });
-    return out;
-  }
-
   testWidgets('AC-01, AC-07: title, counter, word, prompt, field, Skip; no hint of any kind; no Worker call', (tester) async {
     await pump(tester, _session(8));
     final card = state().card!;
