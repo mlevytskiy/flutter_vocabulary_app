@@ -21,7 +21,7 @@ void main() {
     }
   });
 
-  test('learn-kit S-02, AC-01: thirteen in plan order; only the four built ones available', () {
+  test('learn-kit S-02, AC-01: thirteen in plan order; learn-explain-to-friend: every one is available', () {
     expect([for (final e in exercises) '${e.stage} ${e.id} ${e.name}'], [
       '1 mnemonic-story Mnemonic story',
       '1 dialogs-from-movie Dialogs from movie',
@@ -37,6 +37,6 @@ void main() {
       '3 explain-to-friend Explain it to a friend',
       '3 quiz Quiz',
     ]);
-    expect([for (final e in exercises) if (e.available) e.id], ['mnemonic-story', 'dialogs-from-movie', 'match-synonyms', 'match-definitions', 'guess-my-word', 'pick-the-answer', 'fill-the-gaps', 'remember-or-not', 'sentence-patterns', 'own-sentences', 'translate-sentences', 'quiz']);
+    expect([for (final e in exercises) if (!e.available) e.id], isEmpty);
   });
 }

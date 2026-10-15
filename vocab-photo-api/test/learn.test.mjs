@@ -77,9 +77,10 @@ test("AC-04, AC-08: the learn page shows the word count, three steps and the thi
   assert.doesNotMatch(inputOf(html, "quiz"), /disabled/);
   assert.doesNotMatch(inputOf(html, "translate-sentences"), /disabled/);
   assert.doesNotMatch(inputOf(html, "own-sentences"), /disabled/);
-  for (const x of IDS.slice(2).filter((x) => x !== "pick-the-answer" && x !== "remember-or-not" && x !== "match-synonyms" && x !== "match-definitions" && x !== "fill-the-gaps" && x !== "sentence-patterns" && x !== "guess-my-word" && x !== "quiz" && x !== "translate-sentences" && x !== "own-sentences")) assert.match(inputOf(html, x), /disabled/);
-  assert.equal((html.match(/Coming soon/g) ?? []).length, 1);
-  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 1);
+  // learn-explain-to-friend: the last row is available, so no row is disabled or "Coming soon".
+  for (const x of IDS) assert.doesNotMatch(inputOf(html, x), /disabled/, x);
+  assert.equal((html.match(/Coming soon/g) ?? []).length, 0);
+  assert.equal((html.match(/class="exercise soon"/g) ?? []).length, 0);
   assert.match(html, /<input type="checkbox"/);
   assert.match(html, /<label/);
 });
@@ -170,6 +171,21 @@ test("learn-own-sentences AC-31: Make your own sentences is listed in Step 3, ca
   assert.doesNotMatch(html, /<button|<input|<form/);
 });
 
+test("learn-explain-to-friend AC-39: Explain it to a friend is listed in Step 3, can be ticked, and the page has no way to play it or to send a result", async () => {
+  const { id } = await publish();
+  const page = (await learn(id)).html;
+  assert.ok(page.indexOf("Step 3") < page.indexOf('value="explain-to-friend"'));
+  assert.match(inputOf(page, "explain-to-friend"), /name="pick"/);
+  const ticked = (await learn(id, "?pick=explain-to-friend")).html;
+  assert.match(inputOf(ticked, "explain-to-friend"), /\bchecked\b/);
+  const res = await get(`/s/${id}/learn/explain-to-friend?pick=explain-to-friend`);
+  const html = withoutStyle(await res.text());
+  assert.equal(res.status, 200);
+  assert.match(html, /<h1>Explain it to a friend<\/h1>/);
+  assert.match(html, /Coming soon — this exercise is not ready yet\./);
+  assert.doesNotMatch(html, /<button|<input|<form/);
+});
+
 test("learn-quiz AC-27: Quiz is listed in Step 3, can be ticked, and the page has no way to play it or to send a result", async () => {
   const { id } = await publish();
   const page = (await learn(id)).html;
@@ -253,7 +269,7 @@ test("AC-08: Start is an unavailable a.btn with the hint, nothing ticked, no pic
   assert.doesNotMatch(html, /\bchecked\b/);
 });
 
-test("AC-06: pick=mnemonic-story ticks it; coming-soon, unknown, empty and repeated picks are ignored", async () => {
+test("AC-06: pick=mnemonic-story ticks it; unknown, empty and repeated picks are ignored", async () => {
   const { id } = await publish();
 
   const ticked = (await learn(id, "?pick=mnemonic-story")).html;
@@ -261,7 +277,7 @@ test("AC-06: pick=mnemonic-story ticks it; coming-soon, unknown, empty and repea
   assert.equal((ticked.match(/\bchecked\b/g) ?? []).length, 1);
   assert.match(ticked, /href="\/s\/[^"]*\/learn\/mnemonic-story\?pick=mnemonic-story"[^>]*class="btn start"|class="btn start"[^>]*href="\/s\/[^"]*\/learn\/mnemonic-story\?pick=mnemonic-story"/);
 
-  for (const q of ["?pick=explain-to-friend", "?pick=nope", "?pick=", "?pick=%3Cb%3E"]) {
+  for (const q of ["?pick=nope", "?pick=", "?pick=%3Cb%3E"]) {
     const { res, html } = await learn(id, q);
     assert.equal(res.status, 200, q);
     assert.doesNotMatch(html, /\bchecked\b/, q);
@@ -354,7 +370,6 @@ test("AC-09: a dead session or an unusable exercise answers byte-for-byte the sh
   const paths = [
     `/s/${randomUUID()}/learn`,
     `/s/${randomUUID()}/learn/mnemonic-story`,
-    `/s/${live.id}/learn/explain-to-friend`,
     `/s/${live.id}/learn/nope`,
     `/s/${randomUUID()}/learn/nope`,
   ];

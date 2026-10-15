@@ -266,27 +266,33 @@ void main() {
     expect(tester.widget<ElevatedButton>(start).onPressed, isNotNull);
   });
 
-  testWidgets(
-      'AC-06: only Mnemonic, Match word and definition, Match synonyms, Guess my word, Pick the right answer, Fill the gaps, Sentence patterns and Remember or not are enabled; coming-soon taps change nothing',
+  testWidgets('learn-explain-to-friend AC-01: Explain it to a friend in Step 3 can be ticked and enables Start; no Coming soon on it',
       (tester) async {
     await pump(tester);
-    final tiles =
-        tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile));
-    expect(tiles.where((t) => t.enabled ?? true).length, 8);
-    expect(inCard(1, find.text('Coming soon')), findsNothing);
     await next(tester);
     await next(tester);
-    final soon = find.widgetWithText(CheckboxListTile, 'Explain it to a friend');
-    await tester
-        .tap(find.descendant(of: soon, matching: find.byType(Checkbox)));
-    await tester.tap(
-        find.descendant(of: soon, matching: find.text('Explain it to a friend')));
+    final row = inCard(3, find.widgetWithText(CheckboxListTile, 'Explain it to a friend'));
+    expect(tester.widget<CheckboxListTile>(row).enabled ?? true, isTrue);
+    expect(find.descendant(of: row, matching: find.text('Coming soon')), findsNothing);
+    await tester.tap(find.descendant(of: row, matching: find.byType(Checkbox)));
     await tester.pump();
-    expect(tester.widget<ElevatedButton>(start).onPressed, isNull);
-    expect(find.text(hint), findsOneWidget);
-    for (final t
-        in tester.widgetList<CheckboxListTile>(find.byType(CheckboxListTile))) {
-      expect(t.value, isFalse);
+    expect(tester.widget<CheckboxListTile>(row).value, isTrue);
+    expect(tester.widget<ElevatedButton>(start).onPressed, isNotNull);
+  });
+
+  // AC-06 after learn-explain-to-friend: no exercise is unavailable any more, so every row on
+  // every card is enabled (Dialogs from movie aside: it needs dialogues, a separate rule) and none
+  // says "Coming soon"; the coming-soon tap case is moot.
+  testWidgets('AC-06: every exercise on every card is enabled; none shows Coming soon', (tester) async {
+    await pump(tester);
+    for (var card = 1; card <= 3; card++) {
+      if (card > 1) await next(tester);
+      final tiles = tester
+          .widgetList<CheckboxListTile>(inCard(card, find.byType(CheckboxListTile)))
+          .where((t) => (t.title as Text).data != 'Dialogs from movie');
+      expect(tiles, isNotEmpty);
+      expect(tiles.every((t) => t.enabled ?? true), isTrue, reason: 'card $card');
+      expect(inCard(card, find.text('Coming soon')), findsNothing);
     }
   });
 

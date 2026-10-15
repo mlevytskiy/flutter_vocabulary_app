@@ -38,8 +38,8 @@ test("every entry has exactly id, name, stage and available", () => {
   }
 });
 
-test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions, guess-my-word, pick-the-answer, fill-the-gaps, remember-or-not, sentence-patterns, own-sentences, translate-sentences and quiz are available", () => {
-  assert.deepEqual(EXERCISES.filter((e) => e.available).map((e) => e.id), ["mnemonic-story", "dialogs-from-movie", "match-synonyms", "match-definitions", "guess-my-word", "pick-the-answer", "fill-the-gaps", "remember-or-not", "sentence-patterns", "own-sentences", "translate-sentences", "quiz"]);
+test("learn-explain-to-friend: every exercise is available; an unknown id is not", () => {
+  assert.deepEqual(EXERCISES.filter((e) => !e.available).map((e) => e.id), []);
   assert.equal(findAvailable("match-synonyms")?.name, "Match synonyms");
   assert.equal(findAvailable("match-definitions")?.name, "Match word and definition");
   assert.equal(findAvailable("fill-the-gaps")?.name, "Fill the gaps");
@@ -52,7 +52,7 @@ test("only mnemonic-story, dialogs-from-movie, match-synonyms, match-definitions
   assert.equal(findAvailable("quiz")?.name, "Quiz");
   assert.equal(findAvailable("own-sentences")?.name, "Make your own sentences");
   assert.equal(findAvailable("translate-sentences")?.name, "Translate sentences");
-  assert.equal(findAvailable("explain-to-friend"), undefined);
+  assert.equal(findAvailable("explain-to-friend")?.name, "Explain it to a friend");
   assert.equal(findAvailable("nope"), undefined);
 });
 
