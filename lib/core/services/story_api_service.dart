@@ -150,12 +150,21 @@ DateTime? _time(Object? value) => value is String ? DateTime.tryParse(value) : n
 class StoryApiService {
   static const defaultTimeout = Duration(seconds: 30);
 
+  /// Grouping a large session (100 film words) took 66 s on the live Worker
+  /// (2026-10-15), so the split gets its own, longer wait.
+  static const defaultGroupingTimeout = Duration(seconds: 120);
+
   final http.Client _client;
   final Duration _timeout;
+  final Duration _groupingTimeout;
 
-  StoryApiService({http.Client? client, Duration timeout = defaultTimeout})
-      : _client = client ?? http.Client(),
-        _timeout = timeout;
+  StoryApiService({
+    http.Client? client,
+    Duration timeout = defaultTimeout,
+    Duration groupingTimeout = defaultGroupingTimeout,
+  })  : _client = client ?? http.Client(),
+        _timeout = timeout,
+        _groupingTimeout = groupingTimeout;
 
   Map<String, String> get _headers => {
         'content-type': 'application/json; charset=utf-8',
@@ -165,11 +174,13 @@ class StoryApiService {
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse('${VocabApiConfig.baseUrl}$path').replace(queryParameters: query);
 
-  Future<http.Response> _send(Future<http.Response> Function() call) async {
+  Future<http.Response> _send(Future<http.Response> Function() call,
+      [Duration? timeout]) async {
+    final wait = timeout ?? _timeout;
     try {
-      return await call().timeout(_timeout);
+      return await call().timeout(wait);
     } on TimeoutException {
-      throw StoryApiException(StoryApiError.timeout, 'no answer within ${_timeout.inSeconds} s');
+      throw StoryApiException(StoryApiError.timeout, 'no answer within ${wait.inSeconds} s');
     } catch (e) {
       throw StoryApiException(StoryApiError.network, '$e');
     }
@@ -213,7 +224,7 @@ class StoryApiService {
             if (keep.isNotEmpty)
               'keep': [for (final g in keep) {'id': g.id, 'name': g.name, 'rowIds': g.rowIds}],
           }),
-        ));
+        ), _groupingTimeout);
     if (response.statusCode == 502) {
       throw StoryApiException(StoryApiError.groupingFailed, 'status 502');
     }

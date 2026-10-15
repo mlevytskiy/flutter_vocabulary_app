@@ -137,6 +137,30 @@ void main() {
   });
 
   group('group', () {
+    test('waits past the normal deadline, up to its own longer one', () async {
+      final service = StoryApiService(
+        client: MockClient((_) async {
+          await Future<void>.delayed(const Duration(milliseconds: 60));
+          return http.Response(jsonEncode({'groups': []}), 200);
+        }),
+        timeout: const Duration(milliseconds: 20),
+        groupingTimeout: const Duration(seconds: 5),
+      );
+      expect(await service.group(const [], const []), isEmpty);
+    });
+
+    test('no split within its own deadline is a timeout', () async {
+      final service = StoryApiService(
+        client: MockClient((_) => Completer<http.Response>().future),
+        groupingTimeout: const Duration(milliseconds: 20),
+      );
+      await expectLater(
+        service.group(const [], const []),
+        throwsA(isA<StoryApiException>()
+            .having((e) => e.error, 'error', StoryApiError.timeout)),
+      );
+    });
+
     test('POSTs the words and kept groups, returns the split', () async {
       final keep = [
         WordGroup()
