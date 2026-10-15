@@ -212,7 +212,8 @@ lib/
                                       definition_text.dart (definitionText, definitionCard: definition line, mask, cut; S-40)
                                       gap_question.dart (GapQuestion, gapFromText, gapFromDialogues, loadGapQuestions, GapPrompt; S-43..S-45)
                                       match_board.dart (MatchBoard + MatchItem + MatchCard: the two-column match round, cardText, missesText; S-35..S-37)
-                                      sentence_check.dart (SentenceCheckField practice / exam, SentenceResult, SentenceOutcome, practiceLabel, examLabel, examSummaryText; S-47, S-48); check_result_line.dart bolds the word in the fix (S-49)
+                                      sentence_check.dart (SentenceCheckField practice / exam, SentenceResult, SentenceOutcome, practiceLabel, examLabel, examSummaryText; S-47, S-48; optional timeLimitSeconds and SentenceResult.timedOut, S-61); check_result_line.dart bolds the word in the fix (S-49)
+                                      exam_countdown.dart (ExamCountdown "m:ss", onZero once, countdownText; S-61); check_verdict.dart's explain branch refuses the word and Ukrainian letters with fixed notes (S-62)
       pick_the_answer/                (learn-pick-the-answer) Step 1 exercise, no network, nothing saved
         pick_the_answer_notifier.dart (+.g)  PickTheAnswer notifier (usable words, rounds, kinds) + PickState
         pick_the_answer_screen.dart   PickTheAnswerScreen: the question body inside ExerciseScaffold
@@ -240,6 +241,9 @@ lib/
       own_sentences/                  (learn-own-sentences) Step 3 exam: the word and a prompt only, the learner's own English sentence checked by the Worker (task own); no Worker data call; each final word recorded through examResultSinkProvider (S-55); no Repeat (S-60)
         own_sentences_notifier.dart (+.g)  OwnSentences notifier (usable words S-59, rounds of 3–5 shuffled once, done/next/nextRound) + OwnState, OwnCard, pure ownDetail
         own_sentences_screen.dart     OwnSentencesScreen: word card + SentenceCheckField (exam, task own) inside ExerciseScaffold
+      explain_to_friend/              (learn-explain-to-friend) Step 3 exam, mode asked once per open: Type (SentenceCheckField exam, task explain, 90 s) records each final word through examResultSinkProvider (S-55); With a friend (30 s ExamCountdown, Understood / Not yet) has no network and saves nothing (S-64); no Worker data call
+        explain_to_friend_notifier.dart (+.g)  ExplainToFriend notifier (usable words S-59, mode, rounds of 3–5 shuffled once, done/friendReady/friendAnswer/next/nextRound) + ExplainState, ExplainCard, ExplainResult, pure explainDetail
+        explain_to_friend_screen.dart ExplainToFriendScreen: mode question, Type card, friend card inside ExerciseScaffold
       sentence_patterns/              (learn-sentence-patterns) Step 2 model sentence + pattern, then the learner's own sentence checked by the Worker; one data call per open, nothing saved
         sentence_patterns_notifier.dart (+.g)  SentencePatterns notifier (pattern cards, rounds, My turn, results) + PatternsState, PatternCard
         sentence_patterns_screen.dart SentencePatternsScreen: card, PronunciationButtons (read the sentence), SentenceCheckField (practice) inside ExerciseScaffold

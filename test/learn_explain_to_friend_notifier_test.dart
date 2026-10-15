@@ -249,8 +249,8 @@ void main() {
     test('explainDetail by result', () {
       expect(explainDetail(ExplainResult.typed(_checked('Land by the sea.'))), 'Yours: Land by the sea.');
       expect(explainDetail(ExplainResult.typed(_checked('To borrow money.', right: false))), 'Yours: To borrow money.');
-      expect(explainDetail(ExplainResult.typed(_skipped)), 'Skipped');
-      expect(explainDetail(ExplainResult.typed(_timedOut)), 'Time up');
+      expect(explainDetail(const ExplainResult.typed(_skipped)), 'Skipped');
+      expect(explainDetail(const ExplainResult.typed(_timedOut)), 'Time up');
       expect(explainDetail(const ExplainResult.typed(SentenceResult(outcome: SentenceOutcome.notChecked, sentence: 'Take it fast.'))),
           'Yours: Take it fast.');
       expect(explainDetail(const ExplainResult.friend(FriendAnswer.understood)), 'Understood');
