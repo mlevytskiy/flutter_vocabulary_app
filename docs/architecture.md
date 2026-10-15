@@ -234,6 +234,9 @@ lib/
       quiz/                           (learn-quiz) Step 3 exam: up to 7 mixed choice + gap questions (S-53, S-54); one sentence data call per open, a failure runs choice only; the first Step 3 writer of word results (S-55 exam-result pattern)
         quiz_notifier.dart (+.g)      Quiz notifier (usable words, quizLayout, answers recorded through examResultSinkProvider at once, Repeat) + QuizState, QuizQuestion, QuizAnswer, choiceLabel, typedLabel
         quiz_screen.dart              QuizScreen: ChoiceOptions (reveal: false) + Skip, or GapPrompt + TypedAnswerField (exam) inside ExerciseScaffold; summary with details and Repeat
+      translate_sentences/            (learn-translate-sentences) Step 3 exam: a Ukrainian sentence with the cue in bold, the learner's English translation checked by the Worker; one translate data call per open; each final word recorded through examResultSinkProvider (S-55); no Repeat (S-58)
+        translate_sentences_notifier.dart (+.g)  TranslateSentences notifier (usable cards S-57, rounds of 3–5 shuffled once, done/next/nextRound) + TranslateState, TranslateCard, pure cueSpans, translateDetail
+        translate_sentences_screen.dart TranslateSentencesScreen: cue card + SentenceCheckField (exam, task translate) + model translation inside ExerciseScaffold
       sentence_patterns/              (learn-sentence-patterns) Step 2 model sentence + pattern, then the learner's own sentence checked by the Worker; one data call per open, nothing saved
         sentence_patterns_notifier.dart (+.g)  SentencePatterns notifier (pattern cards, rounds, My turn, results) + PatternsState, PatternCard
         sentence_patterns_screen.dart SentencePatternsScreen: card, PronunciationButtons (read the sentence), SentenceCheckField (practice) inside ExerciseScaffold

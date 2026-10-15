@@ -291,3 +291,16 @@ The app has no usage analytics; checked at review from the owner's own use, save
 
 - [ ] Real sentences and checks need the owner's learn-kit deploy steps (the `vocab-learn-data` KV namespace, `0006_learn_allowance.sql`, deploy, S-01); until then the exam shows the load error line (AC-06). Default now: build and flip `available`; the web list needs a deploy to show the row as tickable. — owner: Maksym, due: before the owner's first real use.
 - [ ] CLAUDE.md rules 3 and 5 list approved visible changes and models; the approval lists are the owner's edit (S-01). This exercise's screen is approved with every exercise's screens and adds no model or package. Default now: no CLAUDE.md edit by agents. — owner: Maksym, due: any time.
+
+## Implementation status
+
+Implemented 2026-10-15 on `feat/learn-exercises`, test-first (commits `feat(learn-translate-sentences): ...`). All 29 ACs have code and tests; no AC needed an Implementation note. §8 questions keep their defaults.
+
+**Done.** `lib/features/learn/translate_sentences/`: `TranslateSentences` notifier family with `TranslateState`, `TranslateCard`, pure `cueSpans` and `translateDetail` (S-58); `TranslateSentencesScreen` (cue card, kit `SentenceCheckField` in exam mode with task `translate` and the source as `extra`, then "Model translation:" with the word in bold and "Next"). Word results use the Quiz pattern: `done(result)` stores the result and in the same step calls `unawaited(examResultSinkProvider.record(...))` with `examLabel`, nothing for not checked; `next`, `nextRound`, the summary, Done and Back never record. `case 'translate-sentences'` in `exerciseScreen`; `available: true` in `exercises.json` and `exercises.dart`. Unchanged: every kit file, `learn_api_service.dart`, `exam_result_sink.dart`, `word_result.dart`, the Worker code except the registry flip.
+
+**Tests.** `learn_translate_sentences_notifier_test` (19: cueSpans, rounds for 3/5/6/9/11/19, determinism, usable-word rules, one record per final word, summary details), `learn_translate_sentences_screen_test` (14: card, pre-check refusals, Checking and Good, synonym note, fixed, Skip, failed check and Retry, day limit, two-round summary with Next round and Done, leaving mid-check, not enough, load errors, History), `word_result_test` (+1, AC-22/AC-26 over the real store), `learn_screen_test` (+1), `exercise_route_test` (+1); AC-29 by a new case in `vocab-photo-api/test/learn.test.mjs`. Updated for the flip (`explain-to-friend` stays the unavailable example): `learn_screen_test`, `learn_exercises_test`, `exercise_route_test`, `learn.test.mjs`, `learn-exercises.test.mjs`.
+
+**Notes.**
+- The shuffle of each round uses `exerciseRandomProvider`, read once per build; group words with an empty word are ignored when checking the source for English words of the group.
+- The Worker's web list shows the row as tickable and needs a deploy to match.
+

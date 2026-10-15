@@ -15,7 +15,6 @@ import 'package:flutter_vocabulary_app/features/learn/kit/check_verdict.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_phase.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
-import 'package:flutter_vocabulary_app/features/learn/kit/result_summary.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/sentence_check.dart';
 import 'package:flutter_vocabulary_app/features/learn/translate_sentences/translate_sentences_notifier.dart';
 
