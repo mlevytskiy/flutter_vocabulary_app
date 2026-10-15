@@ -16,6 +16,7 @@ import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/quiz/quiz_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/check_verdict.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/sentence_check.dart';
+import 'package:flutter_vocabulary_app/features/learn/explain_to_friend/explain_to_friend_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/own_sentences/own_sentences_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/translate_sentences/translate_sentences_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/anki_export.dart';
@@ -277,6 +278,35 @@ void main() {
       }
       final r = read.results.single;
       expect((r.rowId, r.exerciseId, r.label), (asked.rowId, 'own-sentences', WordResultLabel.repeat));
+      expect(read.updatedAt.isAtSameMomentAs(t0), isTrue);
+      expect(read.lastLocalModifiedAt.isAtSameMomentAs(t0), isTrue);
+      expect(generateAnkiFile(read.words), anki);
+    });
+
+    test('learn-explain-to-friend AC-31, AC-35: a timed-out Type word saves one repeat and moves no time, row or export',
+        () async {
+      final words = [
+        for (var i = 0; i < 3; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 'e$i'),
+      ];
+      final s = session('explain')..words = words;
+      await store.put(s);
+      final anki = generateAnkiFile((await store.byId('explain'))!.words);
+      final container = ProviderContainer(overrides: [
+        sessionStoreProvider.overrideWith((ref) async => store),
+        exerciseWordsProvider('explain', 'g').overrideWith((ref) async => (group: words, others: const <WordPair>[])),
+      ]);
+      addTearDown(container.dispose);
+      await container.read(explainToFriendProvider('explain', 'g').future);
+      final n = container.read(explainToFriendProvider('explain', 'g').notifier)..chooseMode(ExplainMode.type);
+      final asked = container.read(explainToFriendProvider('explain', 'g')).requireValue.card!;
+      n.done(const SentenceResult(outcome: SentenceOutcome.skipped, sentence: '', timedOut: true));
+      var read = (await store.byId('explain'))!;
+      for (var i = 0; i < 100 && read.results.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+        read = (await store.byId('explain'))!;
+      }
+      final r = read.results.single;
+      expect((r.rowId, r.exerciseId, r.label), (asked.rowId, 'explain-to-friend', WordResultLabel.repeat));
       expect(read.updatedAt.isAtSameMomentAs(t0), isTrue);
       expect(read.lastLocalModifiedAt.isAtSameMomentAs(t0), isTrue);
       expect(generateAnkiFile(read.words), anki);

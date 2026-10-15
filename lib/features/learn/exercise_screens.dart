@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'coming_soon_screen.dart';
+import 'explain_to_friend/explain_to_friend_screen.dart';
 import 'fill_the_gaps/fill_the_gaps_screen.dart';
 import 'guess_my_word/guess_my_word_screen.dart';
 import 'match_definitions/match_definitions_screen.dart';
@@ -19,6 +20,8 @@ import 'translate_sentences/translate_sentences_screen.dart';
 /// coming-soon screen, never an empty one (AC-04).
 Widget exerciseScreen(String exercise, String? sessionId, String groupId) {
   switch (exercise) {
+    case 'explain-to-friend':
+      return ExplainToFriendScreen(sessionId: sessionId, groupId: groupId);
     case 'fill-the-gaps':
       return FillTheGapsScreen(sessionId: sessionId, groupId: groupId);
     case 'guess-my-word':
