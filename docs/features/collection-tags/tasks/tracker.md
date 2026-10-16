@@ -10,7 +10,7 @@
 | T3 | [Add the pure collection search: summaries, matching, filters, calendar-day ranges, sort and tag counts](./T3-domain-add-the-pure-collection-search-summaries-matching-filters-ca.md) | domain | agent | M | T2 | done |
 | T4 | [Add description, typed tags and TagLibraryEntry to the Isar models and regenerate the schema](./T4-infra-add-description-typed-tags-and-taglibraryentry-to-the-isar-m.md) | infra | agent | S | T2 | done |
 | T5 | [Protect description and typed tags in put/update and add setDetails, create(details), addCollectionTags and the library writes](./T5-infra-protect-description-and-typed-tags-in-put-update-and-add-set.md) | infra | agent | L | T4 | done |
-| T6 | [Migrate untyped tags once on store open with the legacy-as-topic fallback](./T6-infra-migrate-untyped-tags-once-on-store-open-with-the-legacy-as-t.md) | infra | agent | M | T5 | todo |
+| T6 | [Migrate untyped tags once on store open with the legacy-as-topic fallback](./T6-infra-migrate-untyped-tags-once-on-store-open-with-the-legacy-as-t.md) | infra | agent | M | T5 | done |
 | T7 | [Add the summaries stream and the library providers, and move tag suggestions into features/tags](./T7-wiring-add-the-summaries-stream-and-the-library-providers-and-move.md) | wiring | agent | M | T3, T6 | todo |
 | T8 | [Route details, Notes tag edits and source notes through the store and adopt stored values in the main notifier](./T8-app-route-details-notes-tag-edits-and-source-notes-through-the-s.md) | app | agent | M | T5 | todo |
 | T9 | [Add TagChip and grow TagEditor into TypedTagField with hints, examples, suggestion row, autocomplete, limits and Forget](./T9-ui-add-tagchip-and-grow-tageditor-into-typedtagfield-with-hints.md) | ui | agent | M | T2 | done |
