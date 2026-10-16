@@ -55,37 +55,36 @@ target_surfaces: []  # filled in §4 — subset of: backend-service | web-fronte
 
 ## 3. Context and scope
 
-<!-- 🎯 Why: draws the SYSTEM BOUNDARY — who talks to it from outside, where the trust zone ends.
-     Without §3, §5 and §8 (authorization) blur — unclear what's «inside» vs «outside».
-     📋 Write: 2–3 sentences of business context + an external-systems table + a C4Context block.
-     📌 «External: none (deliberate, no third-party in v1)» is itself a decision worth stating.
-     Trust boundary — the line past which you don't trust data without checking it.
-     Never N/A — greenfield still draws the planned actors + external systems. -->
+The learner keeps many collections on the phone, one per lesson, club, set or film. This feature names them, files them into folders, and adds a recycle bin, all on the phone. The only thing that crosses the phone's boundary is the collection's name: it goes to the Worker with a shared-link publish and appears as the shared page's title, and it names shared files. Folders, other collections and the bin never leave the phone.
 
-<Business context in 2–3 sentences. What the system does for whom.>
-
-<!-- brownfield: <one-line scan summary> (or «N/A — greenfield repo» if no source existed) -->
+<!-- brownfield: Isar `Session` rows + a shared_preferences pointer (SessionStore); WordInputNotifier owns the current session and runs a 5-minute launch rule with a RESTORE offer; History watches non-empty sessions; the drawer shows only with other sessions; whole-record put() by four writers; the Worker's D1 `sessions` table has no title. -->
 
 **External systems (in / out):**
 
 | Actor or system | Type | Interaction |
 |---|---|---|
-| <author role> | Person | <what they do> |
-| <external service> | System (internal/external) | <interaction> |
-| <identity provider> | System (external) | <provides auth tokens> |
+| learner | Person | names, files, opens, deletes and restores collections on the phone |
+| partner | Person | opens a shared link and reads the collection's name as the page title |
+| vocab-photo-api (Worker) | System (internal) | receives the name with a shared-link publish and stores it beside the published collection |
+| shared page | System (internal) | served by the Worker; shows the name as its title, nothing about folders or the bin |
+| phone's share targets | System (external) | receive shared files named after the collection |
 
-**C4 Context (L1):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. -->
+**C4 Context (L1):**
 
 ```mermaid
 C4Context
-    title <feature> — System Context
+    title collections-screen — System Context
 
-    Person(actor, "<Actor role>", "<intent>")
-    System(app, "<Our system>", "<one-sentence description>")
-    System_Ext(ext, "<External system>", "<one-sentence description>")
+    Person(learner, "Learner", "Collects words into named collections and files them in folders on the phone")
+    Person(partner, "Partner", "Opens one collection's shared link")
+    System(app, "Vocabulary app", "Flutter app on the learner's phone; stores collections, folders and the recycle bin locally")
+    System(worker, "vocab-photo-api and shared page", "Cloudflare Worker storing published collections and serving their shared page")
+    System_Ext(targets, "Phone share targets", "Mail, messengers, Anki and other apps that receive shared files")
 
-    Rel(actor, app, "<interaction>", "<protocol>")
-    Rel(app, ext, "<interaction>", "<protocol>")
+    Rel(learner, app, "Names, files, opens, deletes and restores collections")
+    Rel(app, worker, "Publishes a collection with its name on Share link", "HTTPS")
+    Rel(partner, worker, "Reads the shared page titled with the name", "HTTPS")
+    Rel(app, targets, "Hands over files named after the collection", "Android share sheet")
 ```
 
 ## 4. Solution strategy
