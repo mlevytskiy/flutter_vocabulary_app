@@ -27,97 +27,112 @@ const WordCollectionSchema = CollectionSchema(
       name: r'binnedFromFolderId',
       type: IsarType.string,
     ),
-    r'dialogues': PropertySchema(
+    r'description': PropertySchema(
       id: 2,
+      name: r'description',
+      type: IsarType.string,
+    ),
+    r'dialogues': PropertySchema(
+      id: 3,
       name: r'dialogues',
       type: IsarType.objectList,
       target: r'FilmDialogue',
     ),
     r'editToken': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'editToken',
       type: IsarType.string,
     ),
     r'folderId': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'folderId',
       type: IsarType.string,
     ),
     r'groupedWordsKey': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'groupedWordsKey',
       type: IsarType.string,
     ),
     r'groups': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'groups',
       type: IsarType.objectList,
       target: r'WordGroup',
     ),
     r'isShared': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'isShared',
       type: IsarType.bool,
     ),
     r'keep': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'keep',
       type: IsarType.bool,
     ),
     r'lastLocalModifiedAt': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'lastLocalModifiedAt',
       type: IsarType.dateTime,
     ),
     r'name': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'name',
       type: IsarType.string,
     ),
     r'order': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'order',
       type: IsarType.long,
     ),
+    r'originTags': PropertySchema(
+      id: 13,
+      name: r'originTags',
+      type: IsarType.stringList,
+    ),
     r'publishedId': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'publishedId',
       type: IsarType.string,
     ),
     r'results': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'results',
       type: IsarType.objectList,
       target: r'WordResult',
     ),
     r'selectedGroupId': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'selectedGroupId',
       type: IsarType.string,
     ),
     r'sessionId': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'sources': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'sources',
       type: IsarType.objectList,
       target: r'SourcePhoto',
     ),
     r'tags': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'tags',
       type: IsarType.stringList,
     ),
+    r'topicTags': PropertySchema(
+      id: 20,
+      name: r'topicTags',
+      type: IsarType.stringList,
+    ),
     r'updatedAt': PropertySchema(
-      id: 18,
+      id: 21,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 19,
+      id: 22,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -195,6 +210,12 @@ int _wordCollectionEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.description;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.dialogues.length * 3;
   {
     final offsets = allOffsets[FilmDialogue]!;
@@ -235,6 +256,13 @@ int _wordCollectionEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.originTags.length * 3;
+  {
+    for (var i = 0; i < object.originTags.length; i++) {
+      final value = object.originTags[i];
+      bytesCount += value.length * 3;
+    }
+  }
   {
     final value = object.publishedId;
     if (value != null) {
@@ -272,6 +300,13 @@ int _wordCollectionEstimateSize(
       bytesCount += value.length * 3;
     }
   }
+  bytesCount += 3 + object.topicTags.length * 3;
+  {
+    for (var i = 0; i < object.topicTags.length; i++) {
+      final value = object.topicTags[i];
+      bytesCount += value.length * 3;
+    }
+  }
   bytesCount += 3 + object.words.length * 3;
   {
     final offsets = allOffsets[WordPair]!;
@@ -291,45 +326,48 @@ void _wordCollectionSerialize(
 ) {
   writer.writeDateTime(offsets[0], object.binnedAt);
   writer.writeString(offsets[1], object.binnedFromFolderId);
+  writer.writeString(offsets[2], object.description);
   writer.writeObjectList<FilmDialogue>(
-    offsets[2],
+    offsets[3],
     allOffsets,
     FilmDialogueSchema.serialize,
     object.dialogues,
   );
-  writer.writeString(offsets[3], object.editToken);
-  writer.writeString(offsets[4], object.folderId);
-  writer.writeString(offsets[5], object.groupedWordsKey);
+  writer.writeString(offsets[4], object.editToken);
+  writer.writeString(offsets[5], object.folderId);
+  writer.writeString(offsets[6], object.groupedWordsKey);
   writer.writeObjectList<WordGroup>(
-    offsets[6],
+    offsets[7],
     allOffsets,
     WordGroupSchema.serialize,
     object.groups,
   );
-  writer.writeBool(offsets[7], object.isShared);
-  writer.writeBool(offsets[8], object.keep);
-  writer.writeDateTime(offsets[9], object.lastLocalModifiedAt);
-  writer.writeString(offsets[10], object.name);
-  writer.writeLong(offsets[11], object.order);
-  writer.writeString(offsets[12], object.publishedId);
+  writer.writeBool(offsets[8], object.isShared);
+  writer.writeBool(offsets[9], object.keep);
+  writer.writeDateTime(offsets[10], object.lastLocalModifiedAt);
+  writer.writeString(offsets[11], object.name);
+  writer.writeLong(offsets[12], object.order);
+  writer.writeStringList(offsets[13], object.originTags);
+  writer.writeString(offsets[14], object.publishedId);
   writer.writeObjectList<WordResult>(
-    offsets[13],
+    offsets[15],
     allOffsets,
     WordResultSchema.serialize,
     object.results,
   );
-  writer.writeString(offsets[14], object.selectedGroupId);
-  writer.writeString(offsets[15], object.collectionId);
+  writer.writeString(offsets[16], object.selectedGroupId);
+  writer.writeString(offsets[17], object.collectionId);
   writer.writeObjectList<SessionSource>(
-    offsets[16],
+    offsets[18],
     allOffsets,
     SessionSourceSchema.serialize,
     object.sources,
   );
-  writer.writeStringList(offsets[17], object.tags);
-  writer.writeDateTime(offsets[18], object.updatedAt);
+  writer.writeStringList(offsets[19], object.tags);
+  writer.writeStringList(offsets[20], object.topicTags);
+  writer.writeDateTime(offsets[21], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[19],
+    offsets[22],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -345,50 +383,53 @@ WordCollection _wordCollectionDeserialize(
   final object = WordCollection();
   object.binnedAt = reader.readDateTimeOrNull(offsets[0]);
   object.binnedFromFolderId = reader.readStringOrNull(offsets[1]);
+  object.description = reader.readStringOrNull(offsets[2]);
   object.dialogues = reader.readObjectList<FilmDialogue>(
-        offsets[2],
+        offsets[3],
         FilmDialogueSchema.deserialize,
         allOffsets,
         FilmDialogue(),
       ) ??
       [];
-  object.editToken = reader.readStringOrNull(offsets[3]);
-  object.folderId = reader.readStringOrNull(offsets[4]);
-  object.groupedWordsKey = reader.readStringOrNull(offsets[5]);
+  object.editToken = reader.readStringOrNull(offsets[4]);
+  object.folderId = reader.readStringOrNull(offsets[5]);
+  object.groupedWordsKey = reader.readStringOrNull(offsets[6]);
   object.groups = reader.readObjectList<WordGroup>(
-        offsets[6],
+        offsets[7],
         WordGroupSchema.deserialize,
         allOffsets,
         WordGroup(),
       ) ??
       [];
   object.id = id;
-  object.isShared = reader.readBool(offsets[7]);
-  object.keep = reader.readBool(offsets[8]);
-  object.lastLocalModifiedAt = reader.readDateTime(offsets[9]);
-  object.name = reader.readStringOrNull(offsets[10]);
-  object.order = reader.readLong(offsets[11]);
-  object.publishedId = reader.readStringOrNull(offsets[12]);
+  object.isShared = reader.readBool(offsets[8]);
+  object.keep = reader.readBool(offsets[9]);
+  object.lastLocalModifiedAt = reader.readDateTime(offsets[10]);
+  object.name = reader.readStringOrNull(offsets[11]);
+  object.order = reader.readLong(offsets[12]);
+  object.originTags = reader.readStringList(offsets[13]) ?? [];
+  object.publishedId = reader.readStringOrNull(offsets[14]);
   object.results = reader.readObjectList<WordResult>(
-        offsets[13],
+        offsets[15],
         WordResultSchema.deserialize,
         allOffsets,
         WordResult(),
       ) ??
       [];
-  object.selectedGroupId = reader.readStringOrNull(offsets[14]);
-  object.collectionId = reader.readString(offsets[15]);
+  object.selectedGroupId = reader.readStringOrNull(offsets[16]);
+  object.collectionId = reader.readString(offsets[17]);
   object.sources = reader.readObjectList<SessionSource>(
-        offsets[16],
+        offsets[18],
         SessionSourceSchema.deserialize,
         allOffsets,
         SessionSource(),
       ) ??
       [];
-  object.tags = reader.readStringList(offsets[17]) ?? [];
-  object.updatedAt = reader.readDateTime(offsets[18]);
+  object.tags = reader.readStringList(offsets[19]) ?? [];
+  object.topicTags = reader.readStringList(offsets[20]) ?? [];
+  object.updatedAt = reader.readDateTime(offsets[21]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[19],
+        offsets[22],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -409,6 +450,8 @@ P _wordCollectionDeserializeProp<P>(
     case 1:
       return (reader.readStringOrNull(offset)) as P;
     case 2:
+      return (reader.readStringOrNull(offset)) as P;
+    case 3:
       return (reader.readObjectList<FilmDialogue>(
             offset,
             FilmDialogueSchema.deserialize,
@@ -416,13 +459,13 @@ P _wordCollectionDeserializeProp<P>(
             FilmDialogue(),
           ) ??
           []) as P;
-    case 3:
-      return (reader.readStringOrNull(offset)) as P;
     case 4:
       return (reader.readStringOrNull(offset)) as P;
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
       return (reader.readObjectList<WordGroup>(
             offset,
             WordGroupSchema.deserialize,
@@ -430,19 +473,21 @@ P _wordCollectionDeserializeProp<P>(
             WordGroup(),
           ) ??
           []) as P;
-    case 7:
-      return (reader.readBool(offset)) as P;
     case 8:
       return (reader.readBool(offset)) as P;
     case 9:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 11:
-      return (reader.readLong(offset)) as P;
-    case 12:
       return (reader.readStringOrNull(offset)) as P;
+    case 12:
+      return (reader.readLong(offset)) as P;
     case 13:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 14:
+      return (reader.readStringOrNull(offset)) as P;
+    case 15:
       return (reader.readObjectList<WordResult>(
             offset,
             WordResultSchema.deserialize,
@@ -450,11 +495,11 @@ P _wordCollectionDeserializeProp<P>(
             WordResult(),
           ) ??
           []) as P;
-    case 14:
-      return (reader.readStringOrNull(offset)) as P;
-    case 15:
-      return (reader.readString(offset)) as P;
     case 16:
+      return (reader.readStringOrNull(offset)) as P;
+    case 17:
+      return (reader.readString(offset)) as P;
+    case 18:
       return (reader.readObjectList<SessionSource>(
             offset,
             SessionSourceSchema.deserialize,
@@ -462,11 +507,13 @@ P _wordCollectionDeserializeProp<P>(
             SessionSource(),
           ) ??
           []) as P;
-    case 17:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 18:
-      return (reader.readDateTime(offset)) as P;
     case 19:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 20:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 21:
+      return (reader.readDateTime(offset)) as P;
+    case 22:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -1090,6 +1137,160 @@ extension WordCollectionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'binnedFromFolderId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'description',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'description',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'description',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'description',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'description',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'description',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'description',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'description',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'description',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'description',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'description',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'description',
         value: '',
       ));
     });
@@ -2077,6 +2278,231 @@ extension WordCollectionQueryFilter
   }
 
   QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'originTags',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'originTags',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'originTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'originTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      originTagsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       publishedIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -2924,6 +3350,231 @@ extension WordCollectionQueryFilter
   }
 
   QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'topicTags',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'topicTags',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'topicTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'topicTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      topicTagsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       updatedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -3139,6 +3790,20 @@ extension WordCollectionQuerySortBy
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByDescription() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'description', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByDescriptionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'description', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
@@ -3324,6 +3989,20 @@ extension WordCollectionQuerySortThenBy
       thenByBinnedFromFolderIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'binnedFromFolderId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByDescription() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'description', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByDescriptionDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'description', Sort.desc);
     });
   }
 
@@ -3514,6 +4193,13 @@ extension WordCollectionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByDescription(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'description', caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByEditToken(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3568,6 +4254,13 @@ extension WordCollectionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByOriginTags() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'originTags');
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByPublishedId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -3597,6 +4290,13 @@ extension WordCollectionQueryWhereDistinct
   }
 
   QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByTopicTags() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'topicTags');
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
       distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
@@ -3622,6 +4322,13 @@ extension WordCollectionQueryProperty
       binnedFromFolderIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'binnedFromFolderId');
+    });
+  }
+
+  QueryBuilder<WordCollection, String?, QQueryOperations>
+      descriptionProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'description');
     });
   }
 
@@ -3689,6 +4396,13 @@ extension WordCollectionQueryProperty
     });
   }
 
+  QueryBuilder<WordCollection, List<String>, QQueryOperations>
+      originTagsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'originTags');
+    });
+  }
+
   QueryBuilder<WordCollection, String?, QQueryOperations>
       publishedIdProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -3727,6 +4441,13 @@ extension WordCollectionQueryProperty
   QueryBuilder<WordCollection, List<String>, QQueryOperations> tagsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'tags');
+    });
+  }
+
+  QueryBuilder<WordCollection, List<String>, QQueryOperations>
+      topicTagsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'topicTags');
     });
   }
 

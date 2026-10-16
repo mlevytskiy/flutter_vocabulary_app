@@ -73,6 +73,12 @@ class WordCollection {
   /// 2026-10-15, notes-editing). A source's own tags live on the source.
   List<String> tags = [];
 
+  /// The learner's description of the collection and its typed tags
+  /// (collection-tags, ADR-0001). Legacy [tags] stays untouched.
+  String? description;
+  List<String> originTags = [];
+  List<String> topicTags = [];
+
   // --- filing (collections-screen, ADR-0003, ADR-0005) --------------------
   // Copied from the stored record by `CollectionStore.put()`, never from the
   // caller: only the store's filing transactions write them (data-model.md).
@@ -147,7 +153,10 @@ class WordCollection {
             ?.map((r) => WordResult.fromJson(r as Map<String, dynamic>))
             .toList() ??
         <WordResult>[]
-    ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()];
+    ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()]
+    ..description = json['description'] as String?
+    ..originTags = [...?(json['originTags'] as List<dynamic>?)?.cast<String>()]
+    ..topicTags = [...?(json['topicTags'] as List<dynamic>?)?.cast<String>()];
 
   Map<String, dynamic> toJson() => {
         'sessionId': collectionId,
@@ -164,5 +173,8 @@ class WordCollection {
         'dialogues': dialogues.map((d) => d.toJson()).toList(),
         'results': results.map((r) => r.toJson()).toList(),
         'tags': tags,
+        if (description != null) 'description': description,
+        if (originTags.isNotEmpty) 'originTags': originTags,
+        if (topicTags.isNotEmpty) 'topicTags': topicTags,
       };
 }

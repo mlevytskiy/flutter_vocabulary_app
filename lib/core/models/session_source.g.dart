@@ -44,23 +44,33 @@ const SessionSourceSchema = Schema(
       name: r'name',
       type: IsarType.string,
     ),
-    r'tags': PropertySchema(
+    r'originTags': PropertySchema(
       id: 6,
+      name: r'originTags',
+      type: IsarType.stringList,
+    ),
+    r'tags': PropertySchema(
+      id: 7,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'takenAt': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'takenAt',
       type: IsarType.dateTime,
     ),
     r'title': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'title',
       type: IsarType.string,
     ),
+    r'topicTags': PropertySchema(
+      id: 10,
+      name: r'topicTags',
+      type: IsarType.stringList,
+    ),
     r'url': PropertySchema(
-      id: 9,
+      id: 11,
       name: r'url',
       type: IsarType.string,
     )
@@ -98,6 +108,13 @@ int _sessionSourceEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.originTags.length * 3;
+  {
+    for (var i = 0; i < object.originTags.length; i++) {
+      final value = object.originTags[i];
+      bytesCount += value.length * 3;
+    }
+  }
   bytesCount += 3 + object.tags.length * 3;
   {
     for (var i = 0; i < object.tags.length; i++) {
@@ -109,6 +126,13 @@ int _sessionSourceEstimateSize(
     final value = object.title;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
+    }
+  }
+  bytesCount += 3 + object.topicTags.length * 3;
+  {
+    for (var i = 0; i < object.topicTags.length; i++) {
+      final value = object.topicTags[i];
+      bytesCount += value.length * 3;
     }
   }
   {
@@ -132,10 +156,12 @@ void _sessionSourceSerialize(
   writer.writeByte(offsets[3], object.kind.index);
   writer.writeStringList(offsets[4], object.links);
   writer.writeString(offsets[5], object.name);
-  writer.writeStringList(offsets[6], object.tags);
-  writer.writeDateTime(offsets[7], object.takenAt);
-  writer.writeString(offsets[8], object.title);
-  writer.writeString(offsets[9], object.url);
+  writer.writeStringList(offsets[6], object.originTags);
+  writer.writeStringList(offsets[7], object.tags);
+  writer.writeDateTime(offsets[8], object.takenAt);
+  writer.writeString(offsets[9], object.title);
+  writer.writeStringList(offsets[10], object.topicTags);
+  writer.writeString(offsets[11], object.url);
 }
 
 SessionSource _sessionSourceDeserialize(
@@ -153,10 +179,12 @@ SessionSource _sessionSourceDeserialize(
           SourceKind.photo;
   object.links = reader.readStringList(offsets[4]) ?? [];
   object.name = reader.readStringOrNull(offsets[5]);
-  object.tags = reader.readStringList(offsets[6]) ?? [];
-  object.takenAt = reader.readDateTime(offsets[7]);
-  object.title = reader.readStringOrNull(offsets[8]);
-  object.url = reader.readStringOrNull(offsets[9]);
+  object.originTags = reader.readStringList(offsets[6]) ?? [];
+  object.tags = reader.readStringList(offsets[7]) ?? [];
+  object.takenAt = reader.readDateTime(offsets[8]);
+  object.title = reader.readStringOrNull(offsets[9]);
+  object.topicTags = reader.readStringList(offsets[10]) ?? [];
+  object.url = reader.readStringOrNull(offsets[11]);
   return object;
 }
 
@@ -183,10 +211,14 @@ P _sessionSourceDeserializeProp<P>(
     case 6:
       return (reader.readStringList(offset) ?? []) as P;
     case 7:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 8:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 9:
+      return (reader.readStringOrNull(offset)) as P;
+    case 10:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 11:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1064,6 +1096,231 @@ extension SessionSourceQueryFilter
   }
 
   QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'originTags',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'originTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'originTags',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'originTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'originTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      originTagsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'originTags',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
       tagsElementEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1495,6 +1752,231 @@ extension SessionSourceQueryFilter
         property: r'title',
         value: '',
       ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'topicTags',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'topicTags',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'topicTags',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'topicTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsElementIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'topicTags',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsLengthEqualTo(int length) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        length,
+        true,
+        length,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        0,
+        true,
+        0,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        0,
+        false,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsLengthLessThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        0,
+        true,
+        length,
+        include,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsLengthGreaterThan(
+    int length, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        length,
+        include,
+        999999,
+        true,
+      );
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      topicTagsLengthBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.listLength(
+        r'topicTags',
+        lower,
+        includeLower,
+        upper,
+        includeUpper,
+      );
     });
   }
 
