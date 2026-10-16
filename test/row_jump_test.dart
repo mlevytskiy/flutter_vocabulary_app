@@ -5,7 +5,7 @@ import 'package:flutter_vocabulary_app/features/word_input/photo_panel/row_jump.
 
 /// side-bar-for-main-screen T12: the jump to a photo's first row brings it
 /// fully into view within 500 ms in a list of 200 rows of mixed heights,
-/// moving as little as needed (spec AC-04; QG-2c).
+/// at the top of the list (spec AC-04; QG-2c; owner, 2026-10-15).
 void main() {
   double heightOf(int i) => 50.0 + (i * 37) % 90;
 
@@ -75,19 +75,29 @@ void main() {
     expectFullyInView(tester, 7);
   });
 
-  testWidgets('moves as little as needed: the row ends at the bottom edge', (tester) async {
+  testWidgets('the row comes to the top of the list', (tester) async {
     await pumpList(tester);
     await jumpWithin(tester, 60);
     final viewport = tester.getRect(find.byType(Scrollable).first);
-    expect(tester.getRect(find.byKey(keys[60])).bottom, closeTo(viewport.bottom, 1));
+    expect(tester.getRect(find.byKey(keys[60])).top, closeTo(viewport.top, 1));
   });
 
-  testWidgets('a row already in view does not move', (tester) async {
+  testWidgets('a row already in view moves to the top too, and back up',
+      (tester) async {
     await pumpList(tester);
-    final before = tester.getRect(find.byKey(keys[2]));
     await jumpWithin(tester, 2);
-    expect(scroll.offset, 0);
-    expect(tester.getRect(find.byKey(keys[2])), before);
+    final viewport = tester.getRect(find.byType(Scrollable).first);
+    expect(tester.getRect(find.byKey(keys[2])).top, closeTo(viewport.top, 1));
+    await jumpWithin(tester, 40);
+    await jumpWithin(tester, 30);
+    expect(tester.getRect(find.byKey(keys[30])).top, closeTo(viewport.top, 1));
+  });
+
+  testWidgets('the last rows stop at the end of the list', (tester) async {
+    await pumpList(tester);
+    await jumpWithin(tester, 199);
+    expect(scroll.offset, closeTo(scroll.position.maxScrollExtent, 0.5));
+    expectFullyInView(tester, 199);
   });
 
   testWidgets('the drag-mode list jumps too', (tester) async {

@@ -35,7 +35,7 @@ Committed approach: on the words page of the main screen, while the current sess
 
 - Narrowing or rearranging the word rows while the panel is half-open. The owner left this for a later feature.
 - Editing, deleting or adding word rows while the photo panel is open. The owner decided an open panel is only for looking.
-- ~~Showing Quizlet sets in the panel.~~ Reversed by the owner, 2026-10-14 (side-panel-sources): the tab and the half-open panel also list Quizlet sets with words, as tiles; full-open stays photos only (AC-21). Extended by the owner, 2026-10-14: words from film subtitles are listed the same way (AC-22); full-open is not extended. Showing a film's poster on its tile, and sending film sources to the shared page, stay out of scope.
+- ~~Showing Quizlet sets in the panel.~~ Reversed by the owner, 2026-10-14 (side-panel-sources): the tab and the half-open panel also list Quizlet sets with words, as tiles; full-open stays photos only (AC-21). Extended by the owner, 2026-10-14: words from film subtitles are listed the same way (AC-22); full-open is not extended. Sending film sources to the shared page stays out of scope. Showing a film's poster on its tile: reversed by the owner, 2026-10-15 (AC-22 notes).
 - Editing, deleting, cropping or re-taking photos from the panel. The panel only shows photos; changing them is a separate feature.
 - The photo panel on the dialogue pages of the main screen (from get-words-from-subtitles-improvment), and the tab and panel on the Words screen, on History, or on the shared page. The tab is shown on the dialogue pages, but opening it returns to the words page first (AC-13).
 
@@ -225,6 +225,9 @@ Committed approach: on the words page of the main screen, while the current sess
 
 Implementation notes (2026-10-14):
 - Model: `SourceKind.subtitles` appended after `photo` and `set` (the ordinal is stored); `name` holds the title; no new field. Sessions saved before read back unchanged (photo 0, set 1).
+- Poster (owner, 2026-10-15): a film found by name keeps the search's poster address as the source's `url` (no new field; a film imported from a picked file has none). Its tile shows the poster, the title over its foot in half-open; the film icon shows while it loads, when it fails, and with no poster. A film listed without a poster gets one when the same title is imported again by name.
+- Tab with more than three sources (owner, 2026-10-15): the tab keeps three preview slots and its height; the third becomes a mosaic of the third to the sixth sources (two side by side, three as one tall and two small, four as a 2×2 grid), so the tab shows there are more. The count badge is unchanged.
+- No blink on half-open (owner, 2026-10-15): after the main screen's first frame the panel reads every listed photo once and decodes it at the half-open size (`PhotoPreloader`); a small photo whose file was read ahead is drawn in the first frame of the opening, with no new read.
 - Publishing: the Worker (`parseSources`) refuses the whole publish for a `kind` other than `photo` or `set` (`invalid_source`). So the app never declares a subtitles source (`publishedSourceKinds` in `session_publish_service.dart`), and its rows publish as before, without a `sourceId`. The Worker is not changed; showing films on the shared page is a later decision for the owner.
 
 ## 6. Non-functional requirements

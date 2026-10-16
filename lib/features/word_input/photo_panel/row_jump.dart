@@ -1,13 +1,14 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 
-/// Scrolls the word list as little as needed so that row [index] is fully in
-/// view (spec AC-04); a row already in view does not move.
+/// Scrolls the word list so that row [index] is at the top of the list
+/// (spec AC-04; owner, 2026-10-15: the selected source's first row on top),
+/// or as near the top as the list's end allows.
 ///
 /// Rows are built lazily and have different heights, so a row far away has no
 /// context yet: the list first jumps to an estimated offset (index × the
 /// average height of the rows built so far), then, once the row is built,
-/// `Scrollable.ensureVisible` reveals it with the smallest movement. This
+/// `Scrollable.ensureVisible` brings its top edge to the list's top. This
 /// repeats for at most [maxFrames] frames (sad §4 "Jump to a photo's rows").
 Future<void> jumpToRow(
   ScrollController controller,
@@ -21,15 +22,7 @@ Future<void> jumpToRow(
     if (!controller.hasClients) return;
     final row = rowKey(index)?.currentContext;
     if (row != null && row.mounted) {
-      // Below the viewport: bring its bottom edge in; above: its top edge.
-      // A row fully in view is left where it is.
-      await Scrollable.ensureVisible(row,
-          duration: duration,
-          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd);
-      if (!row.mounted) return;
-      await Scrollable.ensureVisible(row,
-          duration: duration,
-          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart);
+      await Scrollable.ensureVisible(row, duration: duration);
       return;
     }
     _jumpToEstimate(controller, index, rowKey);
@@ -64,8 +57,6 @@ void _jumpToEstimate(
   if (first == null) return;
   final average = total / count;
   final top = firstTop! + (index - first) * average;
-  // Aim as the reveal will: a row below ends at the bottom edge, a row above
-  // starts at the top edge.
-  final target = top > position.pixels ? top + average - position.viewportDimension : top;
-  position.jumpTo(target.clamp(position.minScrollExtent, position.maxScrollExtent));
+  // Aim as the reveal will: the row's top at the list's top.
+  position.jumpTo(top.clamp(position.minScrollExtent, position.maxScrollExtent));
 }

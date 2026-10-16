@@ -117,6 +117,14 @@ lib/
   features/
     word_input/
       word_input_screen.dart          the screen: composes widgets below, owns controllers/focus as today
+      word_rows.dart                  (notes-editing) part of word_input_screen.dart: mixin _WordRows,
+                                      the per-row lists, lightning rules, translate / definition /
+                                      pronunciation actions and the row widget, CUT unchanged from the
+                                      screen so the Notes words dialog edits rows the same way
+      source_words_dialog.dart        (notes-editing) part of word_input_screen.dart: a source's words
+                                      as main-screen rows + a dashed "+ Add a word"; writes straight
+                                      into the session, and the main screen rebuilds its rows from it
+                                      when Notes closes (markEditedElsewhere / takeEditedElsewhere)
       quizlet_read_controller.dart    waits for and decides a read: 30 s limit per phase, clock paused
                                       during a robot check; outcomes succeeded / failed / cancelled
       quizlet_import_flow.dart        runQuizletImport: link dialog → progress dialog (reads, shows
@@ -182,6 +190,12 @@ lib/
                                       a History session that is not current gets a red Edit FAB →
                                       "Do you want to edit…?" → switchTo + WordInputRoute().go
                                       (edit-session-from-history)
+    notes/                            (notes-page, notes-editing) notes_screen.dart: one pager per
+                                      panel source — note (title, description, links, tags), picture
+                                      (pinch zoom, tap → PhotoViewerRoute), words (tap → the words
+                                      dialog); session tags above the list. tag_editor.dart (chips +
+                                      suggestions), tag_suggestions.dart (+.g: source and session tag
+                                      pools from every session), photo_viewer_screen.dart
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
                                       the Worker side is vocab-photo-api/src/learn/
       exercises.dart                  Exercise (id, name, stage, available) + the const list of thirteen (learn-kit),

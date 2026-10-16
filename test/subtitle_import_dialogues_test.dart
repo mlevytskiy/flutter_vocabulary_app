@@ -93,7 +93,7 @@ void main() {
                   ref: ref,
                   currentSessionId: () => sessionId,
                   sessionWords: () => const [],
-                  addWords: (words, _) => added.addAll(words),
+                  addWords: (words, _, __) => added.addAll(words),
                   addDialogues: (d, n) => dialoguesAdded.add((d, n)),
                   pickFile: () async => file(),
                 ),

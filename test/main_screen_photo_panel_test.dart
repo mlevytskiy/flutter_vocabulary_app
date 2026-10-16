@@ -12,6 +12,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/edge_glass.dart';
+import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
@@ -19,6 +20,7 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morp
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'photo_panel_test_host.dart' show mainScreenRouter;
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
 
 /// side-bar-for-main-screen T13/T14: the photo panel on the real main screen
@@ -95,7 +97,7 @@ void main() {
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: MaterialApp.router(routerConfig: mainScreenRouter()),
     ));
     container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
     await tester.pump();
@@ -307,13 +309,16 @@ void main() {
       record();
     }
     expect(stop(tester), PanelStop.halfOpen);
-    await tester.tap(find.byKey(PhotoPanel.expandKey));
+    // A drag towards full-open widens the glass and opens Notes; the panel
+    // springs back to half-open under it (owner, 2026-10-15).
+    await tester.fling(find.byKey(PhotoPanel.handleKey), const Offset(-60, 0), 3000);
     for (var i = 0; i < 20; i++) {
       await tester.pump(const Duration(milliseconds: 16));
       record();
     }
     await tester.pumpAndSettle();
-    expect(stop(tester), PanelStop.fullOpen);
+    expect(find.byType(NotesScreen), findsOneWidget);
+    expect(stop(tester), PanelStop.halfOpen);
     expect(sizes, hasLength(1), reason: 'one size all the way: $sizes');
     expect(settings, hasLength(1), reason: 'never faded through its settings');
     await tearDownMain(tester);
@@ -332,6 +337,12 @@ void main() {
     final rect = tester.getRect(row(18));
     expect(rect.top, greaterThanOrEqualTo(listRect(tester).top));
     expect(rect.bottom, lessThanOrEqualTo(listRect(tester).bottom));
+    // Its first row comes to the top of the list, or as near as the list's
+    // end allows (owner, 2026-10-15).
+    expect(
+        (rect.top - listRect(tester).top).abs() < 1 ||
+            listPosition(tester).pixels >= listPosition(tester).maxScrollExtent - 1,
+        isTrue);
 
     // Another photo moves the highlight; its first row (3) is far up again.
     await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p1')));
@@ -339,6 +350,8 @@ void main() {
     expect(highlighted(tester), containsAll([3]));
     expect(highlighted(tester).contains(18), isFalse);
     expect(tester.any(row(3)), isTrue);
+    expect(tester.getRect(row(3)).top, closeTo(listRect(tester).top, 1),
+        reason: 'row 3 comes to the top');
 
     // The same photo again clears it and does not scroll (AC-05).
     final offset = listPosition(tester).pixels;
@@ -364,20 +377,22 @@ void main() {
     await tearDownMain(tester);
   });
 
-  testWidgets('Back steps full-open → half-open → closed, and leaves only when closed (AC-10)',
+  testWidgets('Back steps Notes → half-open → closed, and leaves only when closed (AC-10)',
       (tester) async {
     await pumpMain(tester);
     await openHalf(tester);
     await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p1')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(PhotoPanel.expandKey));
+    // A drag to full-open opens Notes (owner, 2026-10-15).
+    await tester.fling(find.byKey(PhotoPanel.handleKey), const Offset(-60, 0), 3000);
     await tester.pumpAndSettle();
-    expect(stop(tester), PanelStop.fullOpen);
+    expect(find.byType(NotesScreen), findsOneWidget);
 
     expect(await tester.binding.handlePopRoute(), isTrue);
     await tester.pumpAndSettle();
+    expect(find.byType(NotesScreen), findsNothing);
     expect(stop(tester), PanelStop.halfOpen);
-    expect(selected(tester), 'p1', reason: 'full-open → half-open keeps the highlight');
+    expect(selected(tester), 'p1', reason: 'Notes → half-open keeps the highlight');
 
     expect(await tester.binding.handlePopRoute(), isTrue);
     await tester.pumpAndSettle();
@@ -415,7 +430,8 @@ void main() {
     ]);
     expect(find.byKey(PhotoPanel.tabKey), findsOneWidget);
     await openHalf(tester);
-    expect(find.byKey(PhotoPanel.expandKey), findsNothing);
+    // Expand opens Notes, which lists sets too (owner, 2026-10-15).
+    expect(find.byKey(PhotoPanel.expandKey), findsOneWidget);
     await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('quizlet-9')));
     await tester.pumpAndSettle();
     expect(selected(tester), 'quizlet-9');
@@ -474,8 +490,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(wordInputNotifierProvider).value!.words.length, rows);
 
-    // Another row's one line: only closes the panel.
-    await tester.tap(line(2), warnIfMissed: false);
+    // Another row's one line: only closes the panel. (The tap above may have
+    // selected a source, whose first row then went to the top.)
+    await tester.tapAt(listRect(tester).centerLeft.translate(40, 0));
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
     expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
@@ -565,6 +582,37 @@ void main() {
     navigator.pop();
     await tester.pumpAndSettle();
     expect(find.byKey(PhotoPanel.tabKey).hitTestable(), findsOneWidget);
+    await tearDownMain(tester);
+  });
+
+  testWidgets(
+      'a word edited in the Notes words dialog is on the main screen '
+      'when Notes closes (notes-editing)', (tester) async {
+    await pumpMain(tester);
+    await openHalf(tester);
+    await tester.tap(find.byKey(PhotoPanel.expandKey));
+    await tester.pumpAndSettle();
+    final pager = find.byKey(NotesScreen.pagerKey('p1'));
+    await tester.drag(pager, const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(NotesScreen.wordsKey('p1')));
+    await tester.pumpAndSettle();
+    final dialog = find.byType(SourceWordsDialog);
+    await tester.enterText(
+        find.descendant(of: dialog, matching: find.text('word3')), 'teapot');
+    // Written now, outside the fake clock: a debounced Isar write begun
+    // inside it never finishes and holds up the next tests' writes.
+    await tester.runAsync(
+        () => container.read(wordInputNotifierProvider.notifier).flush());
+    await tester.pump();
+    await tester.tap(find.byKey(SourceWordsDialog.closeKey));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<WordRowMorph>(row(3)).word!.text, 'teapot');
+    expect(
+        container.read(wordInputNotifierProvider).value!.words[3].word, 'teapot');
     await tearDownMain(tester);
   });
 

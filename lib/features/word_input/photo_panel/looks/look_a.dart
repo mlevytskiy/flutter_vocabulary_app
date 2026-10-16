@@ -72,13 +72,17 @@ class LookA extends PhotoPanelLook {
         padding: const EdgeInsets.fromLTRB(_tabPad, _gap, _tabPad, _gap),
         child: Column(
           children: [
-            for (final photo in photos.take(3))
+            for (final (i, photo) in photos.take(3).indexed)
               Padding(
                 padding: const EdgeInsets.only(bottom: _gap),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: SizedBox.square(
-                      dimension: _mini, child: preview(photo, _mini)),
+                    dimension: _mini,
+                    child: i == 2 && photos.length > 3
+                        ? _mosaic(photos.skip(2).take(4).toList(), preview)
+                        : preview(photo, _mini),
+                  ),
                 ),
               ),
             Container(
@@ -100,6 +104,38 @@ class LookA extends PhotoPanelLook {
           ],
         ),
       ),
+    );
+  }
+
+  static const mosaicKey = Key('photo-tab-mosaic');
+  static const _mosaicGap = 2.0;
+
+  /// With more than three sources the tab's third preview is this mosaic of
+  /// the third to the sixth, so the tab shows there are more (owner,
+  /// 2026-10-15): two to four sources in one mini preview's square: two side by side,
+  /// three as one tall and two small, four in a 2×2 grid.
+  Widget _mosaic(List<PhotoWithWords> photos, PreviewBuilder preview) {
+    const half = (_mini - _mosaicGap) / 2;
+    Widget cell(int i, {double width = half, double height = half}) => SizedBox(
+        width: width, height: height, child: preview(photos[i], width));
+    const gapW = SizedBox(width: _mosaicGap);
+    const gapH = SizedBox(height: _mosaicGap);
+    return KeyedSubtree(
+      key: mosaicKey,
+      child: switch (photos.length) {
+        2 =>
+          Row(children: [cell(0, height: _mini), gapW, cell(1, height: _mini)]),
+        3 => Row(children: [
+            cell(0, height: _mini),
+            gapW,
+            Column(children: [cell(1), gapH, cell(2)]),
+          ]),
+        _ => Column(children: [
+            Row(children: [cell(0), gapW, cell(1)]),
+            gapH,
+            Row(children: [cell(2), gapW, cell(3)]),
+          ]),
+      },
     );
   }
 

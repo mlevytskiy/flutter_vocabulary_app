@@ -48,8 +48,10 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final host = PanelHost(photos: fakePhotos(4), look: look);
       await host.pump(tester);
-      expect(find.byType(PhotoPreview).evaluate().length, lessThanOrEqualTo(3),
-          reason: 'at most three mini previews');
+      // Three slots; with more than three sources the third is a mosaic
+      // (owner, 2026-10-15).
+      expect(find.byType(PhotoPreview).evaluate().length, lessThanOrEqualTo(6),
+          reason: 'two mini previews and a mosaic of at most four');
       await tester.tap(tabFinder);
       await tester.pumpAndSettle();
       expect(host.controller.stop, PanelStop.halfOpen);
@@ -83,7 +85,7 @@ void main() {
     expect(() => tabSizeFor(const _TallLook(), 3), throwsA(isA<AssertionError>()));
   });
 
-  testWidgets('look A draws at most three mini previews plus the count', (tester) async {
+  testWidgets('look A draws two mini previews, a mosaic of the rest, plus the count', (tester) async {
     const look = LookA();
     await tester.pumpWidget(ProviderScope(
       overrides: [sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({}))],
@@ -103,7 +105,9 @@ void main() {
       ),
     ));
     await tester.pump();
-    expect(find.byType(PhotoPreview), findsNWidgets(3));
+    expect(find.byType(PhotoPreview), findsNWidgets(5));
+    expect(find.descendant(of: find.byKey(LookA.mosaicKey), matching: find.byType(PhotoPreview)),
+        findsNWidgets(3));
     expect(find.text('5'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

@@ -66,6 +66,10 @@ class Session {
   /// the `ExamResultSink`. A session from before has none.
   List<WordResult> results = [];
 
+  /// Tags for the whole session, edited at the top of the Notes page (owner,
+  /// 2026-10-15, notes-editing). A source's own tags live on the source.
+  List<String> tags = [];
+
   /// The most results a session keeps; the oldest goes first (AC-38).
   static const maxResults = 2000;
 
@@ -112,7 +116,8 @@ class Session {
     ..results = (json['results'] as List<dynamic>?)
             ?.map((r) => WordResult.fromJson(r as Map<String, dynamic>))
             .toList() ??
-        <WordResult>[];
+        <WordResult>[]
+    ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()];
 
   Map<String, dynamic> toJson() => {
         'sessionId': sessionId,
@@ -128,5 +133,6 @@ class Session {
         'groupedWordsKey': groupedWordsKey,
         'dialogues': dialogues.map((d) => d.toJson()).toList(),
         'results': results.map((r) => r.toJson()).toList(),
+        'tags': tags,
       };
 }

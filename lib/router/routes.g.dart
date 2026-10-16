@@ -59,6 +59,14 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           ],
         ),
         GoRouteData.$route(
+          path: 'notes',
+          factory: _$NotesRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: 'photo/:sourceId',
+          factory: _$PhotoViewerRoute._fromState,
+        ),
+        GoRouteData.$route(
           path: 'history',
           factory: _$HistoryRoute._fromState,
         ),
@@ -330,6 +338,61 @@ mixin _$StoryRunRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/table/settings/runs/${Uri.encodeComponent(_self.runId)}',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$NotesRoute on GoRouteData {
+  static NotesRoute _fromState(GoRouterState state) => NotesRoute(
+        selectedId: state.uri.queryParameters['selected-id'],
+      );
+
+  NotesRoute get _self => this as NotesRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/notes',
+        queryParams: {
+          if (_self.selectedId != null) 'selected-id': _self.selectedId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$PhotoViewerRoute on GoRouteData {
+  static PhotoViewerRoute _fromState(GoRouterState state) => PhotoViewerRoute(
+        sourceId: state.pathParameters['sourceId']!,
+      );
+
+  PhotoViewerRoute get _self => this as PhotoViewerRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/photo/${Uri.encodeComponent(_self.sourceId)}',
       );
 
   @override

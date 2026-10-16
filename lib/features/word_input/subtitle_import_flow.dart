@@ -41,13 +41,16 @@ abstract final class SubtitleImportMessages {
 /// the number of words kept, so one save holds both
 /// (get-words-from-subtitles-improvment AC-02, AC-03). [addWords] also gets
 /// the film's title ([subtitleFilmTitle]), the source the screen records the
-/// kept rows under (side-panel-sources, spec AC-22).
+/// kept rows under (side-panel-sources, spec AC-22), and its poster's address
+/// for the photo panel's tile (owner, 2026-10-15): the one found by name, or,
+/// for a picked file, one looked up by the file's name while the dialogs are
+/// open ([findSubtitlePoster]); null when none is found in time.
 Future<void> runSubtitleImport({
   required BuildContext context,
   required WidgetRef ref,
   required String? Function() currentSessionId,
   required List<String> Function() sessionWords,
-  required void Function(List<VocabWord> words, String film) addWords,
+  required void Function(List<VocabWord> words, String film, String? poster) addWords,
   void Function(List<ImportedDialogue> dialogues, int keptCount)? addDialogues,
   Future<XFile?> Function()? pickFile,
 }) async {
@@ -63,6 +66,11 @@ Future<void> runSubtitleImport({
     findByName: (context) => showSubtitleSearchDialog(context, service: ref.read(subtitleSearchServiceProvider)),
   );
   if (request == null || !context.mounted) return;
+
+  // A picked file has no poster: look one up by its name meanwhile.
+  final poster = request.imageUrl != null
+      ? Future<String?>.value(request.imageUrl)
+      : findSubtitlePoster(ref.read(subtitleSearchServiceProvider), subtitleFilmTitle(request));
 
   await prefsNotifier.recordUsed(level: request.level, maximum: request.maximum);
   if (!context.mounted) return;
@@ -165,7 +173,9 @@ Future<void> runSubtitleImport({
           ),
   );
   if (kept != null && kept.isNotEmpty && context.mounted && currentSessionId() == startedIn) {
-    addWords(kept, subtitleFilmTitle(request));
+    final posterUrl = await poster.timeout(_posterWait, onTimeout: () => null);
+    if (!context.mounted || currentSessionId() != startedIn) return;
+    addWords(kept, subtitleFilmTitle(request), posterUrl);
     final dialogues = result?.dialogues ?? const [];
     if (withDialogues && dialogues.isNotEmpty) {
       addDialogues?.call(dialogues, kept.length);
@@ -183,6 +193,41 @@ String subtitleFilmTitle(SubtitleImportRequest request) {
   final dot = name.lastIndexOf('.');
   final bare = (dot > 0 ? name.substring(0, dot) : name).trim();
   return bare.isEmpty ? name : bare;
+}
+
+/// How long Done waits for a poster still being looked up.
+const _posterWait = Duration(seconds: 3);
+
+/// The poster of the film or series named [title], from the subtitle search's
+/// title suggestions: the first suggestion that has one. Null when nothing
+/// is found or the search fails; never throws.
+Future<String?> findSubtitlePoster(SubtitleSearchService service, String title) async {
+  final query = subtitlePosterQuery(title);
+  if (query.isEmpty) return null;
+  try {
+    final titles = await service.titles(query);
+    for (final t in titles) {
+      final url = t.imageUrl;
+      if (url != null && url.isNotEmpty) return url;
+    }
+  } catch (e) {
+    debugPrint('SUBTITLES: no poster for "$query": $e');
+  }
+  return null;
+}
+
+/// The film's name in a subtitle file's name: dots and underscores made
+/// spaces, cut before an episode mark (S01E02), a year or a release tag, and
+/// brackets dropped. "The.Office.S01E02.720p.srt" → "The Office".
+String subtitlePosterQuery(String fileTitle) {
+  var q = fileTitle.replaceAll(RegExp(r'[._]+'), ' ');
+  q = q.replaceAll(RegExp(r'\[[^\]]*\]|\([^)]*\)'), ' ');
+  final cut = RegExp(
+    r'\b(s\d{1,2}\s?e\d{1,3}|\d{1,2}x\d{2}|(19|20)\d{2}|480p|720p|1080p|2160p|4k|web(-?dl|rip)?|bluray|brrip|hdtv|dvdrip|hdrip|x26[45]|h ?26[45]|hevc|yify)\b',
+    caseSensitive: false,
+  ).firstMatch(q);
+  if (cut != null && cut.start > 0) q = q.substring(0, cut.start);
+  return q.replaceAll(RegExp(r'\s+'), ' ').trim();
 }
 
 /// The file holds no word to propose: no English dialogue, or only words the

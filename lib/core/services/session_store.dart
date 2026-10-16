@@ -137,6 +137,7 @@ class SessionStore {
           ..selectedGroupId = s.selectedGroupId
           ..groupedWordsKey = s.groupedWordsKey
           ..dialogues = [for (final d in s.dialogues) d.copy()]
+          ..tags = [...s.tags]
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
           ..results = existing?.results ?? [for (final r in s.results) r.copy()];

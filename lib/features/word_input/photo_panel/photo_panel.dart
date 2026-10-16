@@ -13,6 +13,7 @@ import 'photo_panel_controller.dart';
 import 'photo_panel_stops.dart';
 import 'photo_preview.dart';
 import 'photos_with_words.dart';
+import 'source_hero.dart';
 import 'source_tile.dart';
 
 /// The photo tab and photo panel over the main screen's words page
@@ -36,6 +37,8 @@ class PhotoPanel extends ConsumerStatefulWidget {
     this.bottomReserve = 0,
     this.scrollController,
     this.onSelected,
+    this.onOpenNotes,
+    this.notesPage,
     @visibleForTesting this.look,
   });
 
@@ -46,6 +49,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
   static const closeKey = Key('photo-panel-close');
   static const backKey = Key('photo-panel-back');
   static const growingPhotoKey = Key('photo-panel-growing-photo');
+  static const notesRevealKey = Key('photo-panel-notes-reveal');
   static const largeBrowserKey = Key('photo-panel-large-browser');
   static Key smallPhotoKey(String id) => ValueKey('photo-panel-small-$id');
   static Key largePhotoKey(String id) => ValueKey('photo-panel-large-$id');
@@ -69,6 +73,18 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// Called after the selected photo changes, with the new one or null; the
   /// screen highlights its rows and jumps to the first (spec AC-04, AC-05).
   final ValueChanged<String?>? onSelected;
+
+  /// Opens the Notes page with the selected source id, and completes when
+  /// it is closed. With it, the expand control opens Notes instead of
+  /// full-open, for any source, and the small pictures fly to their Notes
+  /// pages as heroes; the panel stays half-open under it (owner, 2026-10-15).
+  final Future<void> Function(String? selectedId)? onOpenNotes;
+
+  /// The Notes page as [onOpenNotes] will show it, for the selected source.
+  /// With it, a drag past half-open reveals this page over the panel as it
+  /// widens, instead of the large photos, and settling at full-open opens
+  /// Notes from there with nothing changing on screen (owner, 2026-10-15).
+  final Widget Function(String? selectedId)? notesPage;
 
   /// Overrides look A; tests only.
   final PhotoPanelLook? look;
@@ -115,6 +131,12 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   /// The half-open column of small photos.
   final _column = ScrollController();
+
+  /// The photos read and decoded at the half-open size (and Notes' size)
+  /// while the panel is closed, so half-open and Notes draw them at once
+  /// (owner, 2026-10-15).
+  PhotoPreloader get _preloader => ref.read(photoPreloaderProvider);
+  bool _preloadScheduled = false;
 
   /// The tab's and the panel's frosted glass (Android) share one read of
   /// the screen behind them per frame; one key for the panel's life.
@@ -182,6 +204,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   void dispose() {
     widget.controller.removeListener(_onControllerChanged);
     widget.controller.attachOpenness(null);
+    _route?.secondaryAnimation?.removeStatusListener(_onRouteCovered);
     if (_sentRects.isNotEmpty) _exclusion.clear();
     _watchedPosition?.isScrollingNotifier.removeListener(_onScrolling);
     _openness.dispose();
@@ -216,7 +239,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   void _onControllerChanged() {
     if (!mounted) return;
     setState(() {}); // the selection may have changed too
-    if (_panelDragging) return;
+    if (_panelDragging || _toNotes) return;
     _animateTo(widget.controller.stop.openness);
   }
 
@@ -250,6 +273,75 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     widget.controller.setStop(_limit(stop));
   }
 
+  /// The Notes page is on top: the panel stays half-open under it, so its
+  /// small pictures are there for the heroes to fly back to.
+  bool _inNotes = false;
+
+  /// The expand control: Notes when the screen gives it, otherwise full-open.
+  Future<void> _expand() async {
+    final openNotes = widget.onOpenNotes;
+    if (openNotes == null) return _open(PanelStop.fullOpen);
+    if (widget.busy || _inNotes) return;
+    _inNotes = true;
+    try {
+      await openNotes(widget.controller.selectedId);
+    } finally {
+      _inNotes = false;
+      _backToHalf();
+    }
+  }
+
+  /// The panel is widening into the Notes page after a drag, or is drawn as
+  /// it under the Notes page until that page covers the screen.
+  bool _toNotes = false;
+
+  bool get _revealsNotes =>
+      widget.onOpenNotes != null && widget.notesPage != null;
+
+  /// A drag settled at full-open with Notes: the panel finishes widening into
+  /// the Notes page, then the page is pushed over it. Once it covers the
+  /// screen the panel goes back to half-open beneath ([_onRouteCovered]).
+  void _widenIntoNotes() {
+    _toNotes = true;
+    if (widget.controller.stop != PanelStop.halfOpen) {
+      widget.controller.setStop(PanelStop.halfOpen);
+    }
+    _animatingTo = 1;
+    _openness
+        .animateTo(1,
+            duration: _slideDuration(_openness.value, 1),
+            curve: Curves.easeOutCubic)
+        .whenCompleteOrCancel(() {
+      _animatingTo = null;
+      if (!mounted || !_toNotes) return;
+      if (widget.busy || _inNotes) {
+        _backToHalf(animate: true);
+      } else {
+        _expand();
+      }
+    });
+  }
+
+  /// Leaves the Notes look: back at half-open, at once when hidden under the
+  /// Notes page, or sliding back when Notes did not open.
+  void _backToHalf({bool animate = false}) {
+    if (!_toNotes || !mounted) return;
+    _toNotes = false;
+    final half = PanelStop.halfOpen.openness;
+    if (animate) {
+      _animateTo(half);
+    } else {
+      _openness.value = half;
+    }
+  }
+
+  /// The main screen's route, whose covering by Notes is watched.
+  ModalRoute<Object?>? _route;
+
+  void _onRouteCovered(AnimationStatus status) {
+    if (status == AnimationStatus.completed) _backToHalf();
+  }
+
   double get _halfWidth => _look.halfOpenWidth;
   double get _fullWidth => _overlay.width;
 
@@ -276,18 +368,31 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     if (_dragStartStop == PanelStop.closed) _unfocus();
   }
 
+  /// A drag can widen the panel past half-open: towards full-open, or towards
+  /// Notes when the screen opens Notes (for any source, not only photos).
+  bool get _dragsPastHalf => _hasPhotos || widget.onOpenNotes != null;
+
   void _panelDragBy(double dx) {
     if (!_panelDragging) return;
     final t = _opennessOf(_widthOf(_openness.value) - dx);
-    _openness.value = _hasPhotos ? t : math.min(t, PanelStop.halfOpen.openness);
+    _openness.value =
+        _dragsPastHalf ? t : math.min(t, PanelStop.halfOpen.openness);
   }
 
-  /// Settles at a stop by the rule (spec AC-08).
+  /// Settles at a stop by the rule (spec AC-08). With Notes, a drag that
+  /// would settle at full-open opens Notes instead, and the panel goes back
+  /// to half-open under it, where the picture flies from (owner, 2026-10-15).
   void _endPanelDrag(double velocityX) {
     if (!_panelDragging) return;
     _panelDragging = false;
     final velocity = -velocityX / _pixelsPerOpenness(_openness.value);
-    final stop = _limit(settle(_dragStartStop, _openness.value, velocity));
+    var stop = settle(_dragStartStop, _openness.value, velocity);
+    if (stop == PanelStop.fullOpen && widget.onOpenNotes != null) {
+      if (_revealsNotes) return _widenIntoNotes();
+      stop = PanelStop.halfOpen;
+      _expand();
+    }
+    stop = _limit(stop);
     _animateTo(stop.openness);
     widget.controller.setStop(stop);
     // The same stop again does not notify; settle back to it anyway.
@@ -434,7 +539,27 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         width: width,
         fit: fit,
         placeholder: _look.buildPlaceholder,
+        preloader: _preloader,
       );
+
+  /// After this frame, starts reading and decoding the sources the panel
+  /// does not have yet, so the main screen's first frame never waits.
+  void _schedulePreload(List<SourceWithWords> sources) {
+    if (_preloadScheduled) return;
+    _preloadScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _preloadScheduled = false;
+      if (!mounted) return;
+      _preloader.preload(
+          context, ref.read(sourcePhotoStoreProvider), [
+        for (final s in sources) s.source
+      ], [
+        _look.halfOpenWidth,
+        if (widget.onOpenNotes != null)
+          notesPictureWidth(MediaQuery.sizeOf(context).width),
+      ]);
+    });
+  }
 
   Rect _panelRect(double t) {
     final half = Rect.fromLTRB(
@@ -463,6 +588,11 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
         ),
       );
 
+  /// A small picture flies to its Notes page when the panel opens Notes.
+  Widget _heroed(String id, Widget picture) => widget.onOpenNotes == null
+      ? picture
+      : SourceHero(id: id, small: true, child: picture);
+
   /// The half-open column: the handle bar with close and expand (expand only
   /// with a photo to show large), then the small photos and set tiles, oldest
   /// first (spec AC-03, AC-21).
@@ -490,12 +620,18 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                     child: ColoredBox(
                         color: Colors.transparent,
                         child: Center(child: look.buildGrip(context)))),
-                if (_hasPhotos)
+                if (widget.onOpenNotes != null)
+                  _control(context,
+                      key: PhotoPanel.expandKey,
+                      label: 'Open notes',
+                      icon: look.buildExpandIcon(context),
+                      onTap: _expand)
+                else if (_hasPhotos)
                   _control(context,
                       key: PhotoPanel.expandKey,
                       label: 'Show photos large',
                       icon: look.buildExpandIcon(context),
-                      onTap: () => _open(PanelStop.fullOpen))
+                      onTap: _expand)
                 else
                   const SizedBox(width: 48),
               ],
@@ -527,9 +663,13 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                     onTap: () => _select(id),
                     child: look.buildSmallPhoto(
                       context,
-                      item.isPhoto
-                          ? _preview(item, photoWidth)
-                          : SourceTile(source: item.source),
+                      _heroed(
+                          id,
+                          item.isPhoto
+                              ? _preview(item, photoWidth)
+                              : SourceTile(
+                                  source: item.source,
+                                  wordCount: item.rows.length)),
                       selected: id == selected,
                     ),
                   ),
@@ -674,9 +814,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                   child: _halfContent(context, sources),
                 ),
               ),
-            if (p > 0 && p < 1 && photos.isNotEmpty)
+            if (p > 0 && p < 1 && photos.isNotEmpty && !_revealsNotes)
               _growingPhoto(context, sources, photos, rect.size, p),
-            if (keepFull && photos.isNotEmpty)
+            if (keepFull && photos.isNotEmpty && !_revealsNotes)
               Offstage(
                 key: const ValueKey('full'),
                 offstage: half,
@@ -702,6 +842,28 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     return Positioned.fromRect(
       rect: rect,
       child: KeyedSubtree(key: PhotoPanel.panelKey, child: content),
+    );
+  }
+
+  /// Past half-open with Notes: the Notes page, laid out on the whole
+  /// screen as it will be pushed, shown inside the widening panel and fading
+  /// in, so the panel turns into the page (owner, 2026-10-15). It ignores
+  /// touches: the drag stays the panel's.
+  Widget _notesReveal(BuildContext context, double t) {
+    final p = (t - 0.5) / 0.5;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: ClipRect(
+          clipper: _RectClipper(_panelRect(t)),
+          child: Opacity(
+            opacity: Curves.easeOut.transform(p.clamp(0.0, 1.0)),
+            child: KeyedSubtree(
+              key: PhotoPanel.notesRevealKey,
+              child: widget.notesPage!(widget.controller.selectedId),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -781,6 +943,10 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
                   KeyedSubtree(
                       key: const ValueKey('panel'),
                       child: _panel(context, sources, photos, t)),
+                if (t > 0.5 && _revealsNotes)
+                  KeyedSubtree(
+                      key: const ValueKey('notes'),
+                      child: _notesReveal(context, t)),
               ],
             ),
           );
@@ -794,8 +960,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (!identical(route, _route)) {
+      _route?.secondaryAnimation?.removeStatusListener(_onRouteCovered);
+      _route = route;
+      route?.secondaryAnimation?.addStatusListener(_onRouteCovered);
+    }
     _routeIsCurrent = ModalRoute.isCurrentOf(context) ?? true;
-    if (!_routeIsCurrent && widget.controller.isOpen) {
+    if (!_routeIsCurrent && widget.controller.isOpen && !_inNotes) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) widget.controller.close();
       });
@@ -806,7 +978,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   Widget build(BuildContext context) {
     final sources = ref.watch(sourcesWithWordsProvider);
     final photos = ref.watch(photosWithWordsProvider);
+    ref.watch(photoPreloaderProvider); // kept alive while the panel lives
     _hasPhotos = photos.isNotEmpty;
+    _schedulePreload(sources);
     // The last photo went while full-open, a set is left: back to half-open
     // (spec AC-15, AC-21).
     if (!_hasPhotos &&
@@ -834,6 +1008,19 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 }
 
 enum _TabDrag { none, undecided, move, open }
+
+/// Clips to one rectangle of the overlay: the panel's, this frame.
+class _RectClipper extends CustomClipper<Rect> {
+  const _RectClipper(this.rect);
+
+  final Rect rect;
+
+  @override
+  Rect getClip(Size size) => rect;
+
+  @override
+  bool shouldReclip(_RectClipper oldClipper) => oldClipper.rect != rect;
+}
 
 /// How many of [items] before [end] are photos.
 int _photoCount(List<SourceWithWords> items, int end) =>

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_controller.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photos_with_words.dart';
+import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
 
@@ -44,7 +47,11 @@ class PanelHost {
     this.bottomReserve = 80,
     this.look,
     this.rows = 50,
-  }) : photos = ValueNotifier(photos ?? fakePhotos(3));
+    MapSourcePhotoStore? store,
+  })  : photos = ValueNotifier(photos ?? fakePhotos(3)),
+        store = store ?? MapSourcePhotoStore({});
+
+  final MapSourcePhotoStore store;
 
   final ValueNotifier<List<PhotoWithWords>> photos;
   final bool busy;
@@ -70,7 +77,7 @@ class PanelHost {
             ref.onDispose(() => photos.removeListener(update));
             return photos.value;
           }),
-          sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
+          sourcePhotoStoreProvider.overrideWithValue(store),
         ],
         child: MaterialApp(
           home: Scaffold(
@@ -136,3 +143,19 @@ Finder get panelFinder => find.byKey(PhotoPanel.panelKey);
 Rect panelRect(WidgetTester tester) => tester.getRect(panelFinder);
 
 Finder smallPhoto(String id) => find.byKey(PhotoPanel.smallPhotoKey(id));
+
+/// The main screen under a router with the Notes page, so the panel's
+/// expand control and a drag to full-open can open Notes (owner, 2026-10-15).
+GoRouter mainScreenRouter() => GoRouter(routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const WordInputScreen(),
+        routes: [
+          GoRoute(
+            path: 'notes',
+            builder: (context, state) => NotesScreen(
+                selectedId: state.uri.queryParameters['selected-id']),
+          ),
+        ],
+      ),
+    ]);

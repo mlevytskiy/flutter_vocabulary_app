@@ -136,6 +136,16 @@ void main() {
       expect(RegExp(r'^[A-Za-z0-9-]{1,64}$').hasMatch(a), isTrue, reason: 'a valid source id');
     });
 
+    test('the film keeps its poster as its url; a film without one gets it on a later import', () {
+      final notifier = container.read(wordInputNotifierProvider.notifier);
+      final a = notifier.upsertSubtitlesSource('Harbour', poster: 'https://posters.test/1.jpg');
+      final b = notifier.upsertSubtitlesSource('Storm');
+      expect(notifier.upsertSubtitlesSource('Storm', poster: 'https://posters.test/2.jpg'), b);
+      expect(notifier.upsertSubtitlesSource('Harbour', poster: 'https://posters.test/other.jpg'), a);
+      final sources = container.read(wordInputNotifierProvider).value!.sources;
+      expect([for (final s in sources) s.url], ['https://posters.test/1.jpg', 'https://posters.test/2.jpg']);
+    });
+
     test('a Quizlet set with the same name is not reused for a film', () {
       final notifier = container.read(wordInputNotifierProvider.notifier);
       final set = notifier.upsertSetSource('1', 'Harbour', 'https://quizlet.com/1/harbour/');
@@ -250,7 +260,7 @@ void main() {
       ]);
       await openHalf(tester, host);
       expect(tester.getRect(smallPhoto('subtitles-1')).size, tester.getRect(smallPhoto('p0')).size);
-      expect(find.descendant(of: smallPhoto('subtitles-1'), matching: find.byIcon(Icons.movie_outlined)), findsOneWidget);
+      expect(find.descendant(of: smallPhoto('subtitles-1'), matching: find.byIcon(Icons.closed_caption_outlined)), findsOneWidget);
       final name = tester.widget<Text>(
           find.descendant(of: smallPhoto('subtitles-1'), matching: find.byKey(const Key('source-tile-name'))));
       expect(name.data, startsWith('A very long film'));
@@ -276,7 +286,7 @@ void main() {
       await PanelHost(photos: [fakeFilm('subtitles-1')]).pump(tester);
       final tile = find.descendant(of: tabFinder, matching: find.byType(SourceTile));
       expect(tester.widget<SourceTile>(tile).mini, isTrue);
-      expect(find.descendant(of: tile, matching: find.byIcon(Icons.movie_outlined)), findsOneWidget);
+      expect(find.descendant(of: tile, matching: find.byIcon(Icons.closed_caption_outlined)), findsOneWidget);
     });
   });
 }

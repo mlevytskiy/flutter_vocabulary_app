@@ -359,22 +359,90 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// so importing it again adds the new rows to the same source; a new one
   /// goes after the existing sources. The screen calls it before adding the
   /// rows, so the rows never point at a source the session does not list.
-  String upsertSubtitlesSource(String title) {
+  /// [poster] is the film's poster address, kept as the source's `url` for
+  /// the photo panel's tile; a film listed without one gets it on a later
+  /// import (owner, 2026-10-15).
+  String upsertSubtitlesSource(String title, {String? poster}) {
     final session = state.valueOrNull;
     final existing = session?.sources
         .where((s) => s.kind == SourceKind.subtitles && s.name == title)
         .firstOrNull;
-    if (existing != null) return existing.id;
+    if (existing != null) {
+      if (existing.url == null && poster != null) {
+        existing.url = poster;
+        state = AsyncData(session!);
+        _scheduleSave();
+      }
+      return existing.id;
+    }
     final id = 'subtitles-${uuidV4()}';
     if (session == null) return id;
     session.sources.add(SessionSource()
       ..id = id
       ..takenAt = DateTime.now()
       ..kind = SourceKind.subtitles
-      ..name = title);
+      ..name = title
+      ..url = poster);
     state = AsyncData(session);
     _scheduleSave();
     return id;
+  }
+
+  /// Changes the note of the source [id] (notes-editing, owner 2026-10-15).
+  /// Every argument left out keeps its value; an empty title or description
+  /// is dropped.
+  void updateSourceNote(
+    String id, {
+    String? title,
+    String? description,
+    List<String>? links,
+    List<String>? tags,
+  }) {
+    final session = state.valueOrNull;
+    final source = session?.sources.where((s) => s.id == id).firstOrNull;
+    if (source == null) return;
+    if (title != null) source.title = title.trim().isEmpty ? null : title;
+    if (description != null) {
+      source.description = description.trim().isEmpty ? null : description;
+    }
+    if (links != null) source.links = [...links];
+    if (tags != null) source.tags = [...tags];
+    state = AsyncData(session!);
+    _scheduleSave();
+  }
+
+  /// Sets the current session's own tags (notes-editing).
+  void setSessionTags(List<String> tags) {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    session.tags = [...tags];
+    state = AsyncData(session);
+    _scheduleSave();
+  }
+
+  /// Puts [pair] at [index] of the words (the Notes words dialog adds a word
+  /// right after its source's rows). The main screen does not see this until
+  /// it takes [takeEditedElsewhere].
+  void insertAt(int index, WordPair pair) {
+    final session = state.valueOrNull;
+    if (session == null) return;
+    session.words.insert(index.clamp(0, session.words.length), pair);
+    state = AsyncData(session);
+    _scheduleSave();
+  }
+
+  /// The words were changed from outside the main screen (the Notes words
+  /// dialog), so its rows must be built again from the session.
+  bool _editedElsewhere = false;
+
+  void markEditedElsewhere() => _editedElsewhere = true;
+
+  /// True once after [markEditedElsewhere]; the main screen asks when Notes
+  /// closes.
+  bool takeEditedElsewhere() {
+    final edited = _editedElsewhere;
+    _editedElsewhere = false;
+    return edited;
   }
 
   /// Records that a shared link now exists for the current session (task-05),

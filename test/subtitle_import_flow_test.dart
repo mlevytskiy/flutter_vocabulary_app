@@ -55,6 +55,16 @@ class FakeGoogleWords extends SubtitleGoogleWords {
 class FakeSearch extends SubtitleSearchService {
   SubtitleSearchError? failDownload;
 
+  /// The title suggestions the poster lookup gets, and its queries.
+  List<SubtitleTitle> titleResults = const [];
+  final titleQueries = <String>[];
+
+  @override
+  Future<List<SubtitleTitle>> titles(String query) async {
+    titleQueries.add(query);
+    return titleResults;
+  }
+
   @override
   Future<List<SubtitleSearchResult>> search(String query, {SubtitleTitle? title, int? season, int? episode}) async {
     return const [
@@ -90,6 +100,7 @@ void main() {
   late FakeSearch search;
   late List<VocabWord> added;
   late List<String> films;
+  late List<String?> posters;
   late String sessionId;
   late ProviderContainer container;
 
@@ -103,6 +114,7 @@ void main() {
     search = FakeSearch();
     added = [];
     films = [];
+    posters = [];
     sessionId = 'session-A';
     container = ProviderContainer(overrides: [
       subtitleWordsServiceProvider.overrideWithValue(service),
@@ -121,9 +133,10 @@ void main() {
                 ref: ref,
                 currentSessionId: () => sessionId,
                 sessionWords: () => ['tide'],
-                addWords: (words, film) {
+                addWords: (words, film, poster) {
                   added.addAll(words);
                   films.add(film);
+                  posters.add(poster);
                 },
                 pickFile: () async => pick ?? file(srtText),
               ),
@@ -180,6 +193,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(added.map((w) => w.word), ['reluctant', 'fog']);
     expect(films, ['film'], reason: 'side-panel-sources AC-22: a picked file is named by its file name');
+    expect(posters, [null], reason: 'a picked file whose name finds no poster');
+    expect(search.titleQueries, ['film'], reason: 'looked up by the file name');
+  });
+
+  testWidgets('a picked file gets the poster its name finds (owner, 2026-10-15)', (tester) async {
+    await pumpHost(tester);
+    search.titleResults = const [
+      SubtitleTitle(featureId: 1, title: 'Film', series: false),
+      SubtitleTitle(featureId: 2, title: 'Film 2', series: false, imageUrl: 'https://posters.test/77.jpg'),
+    ];
+    await startImport(tester);
+    service.pending!.complete(result(['reluctant']));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(posters, ['https://posters.test/77.jpg'], reason: 'the first suggestion with a poster');
+  });
+
+  group('the film name in a file name', () {
+    for (final (file, query) in [
+      ('The.Office.S01E02.720p.WEBRip', 'The Office'),
+      ('Inception (2010) [YIFY]', 'Inception'),
+      ('Harbour_Lights_2024_1080p_BluRay_x264', 'Harbour Lights'),
+      ('my brilliant friend 1x03', 'my brilliant friend'),
+      ('film', 'film'),
+      ('2012', '2012'),
+    ]) {
+      test('"$file" → "$query"', () => expect(subtitlePosterQuery(file), query));
+    }
   });
 
   testWidgets('removing every word, or closing, adds nothing (AC-04)', (tester) async {
@@ -347,6 +389,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(films, ['Harbour Lights (2024)'], reason: 'side-panel-sources AC-22: the rows go under the film found by name');
+    expect(posters, ['https://posters.test/501.jpg'], reason: 'the poster rides with the film for the panel tile');
   });
 
   testWidgets('a file found by name that fails to download says why, and adds nothing', (tester) async {

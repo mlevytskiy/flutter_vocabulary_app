@@ -7,6 +7,8 @@ import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
+import '../features/notes/notes_screen.dart';
+import '../features/notes/photo_viewer_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/word_input/word_input_screen.dart';
 import '../features/words_settings/story_run_screen.dart';
@@ -42,6 +44,8 @@ part 'routes.g.dart';
         ),
       ],
     ),
+    TypedGoRoute<NotesRoute>(path: 'notes'),
+    TypedGoRoute<PhotoViewerRoute>(path: 'photo/:sourceId'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
   ],
@@ -162,6 +166,44 @@ class StoryRunRoute extends GoRouteData with _$StoryRunRoute {
 
   @override
   Widget build(BuildContext context, GoRouterState state) => StoryRunScreen(runId: runId);
+}
+
+/// Notes (owner, 2026-10-15): every source the photo panel lists, pushed
+/// from the half-open panel's expand control. [selectedId] is the source
+/// selected in the panel, an id, never the object (rule 1).
+class NotesRoute extends GoRouteData with _$NotesRoute {
+  const NotesRoute({this.selectedId});
+
+  final String? selectedId;
+
+  /// Fades in rather than sliding, so a panel dragged into the Notes look
+  /// becomes the page with nothing moving (owner, 2026-10-15); the tapped
+  /// picture still flies in as a hero.
+  @override
+  Page<void> buildPage(BuildContext context, GoRouterState state) =>
+      CustomTransitionPage<void>(
+        key: state.pageKey,
+        child: NotesScreen(selectedId: selectedId),
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+            FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+          child: child,
+        ),
+      );
+}
+
+/// A source's photo full screen, pushed from its picture on the Notes page
+/// (notes-editing, owner 2026-10-15). An id, never the object (rule 1).
+class PhotoViewerRoute extends GoRouteData with _$PhotoViewerRoute {
+  const PhotoViewerRoute({required this.sourceId});
+
+  final String sourceId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      PhotoViewerScreen(sourceId: sourceId);
 }
 
 class HistoryRoute extends GoRouteData with _$HistoryRoute {

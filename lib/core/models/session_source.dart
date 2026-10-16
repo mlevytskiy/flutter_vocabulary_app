@@ -39,9 +39,19 @@ class SessionSource {
   /// learner (set and subtitles sources only).
   String? name;
 
-  /// A set's plain address, `https://quizlet.com/<id>/<slug>/` (set sources
-  /// only).
+  /// A set's plain address, `https://quizlet.com/<id>/<slug>/` (set
+  /// sources), or a film's poster address from the subtitle search, when it
+  /// was found by name (subtitles sources; owner, 2026-10-15).
   String? url;
+
+  /// The learner's note on this source, edited on the Notes page (owner,
+  /// 2026-10-15, notes-editing): a title shown instead of the source's own
+  /// name when set, a description, any number of links and of tags. Kept on
+  /// the phone only, never published.
+  String? title;
+  String? description;
+  List<String> links = [];
+  List<String> tags = [];
 
   SessionSource();
 
@@ -51,7 +61,11 @@ class SessionSource {
     ..takenAt = DateTime.parse(json['takenAt'] as String? ?? '1970-01-01')
     ..kind = SourceKind.values.asNameMap()[json['kind']] ?? SourceKind.photo
     ..name = json['name'] as String?
-    ..url = json['url'] as String?;
+    ..url = json['url'] as String?
+    ..title = json['title'] as String?
+    ..description = json['description'] as String?
+    ..links = [...?(json['links'] as List<dynamic>?)?.cast<String>()]
+    ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()];
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -60,6 +74,10 @@ class SessionSource {
         'kind': kind.name,
         if (name != null) 'name': name,
         if (url != null) 'url': url,
+        if (title != null) 'title': title,
+        if (description != null) 'description': description,
+        if (links.isNotEmpty) 'links': links,
+        if (tags.isNotEmpty) 'tags': tags,
       };
 
   SessionSource copy() => SessionSource()
@@ -68,5 +86,9 @@ class SessionSource {
     ..takenAt = takenAt
     ..kind = kind
     ..name = name
-    ..url = url;
+    ..url = url
+    ..title = title
+    ..description = description
+    ..links = [...links]
+    ..tags = [...tags];
 }

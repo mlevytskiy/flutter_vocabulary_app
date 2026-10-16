@@ -14,6 +14,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/session_store.dart';
 import 'package:flutter_vocabulary_app/core/services/system_gesture_exclusion.dart';
+import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_a.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
@@ -124,7 +125,7 @@ void main() {
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: MaterialApp.router(routerConfig: mainScreenRouter()),
     ));
     // A notifier change makes the screen restore the session's rows (as
     // main_screen_photo_panel_test.dart).
@@ -195,17 +196,14 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> openFull(WidgetTester tester) async {
-    await tester.tap(find.byKey(PhotoPanel.expandKey));
+  /// On the main screen a drag to full-open opens Notes, over the panel
+  /// back at half-open (owner, 2026-10-15).
+  Future<void> openNotesByDrag(WidgetTester tester) async {
+    await tester.fling(
+        find.byKey(PhotoPanel.handleKey), const Offset(-60, 0), 3000);
     await tester.pumpAndSettle();
-    expect(stop(tester), PanelStop.fullOpen);
-  }
-
-  /// Browses to the next large photo (AC-07b).
-  Future<void> browseNext(WidgetTester tester) async {
-    final browser = find.byKey(PhotoPanel.largeBrowserKey);
-    await tester.drag(browser, const Offset(-300, 0));
-    await tester.pumpAndSettle();
+    expect(find.byType(NotesScreen), findsOneWidget);
+    expect(stop(tester), PanelStop.halfOpen);
   }
 
   const look = LookA();
@@ -316,37 +314,43 @@ void main() {
       await tearDownMain(tester);
     });
 
-    testWidgets('full-open grows the photo, starts at the selected one, browsing keeps the '
-        'selection, two-finger zoom is there (AC-07, AC-07b)', (tester) async {
+    testWidgets('a drag past half-open turns the panel into the Notes page, '
+        'which then opens on the selected source (owner, 2026-10-15)', (tester) async {
       await pumpMain(tester);
       await openHalf(tester);
       await select(tester, 'p2');
+      final handle = find.byKey(PhotoPanel.handleKey);
 
-      await tester.tap(find.byKey(PhotoPanel.expandKey));
-      await tester.pump(const Duration(milliseconds: 16));
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.byKey(PhotoPanel.growingPhotoKey), findsOneWidget);
+      // Mid-drag: the Notes page shows inside the widening panel, and the
+      // large photos never do.
+      final gesture = await tester.startGesture(tester.getCenter(handle));
+      for (var i = 0; i < 10; i++) {
+        await gesture.moveBy(const Offset(-30, 0));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(find.byKey(PhotoPanel.notesRevealKey), findsOneWidget);
+      expect(find.byKey(PhotoPanel.growingPhotoKey), findsNothing);
+      expect(find.byKey(PhotoPanel.largeBrowserKey), findsNothing);
+      final reveal = tester.getRect(find.byKey(PhotoPanel.notesRevealKey));
+      expect(reveal.left, 0, reason: 'laid out on the whole screen, as pushed');
+
+      await gesture.up();
       await tester.pumpAndSettle();
-      expect(stop(tester), PanelStop.fullOpen);
-      final panelRect = tester.getRect(find.byKey(PhotoPanel.panelKey));
-      expect(panelRect.left, 0, reason: 'covers the word rows');
-      expect(panelRect.right, listRect(tester).right);
-      final large = find.byKey(PhotoPanel.largePhotoKey('p2'));
-      expect(large, findsOneWidget);
-      expect(tester.widget(large), isA<InteractiveViewer>(), reason: 'two-finger zoom');
-
-      await tester.tap(large);
-      await tester.pumpAndSettle();
-      expect(stop(tester), PanelStop.fullOpen, reason: 'a tap on a large photo does nothing');
-
-      await browseNext(tester);
-      await browseNext(tester);
-      expect(selected(tester), 'p2', reason: 'browsing never changes the selection');
-
-      await tester.tap(find.byKey(PhotoPanel.backKey));
-      await tester.pumpAndSettle();
+      expect(find.byType(NotesScreen), findsOneWidget);
+      expect(find.byKey(PhotoPanel.notesRevealKey), findsNothing,
+          reason: 'under Notes the panel is back at half-open');
+      expect(find.byKey(NotesScreen.itemKey('p2')), findsOneWidget);
       expect(stop(tester), PanelStop.halfOpen);
-      expect(highlighted(tester), {18});
+      expect(selected(tester), 'p2');
+
+      // A short drag that falls back stays the panel: no Notes.
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      await tester.timedDrag(handle, const Offset(-80, 0), const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.byType(NotesScreen), findsNothing);
+      expect(find.byKey(PhotoPanel.notesRevealKey), findsNothing);
+      expect(stop(tester), PanelStop.halfOpen);
       await tearDownMain(tester);
     });
 
@@ -369,10 +373,8 @@ void main() {
 
       await tester.timedDrag(tab, const Offset(-320, 0), const Duration(seconds: 2));
       await tester.pumpAndSettle();
-      expect(stop(tester), PanelStop.fullOpen, reason: 'a long drag');
-
-      await tester.fling(find.byKey(PhotoPanel.handleKey), const Offset(80, 0), 3000);
-      await tester.pumpAndSettle();
+      expect(find.byType(NotesScreen), findsOneWidget,
+          reason: 'a long drag opens Notes (owner, 2026-10-15)');
       expect(stop(tester), PanelStop.halfOpen);
       await tearDownMain(tester);
     });
@@ -382,10 +384,12 @@ void main() {
       await pumpMain(tester);
       await openHalf(tester);
       await select(tester, 'p1');
-      await openFull(tester);
+      await openNotesByDrag(tester);
 
+      // Back closes Notes first, onto the half-open panel.
       expect(await tester.binding.handlePopRoute(), isTrue);
       await tester.pumpAndSettle();
+      expect(find.byType(NotesScreen), findsNothing);
       expect(stop(tester), PanelStop.halfOpen);
       expect(selected(tester), 'p1');
 
@@ -428,7 +432,7 @@ void main() {
       expect(exclusion.sent.last.single.height, look.handleBarHeight);
       expect(exclusion.sent.last.single.width, look.halfOpenWidth);
 
-      await openFull(tester);
+      await openNotesByDrag(tester);
       await tester.pump();
       expect(exclusion.sent.last, isEmpty);
       await tearDownMain(tester);
@@ -512,7 +516,7 @@ void main() {
       expect(host.controller.stop, PanelStop.closed);
     });
 
-    testWidgets('a screen reader opens, expands and closes without a drag (AC-18)',
+    testWidgets('a screen reader opens, finds Open notes and closes without a drag (AC-18)',
         (tester) async {
       final handle = tester.ensureSemantics();
       await pumpMain(tester);
@@ -524,12 +528,8 @@ void main() {
       tap('Session photos, 2');
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.halfOpen);
-      tap('Show photos large');
-      await tester.pumpAndSettle();
-      expect(stop(tester), PanelStop.fullOpen);
-      tap('Back to small photos');
-      await tester.pumpAndSettle();
-      expect(stop(tester), PanelStop.halfOpen);
+      // Expand is the Notes page's button now (owner, 2026-10-15).
+      expect(find.bySemanticsLabel('Open notes'), findsOneWidget);
       tap('Close photos');
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);
@@ -538,3 +538,4 @@ void main() {
     });
   });
 }
+

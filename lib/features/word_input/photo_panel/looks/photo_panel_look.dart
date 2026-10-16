@@ -30,7 +30,8 @@ abstract class PhotoPanelLook {
   /// [tabSizeFor], which checks it against [maxTabHeight].
   double tabHeight(int count);
 
-  /// The tab's content: at most three mini previews (built with [preview])
+  /// The tab's content: at most three mini previews (built with [preview];
+  /// the third may be a mosaic of several sources when there are more)
   /// and the count. [photos] are the sources with words, sets included. It fills the size [tabSizeFor] gives.
   Widget buildTab(
     BuildContext context, {
