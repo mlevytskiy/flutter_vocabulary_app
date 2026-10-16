@@ -113,9 +113,28 @@ class WordInputNotifier extends _$WordInputNotifier {
 
   /// New collection (AC-10): a kept, empty, date-named collection at the end
   /// of [folderId]'s level (null: the top level) becomes the current one.
-  Future<void> newCollection(String? folderId) async {
+  Future<void> newCollection(String? folderId) =>
+      newCollectionWithDetails(folderId);
+
+  /// New collection with the details typed in the Collection details sheet
+  /// (collection-tags AC-01): as [newCollection], but named, described and
+  /// tagged. A name the store refuses becomes the date name.
+  Future<void> newCollectionWithDetails(
+    String? folderId, {
+    String? name,
+    String? description,
+    List<String> origin = const [],
+    List<String> topic = const [],
+  }) async {
     final store = await ref.read(collectionStoreProvider.future);
-    final made = await store.create(folderId: folderId, keep: true);
+    final made = await store.create(
+      folderId: folderId,
+      keep: true,
+      name: name,
+      description: description,
+      origin: origin,
+      topic: topic,
+    );
     made.words = [WordPair()];
     await _leaveAndShow(store, made);
   }

@@ -1,3 +1,4 @@
+import 'collection_details_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -204,7 +205,16 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
 
   /// New collection (AC-10): made at the end of the open folder, then shown.
   Future<void> _newCollection(String? folderId) async {
-    await ref.read(wordInputNotifierProvider.notifier).newCollection(folderId);
+    final details =
+        await showCollectionDetailsSheet(context, mode: DetailsMode.create);
+    if (details == null || !mounted) return;
+    await ref.read(wordInputNotifierProvider.notifier).newCollectionWithDetails(
+          folderId,
+          name: details.name,
+          description: details.description,
+          origin: details.origin,
+          topic: details.topic,
+        );
     if (mounted) const WordInputRoute().go(context);
   }
 
