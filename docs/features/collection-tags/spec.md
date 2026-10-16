@@ -17,7 +17,7 @@ A learner now keeps many collections (one per book chapter, lesson, Quizlet set,
 
 Why now: the Collections screen just shipped (collections-screen, 2026-10-16), so the number of named collections and folders is growing. Sources already carry a title, description and tags (notes-editing, 2026-10-15). Tags are the missing link between "what I put in" and "how I find it again", and the owner asked for them on 2026-10-16.
 
-Committed approach: every tag answers one of two guiding questions, **"Where does it come from?"** (an origin tag) or **"What is it about?"** (a topic tag). The learner fills both in one "Collection details" sheet, used both when making a new collection and from the main screen's edit button. The sheet also holds the name and a new description. Each tag field teaches by example: a helper line plus a row of tappable suggestions drawn from the learner's own tag library first and the preset tags second, with autocomplete while typing. Tags given to a source on the Notes page are copied up to its collection. The main screen shows the collection's tags as one line under the top bar, and a tap on a tag opens the Collections screen filtered by it. The Collections screen gains search and a filter by tags, by created time and by edited time, across all folders. Competitive research found that every product checked (Anki, Obsidian, Raindrop.io, Google Keep, LingQ, Bear) uses one flat tag list or a nesting convention. None of them asks two guiding questions with presets and tappable examples, and none rolls source tags up to a container. That gap is the reason for the two-kind design. The sharpest failure found is the one-time move of today's untyped tags into the two kinds, which must not lose a tag or let background work write back an older copy (AC-17, AC-17b, AC-18). Removing a tag from a source never removes it from the collection, and a collection already holding 10 tags of a kind does not take a copied tag (AC-16, AC-29). The edited time keeps today's meaning, any change to the collection including its name, description or tags (AC-06), and the created time is the moment the collection was first made, which the app already knows for every collection (AC-25).
+Committed approach: every tag answers one of two guiding questions, **"Where does it come from?"** (an origin tag) or **"What is it about?"** (a topic tag). The learner fills both in one "Collection details" sheet, used both when making a new collection and from the main screen's edit button. The sheet also holds the name and a new description. Each tag field teaches by example: a helper line plus a row of tappable suggestions drawn from the learner's own tag library first and the preset tags second, with autocomplete while typing. Tags given to a source on the Notes page are copied up to its collection. The main screen shows the collection's tags as one line under the top bar, and a tap on a tag opens the Collections screen filtered by it. The Collections screen gains search and a filter by tags, by created time and by edited time, across all folders. Competitive research found that every product checked (Anki, Obsidian, Raindrop.io, Google Keep, LingQ, Bear) uses one flat tag list or a nesting convention. None of them asks two guiding questions with presets and tappable examples, and none rolls source tags up to a container. That gap is the reason for the two-kind design. The sharpest failure found is the one-time move of today's untyped tags into the two kinds, which must not lose a tag or let background work write back an older copy (AC-17, AC-17b, AC-18). Removing a tag from a source never removes it from the collection, and a collection already holding 10 tags of a kind does not take a copied tag (AC-16, AC-29). The edited time is the collection's existing last-change time, which a saved change to the words, name, description or tags moves, as Notes-page tag edits already do (AC-06), and the created time is the moment the collection was first made, which the app already knows for every collection (AC-25).
 
 - Decision source: every product decision in this spec was made by a Fable 5.1 owner proxy, because the owner delegated them on 2026-10-16 ("made decision by your own").
 
@@ -125,8 +125,8 @@ Committed approach: every tag answers one of two guiding questions, **"Where doe
 ### AC-06 (US-02) — domain invariant
 
 **Given** a collection that was last edited yesterday
-**When** the learner changes only its name, description or tags today (in the details sheet or on the Notes page)
-**Then** the collection's edited time becomes today, as any other change to the collection does, and it counts as touched for the rule that decides whether the app reopens it on the next start
+**When** the learner saves a change to only its name, description or tags today (in the details sheet or on the Notes page)
+**Then** the collection's edited time becomes today, as any other change to the collection does, its History place and the rule that decides whether the app reopens it on the next start treat it as touched, as tag edits on the Notes page already do; saving the sheet without any change moves nothing
 
 ### AC-07 (US-03) — happy path
 
@@ -250,9 +250,9 @@ Committed approach: every tag answers one of two guiding questions, **"Where doe
 
 ### AC-25 (US-07, US-08) — happy path
 
-**Given** a collection made before the update on 3 October, whose default name therefore shows "3 Oct"
+**Given** a collection made before the update on 3 October, whose default name therefore shows "03.10.2026 14:30"
 **When** the learner filters by Created "Custom range" 1–5 October
-**Then** that collection is listed, because every collection, old or new, counts as created at the moment it was first made, the same moment its default name shows
+**Then** that collection is listed, because every collection, old or new, counts as created at the moment it was first made, the same moment its default name shows; a collection whose first moment cannot be read counts as created at its last edit, as History already does
 
 ### AC-27 (US-01, US-07) — happy path
 
@@ -278,6 +278,60 @@ Committed approach: every tag answers one of two guiding questions, **"Where doe
 **When** they open a topic field's suggestions
 **Then** "Fodo" is still in the tag library but comes after every tag in use (ranked by how many collections and sources use it, then by most recent), and before the preset tags; "Forget this tag" removes it from the library
 
+### AC-31 (US-03, US-08) — domain invariant
+
+**Given** the app's preset tags
+**When** the learner opens a tag field or the migration sorts old tags
+**Then** the origin presets are, in this order: Book, Film, Series, Cartoon, Song, Podcast, YouTube, Social media, Article, News, Textbook, Course, Lesson, Quizlet, Game, Conversation, Travel; the topic presets are: Everyday life, Food, Travel, Work, Business, IT, Health, Sport, Nature, Home, Shopping, Money, People, Emotions, Education, Phrasal verbs, Idioms, Slang, Grammar, Exam prep; an old untyped "Travel" becomes an origin tag, because it matches an origin preset
+
+### AC-32 (US-08) — domain invariant
+
+**Given** before the update collection X (made first) has the tag "food" and collection Y has "Food"
+**When** the migration runs
+**Then** X keeps "food", Y keeps "Food", and the tag library holds one topic tag spelled "food", because the library takes the first spelling it meets, visiting collections oldest first, each collection's own tags in their order and then each source's tags in source order; source tags are copied up even past 10, and the migration never un-forgets or ranks a tag as recently used
+
+### AC-33 (US-06) — happy path
+
+**Given** the learner removed the topic tag "Restaurants" from a collection while one of its sources still has it
+**When** they add "Restaurants" to another source of that collection
+**Then** the collection gets "Restaurants" again, because a new add is a new intent; saving a source note whose tags did not change copies nothing
+
+### AC-34 (US-06) — happy path
+
+**Given** the learner opens the Notes page
+**When** they look at the collection's tags at the top and at a source's note
+**Then** each shows two tag fields, origin and topic, with the same hints, helper lines and look as the details sheet; a field's suggestion row shows only while that field is focused; the Notes page does not show the description, which belongs to the details sheet
+
+### AC-35 (US-04) — happy path
+
+**Given** the tag library holds "Cooking" and "Home cooking", the preset "Series" exists, and the learner forgot "Fodo"
+**When** they type "co" in a topic field, or type "series" in an origin field and confirm
+**Then** "co" offers "Cooking" and "Home cooking" (matching the start of any word, ignoring case) but not "Tacos"; confirming "series" adds the preset spelling "Series"; ranking is: tags in use, the most collections first (a tag on a collection and its source counts once, binned collections count zero), ties broken by the last time the learner added it; then library tags in use nowhere; then presets; "Fodo" is never offered until the learner types and confirms it again; suggestion rows show only tags of the field's kind that are not already added
+
+### AC-36 (US-01, US-02) — error
+
+**Given** the learner changed something in the Collection details sheet
+**When** they swipe it down, press Back or tap outside it
+**Then** the sheet asks "Discard changes?" with Keep editing and Discard; with no change it closes without asking
+
+### AC-37 (US-07) — happy path
+
+**Given** collections in several folders
+**When** the learner uses search and the filter together
+**Then** a collection is listed only if it matches the search text and every picked tag (all picked tags, within a kind and across kinds) and both time choices; Created and Edited each offer Any time, Last 7 days, Last 30 days, This year and Custom range, counted in local calendar days ("Last 7 days" is today and the 6 days before; "This year" is 1 January until now; a custom range includes its whole first and last day); sorting offers My order (default: the folders' own order, folder by folder, each folder's collections where that folder sits), Name A–Z, Recently edited and Recently created
+
+### AC-38 (US-07) — happy path
+
+**Given** the learner opens the filter sheet
+**When** they look at the tag sections
+**Then** each kind lists the tags that at least one collection outside the recycle bin has, each with how many collections have it, the most used first then A–Z, showing the first 12 with a "Show all" toggle and a small field that narrows the list as they type; tags no collection has are not listed
+
+### AC-39 (US-05, US-07) — happy path
+
+**Given** the learner tapped the topic tag "Food" on the main screen and the Collections screen opened filtered by it
+**When** they press Back, tap "Clear filters", or tap a result
+**Then** Back returns straight to the main screen; "Clear filters" shows the folder the Collections screen opens at without a filter; a tapped result opens that collection as the current collection, as a normal tap does; the filter is by "Food" as a topic tag only, never an origin tag "Food"
+
 ### AC-26 (US-09) — authorization
 
 **Given** a collection with a description and tags has been published
@@ -298,7 +352,7 @@ Committed approach: every tag answers one of two guiding questions, **"Where doe
 ## 6.1 Security / privacy
 
 - **Data classification:** internal — tags and descriptions are the learner's own notes about their collections, kept only on their phone.
-- **Personal data touched:** new free-text fields that the learner may fill with anything: a collection description (up to 500 characters), origin and topic tags (new ones up to 30 characters each; tags from before the update are kept whole, AC-17b), and the tag library (kind, tag text, when it was first added; use counts are worked out from the collections and sources that are not in the bin). No identifiers and nothing that leaves the device.
+- **Personal data touched:** new free-text fields that the learner may fill with anything: a collection description (up to 500 characters), origin and topic tags (new ones up to 30 characters each; tags from before the update are kept whole, AC-17b), and the tag library (kind, tag text, the last time the learner added it, a "forgotten" mark; use counts are worked out from the collections and sources that are not in the bin). No identifiers and nothing that leaves the device.
 - **AuthZ/AuthN impact:** none new — the app has no accounts; the new data is never published, shared or exported, so the shared page's "anyone with the link" rule does not reach it (AC-26).
 - **Abuse cases:**
   - Leak through sharing: a learner writes something private in a description or tag and then shares the collection → the description and tags are never sent with a publish or written to an export (AC-26).
