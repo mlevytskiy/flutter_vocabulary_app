@@ -1,5 +1,6 @@
 import { MAX_RAW_BYTES, htmlResponse, isAllowedMediaType, jsonResponse } from "../http";
 import type { RouteContext, RouteDefinition } from "../routing";
+import { logEvent } from "../log";
 import { ankiFileName, renderAnkiFileFor } from "./anki";
 import { pageAssets, pageHeaders } from "./assets";
 import { MAX_DIALOGUES_PER_IMPORT, parseDialogues } from "./dialogues";
@@ -24,6 +25,7 @@ import {
   parseEntries,
   parseRepublish,
   parseSources,
+  parseTitle,
   toDocument,
 } from "./types";
 
@@ -85,6 +87,10 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
   if (!republish.ok) {
     return jsonResponse({ error: republish.error }, 400);
   }
+  const title = parseTitle(record.title);
+  if (!title.ok) {
+    return jsonResponse({ error: title.error, code: title.code }, 400);
+  }
 
   const input = {
     entries: parsed.entries,
@@ -92,12 +98,14 @@ async function handleCreateSession({ request, env, url }: RouteContext): Promise
     sources: sources.sources,
     detail: detail.detail,
     dialogues: dialogues.dialogues,
+    title: title.title,
   };
-  const published =
-    (republish.republish &&
-      (await republishSession(env, republish.republish.publishedId, republish.republish.editToken, input))) ||
-    (await createSession(env, input));
-  const { session, editToken } = published;
+  const republished =
+    republish.republish &&
+    (await republishSession(env, republish.republish.publishedId, republish.republish.editToken, input));
+  const { session, editToken } = republished || (await createSession(env, input));
+  // Whether a title came, never the title itself (sad §8, Logging).
+  logEvent(republished ? "session republished" : "session published", { session: session.id, title: title.title !== null });
   return jsonResponse({ id: session.id, url: publicUrl(url, session.id), expiresAt: session.expiresAt, editToken });
 }
 

@@ -7,7 +7,7 @@ acs: ["AC-29", "AC-30", "AC-33"]
 files_hint: ["vocab-photo-api/src/session/page.ts", "vocab-photo-api/test/page.test.mjs"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T23 — Show the stored title as the shared page's heading and document title, escaped, with Vocabulary as the fallback

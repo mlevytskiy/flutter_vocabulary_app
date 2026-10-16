@@ -224,6 +224,10 @@ export const STYLE = `
     /* One line: the short meta sits right after "Vocabulary" and never wraps. */
     .title { margin: 0 0 12px; flex-wrap: nowrap; column-gap: 6px; }
     .title h1 { flex: none; }
+    /* A collection's name instead wraps (and breaks) rather than scrolling sideways, and the meta
+       moves below it (collections-screen SCR-14); an unnamed page keeps the line above. */
+    .title.named { flex-wrap: wrap; }
+    .title.named h1 { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; }
     .meta-short { white-space: nowrap; }
     .title h1 { margin: 0; }
     .meta-short { display: inline; }

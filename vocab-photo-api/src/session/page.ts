@@ -250,13 +250,15 @@ export function renderSessionPage(session: StoredSession, scriptPath: string): s
   const collapsed = collapsedColumns(session);
   const count = session.rows.length;
   const words = `${count} ${count === 1 ? "word" : "words"}`;
+  // The collection's name (collections-screen, AC-29); a page published without one keeps "Vocabulary".
+  const name = session.title ?? "Vocabulary";
   const photos = renderPhotos(session);
   const classes = [photos ? "has-photos" : "", session.dialogues.length > 0 ? "has-dialogues" : "", ...collapsed.map((field) => `no-${field}`)].filter((c) => c !== "");
   const head = (["word", "translation", "definition"] as Field[])
     .map((field) => renderHeader(field, collapsed.includes(field)))
     .join("");
   const body = `<main data-session="${escapeHtml(session.id)}" data-rev="${session.rev}" data-max-rows="${MAX_ENTRIES}"${classes.length > 0 ? ` class="${classes.join(" ")}"` : ""}>
-<header class="title"><h1>Vocabulary</h1><span class="meta-short">${words} · until ${escapeHtml(formatShortDate(session.expiresAt))}</span></header>
+<header class="title${session.title === null ? "" : " named"}"><h1>${escapeHtml(name)}</h1><span class="meta-short">${words} · until ${escapeHtml(formatShortDate(session.expiresAt))}</span></header>
 <p class="meta">${words} · published ${escapeHtml(formatDate(session.createdAt))} · available until ${escapeHtml(formatDate(session.expiresAt))}</p>
 <p class="actions"><a class="btn" href="/s/${encodeURIComponent(session.id)}/words.txt" download>Download for AnkiDroid</a><a class="btn learn" href="/s/${encodeURIComponent(session.id)}/learn">Learn</a>${renderPhotoButton(session)}</p>
 <div class="layout">
@@ -277,7 +279,7 @@ ${photos}
 </div>
 ${renderDialogues(session)}<div class="toasts" aria-live="polite"></div>
 </main>`;
-  return shell(`Vocabulary — ${count} ${count === 1 ? "word" : "words"}`, body, scriptPath);
+  return shell(`${name} — ${words}`, body, scriptPath);
 }
 
 export function renderNotFoundPage(): string {

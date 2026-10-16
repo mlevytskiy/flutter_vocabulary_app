@@ -34,7 +34,7 @@ import {
 const kvKey = (sessionId: string) => `session:${sessionId}`;
 const r2Key = (sessionId: string, sourceId: string) => `sessions/${sessionId}/sources/${sourceId}`;
 
-const INSERT_SESSION = `INSERT INTO sessions (id, created_at, expires_at, detail, edit_token_hash) VALUES (?1, ?2, ?3, ?4, ?5)`;
+const INSERT_SESSION = `INSERT INTO sessions (id, created_at, expires_at, detail, edit_token_hash, title) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`;
 const INSERT_ROW = `INSERT INTO rows (session_id, id, position, source_id, word, translation, definition)
   VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`;
 const INSERT_ROW_IF_ABSENT = `INSERT OR IGNORE INTO rows (session_id, id, position, word, translation, definition)
@@ -66,6 +66,8 @@ export interface PublishInput {
   entryIndexes?: number[];
   sources: DeclaredSource[];
   detail: SessionDetail;
+  /** The collection's name for the page's title; null when the app sent none (collections-screen). */
+  title: string | null;
   /** Film dialogues, stored with the rows (ADR-0005). Absent from older apps. */
   dialogues?: DeclaredDialogue[];
 }
@@ -120,7 +122,8 @@ export async function createSession(env: Env, input: PublishInput): Promise<Publ
       new Date(now).toISOString(),
       new Date(now + SESSION_TTL_SECONDS * 1000).toISOString(),
       input.detail,
-      await hashEditToken(editToken)
+      await hashEditToken(editToken),
+      input.title
     ),
     ...insertContent(env, id, input),
   ]);
@@ -157,10 +160,9 @@ export async function republishSession(
 
   // One batch is one transaction: pages never see the old rows mixed with the new.
   await env.DB.batch([
-    env.DB.prepare(`UPDATE sessions SET rev = rev + 1, replaced_rev = rev + 1, detail = ?2 WHERE id = ?1`).bind(
-      publishedId,
-      input.detail
-    ),
+    env.DB.prepare(
+      `UPDATE sessions SET rev = rev + 1, replaced_rev = rev + 1, detail = ?2, title = ?3 WHERE id = ?1`
+    ).bind(publishedId, input.detail, input.title),
     env.DB.prepare(`DELETE FROM rows WHERE session_id = ?1`).bind(publishedId),
     env.DB.prepare(`DELETE FROM sources WHERE session_id = ?1`).bind(publishedId),
     ...deleteDialogueStatements(env, publishedId),
@@ -237,6 +239,7 @@ interface SessionRecord {
   rev: number;
   replaced_rev: number;
   detail: SessionDetail;
+  title: string | null;
 }
 
 interface RowRecord {
@@ -267,7 +270,7 @@ interface SourceRecord {
 async function readSession(env: Env, sessionId: string): Promise<StoredSession | null> {
   const [sessions, rows, sources, dialogues, dialogueWords] = await env.DB.batch([
     env.DB.prepare(
-      `SELECT id, created_at, expires_at, rev, replaced_rev, detail FROM sessions WHERE id = ?1`
+      `SELECT id, created_at, expires_at, rev, replaced_rev, detail, title FROM sessions WHERE id = ?1`
     ).bind(sessionId),
     env.DB.prepare(
       `SELECT id, position, source_id, word, word_rev, translation, translation_rev, definition, definition_rev
@@ -295,6 +298,7 @@ async function readSession(env: Env, sessionId: string): Promise<StoredSession |
     rev: session.rev,
     replacedRev: session.replaced_rev,
     detail: session.detail,
+    title: session.title,
     rows: (rows.results as RowRecord[]).map(
       (row): StoredRow => ({
         id: row.id,

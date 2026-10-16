@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-29", "AC-30"]
 files_hint: ["vocab-photo-api/src/session/handlers.ts", "vocab-photo-api/src/session/store.ts", "vocab-photo-api/src/session/types.ts", "vocab-photo-api/src/log.ts", "vocab-photo-api/test/publish.test.mjs"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T22 — Accept, validate and store the optional title on POST /sessions create and republish
