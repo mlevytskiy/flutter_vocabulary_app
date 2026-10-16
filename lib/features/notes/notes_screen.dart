@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/models/tag_kind.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
@@ -105,8 +106,14 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         const <WordPair>[];
     final mode = ref.watch(wordDetailModeProvider);
     final preloader = ref.watch(photoPreloaderProvider);
-    final collectionTags =
-        ref.watch(wordInputNotifierProvider).valueOrNull?.tags ?? const [];
+    final current = ref.watch(wordInputNotifierProvider).valueOrNull;
+    // T12 rebuilds this page; until then the one editor means topic tags,
+    // showing the legacy tags while no typed ones exist.
+    final collectionTags = current == null
+        ? const <String>[]
+        : (current.originTags.isEmpty && current.topicTags.isEmpty
+            ? current.tags
+            : current.topicTags);
     final notifier = ref.read(wordInputNotifierProvider.notifier);
     return Scaffold(
       backgroundColor: Colors.white,
@@ -130,7 +137,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               label: 'Collection tags',
               tags: collectionTags,
               suggestions: ref.watch(collectionTagSuggestionsProvider),
-              onChanged: notifier.setCollectionTags,
+              onChanged: (tags) =>
+                  notifier.setCollectionTags(TagKind.topic, tags),
             ),
           ),
           Expanded(
@@ -527,9 +535,12 @@ class _NoteItemState extends ConsumerState<_NoteItem>
           ),
           TagEditor(
             fieldKey: NotesScreen.tagFieldKey,
-            tags: widget.item.source.tags,
+            tags: widget.item.source.originTags.isEmpty &&
+                    widget.item.source.topicTags.isEmpty
+                ? widget.item.source.tags
+                : widget.item.source.topicTags,
             suggestions: ref.watch(sourceTagSuggestionsProvider),
-            onChanged: (tags) => _notifier.updateSourceNote(_id, tags: tags),
+            onChanged: (tags) => _notifier.updateSourceNote(_id, topic: tags),
           ),
         ],
       );

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/tag_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -32,6 +33,41 @@ class _FakeInput extends WordInputNotifier {
 
   @override
   Future<WordCollection> build() async => collection;
+
+  // No store here: apply the edits in memory the way the stored record would.
+  @override
+  Future<Set<TagKind>> updateSourceNote(
+    String id, {
+    String? title,
+    String? description,
+    List<String>? links,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
+    final s = collection.sources.firstWhere((s) => s.id == id);
+    if (title != null) s.title = title.trim().isEmpty ? null : title;
+    if (description != null) {
+      s.description = description.trim().isEmpty ? null : description;
+    }
+    if (links != null) s.links = [...links];
+    if (origin != null) s.originTags = [...origin];
+    if (topic != null) s.topicTags = [...topic];
+    state = AsyncData(collection);
+    return const {};
+  }
+
+  @override
+  Future<bool> saveDetails({
+    String? name,
+    String? description,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
+    if (origin != null) collection.originTags = [...origin];
+    if (topic != null) collection.topicTags = [...topic];
+    state = AsyncData(collection);
+    return true;
+  }
 }
 
 WordCollection _collection() => WordCollection.create()
@@ -82,7 +118,7 @@ void main() {
       expect(WordCollection.fromJson({}).tags, isEmpty);
     });
 
-    testWidgets('the notifier changes notes, session tags and inserts a word',
+    testWidgets('the notifier inserts a word and tracks edits made elsewhere',
         (tester) async {
       final container = ProviderContainer(overrides: [
         wordInputNotifierProvider.overrideWith(() => _FakeInput(_collection())),
@@ -92,24 +128,6 @@ void main() {
       addTearDown(container.dispose);
       await container.read(wordInputNotifierProvider.future);
       final notifier = container.read(wordInputNotifierProvider.notifier);
-
-      notifier.updateSourceNote('p1',
-          title: 'Market', links: ['https://a'], tags: ['food']);
-      notifier.updateSourceNote('p1', description: 'Saturday');
-      final p1 = container
-          .read(wordInputNotifierProvider)
-          .value!
-          .sources
-          .firstWhere((s) => s.id == 'p1');
-      expect(p1.title, 'Market', reason: 'left out, the title stays');
-      expect(p1.description, 'Saturday');
-      expect(p1.links, ['https://a']);
-      expect(p1.tags, ['food']);
-      notifier.updateSourceNote('p1', title: '  ');
-      expect(p1.title, isNull, reason: 'an empty title is dropped');
-
-      notifier.setCollectionTags(['week 1']);
-      expect(container.read(wordInputNotifierProvider).value!.tags, ['week 1']);
 
       notifier.insertAt(2, WordPair(word: 'jug', translation: '', sourceId: 'p1'));
       expect(
@@ -264,7 +282,7 @@ void main() {
           reason: '"food" does not contain "tr"');
       await tester.tap(find.byKey(TagEditor.suggestionKey('travel')));
       await tester.pumpAndSettle();
-      expect(source('p1').tags, ['kitchen', 'travel']);
+      expect(source('p1').topicTags, ['kitchen', 'travel']);
       expect(
           find.descendant(
               of: pager('p1'), matching: find.widgetWithText(InputChip, 'travel')),
@@ -276,7 +294,7 @@ void main() {
               matching: find.widgetWithText(InputChip, 'kitchen')),
           matching: find.byTooltip('Delete')));
       await tester.pumpAndSettle();
-      expect(source('p1').tags, ['travel']);
+      expect(source('p1').topicTags, ['travel']);
     });
 
     notesTest('session tags sit above the list and are their own pool',
@@ -298,7 +316,7 @@ void main() {
       await tester.enterText(field, 'week 3');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
-      expect(collection().tags, ['week 3']);
+      expect(collection().topicTags, ['week 3']);
       expect(find.widgetWithText(InputChip, 'week 3'), findsOneWidget);
     });
 

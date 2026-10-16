@@ -88,7 +88,10 @@ class WordInputScreen extends ConsumerStatefulWidget {
 }
 
 class _WordInputScreenState extends ConsumerState<WordInputScreen>
-    with WidgetsBindingObserver, _WordRows<WordInputScreen> {
+    with
+        WidgetsBindingObserver,
+        SingleTickerProviderStateMixin,
+        _WordRows<WordInputScreen> {
   @override
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
@@ -180,6 +183,16 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// Read once in initState: dispose() may not touch `ref` (Riverpod forbids
   /// it once the element is torn down), yet it still has to stop speech.
   late final PronunciationService _pronunciation;
+
+  /// 0 with no collection tags, 1 with some: drives the tag line's height so
+  /// the app bar grows and shrinks over 200 ms instead of jumping (owner V8).
+  late final AnimationController _tagLine = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  )..addListener(() {
+      if (mounted) setState(() {});
+    });
+  bool? _tagLineOpen;
 
   @override
   void initState() {
@@ -859,6 +872,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
 
   @override
   void dispose() {
+    _tagLine.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _pronunciation.stop();
     for (var controller in _wordControllers) {
@@ -973,6 +987,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     Decoration? highlightFor(int index) =>
         highlightedRows.contains(index) ? highlight : null;
 
+    final originTags = _originTags(), topicTags = _topicTags();
+    final hasTags = originTags.isNotEmpty || topicTags.isNotEmpty;
+    if (_tagLineOpen == null) {
+      _tagLine.value = hasTags ? 1 : 0;
+    } else if (_tagLineOpen != hasTags) {
+      _tagLine.animateTo(hasTags ? 1 : 0, curve: Curves.easeInOut);
+    }
+    _tagLineOpen = hasTags;
+
     // Back steps the open photo panel back one stop and never leaves the
     // screen while it is open (spec AC-10). Closed, Back is as before.
     return PopScope(
@@ -986,8 +1009,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         title: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         bottom: CollectionTagLine(
-          originTags: _originTags(),
-          topicTags: _topicTags(),
+          originTags: originTags,
+          topicTags: topicTags,
+          height: CollectionTagLine.lineHeight * _tagLine.value,
           onTap: (kind, text) =>
               CollectionsRoute(tagKind: kind, tag: text).push(context),
         ),
@@ -1186,11 +1210,24 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     _restoreFromStore(collection.words, focusLast: false);
   }
 
-  // TODO(T8): read the collection's typed origin tags.
-  List<String> _originTags() => const [];
+  /// The current collection's typed tags; a collection from before the typed
+  /// tags shows its legacy tags as topic tags.
+  bool get _legacyOnly {
+    final c = ref.watch(wordInputNotifierProvider).valueOrNull;
+    return c != null &&
+        c.originTags.isEmpty &&
+        c.topicTags.isEmpty &&
+        c.tags.isNotEmpty;
+  }
 
-  // TODO(T8): read the collection's typed topic tags.
-  List<String> _topicTags() => const [];
+  List<String> _originTags() =>
+      ref.watch(wordInputNotifierProvider).valueOrNull?.originTags ?? const [];
+
+  List<String> _topicTags() {
+    final c = ref.watch(wordInputNotifierProvider).valueOrNull;
+    if (c == null) return const [];
+    return _legacyOnly ? c.tags : c.topicTags;
+  }
 
   /// The top bar, which an open photo panel owns like the rest of the screen
   /// (spec AC-11).

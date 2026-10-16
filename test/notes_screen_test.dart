@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/tag_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -30,6 +31,41 @@ class _FakeInput extends WordInputNotifier {
 
   @override
   Future<WordCollection> build() async => collection;
+
+  // No store here: apply the edits in memory the way the stored record would.
+  @override
+  Future<Set<TagKind>> updateSourceNote(
+    String id, {
+    String? title,
+    String? description,
+    List<String>? links,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
+    final s = collection.sources.firstWhere((s) => s.id == id);
+    if (title != null) s.title = title.trim().isEmpty ? null : title;
+    if (description != null) {
+      s.description = description.trim().isEmpty ? null : description;
+    }
+    if (links != null) s.links = [...links];
+    if (origin != null) s.originTags = [...origin];
+    if (topic != null) s.topicTags = [...topic];
+    state = AsyncData(collection);
+    return const {};
+  }
+
+  @override
+  Future<bool> saveDetails({
+    String? name,
+    String? description,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
+    if (origin != null) collection.originTags = [...origin];
+    if (topic != null) collection.topicTags = [...topic];
+    state = AsyncData(collection);
+    return true;
+  }
 }
 
 /// Five photos, one word each.
