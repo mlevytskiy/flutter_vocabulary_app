@@ -247,21 +247,17 @@ The app ships as the same Android build; nothing new runs in the background. The
 
 ## 8. Crosscutting concepts
 
-<!-- 🎯 Why: CROSS-CUTTING PATTERNS spanning several modules: logging, errors, authorization, ID
-     strategy, events, caching. ⭐ The second-densest section. A pattern inside one module is NOT
-     here; a project-wide convention belongs in the convention file.
-     📋 Write: a table — concept / convention / where defined. One row per concept.
-     📌 e.g. «sortable time-based IDs generated in the app layer» as a default from the convention file. -->
-
 | Concept | Convention | Where defined |
 |---|---|---|
-| Logging | <e.g. structured, fields `module=<name>`> | <convention file §X or here> |
-| Authentication | <e.g. token-based via middleware> | <convention file §X> |
-| Error handling | <e.g. domain sentinel → ports error mapping → JSON> | <convention file §X> |
-| ID strategy | <e.g. sortable time-based ID in the app layer> | <convention file §X> |
-| Internationalisation | <e.g. N/A, single language> | — |
-| Observability | <e.g. tracing on the request boundary> | — |
-| Events | <module-specific patterns, if any> | <here> |
+| Logging | `debugPrint('VOCAB: …')`, as the launch rule does today | `word_input_notifier.dart` |
+| Error handling | Stores never throw: a bad read answers `null`/`[]`, a failed write is logged and skipped. A refused action (current collection, folder into itself, bad name) returns a result the screen turns into a message | `SessionStore` class doc (→ `CollectionStore`) |
+| Authentication | None in the app. A shared link with its edit token is the only credential (unchanged) | `idea-brief.md` §5 |
+| ID strategy | Collections keep their time-based `collectionId`; folders get `uuidV4()` from `source_photo_store.dart` | here, ADR-0004 |
+| Concurrency | Filing changes, erase and late results are each one Isar write transaction in `CollectionStore`; `put()` never writes filing and never inserts | ADR-0003, ADR-0006 |
+| Time | Bin expiry is `binnedAt + 30 × 24 h` on the phone's clock (a forward-moved clock is trusted, AC-26); "N days left" counts calendar days in local time; default names use local time | `filing.dart` |
+| Internationalisation | None: hardcoded English strings, as today. "session" becomes "collection" in every visible text (AC-33) | — |
+| Untrusted text | A name is plain text everywhere: `Text` widgets in the app, `escapeHtml` on the shared page, the file-name replacement of AC-32 in shared files | page.ts, share_formats.dart |
+| Navigation | `CollectionsRoute` and `RecycleBinRoute` are typed routes; dialogs and menus stay `showDialog` / popup menus | CLAUDE.md rule 1 |
 
 ## 9. Architecture decisions
 
