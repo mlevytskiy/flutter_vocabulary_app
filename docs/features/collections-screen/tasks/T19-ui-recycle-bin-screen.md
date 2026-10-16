@@ -7,7 +7,7 @@ acs: ["AC-23", "AC-24", "AC-25"]
 files_hint: ["lib/router/routes.dart", "lib/features/collections/recycle_bin_screen.dart", "lib/features/collections/collections_screen.dart", "test/recycle_bin_screen_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T19 — Add the recycle bin screen with days left, Restore, Delete forever and Empty recycle bin
