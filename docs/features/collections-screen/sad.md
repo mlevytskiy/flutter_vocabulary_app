@@ -328,13 +328,16 @@ ADR files live under `docs/features/collections-screen/adr/NNNN-<title>.md`.
 
 ## 12. Glossary
 
-<!-- 🎯 Why: ⭐ the DOMAIN GLOSSARY that ends arguments a year later («checkpoint — weekly or
-     biweekly? quarter — calendar or fiscal?»).
-     📋 Write: a term / meaning table. Business + technical terms mixed.
-     📌 e.g. «Lesson | a unit inside a course made of blocks (text, video)». -->
-
 | Term | Meaning |
 |---|---|
-| <e.g. domain object A> | <its meaning in this domain> |
-| <e.g. domain object B> | <its meaning> |
-| <e.g. domain invariant name> | <the rule, in plain language> |
+| collection | A named set of words stored on the learner's phone; one file on the Collections screen. Formerly "session"; stored records, Worker routes and shared links still say session (CONTEXT.md). In code: `WordCollection` |
+| current collection | The one collection the main screen is editing; exactly one at a time, changed only by the learner (CONTEXT.md) |
+| folder | A named place on the Collections screen holding collections and folders, nested to any depth, only on the phone (CONTEXT.md). In code: `CollectionFolder` |
+| recycle bin | Where a deleted collection or folder waits 30 days before it is erased for good, and from where it is restored to its old place (CONTEXT.md) |
+| filing | A collection's or folder's name, folder, place in the order and bin mark: the fields only `CollectionStore`'s filing transactions write (ADR-0003). *Not yet in CONTEXT.md* |
+| level | The items directly inside one folder, or at the top level, ordered together by `order` |
+| kept collection | A collection with `keep` set: made with "New collection", renamed, moved, reordered or given a word. An empty collection that is not kept is erased when the learner leaves it (AC-19). *Not yet in CONTEXT.md* |
+| erase for good | Removing an item and its photo files from the phone: Delete forever, Empty recycle bin, or the 30-day sweep |
+| bin sweep | The check, on launch and on return to the app, that erases items whose 30 days are up (AC-26) |
+| a folder cannot go inside itself | Invariant: a folder is never moved into itself or any folder inside it (AC-15) |
+| the current collection cannot be deleted | Invariant: binning the current collection is refused, by the store as well as the screen (AC-21) |
