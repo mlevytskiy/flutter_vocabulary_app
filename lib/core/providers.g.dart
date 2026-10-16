@@ -723,6 +723,155 @@ class _CollectionLevelProviderElement
   String? get folderId => (origin as CollectionLevelProvider).folderId;
 }
 
+String _$collectionNameHash() => r'8a07f2bd9b41c3855b426acf2b30592f9ccd9978';
+
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+///
+/// Copied from [collectionName].
+@ProviderFor(collectionName)
+const collectionNameProvider = CollectionNameFamily();
+
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+///
+/// Copied from [collectionName].
+class CollectionNameFamily extends Family<AsyncValue<String?>> {
+  /// The stored name of one collection (collections-screen T14): the main
+  /// screen's title. Null before the backfill; callers show the date name.
+  ///
+  /// Copied from [collectionName].
+  const CollectionNameFamily();
+
+  /// The stored name of one collection (collections-screen T14): the main
+  /// screen's title. Null before the backfill; callers show the date name.
+  ///
+  /// Copied from [collectionName].
+  CollectionNameProvider call(
+    String collectionId,
+  ) {
+    return CollectionNameProvider(
+      collectionId,
+    );
+  }
+
+  @override
+  CollectionNameProvider getProviderOverride(
+    covariant CollectionNameProvider provider,
+  ) {
+    return call(
+      provider.collectionId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'collectionNameProvider';
+}
+
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+///
+/// Copied from [collectionName].
+class CollectionNameProvider extends AutoDisposeStreamProvider<String?> {
+  /// The stored name of one collection (collections-screen T14): the main
+  /// screen's title. Null before the backfill; callers show the date name.
+  ///
+  /// Copied from [collectionName].
+  CollectionNameProvider(
+    String collectionId,
+  ) : this._internal(
+          (ref) => collectionName(
+            ref as CollectionNameRef,
+            collectionId,
+          ),
+          from: collectionNameProvider,
+          name: r'collectionNameProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$collectionNameHash,
+          dependencies: CollectionNameFamily._dependencies,
+          allTransitiveDependencies:
+              CollectionNameFamily._allTransitiveDependencies,
+          collectionId: collectionId,
+        );
+
+  CollectionNameProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.collectionId,
+  }) : super.internal();
+
+  final String collectionId;
+
+  @override
+  Override overrideWith(
+    Stream<String?> Function(CollectionNameRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: CollectionNameProvider._internal(
+        (ref) => create(ref as CollectionNameRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        collectionId: collectionId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeStreamProviderElement<String?> createElement() {
+    return _CollectionNameProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CollectionNameProvider &&
+        other.collectionId == collectionId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin CollectionNameRef on AutoDisposeStreamProviderRef<String?> {
+  /// The parameter `collectionId` of this provider.
+  String get collectionId;
+}
+
+class _CollectionNameProviderElement
+    extends AutoDisposeStreamProviderElement<String?> with CollectionNameRef {
+  _CollectionNameProviderElement(super.provider);
+
+  @override
+  String get collectionId => (origin as CollectionNameProvider).collectionId;
+}
+
 String _$collectionFoldersHash() => r'0201bdb7340183c54b86017aa80dc98dee5f1df7';
 
 /// Every folder, binned ones too, for the Collections path and the tree.

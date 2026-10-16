@@ -548,6 +548,11 @@ class CollectionStore {
   Stream<List<LevelItem>> watchLevel(String? folderId) =>
       _watchFiling(() => _readLevel(folderId));
 
+  /// The stored name of collection [id] (null before the backfill or when
+  /// it is gone), on listen and after every write (the main screen's title).
+  Stream<String?> watchName(String id) =>
+      _watchFiling(() async => (await _collectionById(id))?.name);
+
   /// Every folder, binned ones too, for the path and the tree; unsorted.
   Stream<List<CollectionFolder>> watchFolders() =>
       _isar.collectionFolders.where().watch(fireImmediately: true);

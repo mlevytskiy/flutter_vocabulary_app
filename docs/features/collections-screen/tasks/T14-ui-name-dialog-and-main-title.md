@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-05"]
 files_hint: ["lib/features/collections/name_dialog.dart", "lib/features/word_input/word_input_screen.dart", "test/name_dialog_test.dart", "test/main_title_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T14 — Show the collection's name as the main screen's title with a white edit button and the shared NameDialog
