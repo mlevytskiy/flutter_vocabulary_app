@@ -7,7 +7,7 @@ acs: ["AC-14", "AC-15", "AC-16"]
 files_hint: ["lib/features/collections/collection_drag.dart", "lib/features/collections/collection_icon.dart", "lib/features/collections/collections_screen.dart", "test/collections_drag_test.dart"]
 owner: "Maksym"
 estimate: "L"
-status: "todo"
+status: "done"
 ---
 
 # T17 — Drag icons into folders, up a level, onto the path and into a new order, with hover-to-open

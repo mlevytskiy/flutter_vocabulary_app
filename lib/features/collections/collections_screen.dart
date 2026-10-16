@@ -24,6 +24,51 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   /// The icon of each item on screen, to anchor its menu (SCR-05).
   final _anchors = <String, BuildContext>{};
 
+  /// The item being dragged and the folder the drag started in (null = top
+  /// level), kept in this State because the dragged icon's own widget can go
+  /// away when a hover-open changes the level (AC-14).
+  CollectionItemView? _dragged;
+  String? _dragFrom;
+  bool _dragging = false;
+
+  void _dragStarted(CollectionItemView item) {
+    setState(() {
+      _dragged = item;
+      _dragFrom = ref.read(collectionsNotifierProvider).folderId;
+      _dragging = true;
+    });
+  }
+
+  void _dragStopped() {
+    if (_dragging && mounted) setState(() => _dragging = false);
+  }
+
+  /// Carries out what a drop means (AC-14, AC-15, AC-16).
+  Future<void> _decide(DropDecision decision) async {
+    final item = _dragged;
+    if (item == null) return;
+    final store = await ref.read(collectionStoreProvider.future);
+    switch (decision) {
+      case MoveInto(:final folderId, :final at):
+        await store.move(item.id, folderId, at: at);
+      case Reorder(:final index):
+        await store.reorder(item.id, index);
+      case ToBin():
+        await onDelete(item);
+      case RefusedIntoItself():
+        _snack(RefusedIntoItself.message);
+      case NoOp():
+        break;
+    }
+  }
+
+  void _snack(String text) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
   Future<void> _newFolder(String? parentId) async {
     final name = await showNameDialog(context, mode: NameDialogMode.newFolder);
     if (name == null) return;
@@ -53,7 +98,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
       case _ItemAction.rename:
         await _rename(item);
       case _ItemAction.delete:
-        onDelete(item);
+        await onDelete(item);
     }
   }
 
@@ -71,7 +116,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   }
 
   /// Delete from the item menu. // T18: fills this (the rules of AC-20 to AC-22).
-  void onDelete(CollectionItemView item) {}
+  Future<void> onDelete(CollectionItemView item) async {}
 
   @override
   Widget build(BuildContext context) {
@@ -80,62 +125,108 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
         ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
     final parentOf = {for (final f in folders) f.folderId: f.parentId};
     final notifier = ref.read(collectionsNotifierProvider.notifier);
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Collections'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.create_new_folder_outlined),
-            tooltip: 'New folder',
-            onPressed: () => _newFolder(state.folderId),
+    CollectionDragLevel level() => CollectionDragLevel(
+          openFolderId: state.folderId,
+          parentOf: parentOf,
+          levelIds: [for (final i in state.items ?? const []) i.id],
+          fromFolderId: _dragFrom,
+        );
+    return Listener(
+        onPointerUp: (_) => _dragStopped(),
+        onPointerCancel: (_) => _dragStopped(),
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Collections'),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.create_new_folder_outlined),
+                tooltip: 'New folder',
+                onPressed: () => _newFolder(state.folderId),
+              ),
+              IconButton(
+                icon: const Icon(Icons.library_add_outlined),
+                tooltip: 'New collection',
+                onPressed: () {},
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.library_add_outlined),
-            tooltip: 'New collection',
-            onPressed: () {},
+          body: Column(
+            children: [
+              CollectionsPathBar(
+                parts: state.path,
+                upEnabled: !state.isTopLevel,
+                onUp: notifier.up,
+                onPart: notifier.open,
+                upWrapper: (context, up) => UpDropTarget(
+                    level: level(), onDecision: _decide, child: up),
+                partWrapper: (context, part, child) => PathPartDropTarget(
+                  part: part,
+                  level: level(),
+                  onDecision: _decide,
+                  onHoverOpen: notifier.open,
+                  child: child,
+                ),
+              ),
+              Expanded(
+                child: CollectionsGrid(
+                  items: state.items,
+                  showBin: state.isTopLevel,
+                  onBinTap: () => const RecycleBinRoute().push(context),
+                  onTap: (item) {
+                    if (item.isFolder) notifier.open(item.id);
+                  },
+                  onMenu: openItemMenu,
+                  binWrapper: (context, bin) => BinDropTarget(
+                      level: level(), onDecision: _decide, child: bin),
+                  itemWrapper: (context, item, icon) {
+                    final ids = [for (final i in state.items ?? const []) i.id];
+                    final index = ids.indexOf(item.id);
+                    // Invisible gap targets on the tile's left edge (and the last
+                    // tile's right edge) reorder to that place.
+                    return Stack(
+                      children: [
+                        DraggableCollectionIcon(
+                          item: item,
+                          level: level(),
+                          onDecision: _decide,
+                          onHoverOpen: notifier.open,
+                          onDragStarted: () => _dragStarted(item),
+                          onDragEnded: _dragStopped,
+                          onLongPressNoMove: () => openItemMenu(item),
+                          child: Builder(builder: (context) {
+                            _anchors[item.id] = context;
+                            return icon;
+                          }),
+                        ),
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 8,
+                          child: CollectionGapTarget(
+                              index: index,
+                              level: level(),
+                              onDecision: _decide),
+                        ),
+                        if (index == ids.length - 1)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 8,
+                            child: CollectionGapTarget(
+                                index: ids.length,
+                                level: level(),
+                                onDecision: _decide),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          CollectionsPathBar(
-            parts: state.path,
-            upEnabled: !state.isTopLevel,
-            onUp: notifier.up,
-            onPart: notifier.open,
-          ),
-          Expanded(
-            child: CollectionsGrid(
-              items: state.items,
-              showBin: state.isTopLevel,
-              onBinTap: () => const RecycleBinRoute().push(context),
-              onTap: (item) {
-                if (item.isFolder) notifier.open(item.id);
-              },
-              onMenu: openItemMenu,
-              itemWrapper: (context, item, icon) {
-                // The wrapper only opens the menu on a long press without
-                // moving; T17 acts on the decisions.
-                return DraggableCollectionIcon(
-                  item: item,
-                  level: CollectionDragLevel(
-                    openFolderId: state.folderId,
-                    parentOf: parentOf,
-                    levelIds: [for (final i in state.items ?? const []) i.id],
-                  ),
-                  onDecision: (_) {}, // T17
-                  onLongPressNoMove: () => openItemMenu(item),
-                  child: Builder(builder: (context) {
-                    _anchors[item.id] = context;
-                    return icon;
-                  }),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+        ));
   }
 }

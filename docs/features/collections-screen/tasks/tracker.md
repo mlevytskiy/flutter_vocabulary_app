@@ -21,7 +21,7 @@
 | T14 | [Show the collection's name as the main screen's title with a white edit button and the shared NameDialog](./T14-ui-name-dialog-and-main-title.md) | ui | Maksym | M | T3, T8 | done |
 | T15 | [Add the Collections route and screen with path, Up and the icon grid, and keep the side menu always on](./T15-ui-collections-screen-browse.md) | ui | Maksym | M | T8 | done |
 | T16 | [Open a collection with a tap, add New folder and New collection, and the item menu with Rename](./T16-ui-collections-actions-menu-new-open.md) | ui | Maksym | M | T12, T14, T15 | todo |
-| T17 | [Drag icons into folders, up a level, onto the path and into a new order, with hover-to-open](./T17-ui-collections-drag-and-drop.md) | ui | Maksym | L | T16 | todo |
+| T17 | [Drag icons into folders, up a level, onto the path and into a new order, with hover-to-open](./T17-ui-collections-drag-and-drop.md) | ui | Maksym | L | T16 | done |
 | T18 | [Delete from the menu or the bin drop zone with the confirmation, the current-collection refusal and the stayed message](./T18-ui-delete-to-bin-flow.md) | ui | Maksym | M | T9, T17 | todo |
 | T19 | [Add the recycle bin screen with days left, Restore, Delete forever and Empty recycle bin](./T19-ui-recycle-bin-screen.md) | ui | Maksym | M | T9, T15 | done |
 | T20 | [Show name and word count in History rows, and mark story runs of an erased collection](./T20-ui-history-names-and-story-runs-mark.md) | ui | Maksym | S | T8 | done |
