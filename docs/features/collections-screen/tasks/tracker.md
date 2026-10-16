@@ -30,7 +30,7 @@
 | T23 | [Show the stored title as the shared page's heading and document title, escaped, with Vocabulary as the fallback](./T23-ui-shared-page-title.md) | ui | Maksym | S | T22 | done |
 | T24 | [Send the name with Share link, warn that it is public, and name shared files after it](./T24-ui-share-with-name.md) | ui | Maksym | M | T5 | done |
 | T25 | [Replace "session" with "collection" in every text the learner reads](./T25-ui-collection-wording-pass.md) | ui | Maksym | S | T2, T20 | done |
-| T26 | [Update architecture.md, CONTEXT.md, the superseded ADRs and the Worker README](./T26-docs-architecture-context-supersedes.md) | docs | Maksym | S | T11, T13, T23 | todo |
+| T26 | [Update architecture.md, CONTEXT.md, the superseded ADRs and the Worker README](./T26-docs-architecture-context-supersedes.md) | docs | Maksym | S | T11, T13, T23 | done |
 | T27 | [Run the device pass: the update over a copy of the owner's data, open time, force-close durability, and deploy the Worker](./T27-tests-device-pass-and-measurements.md) | tests | Maksym | M | T6, T10, T18, T19, T24, T25, T26 | todo |
 
 **Total:** 27 tasks, ~19 person-days (S = 0.5, M = 0.75, L = 1).

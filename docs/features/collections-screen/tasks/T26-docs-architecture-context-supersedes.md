@@ -7,7 +7,7 @@ acs: []
 files_hint: ["docs/architecture.md", "CONTEXT.md", "docs/features/edit-session-from-history/adr/", "docs/features/import-from-quizlet/", "vocab-photo-api/README.md"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T26 — Update architecture.md, CONTEXT.md, the superseded ADRs and the Worker README
