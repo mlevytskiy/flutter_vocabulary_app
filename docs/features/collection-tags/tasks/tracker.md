@@ -6,7 +6,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
 | T1 | [Record the collection-tags approvals in CLAUDE.md rules 3 and 5](./T1-docs-record-the-collection-tags-approvals-in-claude-md-rules-3-an.md) | docs | agent | S | — | done |
-| T2 | [Add TagKind and the pure tag rules: validation, keys, limits, presets, legacy sort, matching and ranking](./T2-domain-add-tagkind-and-the-pure-tag-rules-validation-keys-limits-pr.md) | domain | agent | M | — | todo |
+| T2 | [Add TagKind and the pure tag rules: validation, keys, limits, presets, legacy sort, matching and ranking](./T2-domain-add-tagkind-and-the-pure-tag-rules-validation-keys-limits-pr.md) | domain | agent | M | — | done |
 | T3 | [Add the pure collection search: summaries, matching, filters, calendar-day ranges, sort and tag counts](./T3-domain-add-the-pure-collection-search-summaries-matching-filters-ca.md) | domain | agent | M | T2 | todo |
 | T4 | [Add description, typed tags and TagLibraryEntry to the Isar models and regenerate the schema](./T4-infra-add-description-typed-tags-and-taglibraryentry-to-the-isar-m.md) | infra | agent | S | T2 | todo |
 | T5 | [Protect description and typed tags in put/update and add setDetails, create(details), addCollectionTags and the library writes](./T5-infra-protect-description-and-typed-tags-in-put-update-and-add-set.md) | infra | agent | L | T4 | todo |

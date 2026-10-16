@@ -196,9 +196,9 @@ Committed approach: every tag answers one of two guiding questions, **"Where doe
 
 ### AC-17b (US-08) — domain invariant
 
-**Given** before the update a collection had the untyped tags "Travel" and "travel", a 40-character tag, and 14 other tags that all become topic tags
+**Given** before the update a collection had the untyped tags "Food" and "food", a 40-character tag, and 14 other tags that all become topic tags
 **When** the learner opens the app after the update
-**Then** "Travel" and "travel" became one topic tag "Travel" (the first spelling kept wins), the 40-character tag is kept whole, and all 14 others are kept even though that is more than 10; the learner can remove any of them but cannot add another topic tag until fewer than 10 are left
+**Then** "Food" and "food" became one topic tag "Food" (the first spelling kept wins), the 40-character tag is kept whole, and all 14 others are kept even though that is more than 10; the learner can remove any of them but cannot add another topic tag until fewer than 10 are left
 
 ### AC-18 (US-08) — cross-context
 
