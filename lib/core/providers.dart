@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'models/offered_ai.dart';
 import 'models/collection_folder.dart';
+import 'models/tag_library_entry.dart';
 import 'models/word_collection.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
@@ -20,6 +21,7 @@ import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
 import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
+import 'services/collection_search.dart' show CollectionSummary;
 import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
@@ -207,6 +209,23 @@ Stream<List<WordCollection>> nonEmptyCollections(Ref ref) async* {
 Stream<List<LevelItem>> collectionLevel(Ref ref, String? folderId) async* {
   final store = await ref.watch(collectionStoreProvider.future);
   yield* store.watchLevel(folderId);
+}
+
+/// Every collection that is not in the bin, empty ones too, for the
+/// Collections search and the tag counts (collection-tags ADR-0006); one
+/// emission per burst of writes.
+@riverpod
+Stream<List<CollectionSummary>> collectionSummaries(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchSummaries();
+}
+
+/// The whole tag library, forgotten entries included (collection-tags
+/// ADR-0009).
+@riverpod
+Stream<List<TagLibraryEntry>> tagLibrary(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchLibrary();
 }
 
 /// The stored name of one collection (collections-screen T14): the main

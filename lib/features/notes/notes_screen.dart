@@ -17,7 +17,7 @@ import '../word_input/word_input_screen.dart' show showSourceWordsDialog;
 import '../../router/routes.dart';
 import 'photo_viewer_screen.dart';
 import 'tag_editor.dart';
-import 'tag_suggestions.dart';
+import '../tags/tag_suggestions.dart';
 
 /// Notes (owner, 2026-10-15): opened from the half-open photo panel's expand
 /// control. One pager per source the panel lists, in the panel's order. Each

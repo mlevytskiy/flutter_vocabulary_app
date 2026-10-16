@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/collection_folder.dart';
 import '../models/collection_name.dart';
+import '../models/effective_tags.dart';
 import '../models/tag_library_entry.dart';
 import '../models/word_collection.dart';
 import '../models/session_source.dart';
@@ -14,6 +15,7 @@ import '../models/story_run.dart';
 import '../models/tag_kind.dart';
 import '../models/word_result.dart';
 import 'collection_level.dart';
+import 'collection_search.dart' show CollectionSummary;
 import 'filing.dart'
     show
         canMoveFolderInto,
@@ -1052,10 +1054,15 @@ class CollectionStore {
 
   /// Emits [read] once on listen and again after every write to collections
   /// or folders, in order. A failed read is skipped, never an error event.
-  Stream<T> _watchFiling<T>(Future<T> Function() read) {
+  ///
+  /// With [debounce], a write only starts a timer and the read runs once,
+  /// that long after the last write of a burst; the first read on listen
+  /// is not delayed.
+  Stream<T> _watchFiling<T>(Future<T> Function() read, {Duration? debounce}) {
     late final StreamController<T> controller;
     final subscriptions = <StreamSubscription<void>>[];
     var pending = Future<void>.value();
+    Timer? timer;
     void emit() {
       pending = pending.then((_) async {
         try {
@@ -1067,14 +1074,21 @@ class CollectionStore {
       });
     }
 
+    void onWrite() {
+      if (debounce == null) return emit();
+      timer?.cancel();
+      timer = Timer(debounce, emit);
+    }
+
     controller = StreamController<T>(
       onListen: () {
         subscriptions
-          ..add(_isar.wordCollections.watchLazy().listen((_) => emit()))
-          ..add(_isar.collectionFolders.watchLazy().listen((_) => emit()));
+          ..add(_isar.wordCollections.watchLazy().listen((_) => onWrite()))
+          ..add(_isar.collectionFolders.watchLazy().listen((_) => onWrite()));
         emit();
       },
       onCancel: () async {
+        timer?.cancel();
         for (final s in subscriptions) {
           await s.cancel();
         }
@@ -1124,6 +1138,97 @@ class CollectionStore {
               await _withRowIds(s),
         ];
       });
+
+  /// Every collection that is not in the bin, empty ones too, as the
+  /// Collections search sees it (collection-tags ADR-0006, AC-27): folder
+  /// path, My order index, created and edited moments, tags as shown (legacy
+  /// tags read as topic tags until migrated). Emits on listen and once,
+  /// [debounce] after the last write of a burst.
+  Stream<List<CollectionSummary>> watchSummaries(
+          {Duration debounce = const Duration(milliseconds: 300)}) =>
+      _watchFiling(_readSummaries, debounce: debounce);
+
+  Future<List<CollectionSummary>> _readSummaries() async {
+    final folders = await _isar.collectionFolders.where().findAll();
+    final all = await _isar.wordCollections.where().findAll();
+    final parentOf = {for (final f in folders) f.folderId: f.parentId};
+    final binnedFolderIds = {
+      for (final f in folders)
+        if (f.binnedAt != null) f.folderId,
+    };
+    bool binned(bool self, String? folderId) => isInBin(
+        binned: self,
+        folderId: folderId,
+        parentOf: parentOf,
+        binnedFolderIds: binnedFolderIds);
+
+    // The live items of each level, by order (as _readLevel sorts them).
+    final levels = <String?, List<LevelItem>>{};
+    for (final f in folders) {
+      if (!binned(f.binnedAt != null, f.parentId)) {
+        (levels[f.parentId] ??= []).add(LevelItem.folder(f));
+      }
+    }
+    for (final c in all) {
+      if (!binned(c.binnedAt != null, c.folderId)) {
+        (levels[c.folderId] ??= []).add(LevelItem.collection(c));
+      }
+    }
+    for (final items in levels.values) {
+      items.sort((a, b) {
+        final byOrder = a.order.compareTo(b.order);
+        if (byOrder != 0) return byOrder;
+        if (a.isFolder != b.isFolder) return a.isFolder ? -1 : 1;
+        return a.id.compareTo(b.id);
+      });
+    }
+
+    final names = {for (final f in folders) f.folderId: f.name};
+    String pathOf(String? folderId) {
+      final names_ = <String>[];
+      var at = folderId;
+      while (at != null && names_.length <= folders.length) {
+        names_.insert(0, names[at] ?? '');
+        at = parentOf[at];
+      }
+      return names_.isEmpty ? 'Top level' : names_.join(' / ');
+    }
+
+    final result = <CollectionSummary>[];
+    void walk(String? folderId) {
+      for (final item in levels[folderId] ?? const <LevelItem>[]) {
+        if (item.isFolder) {
+          walk(item.id);
+          continue;
+        }
+        final c = item.collection!;
+        final tags = effectiveTagsOf(c);
+        final originKeys = <String>{};
+        final topicKeys = <String>{};
+        for (final source in c.sources) {
+          final t = effectiveSourceTagsOf(source);
+          originKeys.addAll(t.origin.map(tagKey));
+          topicKeys.addAll(t.topic.map(tagKey));
+        }
+        result.add(CollectionSummary(
+          id: c.collectionId,
+          name: item.name,
+          description: c.description ?? '',
+          originTags: tags.origin,
+          topicTags: tags.topic,
+          sourceOriginKeys: originKeys,
+          sourceTopicKeys: topicKeys,
+          folderPath: pathOf(c.folderId),
+          treeIndex: result.length,
+          created: creationMomentOf(c.collectionId) ?? c.updatedAt,
+          edited: c.updatedAt,
+        ));
+      }
+    }
+
+    walk(null);
+    return result;
+  }
 
   // ---- end of filing actions and streams (T8) ----
 
