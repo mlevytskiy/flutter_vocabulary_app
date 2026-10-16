@@ -31,10 +31,14 @@ import 'source_photo_store.dart' show SourcePhotoStore, uuidV4;
 /// launch because of a bad write is worse than one that loses a session.
 class CollectionStore {
   static const _currentCollectionKey = 'current_session_id';
-  static const _switchedCollectionKey = 'switched_session_id';
-  static const _switchedAtKey = 'switched_at';
-  static const _seenCollectionKey = 'seen_session_id';
-  static const _seenAtKey = 'seen_at';
+  /// Keys of the pick and seen records the old launch rule kept; removed once
+  /// at startup, never written (collections-screen ADR-0007).
+  static const _legacyKeys = [
+    'switched_session_id',
+    'switched_at',
+    'seen_session_id',
+    'seen_at',
+  ];
 
   final Isar _isar;
   final SharedPreferences _prefs;
@@ -50,6 +54,9 @@ class CollectionStore {
             directory: dir, name: 'vocab');
     final prefs = await SharedPreferences.getInstance();
     final store = CollectionStore._(isar, prefs);
+    for (final k in _legacyKeys) {
+      if (prefs.containsKey(k)) await prefs.remove(k);
+    }
     await store._fillRowIdsEverywhere();
     await store._backfillFiling();
     return store;
@@ -186,6 +193,39 @@ class CollectionStore {
     } catch (_) {
       return null;
     }
+  }
+
+  /// True when [c] is in the bin, directly or through a folder above it.
+  Future<bool> isBinned(WordCollection c) async {
+    try {
+      final folders = await _isar.collectionFolders.where().findAll();
+      return isInBin(
+        binned: c.binnedAt != null,
+        folderId: c.folderId,
+        parentOf: {for (final f in folders) f.folderId: f.parentId},
+        binnedFolderIds: {
+          for (final f in folders)
+            if (f.binnedAt != null) f.folderId,
+        },
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// The collection with the newest `lastLocalModifiedAt` that is outside the
+  /// bin (empty ones count), or null when there is none.
+  Future<WordCollection?> newestOutsideBin() async {
+    try {
+      final all = await _isar.wordCollections
+          .where()
+          .sortByLastLocalModifiedAtDesc()
+          .findAll();
+      for (final c in all) {
+        if (!await isBinned(c)) return await _withRowIds(c);
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// The id of every stored collection, binned ones too: a story run whose
@@ -859,6 +899,23 @@ class CollectionStore {
   /// moved backwards erases nothing early. Returns how many items went, 0 on
   /// a failed write.
   Future<int> sweepBin(DateTime now) async {
+    // A read first: most opens have nothing to erase, and then no write
+    // transaction is taken.
+    try {
+      final binned = [
+        for (final c
+            in await _isar.wordCollections.filter().binnedAtIsNotNull().findAll())
+          c.binnedAt!,
+        for (final f in await _isar.collectionFolders
+            .filter()
+            .binnedAtIsNotNull()
+            .findAll())
+          f.binnedAt!,
+      ];
+      if (!binned.any((at) => isExpired(at, now))) return 0;
+    } catch (_) {
+      return 0;
+    }
     final n = await _erase((at) => at != null && isExpired(at, now));
     debugPrint('VOCAB: bin sweep erased ${n < 0 ? 0 : n} item(s)');
     return n < 0 ? 0 : n;
@@ -974,55 +1031,5 @@ class CollectionStore {
 
   Future<void> setCurrentCollectionId(String collectionId) async {
     await _prefs.setString(_currentCollectionKey, collectionId);
-  }
-
-  /// Records that the learner picked [collectionId] from History at [at]
-  /// (edit-session-from-history, ADR-0002). Kept beside the current-session
-  /// pointer rather than on the session so a pick never looks like an edit.
-  /// Nothing clears it; [switchedAt] only answers for the id it names.
-  Future<void> setSwitched(String collectionId, DateTime at) async {
-    try {
-      await _prefs.setString(_switchedCollectionKey, collectionId);
-      await _prefs.setString(_switchedAtKey, at.toIso8601String());
-    } catch (_) {
-      // ignored on purpose, see the class doc
-    }
-  }
-
-  /// When [collectionId] was last picked from History, or null if the pick
-  /// record names another session, is missing, or cannot be read.
-  Future<DateTime?> switchedAt(String collectionId) async {
-    try {
-      if (_prefs.getString(_switchedCollectionKey) != collectionId) return null;
-      final at = _prefs.getString(_switchedAtKey);
-      return at == null ? null : DateTime.tryParse(at);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Records that [collectionId], with words, was on screen with the app open
-  /// at [at] (owner, 2026-10-16). Kept beside the pointer like a pick, so
-  /// being looked at never looks like an edit; [seenAt] only answers for the
-  /// id it names.
-  Future<void> setSeen(String collectionId, DateTime at) async {
-    try {
-      await _prefs.setString(_seenCollectionKey, collectionId);
-      await _prefs.setString(_seenAtKey, at.toIso8601String());
-    } catch (_) {
-      // ignored on purpose, see the class doc
-    }
-  }
-
-  /// When [collectionId] was last seen open, or null if the record names
-  /// another session, is missing, or cannot be read.
-  Future<DateTime?> seenAt(String collectionId) async {
-    try {
-      if (_prefs.getString(_seenCollectionKey) != collectionId) return null;
-      final at = _prefs.getString(_seenAtKey);
-      return at == null ? null : DateTime.tryParse(at);
-    } catch (_) {
-      return null;
-    }
   }
 }
