@@ -207,10 +207,17 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
     return store.byId(wanted);
   }
 
-  /// Saves without stamping the edit times: grouping is not an edit.
+  /// Saves without stamping the edit times: grouping is not an edit. Only the
+  /// grouping fields are written, into the stored record (ADR-0006), so a
+  /// change made by anyone else while the Worker was splitting stays.
   Future<void> _save(WordCollection collection) async {
     final store = await ref.read(collectionStoreProvider.future);
-    await store.put(collection);
+    await store.update(collection.collectionId, (stored) {
+      stored
+        ..groups = [for (final g in collection.groups) g.copy()]
+        ..selectedGroupId = collection.selectedGroupId
+        ..groupedWordsKey = collection.groupedWordsKey;
+    });
   }
 
   /// Ids of the groups whose story run is going; they count as groups with a

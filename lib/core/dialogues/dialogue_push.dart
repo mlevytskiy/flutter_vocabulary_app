@@ -325,9 +325,6 @@ class DialoguePush extends _$DialoguePush {
       return;
     }
     final store = await ref.read(collectionStoreProvider.future);
-    final collection = await store.byId(collectionId);
-    if (collection == null) return;
-    collection.dialogues = change(collection.dialogues);
-    await store.put(collection);
+    await store.update(collectionId, (stored) => stored.dialogues = change(stored.dialogues));
   }
 }

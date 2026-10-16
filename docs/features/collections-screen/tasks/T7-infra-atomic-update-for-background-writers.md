@@ -7,7 +7,7 @@ acs: ["AC-11", "AC-27"]
 files_hint: ["lib/core/services/collection_store.dart", "lib/core/story/story_run_tracker.dart", "lib/core/story/word_groups_notifier.dart", "lib/core/dialogues/dialogue_push.dart", "lib/core/services/exam_result_sink.dart", "test/collection_store_update_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Add CollectionStore.update(id, change) and move every background writer onto it

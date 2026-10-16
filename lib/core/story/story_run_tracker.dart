@@ -462,7 +462,13 @@ class StoryRunTracker extends _$StoryRunTracker {
     group
       ..storyRunId = run.runId
       ..storyWords = [...run.words];
-    await (await ref.read(collectionStoreProvider.future)).put(collection);
+    await (await ref.read(collectionStoreProvider.future)).update(run.collectionId, (stored) {
+      final g = stored.groups.where((g) => g.id == run.groupId).firstOrNull;
+      if (g == null) return;
+      g
+        ..storyRunId = run.runId
+        ..storyWords = [...run.words];
+    });
     final current = ref.read(wordInputNotifierProvider).valueOrNull?.collectionId == run.collectionId;
     final groups = wordGroupsNotifierProvider(current ? null : run.collectionId);
     if (ref.exists(groups)) await ref.read(groups.notifier).reload();
@@ -480,13 +486,14 @@ class StoryRunTracker extends _$StoryRunTracker {
       await ref.read(wordInputNotifierProvider.notifier).setScenePicture(dialogueId, run.runId);
       return;
     }
-    final dialogue = collection.dialogues.where((d) => d.id == dialogueId).firstOrNull;
-    if (dialogue == null) return;
-    dialogue.scenePictureRunId = run.runId;
-    if (collection.publishedId != null && collection.editToken != null) {
-      dialogue.picturePushState = PushState.pending;
-    }
-    await (await ref.read(collectionStoreProvider.future)).put(collection);
+    await (await ref.read(collectionStoreProvider.future)).update(run.collectionId, (stored) {
+      final dialogue = stored.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+      if (dialogue == null) return;
+      dialogue.scenePictureRunId = run.runId;
+      if (stored.publishedId != null && stored.editToken != null) {
+        dialogue.picturePushState = PushState.pending;
+      }
+    });
   }
 
   // --- helpers ------------------------------------------------------------

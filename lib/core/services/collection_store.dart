@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -176,6 +177,57 @@ class CollectionStore {
     }
   }
 
+  // ---- Atomic update for background writers (T7) ----
+
+  /// Reads the stored collection [collectionId], applies [change] to it and
+  /// writes it back, all in one write transaction, so no other writer can
+  /// slip in between (ADR-0006, sad §6 F10). Background writers — story runs,
+  /// word grouping, dialogue delivery, exam results — use this instead of a
+  /// whole-copy [put], changing only their own fields.
+  ///
+  /// [change] may not touch filing: name, folderId, order, binnedAt,
+  /// binnedFromFolderId and keep are restored from the stored record after
+  /// it runs. Neither edit time moves unless [change] moves it. With no
+  /// stored record (erased) nothing runs or is written and the result is
+  /// false (AC-27); false too when the write failed. Never throws.
+  Future<bool> update(
+      String collectionId, void Function(WordCollection) change) async {
+    try {
+      final written = await _isar.writeTxn(() async {
+        final stored = await _isar.wordCollections
+            .filter()
+            .collectionIdEqualTo(collectionId)
+            .findFirst();
+        if (stored == null) return false;
+        final id = stored.id,
+            name = stored.name,
+            folderId = stored.folderId,
+            order = stored.order,
+            binnedAt = stored.binnedAt,
+            binnedFromFolderId = stored.binnedFromFolderId,
+            keep = stored.keep;
+        change(stored);
+        stored
+          ..id = id
+          ..collectionId = collectionId
+          ..name = name
+          ..folderId = folderId
+          ..order = order
+          ..binnedAt = binnedAt
+          ..binnedFromFolderId = binnedFromFolderId
+          ..keep = keep;
+        await _isar.wordCollections.put(stored);
+        return true;
+      });
+      if (!written) {
+        debugPrint('VOCAB: update for $collectionId dropped, collection erased');
+      }
+      return written;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Saves the caller's copy over the stored collection with the same
   /// [WordCollection.collectionId]. Blank pairs — the trailing empty row the
   /// screen always keeps — are stripped before the write and the caller's own
@@ -237,26 +289,14 @@ class CollectionStore {
   /// S-23), dropping the oldest past [WordCollection.maxResults]. Neither
   /// `updatedAt` nor `lastLocalModifiedAt` moves, so History order stays
   /// (AC-37). False when there is no such session or the write failed.
-  Future<bool> appendResult(String collectionId, WordResult result) async {
-    try {
-      return await _isar.writeTxn(() async {
-        final existing = await _isar.wordCollections
-            .filter()
-            .collectionIdEqualTo(collectionId)
-            .findFirst();
-        if (existing == null) return false;
+  Future<bool> appendResult(String collectionId, WordResult result) =>
+      update(collectionId, (existing) {
         final results = [...existing.results, result.copy()];
         if (results.length > WordCollection.maxResults) {
           results.removeRange(0, results.length - WordCollection.maxResults);
         }
         existing.results = results;
-        await _isar.wordCollections.put(existing);
-        return true;
       });
-    } catch (_) {
-      return false;
-    }
-  }
 
   Future<void> delete(String collectionId) async {
     try {
