@@ -34,8 +34,9 @@ abstract final class SubtitleImportMessages {
 /// Settings translates them — Google Translate on the phone, with the phone's
 /// context line, or the AI on the Worker — then the results dialog. Only Done changes the session, through [addWords];
 /// every failure closes the progress dialog with its message and leaves the
-/// session as it was. A result for a session other than the one current at
-/// Start is dropped (AC-16). With the AI translating and "Get dialogues from
+/// session as it was. If another collection was opened since Start, the kept
+/// words go to the one the import started in, through [addWordsTo]
+/// (collections-screen ADR-0006, AC-11). With the AI translating and "Get dialogues from
 /// subtitles" on, the import also asks for film dialogues; they ride with the result, unseen by
 /// the results dialog, and right after [addWords] go to [addDialogues] with
 /// the number of words kept, so one save holds both
@@ -52,6 +53,9 @@ Future<void> runSubtitleImport({
   required List<String> Function() collectionWords,
   required void Function(List<VocabWord> words, String film, String? poster) addWords,
   void Function(List<ImportedDialogue> dialogues, int keptCount)? addDialogues,
+  Future<void> Function(String collectionId, List<VocabWord> words, String film, String? poster,
+          List<ImportedDialogue> dialogues)?
+      addWordsTo,
   Future<XFile?> Function()? pickFile,
 }) async {
   final prefsNotifier = ref.read(subtitleImportPrefsProvider.notifier);
@@ -153,11 +157,6 @@ Future<void> runSubtitleImport({
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(SubtitleImportMessages.notPicked)));
     return;
   }
-  if (currentCollectionId() != startedIn) {
-    debugPrint('SUBTITLES: the session changed during the import; words dropped');
-    return;
-  }
-
   final kept = await showSubtitleResultDialog(
     context,
     words,
@@ -172,11 +171,18 @@ Future<void> runSubtitleImport({
             outputTokens: result!.outputTokens,
           ),
   );
-  if (kept != null && kept.isNotEmpty && context.mounted && currentCollectionId() == startedIn) {
+  if (kept != null && kept.isNotEmpty && context.mounted) {
     final posterUrl = await poster.timeout(_posterWait, onTimeout: () => null);
-    if (!context.mounted || currentCollectionId() != startedIn) return;
+    if (!context.mounted) return;
+    final dialogues = result?.dialogues ?? const <ImportedDialogue>[];
+    if (startedIn != null && currentCollectionId() != startedIn) {
+      // Another collection was opened since Start: the result goes to the one
+      // it started in (collections-screen ADR-0006, AC-11).
+      await addWordsTo?.call(
+          startedIn, kept, subtitleFilmTitle(request), posterUrl, withDialogues ? dialogues : const []);
+      return;
+    }
     addWords(kept, subtitleFilmTitle(request), posterUrl);
-    final dialogues = result?.dialogues ?? const [];
     if (withDialogues && dialogues.isNotEmpty) {
       addDialogues?.call(dialogues, kept.length);
     }

@@ -69,6 +69,7 @@ void main() {
     late FakeSubtitleWords service;
     late List<VocabWord> added;
     late List<(List<ImportedDialogue>, int)> dialoguesAdded;
+    late List<(String, List<VocabWord>, List<ImportedDialogue>)> lateAdded;
     late String collectionId;
 
     Future<void> pumpHost(WidgetTester tester, {required bool setting}) async {
@@ -80,6 +81,7 @@ void main() {
       service = FakeSubtitleWords();
       added = [];
       dialoguesAdded = [];
+      lateAdded = [];
       collectionId = 'session-A';
       final container = ProviderContainer(
           overrides: [subtitleWordsServiceProvider.overrideWithValue(service)]);
@@ -97,6 +99,8 @@ void main() {
                   collectionWords: () => const [],
                   addWords: (words, _, __) => added.addAll(words),
                   addDialogues: (d, n) => dialoguesAdded.add((d, n)),
+                  addWordsTo: (id, words, film, poster, dialogues) async =>
+                      lateAdded.add((id, words, dialogues)),
                   pickFile: () async => file(),
                 ),
                 child: const Text('import'),
@@ -174,17 +178,22 @@ void main() {
       expect(dialoguesAdded, isEmpty);
     });
 
-    testWidgets('a changed session drops words and dialogues (AC-12)',
-        (tester) async {
+    testWidgets(
+        'a changed collection delivers words and dialogues to the one it '
+        'started in (AC-11)', (tester) async {
       await pumpHost(tester, setting: true);
       await startImport(tester);
       collectionId = 'session-B';
       service.pending!.complete(result(['reluctant'], [dialogue]));
       await tester.pumpAndSettle();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
 
-      expect(find.text('Done'), findsNothing);
       expect(added, isEmpty);
       expect(dialoguesAdded, isEmpty);
+      expect(lateAdded.single.$1, 'session-A');
+      expect(lateAdded.single.$2.single.word, 'reluctant');
+      expect(lateAdded.single.$3, hasLength(1));
     });
   });
 

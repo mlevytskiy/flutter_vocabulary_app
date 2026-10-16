@@ -99,6 +99,7 @@ void main() {
   late FakeGoogleWords google;
   late FakeSearch search;
   late List<VocabWord> added;
+  late List<(String, List<VocabWord>)> addedLate;
   late List<String> films;
   late List<String?> posters;
   late String collectionId;
@@ -113,6 +114,7 @@ void main() {
     google = FakeGoogleWords();
     search = FakeSearch();
     added = [];
+    addedLate = [];
     films = [];
     posters = [];
     collectionId = 'session-A';
@@ -138,6 +140,7 @@ void main() {
                   films.add(film);
                   posters.add(poster);
                 },
+                addWordsTo: (id, words, film, poster, dialogues) async => addedLate.add((id, words)),
                 pickFile: () async => pick ?? file(srtText),
               ),
               child: const Text('import'),
@@ -444,15 +447,17 @@ void main() {
     expect(added, isEmpty);
   });
 
-  testWidgets('a result for a session that changed since Start is dropped (AC-16)', (tester) async {
+  testWidgets('a result for a collection that changed since Start goes to the one it started in (AC-11)', (tester) async {
     await pumpHost(tester);
     await startImport(tester);
     collectionId = 'session-B';
     service.pending!.complete(result(['reluctant']));
     await tester.pumpAndSettle();
-    expect(find.text(loading), findsNothing);
-    expect(find.text('Done'), findsNothing);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
     expect(added, isEmpty);
+    expect(addedLate.single.$1, 'session-A');
+    expect(addedLate.single.$2.single.word, 'reluctant');
   });
 
   testWidgets('the speed dial offers From subtitles next to Get words from photo', (tester) async {

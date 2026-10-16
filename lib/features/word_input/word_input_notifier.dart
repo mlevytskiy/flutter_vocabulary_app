@@ -315,6 +315,15 @@ class WordInputNotifier extends _$WordInputNotifier {
     final id = 'quizlet-$setId';
     if (!state.hasValue) return id;
     final collection = state.value!;
+    _putSetSource(collection, setId, name, url);
+    state = AsyncData(collection);
+    _scheduleSave();
+    return id;
+  }
+
+  static String _putSetSource(
+      WordCollection collection, String setId, String name, String url) {
+    final id = 'quizlet-$setId';
     final existing = collection.sources.where((s) => s.id == id).firstOrNull;
     if (existing != null) {
       existing
@@ -328,8 +337,6 @@ class WordInputNotifier extends _$WordInputNotifier {
         ..name = name
         ..url = url);
     }
-    state = AsyncData(collection);
-    _scheduleSave();
     return id;
   }
 
@@ -344,28 +351,118 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// import (owner, 2026-10-15).
   String upsertSubtitlesSource(String title, {String? poster}) {
     final collection = state.valueOrNull;
-    final existing = collection?.sources
-        .where((s) => s.kind == SourceKind.subtitles && s.name == title)
-        .firstOrNull;
+    if (collection == null) return 'subtitles-${uuidV4()}';
+    final before = collection.sources.length;
+    final urlBefore = _subtitlesSource(collection, title)?.url;
+    final id = _putSubtitlesSource(collection, title, poster);
+    if (collection.sources.length != before ||
+        _subtitlesSource(collection, title)?.url != urlBefore) {
+      state = AsyncData(collection);
+      _scheduleSave();
+    }
+    return id;
+  }
+
+  static SessionSource? _subtitlesSource(WordCollection c, String title) => c
+      .sources
+      .where((s) => s.kind == SourceKind.subtitles && s.name == title)
+      .firstOrNull;
+
+  static String _putSubtitlesSource(
+      WordCollection collection, String title, String? poster) {
+    final existing = _subtitlesSource(collection, title);
     if (existing != null) {
-      if (existing.url == null && poster != null) {
-        existing.url = poster;
-        state = AsyncData(collection!);
-        _scheduleSave();
-      }
+      if (existing.url == null && poster != null) existing.url = poster;
       return existing.id;
     }
     final id = 'subtitles-${uuidV4()}';
-    if (collection == null) return id;
     collection.sources.add(SessionSource()
       ..id = id
       ..takenAt = DateTime.now()
       ..kind = SourceKind.subtitles
       ..name = title
       ..url = poster);
-    state = AsyncData(collection);
-    _scheduleSave();
     return id;
+  }
+
+  // ---- Late results (collections-screen ADR-0006, AC-11, AC-27) ----
+
+  /// A lookup that started in [collectionId] and finished after another
+  /// collection was opened: [change] is applied to the row with [rowId] in
+  /// that collection, in one atomic store update, also while it is in the
+  /// bin. A row the learner removed meanwhile is skipped. A row not stored
+  /// yet when the lookup started has no id: it is found by its [word] and
+  /// [translation] as they were then. False when the
+  /// collection was erased for good (the result is dropped and logged by the
+  /// store); the open collection is never touched.
+  Future<bool> updateRowIn(
+      String collectionId, String rowId, void Function(WordPair row) change,
+      {String word = '', String translation = ''}) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    return store.update(collectionId, (c) {
+      final row = c.words
+          .where((w) => rowId.isNotEmpty
+              ? w.rowId == rowId
+              : w.word == word && w.translation == translation)
+          .firstOrNull;
+      if (row != null) change(row);
+    });
+  }
+
+  /// Rows from a photo reading, a Quizlet import or a subtitle import that
+  /// started in [collectionId] and finished after another collection was
+  /// opened (ADR-0006). They are shaped as the screen shapes them in the open
+  /// collection: the [photo], [set] or [film] source joins that collection's
+  /// sources first and the rows point at it, they go after its last word,
+  /// each with a row id, and the subtitle [dialogues] follow the rows. False
+  /// when the collection was erased for good.
+  Future<bool> addWordsTo(
+    String collectionId,
+    List<WordPair> pairs, {
+    SessionSource? photo,
+    ({String id, String name, String url})? set,
+    String? film,
+    String? poster,
+    List<ImportedDialogue> dialogues = const [],
+  }) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    return store.update(collectionId, (c) {
+      String? sourceId;
+      if (photo != null) {
+        c.sources = [...c.sources, photo];
+        sourceId = photo.id;
+      } else if (set != null) {
+        c.sources = c.sources.toList();
+        sourceId = _putSetSource(c, set.id, set.name, set.url);
+      } else if (film != null) {
+        c.sources = c.sources.toList();
+        sourceId = _putSubtitlesSource(c, film, poster);
+      }
+      for (final p in pairs) {
+        if (sourceId != null) p.sourceId = sourceId;
+        if (p.rowId.isEmpty) p.rowId = uuidV4();
+      }
+      final words = c.words.toList();
+      while (words.isNotEmpty && words.last.isEmpty) {
+        words.removeLast();
+      }
+      c.words = [...words, ...pairs];
+      if (dialogues.isNotEmpty) {
+        final kept = atDone(dialogues, pairs);
+        if (kept.isNotEmpty) {
+          if (c.publishedId != null && c.editToken != null) {
+            final importId = uuidV4();
+            for (final d in kept) {
+              d
+                ..importId = importId
+                ..importRowIds = [for (final w in pairs) w.rowId]
+                ..pushState = PushState.pending;
+            }
+          }
+          c.dialogues = [...c.dialogues, ...kept];
+        }
+      }
+    });
   }
 
   /// Changes the note of the source [id] (notes-editing, owner 2026-10-15).

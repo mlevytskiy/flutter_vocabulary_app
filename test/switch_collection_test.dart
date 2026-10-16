@@ -156,7 +156,8 @@ void main() {
   Finder field(String label) => find.byWidgetPredicate(
       (w) => w is TextField && w.decoration?.labelText == label);
 
-  Future<void> expectPickedUntouched(WidgetTester tester) async {
+  Future<void> expectPickedUntouched(WidgetTester tester,
+      {String leftTranslation = ''}) async {
     expect(container.read(wordInputNotifierProvider).value!.collectionId,
         picked.collectionId);
     expect(words().where((w) => !w.isEmpty).map((w) => w.word),
@@ -177,12 +178,14 @@ void main() {
       expect(stored.words.first.definition, '');
       final leftStored = await store.byId(left.collectionId);
       expect(leftStored!.words.single.word, 'apple');
-      expect(leftStored.words.single.translation, '');
+      expect(leftStored.words.single.translation, leftTranslation);
       expect(leftStored.words.single.definition, '');
     });
   }
 
-  testWidgets('a translation that returns after the switch is dropped',
+  testWidgets(
+      'a translation that returns after the switch lands in the session it '
+      'started in, not the picked one (collections-screen AC-11)',
       (tester) async {
     final translate = _SlowTranslate();
     await pumpMain(tester, translate: translate);
@@ -198,8 +201,14 @@ void main() {
     translate.gate.complete();
     await tester.pump();
     await tester.pump();
+    // The late result is written by the store's own update, in real time.
+    for (var i = 0; i < 5; i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+    }
 
-    await expectPickedUntouched(tester);
+    await expectPickedUntouched(tester, leftTranslation: 'яблуко');
     await tearDownMain(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 

@@ -211,6 +211,25 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   String? get _collectionIdNow =>
       ref.read(wordInputNotifierProvider).valueOrNull?.collectionId;
 
+  /// A writer for the row at [index] in the collection on screen now, for a
+  /// lookup that may finish after another collection was opened: it applies
+  /// the change to that row, by its row id, in the collection the lookup
+  /// started in (collections-screen ADR-0006, AC-11). Taken before the await.
+  void Function(void Function(WordPair row) change) _lateRowWriter(int index) {
+    final collectionId = _collectionIdNow;
+    final notifier = ref.read(wordInputNotifierProvider.notifier);
+    final words = ref.read(wordInputNotifierProvider).valueOrNull?.words;
+    final i = _storeIndex(index);
+    final row = words != null && i >= 0 && i < words.length ? words[i] : null;
+    final rowId = row?.rowId ?? '';
+    final word = row?.word ?? '';
+    final translation = row?.translation ?? '';
+    return (change) {
+      if (collectionId == null || row == null) return;
+      notifier.updateRowIn(collectionId, rowId, change, word: word, translation: translation);
+    };
+  }
+
   // --- Lightning icon show/hide rules; Translation dots button (see
   // docs/lightning_icon_rules.md) ---
   //
@@ -339,9 +358,16 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     });
 
     final collectionId = _collectionIdNow;
+    final lateWrite = _lateRowWriter(index);
     try {
       final translation = await ref.read(googleTranslateServiceProvider).translateWord(word, from: 'en', to: 'uk');
-      if (_collectionIdNow != collectionId) return null;
+      if (_collectionIdNow != collectionId) {
+        lateWrite((row) {
+          row.translationOptions = translation.result;
+          row.hasTranslationOptions = translation.result.hasDictionary;
+        });
+        return null;
+      }
 
       if (mounted) {
         setState(() {
@@ -396,6 +422,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     final translationText = _translationControllers[index].text.trim();
     if (translationText.isEmpty) return;
     final collectionId = _collectionIdNow;
+    final lateWrite = _lateRowWriter(index);
 
     setState(() {
       _isLoadingWordTranslation[index] = true;
@@ -411,11 +438,21 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
             from: 'auto',
             to: 'en',
           );
-      if (_collectionIdNow != collectionId) return;
+      final gotRealTranslation = isRealTranslation(translationText, translation.text);
+      if (_collectionIdNow != collectionId) {
+        lateWrite((row) {
+          row.word = translation.text;
+          row.translationOptionsJson = null;
+          row.hasTranslationOptions = false;
+          if (gotRealTranslation) {
+            row.wordMarkedFilled = true;
+            row.translationMarkedFilled = true;
+          }
+        });
+        return;
+      }
 
       _wordControllers[index].text = translation.text;
-
-      final gotRealTranslation = isRealTranslation(translationText, translation.text);
 
       setState(() {
         _isLoadingWordTranslation[index] = false;
@@ -466,6 +503,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 
     final wordStartsWithEnglishLetter = isEnglishLetter(word[0]);
     final collectionId = _collectionIdNow;
+    final lateWrite = _lateRowWriter(index);
 
     setState(() {
       _isLoadingTranslation[index] = true;
@@ -481,11 +519,21 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // Google Translate: English -> Ukrainian, with the part-of-speech
         // rule picking the best of the returned set.
         final translation = await translateService.translateWord(word, from: 'en', to: 'uk');
-        if (_collectionIdNow != collectionId) return;
+        final gotRealTranslation = isRealTranslation(word, translation.best);
+        if (_collectionIdNow != collectionId) {
+          lateWrite((row) {
+            row.translation = translation.best;
+            row.translationOptions = translation.result;
+            row.hasTranslationOptions = translation.result.hasDictionary;
+            if (gotRealTranslation) {
+              row.translationMarkedFilled = true;
+              row.wordMarkedFilled = true;
+            }
+          });
+          return;
+        }
 
         _translationControllers[index].text = translation.best;
-
-        final gotRealTranslation = isRealTranslation(word, translation.best);
 
         setState(() {
           _isLoadingTranslation[index] = false;
@@ -505,8 +553,20 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // Word doesn't start with an English letter -> auto-detect its
         // language and translate to English instead.
         final translation = await translateService.translate(word, from: 'auto', to: 'en');
-        if (_collectionIdNow != collectionId) return;
         final gotRealTranslation = isRealTranslation(word, translation.text);
+        if (_collectionIdNow != collectionId) {
+          if (gotRealTranslation) {
+            lateWrite((row) {
+              row.translation = word;
+              row.word = translation.text;
+              row.translationOptionsJson = null;
+              row.hasTranslationOptions = false;
+              row.wordMarkedFilled = true;
+              row.translationMarkedFilled = true;
+            });
+          }
+          return;
+        }
 
         if (gotRealTranslation) {
           // Swap: what the user typed becomes the Translation, the
