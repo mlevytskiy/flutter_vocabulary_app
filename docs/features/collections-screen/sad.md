@@ -185,31 +185,53 @@ C4Container
 
 ## 6. Runtime view
 
-<!-- 🎯 Why: the RUNTIME FLOW of 1–2 critical scenarios — who talks to whom, when, in what order.
-     Without §6, §5 is just boxes with no life.
-     📋 Write: a Mermaid sequenceDiagram. Participants are names from §5 (don't invent new ones).
-     Messages are semantic («saves a draft»), NO HTTP verbs / paths / status codes — endpoint-level
-     sequences arrive at the `api` stage.
-     📌 e.g. «author → web: composes draft → web → content API: save». Seed the primary flow(s) here;
-     the `sequences` stage then covers every §5 AC (no cap). Never N/A for M+; XS/S keeps ≥1 happy-path flow. -->
-
-**Critical flow 1: <flow name>**
+**Critical flow 1: a rename survives a background writer finishing (AC-27)**
 
 ```mermaid
 sequenceDiagram
-    actor Actor
-    participant Web
-    participant Service
-    participant Store
-    Actor->>Web: <action>
-    Web->>Service: <call>
-    Service->>Store: <write>
-    Store-->>Service: ok
-    Service-->>Web: result
-    Web-->>Actor: confirmation
+    actor Learner
+    participant Screen as Collections screen
+    participant Notifier as CollectionsNotifier
+    participant Store as CollectionStore
+    participant Isar as Isar vocab
+    participant Writer as Background writer
+    Writer->>Store: reads the collection, starts its work
+    Learner->>Screen: renames it to "Phrasal verbs"
+    Screen->>Notifier: rename
+    Notifier->>Store: rename in one transaction
+    Store->>Isar: writes name and keep only
+    Isar-->>Store: committed
+    Writer->>Store: update with its result
+    Store->>Isar: reads the stored record, applies only the writer's change
+    alt record still there
+        Isar-->>Store: committed, name untouched
+    else erased for good meanwhile
+        Store-->>Writer: nothing written, result dropped
+    end
+    Store-->>Screen: level stream shows "Phrasal verbs"
 ```
 
-**Critical flow 2: <e.g. async event propagation>** — <if applicable, otherwise N/A>.
+**Critical flow 2: opening another collection while a lookup runs (AC-09, AC-11, AC-19)**
+
+```mermaid
+sequenceDiagram
+    actor Learner
+    participant Screen as Collections screen
+    participant Main as WordInputNotifier
+    participant Store as CollectionStore
+    participant Lookup as Translation lookup
+    Main->>Lookup: translate a row of "Lesson 4"
+    Learner->>Screen: taps "Lesson 3"
+    Screen->>Main: open "Lesson 3"
+    Main->>Store: flush "Lesson 4", erase it only if empty and untouched
+    Main->>Store: set the current pointer to "Lesson 3"
+    Main-->>Screen: main screen shows "Lesson 3"
+    Lookup-->>Main: result for "Lesson 4"
+    Main->>Store: update "Lesson 4" with the result
+    Note over Main,Store: "Lesson 3" never sees the result
+```
+
+**Critical flow 3: the 30-day sweep at launch (AC-26)** — the store opens, `sweepBin` finds items whose `binnedAt` is at least 30 × 24 h ago, and in one transaction erases them (and every record inside an expired folder); their photo files are deleted after the commit. The `sequences` stage draws this flow and covers every remaining AC.
 
 ## 7. Deployment view
 
