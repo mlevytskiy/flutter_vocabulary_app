@@ -1,6 +1,6 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'session.dart';
+part of 'word_collection.dart';
 
 // **************************************************************************
 // IsarCollectionGenerator
@@ -9,11 +9,11 @@ part of 'session.dart';
 // coverage:ignore-file
 // ignore_for_file: duplicate_ignore, non_constant_identifier_names, constant_identifier_names, invalid_use_of_protected_member, unnecessary_cast, prefer_const_constructors, lines_longer_than_80_chars, require_trailing_commas, inference_failure_on_function_invocation, unnecessary_parenthesis, unnecessary_raw_strings, unnecessary_null_checks, join_return_with_assignment, prefer_final_locals, avoid_js_rounded_ints, avoid_positional_boolean_parameters, always_specify_types
 
-extension GetSessionCollection on Isar {
-  IsarCollection<Session> get sessions => this.collection();
+extension GetWordCollectionCollection on Isar {
+  IsarCollection<WordCollection> get wordCollections => this.collection();
 }
 
-const SessionSchema = CollectionSchema(
+const WordCollectionSchema = CollectionSchema(
   name: r'Session',
   id: 4817823809690647594,
   properties: {
@@ -93,10 +93,10 @@ const SessionSchema = CollectionSchema(
       target: r'WordPair',
     )
   },
-  estimateSize: _sessionEstimateSize,
-  serialize: _sessionSerialize,
-  deserialize: _sessionDeserialize,
-  deserializeProp: _sessionDeserializeProp,
+  estimateSize: _wordCollectionEstimateSize,
+  serialize: _wordCollectionSerialize,
+  deserialize: _wordCollectionDeserialize,
+  deserializeProp: _wordCollectionDeserializeProp,
   idName: r'id',
   indexes: {
     r'sessionId': IndexSchema(
@@ -121,14 +121,14 @@ const SessionSchema = CollectionSchema(
     r'FilmDialogue': FilmDialogueSchema,
     r'WordResult': WordResultSchema
   },
-  getId: _sessionGetId,
-  getLinks: _sessionGetLinks,
-  attach: _sessionAttach,
+  getId: _wordCollectionGetId,
+  getLinks: _wordCollectionGetLinks,
+  attach: _wordCollectionAttach,
   version: '3.3.0-dev.1',
 );
 
-int _sessionEstimateSize(
-  Session object,
+int _wordCollectionEstimateSize(
+  WordCollection object,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
@@ -181,7 +181,7 @@ int _sessionEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
-  bytesCount += 3 + object.sessionId.length * 3;
+  bytesCount += 3 + object.collectionId.length * 3;
   bytesCount += 3 + object.sources.length * 3;
   {
     final offsets = allOffsets[SessionSource]!;
@@ -209,8 +209,8 @@ int _sessionEstimateSize(
   return bytesCount;
 }
 
-void _sessionSerialize(
-  Session object,
+void _wordCollectionSerialize(
+  WordCollection object,
   IsarWriter writer,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
@@ -239,7 +239,7 @@ void _sessionSerialize(
     object.results,
   );
   writer.writeString(offsets[8], object.selectedGroupId);
-  writer.writeString(offsets[9], object.sessionId);
+  writer.writeString(offsets[9], object.collectionId);
   writer.writeObjectList<SessionSource>(
     offsets[10],
     allOffsets,
@@ -256,13 +256,13 @@ void _sessionSerialize(
   );
 }
 
-Session _sessionDeserialize(
+WordCollection _wordCollectionDeserialize(
   Id id,
   IsarReader reader,
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  final object = Session();
+  final object = WordCollection();
   object.dialogues = reader.readObjectList<FilmDialogue>(
         offsets[0],
         FilmDialogueSchema.deserialize,
@@ -291,7 +291,7 @@ Session _sessionDeserialize(
       ) ??
       [];
   object.selectedGroupId = reader.readStringOrNull(offsets[8]);
-  object.sessionId = reader.readString(offsets[9]);
+  object.collectionId = reader.readString(offsets[9]);
   object.sources = reader.readObjectList<SessionSource>(
         offsets[10],
         SessionSourceSchema.deserialize,
@@ -311,7 +311,7 @@ Session _sessionDeserialize(
   return object;
 }
 
-P _sessionDeserializeProp<P>(
+P _wordCollectionDeserializeProp<P>(
   IsarReader reader,
   int propertyId,
   int offset,
@@ -381,83 +381,89 @@ P _sessionDeserializeProp<P>(
   }
 }
 
-Id _sessionGetId(Session object) {
+Id _wordCollectionGetId(WordCollection object) {
   return object.id;
 }
 
-List<IsarLinkBase<dynamic>> _sessionGetLinks(Session object) {
+List<IsarLinkBase<dynamic>> _wordCollectionGetLinks(WordCollection object) {
   return [];
 }
 
-void _sessionAttach(IsarCollection<dynamic> col, Id id, Session object) {
+void _wordCollectionAttach(
+    IsarCollection<dynamic> col, Id id, WordCollection object) {
   object.id = id;
 }
 
-extension SessionByIndex on IsarCollection<Session> {
-  Future<Session?> getBySessionId(String sessionId) {
-    return getByIndex(r'sessionId', [sessionId]);
+extension WordCollectionByIndex on IsarCollection<WordCollection> {
+  Future<WordCollection?> getByCollectionId(String collectionId) {
+    return getByIndex(r'sessionId', [collectionId]);
   }
 
-  Session? getBySessionIdSync(String sessionId) {
-    return getByIndexSync(r'sessionId', [sessionId]);
+  WordCollection? getByCollectionIdSync(String collectionId) {
+    return getByIndexSync(r'sessionId', [collectionId]);
   }
 
-  Future<bool> deleteBySessionId(String sessionId) {
-    return deleteByIndex(r'sessionId', [sessionId]);
+  Future<bool> deleteByCollectionId(String collectionId) {
+    return deleteByIndex(r'sessionId', [collectionId]);
   }
 
-  bool deleteBySessionIdSync(String sessionId) {
-    return deleteByIndexSync(r'sessionId', [sessionId]);
+  bool deleteByCollectionIdSync(String collectionId) {
+    return deleteByIndexSync(r'sessionId', [collectionId]);
   }
 
-  Future<List<Session?>> getAllBySessionId(List<String> sessionIdValues) {
-    final values = sessionIdValues.map((e) => [e]).toList();
+  Future<List<WordCollection?>> getAllByCollectionId(
+      List<String> collectionIdValues) {
+    final values = collectionIdValues.map((e) => [e]).toList();
     return getAllByIndex(r'sessionId', values);
   }
 
-  List<Session?> getAllBySessionIdSync(List<String> sessionIdValues) {
-    final values = sessionIdValues.map((e) => [e]).toList();
+  List<WordCollection?> getAllByCollectionIdSync(
+      List<String> collectionIdValues) {
+    final values = collectionIdValues.map((e) => [e]).toList();
     return getAllByIndexSync(r'sessionId', values);
   }
 
-  Future<int> deleteAllBySessionId(List<String> sessionIdValues) {
-    final values = sessionIdValues.map((e) => [e]).toList();
+  Future<int> deleteAllByCollectionId(List<String> collectionIdValues) {
+    final values = collectionIdValues.map((e) => [e]).toList();
     return deleteAllByIndex(r'sessionId', values);
   }
 
-  int deleteAllBySessionIdSync(List<String> sessionIdValues) {
-    final values = sessionIdValues.map((e) => [e]).toList();
+  int deleteAllByCollectionIdSync(List<String> collectionIdValues) {
+    final values = collectionIdValues.map((e) => [e]).toList();
     return deleteAllByIndexSync(r'sessionId', values);
   }
 
-  Future<Id> putBySessionId(Session object) {
+  Future<Id> putByCollectionId(WordCollection object) {
     return putByIndex(r'sessionId', object);
   }
 
-  Id putBySessionIdSync(Session object, {bool saveLinks = true}) {
+  Id putByCollectionIdSync(WordCollection object, {bool saveLinks = true}) {
     return putByIndexSync(r'sessionId', object, saveLinks: saveLinks);
   }
 
-  Future<List<Id>> putAllBySessionId(List<Session> objects) {
+  Future<List<Id>> putAllByCollectionId(List<WordCollection> objects) {
     return putAllByIndex(r'sessionId', objects);
   }
 
-  List<Id> putAllBySessionIdSync(List<Session> objects,
+  List<Id> putAllByCollectionIdSync(List<WordCollection> objects,
       {bool saveLinks = true}) {
     return putAllByIndexSync(r'sessionId', objects, saveLinks: saveLinks);
   }
 }
 
-extension SessionQueryWhereSort on QueryBuilder<Session, Session, QWhere> {
-  QueryBuilder<Session, Session, QAfterWhere> anyId() {
+extension WordCollectionQueryWhereSort
+    on QueryBuilder<WordCollection, WordCollection, QWhere> {
+  QueryBuilder<WordCollection, WordCollection, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
 }
 
-extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
-  QueryBuilder<Session, Session, QAfterWhereClause> idEqualTo(Id id) {
+extension WordCollectionQueryWhere
+    on QueryBuilder<WordCollection, WordCollection, QWhereClause> {
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause> idEqualTo(
+      Id id) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IdWhereClause.between(
         lower: id,
@@ -466,7 +472,8 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
     });
   }
 
-  QueryBuilder<Session, Session, QAfterWhereClause> idNotEqualTo(Id id) {
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause> idNotEqualTo(
+      Id id) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
@@ -488,7 +495,8 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
     });
   }
 
-  QueryBuilder<Session, Session, QAfterWhereClause> idGreaterThan(Id id,
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause> idGreaterThan(
+      Id id,
       {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
@@ -497,7 +505,8 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
     });
   }
 
-  QueryBuilder<Session, Session, QAfterWhereClause> idLessThan(Id id,
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause> idLessThan(
+      Id id,
       {bool include = false}) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(
@@ -506,7 +515,7 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
     });
   }
 
-  QueryBuilder<Session, Session, QAfterWhereClause> idBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause> idBetween(
     Id lowerId,
     Id upperId, {
     bool includeLower = true,
@@ -522,30 +531,30 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
     });
   }
 
-  QueryBuilder<Session, Session, QAfterWhereClause> sessionIdEqualTo(
-      String sessionId) {
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      collectionIdEqualTo(String collectionId) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
         indexName: r'sessionId',
-        value: [sessionId],
+        value: [collectionId],
       ));
     });
   }
 
-  QueryBuilder<Session, Session, QAfterWhereClause> sessionIdNotEqualTo(
-      String sessionId) {
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      collectionIdNotEqualTo(String collectionId) {
     return QueryBuilder.apply(this, (query) {
       if (query.whereSort == Sort.asc) {
         return query
             .addWhereClause(IndexWhereClause.between(
               indexName: r'sessionId',
               lower: [],
-              upper: [sessionId],
+              upper: [collectionId],
               includeUpper: false,
             ))
             .addWhereClause(IndexWhereClause.between(
               indexName: r'sessionId',
-              lower: [sessionId],
+              lower: [collectionId],
               includeLower: false,
               upper: [],
             ));
@@ -553,14 +562,14 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
         return query
             .addWhereClause(IndexWhereClause.between(
               indexName: r'sessionId',
-              lower: [sessionId],
+              lower: [collectionId],
               includeLower: false,
               upper: [],
             ))
             .addWhereClause(IndexWhereClause.between(
               indexName: r'sessionId',
               lower: [],
-              upper: [sessionId],
+              upper: [collectionId],
               includeUpper: false,
             ));
       }
@@ -568,10 +577,10 @@ extension SessionQueryWhere on QueryBuilder<Session, Session, QWhereClause> {
   }
 }
 
-extension SessionQueryFilter
-    on QueryBuilder<Session, Session, QFilterCondition> {
-  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthEqualTo(
-      int length) {
+extension WordCollectionQueryFilter
+    on QueryBuilder<WordCollection, WordCollection, QFilterCondition> {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      dialoguesLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'dialogues',
@@ -583,7 +592,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      dialoguesIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'dialogues',
@@ -595,7 +605,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      dialoguesIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'dialogues',
@@ -607,7 +618,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      dialoguesLengthLessThan(
     int length, {
     bool include = false,
   }) {
@@ -622,7 +634,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       dialoguesLengthGreaterThan(
     int length, {
     bool include = false,
@@ -638,7 +650,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesLengthBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      dialoguesLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -655,7 +668,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNull() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
         property: r'editToken',
@@ -663,7 +677,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNotNull() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'editToken',
@@ -671,7 +686,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenEqualTo(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
@@ -684,7 +700,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -699,7 +716,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -714,7 +732,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -733,7 +752,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenStartsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -746,7 +766,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenEndsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -759,9 +780,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenContains(
-      String value,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
         property: r'editToken',
@@ -771,9 +791,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
         property: r'editToken',
@@ -783,7 +802,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'editToken',
@@ -792,7 +812,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> editTokenIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      editTokenIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'editToken',
@@ -801,7 +822,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       groupedWordsKeyIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -810,7 +831,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       groupedWordsKeyIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
@@ -819,7 +840,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyEqualTo(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupedWordsKeyEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
@@ -832,7 +854,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       groupedWordsKeyGreaterThan(
     String? value, {
     bool include = false,
@@ -848,7 +870,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupedWordsKeyLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -863,7 +886,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupedWordsKeyBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -882,7 +906,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       groupedWordsKeyStartsWith(
     String value, {
     bool caseSensitive = true,
@@ -896,7 +920,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyEndsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupedWordsKeyEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -909,9 +934,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyContains(
-      String value,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupedWordsKeyContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
         property: r'groupedWordsKey',
@@ -921,9 +945,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupedWordsKeyMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupedWordsKeyMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
         property: r'groupedWordsKey',
@@ -933,7 +956,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       groupedWordsKeyIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -943,7 +966,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       groupedWordsKeyIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -953,8 +976,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthEqualTo(
-      int length) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'groups',
@@ -966,7 +989,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'groups',
@@ -978,7 +1002,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'groups',
@@ -990,7 +1015,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsLengthLessThan(
     int length, {
     bool include = false,
   }) {
@@ -1005,7 +1031,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsLengthGreaterThan(
     int length, {
     bool include = false,
   }) {
@@ -1020,7 +1047,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsLengthBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -1037,7 +1065,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> idEqualTo(Id value) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition> idEqualTo(
+      Id value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'id',
@@ -1046,7 +1075,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> idGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      idGreaterThan(
     Id value, {
     bool include = false,
   }) {
@@ -1059,7 +1089,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> idLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      idLessThan(
     Id value, {
     bool include = false,
   }) {
@@ -1072,7 +1103,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> idBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition> idBetween(
     Id lower,
     Id upper, {
     bool includeLower = true,
@@ -1089,8 +1120,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> isSharedEqualTo(
-      bool value) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      isSharedEqualTo(bool value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'isShared',
@@ -1099,7 +1130,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       lastLocalModifiedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1109,7 +1140,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       lastLocalModifiedAtGreaterThan(
     DateTime value, {
     bool include = false,
@@ -1123,7 +1154,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       lastLocalModifiedAtLessThan(
     DateTime value, {
     bool include = false,
@@ -1137,7 +1168,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       lastLocalModifiedAtBetween(
     DateTime lower,
     DateTime upper, {
@@ -1155,7 +1186,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdIsNull() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
         property: r'publishedId',
@@ -1163,7 +1195,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdIsNotNull() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
         property: r'publishedId',
@@ -1171,7 +1204,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdEqualTo(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
@@ -1184,7 +1218,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdGreaterThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1199,7 +1234,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1214,7 +1250,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -1233,7 +1270,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdStartsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1246,7 +1284,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdEndsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1259,9 +1298,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdContains(
-      String value,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
         property: r'publishedId',
@@ -1271,9 +1309,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
         property: r'publishedId',
@@ -1283,7 +1320,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> publishedIdIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      publishedIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'publishedId',
@@ -1292,7 +1330,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       publishedIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -1302,8 +1340,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> resultsLengthEqualTo(
-      int length) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      resultsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'results',
@@ -1315,7 +1353,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> resultsIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      resultsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'results',
@@ -1327,7 +1366,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> resultsIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      resultsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'results',
@@ -1339,7 +1379,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> resultsLengthLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      resultsLengthLessThan(
     int length, {
     bool include = false,
   }) {
@@ -1354,7 +1395,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       resultsLengthGreaterThan(
     int length, {
     bool include = false,
@@ -1370,7 +1411,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> resultsLengthBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      resultsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -1387,7 +1429,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       selectedGroupIdIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -1396,7 +1438,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       selectedGroupIdIsNotNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNotNull(
@@ -1405,7 +1447,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdEqualTo(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      selectedGroupIdEqualTo(
     String? value, {
     bool caseSensitive = true,
   }) {
@@ -1418,7 +1461,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       selectedGroupIdGreaterThan(
     String? value, {
     bool include = false,
@@ -1434,7 +1477,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      selectedGroupIdLessThan(
     String? value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1449,7 +1493,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      selectedGroupIdBetween(
     String? lower,
     String? upper, {
     bool includeLower = true,
@@ -1468,7 +1513,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       selectedGroupIdStartsWith(
     String value, {
     bool caseSensitive = true,
@@ -1482,7 +1527,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdEndsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      selectedGroupIdEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1495,9 +1541,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdContains(
-      String value,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      selectedGroupIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
         property: r'selectedGroupId',
@@ -1507,9 +1552,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> selectedGroupIdMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      selectedGroupIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
         property: r'selectedGroupId',
@@ -1519,7 +1563,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       selectedGroupIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1529,7 +1573,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       selectedGroupIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -1539,7 +1583,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdEqualTo(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1552,7 +1597,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1567,7 +1613,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1582,7 +1629,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1601,7 +1649,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdStartsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1614,7 +1663,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdEndsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1627,9 +1677,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdContains(
-      String value,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
         property: r'sessionId',
@@ -1639,9 +1688,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
         property: r'sessionId',
@@ -1651,7 +1699,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'sessionId',
@@ -1660,7 +1709,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sessionIdIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      collectionIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'sessionId',
@@ -1669,8 +1719,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesLengthEqualTo(
-      int length) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      sourcesLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'sources',
@@ -1682,7 +1732,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      sourcesIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'sources',
@@ -1694,7 +1745,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      sourcesIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'sources',
@@ -1706,7 +1758,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesLengthLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      sourcesLengthLessThan(
     int length, {
     bool include = false,
   }) {
@@ -1721,7 +1774,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       sourcesLengthGreaterThan(
     int length, {
     bool include = false,
@@ -1737,7 +1790,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesLengthBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      sourcesLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -1754,7 +1808,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementEqualTo(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1767,7 +1822,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1782,7 +1838,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1797,7 +1854,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1816,7 +1874,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementStartsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1829,7 +1888,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementEndsWith(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1842,9 +1902,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementContains(
-      String value,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementContains(String value, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.contains(
         property: r'tags',
@@ -1854,9 +1913,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementMatches(
-      String pattern,
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementMatches(String pattern, {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.matches(
         property: r'tags',
@@ -1866,7 +1924,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsElementIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsElementIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'tags',
@@ -1875,7 +1934,7 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition>
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       tagsElementIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
@@ -1885,8 +1944,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsLengthEqualTo(
-      int length) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'tags',
@@ -1898,7 +1957,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'tags',
@@ -1910,7 +1970,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'tags',
@@ -1922,7 +1983,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsLengthLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsLengthLessThan(
     int length, {
     bool include = false,
   }) {
@@ -1937,7 +1999,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsLengthGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsLengthGreaterThan(
     int length, {
     bool include = false,
   }) {
@@ -1952,7 +2015,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> tagsLengthBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      tagsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -1969,8 +2033,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> updatedAtEqualTo(
-      DateTime value) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      updatedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'updatedAt',
@@ -1979,7 +2043,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> updatedAtGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      updatedAtGreaterThan(
     DateTime value, {
     bool include = false,
   }) {
@@ -1992,7 +2057,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> updatedAtLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      updatedAtLessThan(
     DateTime value, {
     bool include = false,
   }) {
@@ -2005,7 +2071,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> updatedAtBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      updatedAtBetween(
     DateTime lower,
     DateTime upper, {
     bool includeLower = true,
@@ -2022,8 +2089,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsLengthEqualTo(
-      int length) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'words',
@@ -2035,7 +2102,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsIsEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'words',
@@ -2047,7 +2115,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsIsNotEmpty() {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.listLength(
         r'words',
@@ -2059,7 +2128,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsLengthLessThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsLengthLessThan(
     int length, {
     bool include = false,
   }) {
@@ -2074,7 +2144,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsLengthGreaterThan(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsLengthGreaterThan(
     int length, {
     bool include = false,
   }) {
@@ -2089,7 +2160,8 @@ extension SessionQueryFilter
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsLengthBetween(
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsLengthBetween(
     int lower,
     int upper, {
     bool includeLower = true,
@@ -2107,410 +2179,446 @@ extension SessionQueryFilter
   }
 }
 
-extension SessionQueryObject
-    on QueryBuilder<Session, Session, QFilterCondition> {
-  QueryBuilder<Session, Session, QAfterFilterCondition> dialoguesElement(
-      FilterQuery<FilmDialogue> q) {
+extension WordCollectionQueryObject
+    on QueryBuilder<WordCollection, WordCollection, QFilterCondition> {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      dialoguesElement(FilterQuery<FilmDialogue> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'dialogues');
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> groupsElement(
-      FilterQuery<WordGroup> q) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      groupsElement(FilterQuery<WordGroup> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'groups');
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> resultsElement(
-      FilterQuery<WordResult> q) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      resultsElement(FilterQuery<WordResult> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'results');
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> sourcesElement(
-      FilterQuery<SessionSource> q) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      sourcesElement(FilterQuery<SessionSource> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'sources');
     });
   }
 
-  QueryBuilder<Session, Session, QAfterFilterCondition> wordsElement(
-      FilterQuery<WordPair> q) {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      wordsElement(FilterQuery<WordPair> q) {
     return QueryBuilder.apply(this, (query) {
       return query.object(q, r'words');
     });
   }
 }
 
-extension SessionQueryLinks
-    on QueryBuilder<Session, Session, QFilterCondition> {}
+extension WordCollectionQueryLinks
+    on QueryBuilder<WordCollection, WordCollection, QFilterCondition> {}
 
-extension SessionQuerySortBy on QueryBuilder<Session, Session, QSortBy> {
-  QueryBuilder<Session, Session, QAfterSortBy> sortByEditToken() {
+extension WordCollectionQuerySortBy
+    on QueryBuilder<WordCollection, WordCollection, QSortBy> {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByEditTokenDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByEditTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByGroupedWordsKey() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByGroupedWordsKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupedWordsKey', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByGroupedWordsKeyDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByGroupedWordsKeyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupedWordsKey', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByIsShared() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByIsShared() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isShared', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByIsSharedDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByIsSharedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isShared', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByLastLocalModifiedAt() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByLastLocalModifiedAtDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByLastLocalModifiedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByPublishedId() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByPublishedId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'publishedId', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByPublishedIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByPublishedIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'publishedId', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortBySelectedGroupId() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortBySelectedGroupId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'selectedGroupId', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortBySelectedGroupIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortBySelectedGroupIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'selectedGroupId', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortBySessionId() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByCollectionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortBySessionIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByCollectionIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByUpdatedAt() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> sortByUpdatedAtDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 }
 
-extension SessionQuerySortThenBy
-    on QueryBuilder<Session, Session, QSortThenBy> {
-  QueryBuilder<Session, Session, QAfterSortBy> thenByEditToken() {
+extension WordCollectionQuerySortThenBy
+    on QueryBuilder<WordCollection, WordCollection, QSortThenBy> {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByEditTokenDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByEditTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByGroupedWordsKey() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByGroupedWordsKey() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupedWordsKey', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByGroupedWordsKeyDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByGroupedWordsKeyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'groupedWordsKey', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenById() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenById() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'id', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByIsShared() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByIsShared() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isShared', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByIsSharedDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByIsSharedDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'isShared', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByLastLocalModifiedAt() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByLastLocalModifiedAtDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByLastLocalModifiedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByPublishedId() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByPublishedId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'publishedId', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByPublishedIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByPublishedIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'publishedId', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenBySelectedGroupId() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenBySelectedGroupId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'selectedGroupId', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenBySelectedGroupIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenBySelectedGroupIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'selectedGroupId', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenBySessionId() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByCollectionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenBySessionIdDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByCollectionIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.desc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByUpdatedAt() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.asc);
     });
   }
 
-  QueryBuilder<Session, Session, QAfterSortBy> thenByUpdatedAtDesc() {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByUpdatedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'updatedAt', Sort.desc);
     });
   }
 }
 
-extension SessionQueryWhereDistinct
-    on QueryBuilder<Session, Session, QDistinct> {
-  QueryBuilder<Session, Session, QDistinct> distinctByEditToken(
+extension WordCollectionQueryWhereDistinct
+    on QueryBuilder<WordCollection, WordCollection, QDistinct> {
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByEditToken(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'editToken', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctByGroupedWordsKey(
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByGroupedWordsKey({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'groupedWordsKey',
           caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctByIsShared() {
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByIsShared() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'isShared');
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctByLastLocalModifiedAt() {
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastLocalModifiedAt');
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctByPublishedId(
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByPublishedId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'publishedId', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctBySelectedGroupId(
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctBySelectedGroupId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'selectedGroupId',
           caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctBySessionId(
-      {bool caseSensitive = true}) {
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByCollectionId({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'sessionId', caseSensitive: caseSensitive);
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctByTags() {
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByTags() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'tags');
     });
   }
 
-  QueryBuilder<Session, Session, QDistinct> distinctByUpdatedAt() {
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByUpdatedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'updatedAt');
     });
   }
 }
 
-extension SessionQueryProperty
-    on QueryBuilder<Session, Session, QQueryProperty> {
-  QueryBuilder<Session, int, QQueryOperations> idProperty() {
+extension WordCollectionQueryProperty
+    on QueryBuilder<WordCollection, WordCollection, QQueryProperty> {
+  QueryBuilder<WordCollection, int, QQueryOperations> idProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'id');
     });
   }
 
-  QueryBuilder<Session, List<FilmDialogue>, QQueryOperations>
+  QueryBuilder<WordCollection, List<FilmDialogue>, QQueryOperations>
       dialoguesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'dialogues');
     });
   }
 
-  QueryBuilder<Session, String?, QQueryOperations> editTokenProperty() {
+  QueryBuilder<WordCollection, String?, QQueryOperations> editTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'editToken');
     });
   }
 
-  QueryBuilder<Session, String?, QQueryOperations> groupedWordsKeyProperty() {
+  QueryBuilder<WordCollection, String?, QQueryOperations>
+      groupedWordsKeyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'groupedWordsKey');
     });
   }
 
-  QueryBuilder<Session, List<WordGroup>, QQueryOperations> groupsProperty() {
+  QueryBuilder<WordCollection, List<WordGroup>, QQueryOperations>
+      groupsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'groups');
     });
   }
 
-  QueryBuilder<Session, bool, QQueryOperations> isSharedProperty() {
+  QueryBuilder<WordCollection, bool, QQueryOperations> isSharedProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'isShared');
     });
   }
 
-  QueryBuilder<Session, DateTime, QQueryOperations>
+  QueryBuilder<WordCollection, DateTime, QQueryOperations>
       lastLocalModifiedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastLocalModifiedAt');
     });
   }
 
-  QueryBuilder<Session, String?, QQueryOperations> publishedIdProperty() {
+  QueryBuilder<WordCollection, String?, QQueryOperations>
+      publishedIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'publishedId');
     });
   }
 
-  QueryBuilder<Session, List<WordResult>, QQueryOperations> resultsProperty() {
+  QueryBuilder<WordCollection, List<WordResult>, QQueryOperations>
+      resultsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'results');
     });
   }
 
-  QueryBuilder<Session, String?, QQueryOperations> selectedGroupIdProperty() {
+  QueryBuilder<WordCollection, String?, QQueryOperations>
+      selectedGroupIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'selectedGroupId');
     });
   }
 
-  QueryBuilder<Session, String, QQueryOperations> sessionIdProperty() {
+  QueryBuilder<WordCollection, String, QQueryOperations>
+      collectionIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sessionId');
     });
   }
 
-  QueryBuilder<Session, List<SessionSource>, QQueryOperations>
+  QueryBuilder<WordCollection, List<SessionSource>, QQueryOperations>
       sourcesProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sources');
     });
   }
 
-  QueryBuilder<Session, List<String>, QQueryOperations> tagsProperty() {
+  QueryBuilder<WordCollection, List<String>, QQueryOperations> tagsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'tags');
     });
   }
 
-  QueryBuilder<Session, DateTime, QQueryOperations> updatedAtProperty() {
+  QueryBuilder<WordCollection, DateTime, QQueryOperations> updatedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'updatedAt');
     });
   }
 
-  QueryBuilder<Session, List<WordPair>, QQueryOperations> wordsProperty() {
+  QueryBuilder<WordCollection, List<WordPair>, QQueryOperations>
+      wordsProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'words');
     });

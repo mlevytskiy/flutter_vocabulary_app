@@ -13,14 +13,14 @@ import 'translate_sentences_notifier.dart';
 /// kit's exam field under it, and, once the word is final, the model
 /// translation with the word in bold. The phase comes from the notifier.
 class TranslateSentencesScreen extends ConsumerWidget {
-  const TranslateSentencesScreen({super.key, this.sessionId, required this.groupId});
+  const TranslateSentencesScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = translateSentencesProvider(sessionId, groupId);
+    final provider = translateSentencesProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

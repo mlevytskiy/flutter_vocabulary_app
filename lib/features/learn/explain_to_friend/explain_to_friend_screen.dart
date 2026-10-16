@@ -14,14 +14,14 @@ import 'explain_to_friend_notifier.dart';
 /// (Type), or a 30 s countdown and the friend's answer (With a friend). Nothing
 /// else is shown on the card (D-34, D-40). The phase comes from the notifier.
 class ExplainToFriendScreen extends ConsumerWidget {
-  const ExplainToFriendScreen({super.key, this.sessionId, required this.groupId});
+  const ExplainToFriendScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = explainToFriendProvider(sessionId, groupId);
+    final provider = explainToFriendProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

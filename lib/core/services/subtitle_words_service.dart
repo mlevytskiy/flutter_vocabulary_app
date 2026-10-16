@@ -77,7 +77,7 @@ class SubtitleWordsService {
     required List<String> lines,
     required int maximum,
     required SubtitleModel model,
-    required List<String> sessionWords,
+    required List<String> collectionWords,
     bool dialogues = false,
   }) async {
     http.Response response;
@@ -95,7 +95,7 @@ class SubtitleWordsService {
               ],
               'maximum': maximum,
               'model': model.id,
-              'sessionWords': sessionWords,
+              'sessionWords': collectionWords,
               // Off sends no dialogues key and no lines (AC-01).
               if (dialogues) 'dialogues': true,
               if (dialogues) 'lines': lines,

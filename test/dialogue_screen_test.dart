@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -22,11 +22,11 @@ import 'fake_story_groups.dart';
 /// AC-14, AC-18, AC-19).
 
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 class SceneTracker extends FakeTracker {
@@ -34,7 +34,7 @@ class SceneTracker extends FakeTracker {
   final calls = <String>[];
 
   @override
-  Future<String?> startScene(String sessionId, WordGroup group) async {
+  Future<String?> startScene(String collectionId, WordGroup group) async {
     calls.add('start:${group.id}');
     return null;
   }
@@ -62,7 +62,7 @@ StoryStep step(String role, {String outcome = 'done', int attempt = 1}) => Story
 
 StoryRun sceneRun(List<StoryStep> steps, {String outcome = 'running'}) => StoryRun()
   ..runId = 'run-1'
-  ..sessionId = 's'
+  ..collectionId = 's'
   ..groupId = 'dialogue-d1'
   ..groupName = 'Where is the attic?'
   ..startedAt = DateTime(2026, 10, 13)
@@ -78,7 +78,7 @@ void main() {
     ..rowIds = ['r1']
     ..dialogueId = 'd1';
 
-  Session sessionWith({String? pictureRunId}) => Session.create()
+  WordCollection collectionWith({String? pictureRunId}) => WordCollection.create()
     ..words = [WordPair(word: 'attic', translation: 'горище', rowId: 'r1')]
     ..dialogues = [
       FilmDialogue()
@@ -91,7 +91,7 @@ void main() {
 
   late SceneTracker tracker;
 
-  Future<void> pumpScreen(WidgetTester tester, Session session, List<StoryRun> runs,
+  Future<void> pumpScreen(WidgetTester tester, WordCollection collection, List<StoryRun> runs,
       {Map<String, StoryStartRefusal> refusals = const {}}) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(800, 1600);
@@ -99,7 +99,7 @@ void main() {
     addTearDown(tester.view.reset);
     tracker = SceneTracker(StoryTrackerState(refusals: refusals));
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(
           () => FakeGroups(WordGroupsState(groups: [group], selectedGroupId: group.id))),
       storyRunTrackerProvider.overrideWith(() => tracker),
@@ -129,7 +129,7 @@ void main() {
   }
 
   testWidgets('a drawn picture is shown from the phone, nothing started (AC-14)', (tester) async {
-    await pumpScreen(tester, sessionWith(pictureRunId: 'run-1'),
+    await pumpScreen(tester, collectionWith(pictureRunId: 'run-1'),
         [sceneRun([step('prompt'), step('picture')], outcome: 'done')]);
     expect(find.byType(StoryPicture), findsOneWidget);
     expect(find.text('- Where is the attic?', findRichText: true), findsOneWidget);
@@ -138,7 +138,7 @@ void main() {
   });
 
   testWidgets('without a picture Start draws one, once, and shows the step (AC-13)', (tester) async {
-    await pumpScreen(tester, sessionWith(), []);
+    await pumpScreen(tester, collectionWith(), []);
     expect(tracker.calls, ['start:dialogue-d1']);
     expect(find.text('Writing the picture prompt…'), findsOneWidget);
     expect(atticIsBold(tester), isTrue);
@@ -147,13 +147,13 @@ void main() {
   });
 
   testWidgets('while the picture is drawn it says so', (tester) async {
-    await pumpScreen(tester, sessionWith(), [sceneRun([step('prompt'), step('picture', outcome: 'running')])]);
+    await pumpScreen(tester, collectionWith(), [sceneRun([step('prompt'), step('picture', outcome: 'running')])]);
     expect(find.text('Drawing the picture…'), findsOneWidget);
     expect(tracker.calls, isEmpty);
   });
 
   testWidgets('a failed prompt: the message and Try again (AC-18)', (tester) async {
-    await pumpScreen(tester, sessionWith(), [sceneRun([step('prompt', outcome: 'failed')], outcome: 'failed')]);
+    await pumpScreen(tester, collectionWith(), [sceneRun([step('prompt', outcome: 'failed')], outcome: 'failed')]);
     expect(find.text('Could not write the picture prompt'), findsOneWidget);
     expect(find.text('- Upstairs.', findRichText: true), findsOneWidget, reason: 'the dialogue is still shown');
     await tester.tap(find.text('Try again'));
@@ -161,7 +161,7 @@ void main() {
   });
 
   testWidgets('a failed picture: the message and Draw again (AC-18)', (tester) async {
-    await pumpScreen(tester, sessionWith(),
+    await pumpScreen(tester, collectionWith(),
         [sceneRun([step('prompt'), step('picture', outcome: 'failed')], outcome: 'failed')]);
     expect(find.text('The picture could not be drawn'), findsOneWidget);
     await tester.tap(find.text('Draw again'));
@@ -169,7 +169,7 @@ void main() {
   });
 
   testWidgets('the day limit: the message and nothing to press (AC-19)', (tester) async {
-    await pumpScreen(tester, sessionWith(), [sceneRun([], outcome: 'failed')],
+    await pumpScreen(tester, collectionWith(), [sceneRun([], outcome: 'failed')],
         refusals: {'dialogue-d1': const StoryStartRefusal(StoryRefusal.dayLimit)});
     expect(find.text("Today's story limit is reached. Try again tomorrow."), findsOneWidget);
     expect(find.byType(ElevatedButton), findsNothing);

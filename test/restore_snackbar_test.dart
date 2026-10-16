@@ -6,10 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -35,16 +35,16 @@ void main() {
     addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
     await tester.runAsync(() async {
       dir = Directory.systemTemp.createTempSync('restore_snackbar_test');
-      store = await SessionStore.open(directory: dir.path);
-      final prev = Session.create()
+      store = await CollectionStore.open(directory: dir.path);
+      final prev = WordCollection.create()
         ..words = [WordPair(word: 'harbour', translation: 'гавань')]
         ..lastLocalModifiedAt =
             DateTime.now().subtract(const Duration(minutes: 30));
       await store.put(prev);
-      await store.setCurrentSessionId(prev.sessionId);
+      await store.setCurrentCollectionId(prev.collectionId);
     });
     addTearDown(() async {
       await tester.runAsync(() async {
@@ -52,7 +52,7 @@ void main() {
       });
     });
     final container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
     ]);
     addTearDown(container.dispose);
     // The screen is the first to read the session, as in the app; the store

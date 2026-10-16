@@ -10,7 +10,7 @@ import '../models/session_source.dart';
 /// app documents dir under `source_photos/` (good-looking-web sad §5, "kept
 /// photo copy"). A kept photo lives as long as its session.
 ///
-/// Like `SessionStore`, nothing here throws: failing to keep a photo must not
+/// Like `CollectionStore`, nothing here throws: failing to keep a photo must not
 /// stop its words from reaching the list — the rows are just left untagged.
 class SourcePhotoStore {
   static const _folder = 'source_photos';

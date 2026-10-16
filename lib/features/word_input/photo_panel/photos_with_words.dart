@@ -29,23 +29,23 @@ extension SourceWithWordsKind on SourceWithWords {
 
 /// The current session's sources with words that the photo panel lists,
 /// photos and sets mixed, oldest first by `takenAt` (sources added at the
-/// same time keep the order of `Session.sources`), derived in one pass over
+/// same time keep the order of `WordCollection.sources`), derived in one pass over
 /// the rows (sad §4). Only the current session is read, so another session's
 /// sources never appear (spec AC-16); a row whose word is cleared does not
 /// count (spec AC-15).
 @riverpod
 List<SourceWithWords> sourcesWithWords(Ref ref) {
-  final session = ref.watch(wordInputNotifierProvider).valueOrNull;
-  if (session == null) return const [];
+  final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+  if (collection == null) return const [];
   final rowsBySource = <String, List<int>>{};
-  for (var i = 0; i < session.words.length; i++) {
-    final pair = session.words[i];
+  for (var i = 0; i < collection.words.length; i++) {
+    final pair = collection.words[i];
     final id = pair.sourceId;
     if (id == null || pair.word.trim().isEmpty) continue;
     (rowsBySource[id] ??= []).add(i);
   }
   final listed = [
-    for (final (i, source) in session.sources.indexed)
+    for (final (i, source) in collection.sources.indexed)
       if (panelSourceKinds.contains(source.kind) &&
           rowsBySource[source.id] != null)
         (i, (source: source, rows: rowsBySource[source.id]!)),

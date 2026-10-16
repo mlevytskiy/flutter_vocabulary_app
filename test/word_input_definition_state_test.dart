@@ -6,10 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -30,20 +30,20 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
   late ProviderContainer container;
 
   Future<void> pumpScreen(WidgetTester tester, List<WordPair> words) async {
     SharedPreferences.setMockInitialValues({});
     await tester.runAsync(() async {
       dir = Directory.systemTemp.createTempSync('definition_state_test');
-      store = await SessionStore.open(directory: dir.path);
-      final session = Session.create()..words = words;
-      await store.put(session);
-      await store.setCurrentSessionId(session.sessionId);
+      store = await CollectionStore.open(directory: dir.path);
+      final collection = WordCollection.create()..words = words;
+      await store.put(collection);
+      await store.setCurrentCollectionId(collection.collectionId);
     });
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
     ]);
     // Resolve the session outside the fake-async zone: Isar needs real I/O.
     await tester

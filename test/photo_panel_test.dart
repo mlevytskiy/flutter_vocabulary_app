@@ -8,11 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/system_gesture_exclusion.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_a.dart';
@@ -56,9 +56,9 @@ void main() {
     }
   });
 
-  // One store for the file, never closed (see switch_session_test.dart).
+  // One store for the file, never closed (see switch_collection_test.dart).
   Directory? dir;
-  late SessionStore store;
+  late CollectionStore store;
   late ProviderContainer container;
   late _RecordingExclusion exclusion;
   tearDownAll(() {
@@ -90,10 +90,10 @@ void main() {
     if (dir != null) return;
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('photo_panel_test');
-    store = await SessionStore.open(directory: dir!.path);
+    store = await CollectionStore.open(directory: dir!.path);
   }
 
-  Future<Session> pumpMain(WidgetTester tester,
+  Future<WordCollection> pumpMain(WidgetTester tester,
       {List<WordPair>? words, bool photos = true}) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3.0;
@@ -102,21 +102,21 @@ void main() {
     tester.binding.defaultBinaryMessenger
         .setMockMethodCallHandler(const MethodChannel('flutter_tts'), (_) async => null);
     SharedPreferences.setMockInitialValues({});
-    late Session current;
+    late WordCollection current;
     await tester.runAsync(() async {
       await ensureStore();
       final now = DateTime.now();
-      current = Session.create()
+      current = WordCollection.create()
         ..updatedAt = now
         ..lastLocalModifiedAt = now
         ..words = words ?? rows()
         ..sources = photos ? [photo('p1', 1), photo('p2', 2)] : [];
       await store.put(current);
-      await store.setCurrentSessionId(current.sessionId);
+      await store.setCurrentCollectionId(current.collectionId);
     });
     exclusion = _RecordingExclusion();
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
       systemGestureExclusionProvider.overrideWithValue(exclusion),
     ]);
@@ -469,10 +469,10 @@ void main() {
 
     testWidgets('the panel follows the words; a new session closes it; background keeps it '
         '(AC-15, AC-15b, AC-16)', (tester) async {
-      late Session other;
+      late WordCollection other;
       await tester.runAsync(() async {
         await ensureStore();
-        other = Session.create()
+        other = WordCollection.create()
           ..updatedAt = DateTime(2026, 9, 2)
           ..lastLocalModifiedAt = DateTime(2026, 9, 2)
           ..words = [WordPair(word: 'from', sourceId: 'q1')]
@@ -505,7 +505,7 @@ void main() {
       expect(stop(tester), PanelStop.halfOpen);
 
       await tester.runAsync(() =>
-          container.read(wordInputNotifierProvider.notifier).switchTo(other.sessionId));
+          container.read(wordInputNotifierProvider.notifier).switchTo(other.collectionId));
       await tester.pump();
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);

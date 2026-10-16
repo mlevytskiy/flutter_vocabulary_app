@@ -6,7 +6,7 @@ part of 'remember_or_not_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$rememberOrNotHash() => r'd0d2a66af1e9d46495c882d2e2adf751b08e45f1';
+String _$rememberOrNotHash() => r'dd0f6ada60bb334bdfe1543e59def15b9dc8001f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$RememberOrNot
     extends BuildlessAutoDisposeAsyncNotifier<RememberState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<RememberState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -51,11 +51,11 @@ class RememberOrNotFamily extends Family<AsyncValue<RememberState>> {
 
   /// See also [RememberOrNot].
   RememberOrNotProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return RememberOrNotProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -65,7 +65,7 @@ class RememberOrNotFamily extends Family<AsyncValue<RememberState>> {
     covariant RememberOrNotProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -90,11 +90,11 @@ class RememberOrNotProvider
     extends AutoDisposeAsyncNotifierProviderImpl<RememberOrNot, RememberState> {
   /// See also [RememberOrNot].
   RememberOrNotProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => RememberOrNot()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: rememberOrNotProvider,
           name: r'rememberOrNotProvider',
@@ -105,7 +105,7 @@ class RememberOrNotProvider
           dependencies: RememberOrNotFamily._dependencies,
           allTransitiveDependencies:
               RememberOrNotFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -116,11 +116,11 @@ class RememberOrNotProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -128,7 +128,7 @@ class RememberOrNotProvider
     covariant RememberOrNot notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -139,14 +139,14 @@ class RememberOrNotProvider
       origin: this,
       override: RememberOrNotProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -161,14 +161,14 @@ class RememberOrNotProvider
   @override
   bool operator ==(Object other) {
     return other is RememberOrNotProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -178,8 +178,8 @@ class RememberOrNotProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin RememberOrNotRef on AutoDisposeAsyncNotifierProviderRef<RememberState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -191,7 +191,7 @@ class _RememberOrNotProviderElement
   _RememberOrNotProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as RememberOrNotProvider).sessionId;
+  String? get collectionId => (origin as RememberOrNotProvider).collectionId;
   @override
   String get groupId => (origin as RememberOrNotProvider).groupId;
 }

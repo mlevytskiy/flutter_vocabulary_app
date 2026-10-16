@@ -17,7 +17,7 @@ class FakeGroups extends WordGroupsNotifier {
   final List<String> selected = [];
 
   @override
-  WordGroupsState build(String? sessionId) => initial;
+  WordGroupsState build(String? collectionId) => initial;
 
   @override
   Future<void> ensureGrouped() async => ensured++;
@@ -45,7 +45,7 @@ class FakeTracker extends StoryRunTracker {
   StoryFollow follow() => StoryFollow.forTest(() {});
 
   @override
-  Future<String?> startFor(String sessionId, WordGroup group,
+  Future<String?> startFor(String collectionId, WordGroup group,
           {bool replacing = false}) async =>
       null;
 }

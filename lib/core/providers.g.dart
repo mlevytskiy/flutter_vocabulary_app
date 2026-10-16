@@ -58,22 +58,23 @@ final imagePickerProvider = AutoDisposeProvider<ImagePicker>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef ImagePickerRef = AutoDisposeProviderRef<ImagePicker>;
-String _$sessionStoreHash() => r'80c414f1ec22b592d6f68442e3112d05972f08a4';
+String _$collectionStoreHash() => r'734e53cb3306b24784379060398a3d74e2bac7c5';
 
-/// See also [sessionStore].
-@ProviderFor(sessionStore)
-final sessionStoreProvider = FutureProvider<SessionStore>.internal(
-  sessionStore,
-  name: r'sessionStoreProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$sessionStoreHash,
+/// See also [collectionStore].
+@ProviderFor(collectionStore)
+final collectionStoreProvider = FutureProvider<CollectionStore>.internal(
+  collectionStore,
+  name: r'collectionStoreProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$collectionStoreHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef SessionStoreRef = FutureProviderRef<SessionStore>;
+typedef CollectionStoreRef = FutureProviderRef<CollectionStore>;
 String _$sourcePhotoStoreHash() => r'5ba15f72c22a820489d043a9260d86a9f9d91b3d';
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
@@ -115,7 +116,7 @@ final systemGestureExclusionProvider =
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SystemGestureExclusionRef = ProviderRef<SystemGestureExclusion>;
-String _$storyRunStoreHash() => r'1baae4ddf9fdf660adf336fb38e2b2a162325378';
+String _$storyRunStoreHash() => r'406c5b86ac090c61141ffc690cd2065301fb3140';
 
 /// The story runs, kept in the same database as the sessions (ADR-0003).
 ///
@@ -247,7 +248,7 @@ final learnApiServiceProvider = Provider<LearnApiService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LearnApiServiceRef = ProviderRef<LearnApiService>;
-String _$examResultSinkHash() => r'b4c8c65a5c0b4abbc459f3a6c161f25d8a3c6113';
+String _$examResultSinkHash() => r'48e41297d46cc66488d89b803bb61380316ddf96';
 
 /// Where Step 3 exams record each word's known / repeat result (learn-kit
 /// S-23), on the session in the session store.
@@ -287,24 +288,25 @@ final offeredAisProvider = FutureProvider<OfferedAiList>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef OfferedAisRef = FutureProviderRef<OfferedAiList>;
-String _$sessionPublishServiceHash() =>
-    r'f1fa0f257c2278cdc3e762d3755c1f1baa8ecbfc';
+String _$collectionPublishServiceHash() =>
+    r'782c4e1830d4068a7ccce88ceaf477de7cc026d4';
 
-/// See also [sessionPublishService].
-@ProviderFor(sessionPublishService)
-final sessionPublishServiceProvider = Provider<SessionPublishService>.internal(
-  sessionPublishService,
-  name: r'sessionPublishServiceProvider',
+/// See also [collectionPublishService].
+@ProviderFor(collectionPublishService)
+final collectionPublishServiceProvider =
+    Provider<CollectionPublishService>.internal(
+  collectionPublishService,
+  name: r'collectionPublishServiceProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$sessionPublishServiceHash,
+      : _$collectionPublishServiceHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef SessionPublishServiceRef = ProviderRef<SessionPublishService>;
+typedef CollectionPublishServiceRef = ProviderRef<CollectionPublishService>;
 String _$subtitleWordsServiceHash() =>
     r'56f13395451925ab40ca0224660f990ec0cd6ce7';
 
@@ -386,7 +388,7 @@ final photoUploadServiceProvider = Provider<PhotoUploadService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef PhotoUploadServiceRef = ProviderRef<PhotoUploadService>;
-String _$sessionByIdHash() => r'5a9ababfd50081224b9aaab6a0e5d20842921e11';
+String _$collectionByIdHash() => r'ad2b3bf6ef382c136b9269914067acfeafcd7c90';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -409,30 +411,30 @@ class _SystemHash {
   }
 }
 
-/// See also [sessionById].
-@ProviderFor(sessionById)
-const sessionByIdProvider = SessionByIdFamily();
+/// See also [collectionById].
+@ProviderFor(collectionById)
+const collectionByIdProvider = CollectionByIdFamily();
 
-/// See also [sessionById].
-class SessionByIdFamily extends Family<AsyncValue<Session?>> {
-  /// See also [sessionById].
-  const SessionByIdFamily();
+/// See also [collectionById].
+class CollectionByIdFamily extends Family<AsyncValue<WordCollection?>> {
+  /// See also [collectionById].
+  const CollectionByIdFamily();
 
-  /// See also [sessionById].
-  SessionByIdProvider call(
-    String sessionId,
+  /// See also [collectionById].
+  CollectionByIdProvider call(
+    String collectionId,
   ) {
-    return SessionByIdProvider(
-      sessionId,
+    return CollectionByIdProvider(
+      collectionId,
     );
   }
 
   @override
-  SessionByIdProvider getProviderOverride(
-    covariant SessionByIdProvider provider,
+  CollectionByIdProvider getProviderOverride(
+    covariant CollectionByIdProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
     );
   }
 
@@ -448,75 +450,77 @@ class SessionByIdFamily extends Family<AsyncValue<Session?>> {
       _allTransitiveDependencies;
 
   @override
-  String? get name => r'sessionByIdProvider';
+  String? get name => r'collectionByIdProvider';
 }
 
-/// See also [sessionById].
-class SessionByIdProvider extends AutoDisposeFutureProvider<Session?> {
-  /// See also [sessionById].
-  SessionByIdProvider(
-    String sessionId,
+/// See also [collectionById].
+class CollectionByIdProvider
+    extends AutoDisposeFutureProvider<WordCollection?> {
+  /// See also [collectionById].
+  CollectionByIdProvider(
+    String collectionId,
   ) : this._internal(
-          (ref) => sessionById(
-            ref as SessionByIdRef,
-            sessionId,
+          (ref) => collectionById(
+            ref as CollectionByIdRef,
+            collectionId,
           ),
-          from: sessionByIdProvider,
-          name: r'sessionByIdProvider',
+          from: collectionByIdProvider,
+          name: r'collectionByIdProvider',
           debugGetCreateSourceHash:
               const bool.fromEnvironment('dart.vm.product')
                   ? null
-                  : _$sessionByIdHash,
-          dependencies: SessionByIdFamily._dependencies,
+                  : _$collectionByIdHash,
+          dependencies: CollectionByIdFamily._dependencies,
           allTransitiveDependencies:
-              SessionByIdFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+              CollectionByIdFamily._allTransitiveDependencies,
+          collectionId: collectionId,
         );
 
-  SessionByIdProvider._internal(
+  CollectionByIdProvider._internal(
     super._createNotifier, {
     required super.name,
     required super.dependencies,
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
   }) : super.internal();
 
-  final String sessionId;
+  final String collectionId;
 
   @override
   Override overrideWith(
-    FutureOr<Session?> Function(SessionByIdRef provider) create,
+    FutureOr<WordCollection?> Function(CollectionByIdRef provider) create,
   ) {
     return ProviderOverride(
       origin: this,
-      override: SessionByIdProvider._internal(
-        (ref) => create(ref as SessionByIdRef),
+      override: CollectionByIdProvider._internal(
+        (ref) => create(ref as CollectionByIdRef),
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
       ),
     );
   }
 
   @override
-  AutoDisposeFutureProviderElement<Session?> createElement() {
-    return _SessionByIdProviderElement(this);
+  AutoDisposeFutureProviderElement<WordCollection?> createElement() {
+    return _CollectionByIdProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is SessionByIdProvider && other.sessionId == sessionId;
+    return other is CollectionByIdProvider &&
+        other.collectionId == collectionId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -524,41 +528,44 @@ class SessionByIdProvider extends AutoDisposeFutureProvider<Session?> {
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-mixin SessionByIdRef on AutoDisposeFutureProviderRef<Session?> {
-  /// The parameter `sessionId` of this provider.
-  String get sessionId;
+mixin CollectionByIdRef on AutoDisposeFutureProviderRef<WordCollection?> {
+  /// The parameter `collectionId` of this provider.
+  String get collectionId;
 }
 
-class _SessionByIdProviderElement
-    extends AutoDisposeFutureProviderElement<Session?> with SessionByIdRef {
-  _SessionByIdProviderElement(super.provider);
+class _CollectionByIdProviderElement
+    extends AutoDisposeFutureProviderElement<WordCollection?>
+    with CollectionByIdRef {
+  _CollectionByIdProviderElement(super.provider);
 
   @override
-  String get sessionId => (origin as SessionByIdProvider).sessionId;
+  String get collectionId => (origin as CollectionByIdProvider).collectionId;
 }
 
-String _$nonEmptySessionsHash() => r'5eed4773be16d0e53b15997c820df92de8d570d1';
+String _$nonEmptyCollectionsHash() =>
+    r'a07de87f72b0e162ea7fc78ec8d85851ed99aeb3';
 
 /// Every session that has at least one non-blank word, newest first, re-emitted
 /// after every write. The drawer rule on the input screen and the History
 /// screen (task-10) both read this one stream.
 ///
-/// Copied from [nonEmptySessions].
-@ProviderFor(nonEmptySessions)
-final nonEmptySessionsProvider =
-    AutoDisposeStreamProvider<List<Session>>.internal(
-  nonEmptySessions,
-  name: r'nonEmptySessionsProvider',
+/// Copied from [nonEmptyCollections].
+@ProviderFor(nonEmptyCollections)
+final nonEmptyCollectionsProvider =
+    AutoDisposeStreamProvider<List<WordCollection>>.internal(
+  nonEmptyCollections,
+  name: r'nonEmptyCollectionsProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$nonEmptySessionsHash,
+      : _$nonEmptyCollectionsHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef NonEmptySessionsRef = AutoDisposeStreamProviderRef<List<Session>>;
+typedef NonEmptyCollectionsRef
+    = AutoDisposeStreamProviderRef<List<WordCollection>>;
 String _$dialoguePushServiceHash() =>
     r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
 
@@ -604,7 +611,7 @@ typedef _$AiChoiceNotifier = Notifier<StoredAiChoice>;
 String _$dragModeHash() => r'6c8be31e69381c41da06163dfa7a77cfa9c1bb89';
 
 /// Whether the word list is in drag-and-drop (reorder) mode. A pure display
-/// preference: it lives here rather than on `Session` because it is not
+/// preference: it lives here rather than on `WordCollection` because it is not
 /// session data and must never reach Isar (task-13), and `keepAlive` because
 /// the Settings screen is the only writer while the input screen is the only
 /// reader -- autoDispose would drop the value when Settings is popped.
@@ -626,7 +633,7 @@ String _$wordDetailModeNotifierHash() =>
 
 /// The learner's word detail mode. Unlike drag mode it survives a restart, so
 /// it is persisted under one preferences key; it is still a display preference
-/// and never goes on `Session`. Starts as [WordDetailMode.translation] and
+/// and never goes on `WordCollection`. Starts as [WordDetailMode.translation] and
 /// switches once the stored value is read ([loaded]).
 ///
 /// Copied from [WordDetailModeNotifier].
@@ -694,7 +701,7 @@ String _$photoTabTopNotifierHash() =>
 /// The photo tab's top, in logical pixels from the top of the main screen's
 /// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
 /// up or down and the height is kept across restarts (spec AC-14). A display
-/// preference: never on `Session`. Clamped on use by the tab ([clamp]).
+/// preference: never on `WordCollection`. Clamped on use by the tab ([clamp]).
 ///
 /// Copied from [PhotoTabTopNotifier].
 @ProviderFor(PhotoTabTopNotifier)

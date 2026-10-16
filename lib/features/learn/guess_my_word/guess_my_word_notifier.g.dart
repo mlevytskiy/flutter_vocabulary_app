@@ -6,7 +6,7 @@ part of 'guess_my_word_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$guessMyWordHash() => r'ee24fa01847cd457672a2f30f092e58043b01bd2';
+String _$guessMyWordHash() => r'0596326c3b28a92ccd92fe94875acb4793169cf0';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$GuessMyWord
     extends BuildlessAutoDisposeAsyncNotifier<GuessState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<GuessState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -67,11 +67,11 @@ class GuessMyWordFamily extends Family<AsyncValue<GuessState>> {
   ///
   /// Copied from [GuessMyWord].
   GuessMyWordProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return GuessMyWordProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -81,7 +81,7 @@ class GuessMyWordFamily extends Family<AsyncValue<GuessState>> {
     covariant GuessMyWordProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -114,11 +114,11 @@ class GuessMyWordProvider
   ///
   /// Copied from [GuessMyWord].
   GuessMyWordProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => GuessMyWord()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: guessMyWordProvider,
           name: r'guessMyWordProvider',
@@ -129,7 +129,7 @@ class GuessMyWordProvider
           dependencies: GuessMyWordFamily._dependencies,
           allTransitiveDependencies:
               GuessMyWordFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -140,11 +140,11 @@ class GuessMyWordProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -152,7 +152,7 @@ class GuessMyWordProvider
     covariant GuessMyWord notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -163,14 +163,14 @@ class GuessMyWordProvider
       origin: this,
       override: GuessMyWordProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -185,14 +185,14 @@ class GuessMyWordProvider
   @override
   bool operator ==(Object other) {
     return other is GuessMyWordProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -202,8 +202,8 @@ class GuessMyWordProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin GuessMyWordRef on AutoDisposeAsyncNotifierProviderRef<GuessState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -215,7 +215,7 @@ class _GuessMyWordProviderElement
   _GuessMyWordProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as GuessMyWordProvider).sessionId;
+  String? get collectionId => (origin as GuessMyWordProvider).collectionId;
   @override
   String get groupId => (origin as GuessMyWordProvider).groupId;
 }

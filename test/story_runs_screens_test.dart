@@ -32,7 +32,7 @@ StoryRun _run(String id, String group, DateTime at, List<StoryStep> steps,
         {String outcome = 'done'}) =>
     StoryRun()
       ..runId = id
-      ..sessionId = 's'
+      ..collectionId = 's'
       ..groupId = 'g-$id'
       ..groupName = group
       ..startedAt = at

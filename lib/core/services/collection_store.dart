@@ -2,7 +2,7 @@ import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/session.dart';
+import '../models/word_collection.dart';
 import '../models/story_run.dart';
 import '../models/word_result.dart';
 import 'source_photo_store.dart' show uuidV4;
@@ -13,26 +13,26 @@ import 'source_photo_store.dart' show uuidV4;
 ///
 /// Nothing in this class throws on bad data: a store that kills the app on
 /// launch because of a bad write is worse than one that loses a session.
-class SessionStore {
-  static const _currentSessionKey = 'current_session_id';
-  static const _switchedSessionKey = 'switched_session_id';
+class CollectionStore {
+  static const _currentCollectionKey = 'current_session_id';
+  static const _switchedCollectionKey = 'switched_session_id';
   static const _switchedAtKey = 'switched_at';
-  static const _seenSessionKey = 'seen_session_id';
+  static const _seenCollectionKey = 'seen_session_id';
   static const _seenAtKey = 'seen_at';
 
   final Isar _isar;
   final SharedPreferences _prefs;
 
-  SessionStore._(this._isar, this._prefs);
+  CollectionStore._(this._isar, this._prefs);
 
-  static Future<SessionStore> open({String? directory}) async {
+  static Future<CollectionStore> open({String? directory}) async {
     final dir =
         directory ?? (await getApplicationDocumentsDirectory()).path;
     final isar = Isar.getInstance('vocab') ??
-        await Isar.open([SessionSchema, StoryRunSchema],
+        await Isar.open([WordCollectionSchema, StoryRunSchema],
             directory: dir, name: 'vocab');
     final prefs = await SharedPreferences.getInstance();
-    final store = SessionStore._(isar, prefs);
+    final store = CollectionStore._(isar, prefs);
     await store._fillRowIdsEverywhere();
     return store;
   }
@@ -40,13 +40,13 @@ class SessionStore {
   /// Gives every row without a [WordPair.rowId] one and saves it, so rows
   /// stored before mnemonic-story get stable ids once. Returns [s] itself.
   /// Never throws, see the class doc.
-  Future<Session> _withRowIds(Session s) async {
+  Future<WordCollection> _withRowIds(WordCollection s) async {
     if (s.words.every((w) => w.rowId.isNotEmpty)) return s;
     for (final w in s.words) {
       if (w.rowId.isEmpty) w.rowId = uuidV4();
     }
     try {
-      await _isar.writeTxn(() => _isar.sessions.put(s));
+      await _isar.writeTxn(() => _isar.wordCollections.put(s));
     } catch (_) {
       // the ids stay on this object; the next read tries again
     }
@@ -55,7 +55,7 @@ class SessionStore {
 
   Future<void> _fillRowIdsEverywhere() async {
     try {
-      for (final s in await _isar.sessions.where().findAll()) {
+      for (final s in await _isar.wordCollections.where().findAll()) {
         await _withRowIds(s);
       }
     } catch (_) {
@@ -65,11 +65,11 @@ class SessionStore {
 
   Future<void> close() => _isar.close();
 
-  Future<Session?> byId(String sessionId) async {
+  Future<WordCollection?> byId(String collectionId) async {
     try {
-      final s = await _isar.sessions
+      final s = await _isar.wordCollections
           .filter()
-          .sessionIdEqualTo(sessionId)
+          .collectionIdEqualTo(collectionId)
           .findFirst();
       return s == null ? null : await _withRowIds(s);
     } catch (_) {
@@ -77,11 +77,11 @@ class SessionStore {
     }
   }
 
-  /// The session with the newest [Session.lastLocalModifiedAt], or null on an
+  /// The session with the newest [WordCollection.lastLocalModifiedAt], or null on an
   /// empty store.
-  Future<Session?> newest() async {
+  Future<WordCollection?> newest() async {
     try {
-      final s = await _isar.sessions
+      final s = await _isar.wordCollections
           .where()
           .sortByLastLocalModifiedAtDesc()
           .findFirst();
@@ -92,9 +92,9 @@ class SessionStore {
   }
 
   /// Sessions with at least one non-blank word, newest first.
-  Future<List<Session>> nonEmpty() async {
+  Future<List<WordCollection>> nonEmpty() async {
     try {
-      final all = await _isar.sessions
+      final all = await _isar.wordCollections
           .where()
           .sortByLastLocalModifiedAtDesc()
           .findAll();
@@ -107,10 +107,10 @@ class SessionStore {
     }
   }
 
-  /// Upsert on [Session.sessionId]. Blank pairs — the trailing empty row the
+  /// Upsert on [WordCollection.collectionId]. Blank pairs — the trailing empty row the
   /// screen always keeps — are stripped before the write and the caller's own
   /// session object is left untouched.
-  Future<void> put(Session s) async {
+  Future<void> put(WordCollection s) async {
     try {
       // A row keeps its id for good, so a new one gets it now, on the
       // caller's object too: a group may name it before the next read.
@@ -118,13 +118,13 @@ class SessionStore {
         if (!w.isEmpty && w.rowId.isEmpty) w.rowId = uuidV4();
       }
       await _isar.writeTxn(() async {
-        final existing = await _isar.sessions
+        final existing = await _isar.wordCollections
             .filter()
-            .sessionIdEqualTo(s.sessionId)
+            .collectionIdEqualTo(s.collectionId)
             .findFirst();
-        final toWrite = Session()
+        final toWrite = WordCollection()
           ..id = existing?.id ?? Isar.autoIncrement
-          ..sessionId = s.sessionId
+          ..collectionId = s.collectionId
           ..updatedAt = s.updatedAt
           ..lastLocalModifiedAt = s.lastLocalModifiedAt
           ..isShared = s.isShared
@@ -143,7 +143,7 @@ class SessionStore {
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
           ..results = existing?.results ?? [for (final r in s.results) r.copy()];
-        s.id = await _isar.sessions.put(toWrite);
+        s.id = await _isar.wordCollections.put(toWrite);
       });
     } catch (_) {
       // Losing one debounced write is survivable; crashing the app is not.
@@ -151,23 +151,23 @@ class SessionStore {
   }
 
   /// Appends a Step 3 word result to the stored session (learn-kit S-22,
-  /// S-23), dropping the oldest past [Session.maxResults]. Neither
+  /// S-23), dropping the oldest past [WordCollection.maxResults]. Neither
   /// `updatedAt` nor `lastLocalModifiedAt` moves, so History order stays
   /// (AC-37). False when there is no such session or the write failed.
-  Future<bool> appendResult(String sessionId, WordResult result) async {
+  Future<bool> appendResult(String collectionId, WordResult result) async {
     try {
       return await _isar.writeTxn(() async {
-        final existing = await _isar.sessions
+        final existing = await _isar.wordCollections
             .filter()
-            .sessionIdEqualTo(sessionId)
+            .collectionIdEqualTo(collectionId)
             .findFirst();
         if (existing == null) return false;
         final results = [...existing.results, result.copy()];
-        if (results.length > Session.maxResults) {
-          results.removeRange(0, results.length - Session.maxResults);
+        if (results.length > WordCollection.maxResults) {
+          results.removeRange(0, results.length - WordCollection.maxResults);
         }
         existing.results = results;
-        await _isar.sessions.put(existing);
+        await _isar.wordCollections.put(existing);
         return true;
       });
     } catch (_) {
@@ -175,14 +175,14 @@ class SessionStore {
     }
   }
 
-  Future<void> delete(String sessionId) async {
+  Future<void> delete(String collectionId) async {
     try {
       await _isar.writeTxn(() async {
-        final existing = await _isar.sessions
+        final existing = await _isar.wordCollections
             .filter()
-            .sessionIdEqualTo(sessionId)
+            .collectionIdEqualTo(collectionId)
             .findFirst();
-        if (existing != null) await _isar.sessions.delete(existing.id);
+        if (existing != null) await _isar.wordCollections.delete(existing.id);
       });
     } catch (_) {
       // ignored on purpose, see the class doc
@@ -191,7 +191,7 @@ class SessionStore {
 
   /// Emits once immediately and again after every write. The drawer rule and
   /// the History screen (task-10) read this.
-  Stream<List<Session>> watchNonEmpty() => _isar.sessions
+  Stream<List<WordCollection>> watchNonEmpty() => _isar.wordCollections
       .where()
       .sortByLastLocalModifiedAtDesc()
       .watch(fireImmediately: true)
@@ -200,31 +200,31 @@ class SessionStore {
               if (!s.isEmpty) await _withRowIds(s),
           ]);
 
-  Future<String?> currentSessionId() async =>
-      _prefs.getString(_currentSessionKey);
+  Future<String?> currentCollectionId() async =>
+      _prefs.getString(_currentCollectionKey);
 
-  Future<void> setCurrentSessionId(String sessionId) async {
-    await _prefs.setString(_currentSessionKey, sessionId);
+  Future<void> setCurrentCollectionId(String collectionId) async {
+    await _prefs.setString(_currentCollectionKey, collectionId);
   }
 
-  /// Records that the learner picked [sessionId] from History at [at]
+  /// Records that the learner picked [collectionId] from History at [at]
   /// (edit-session-from-history, ADR-0002). Kept beside the current-session
   /// pointer rather than on the session so a pick never looks like an edit.
   /// Nothing clears it; [switchedAt] only answers for the id it names.
-  Future<void> setSwitched(String sessionId, DateTime at) async {
+  Future<void> setSwitched(String collectionId, DateTime at) async {
     try {
-      await _prefs.setString(_switchedSessionKey, sessionId);
+      await _prefs.setString(_switchedCollectionKey, collectionId);
       await _prefs.setString(_switchedAtKey, at.toIso8601String());
     } catch (_) {
       // ignored on purpose, see the class doc
     }
   }
 
-  /// When [sessionId] was last picked from History, or null if the pick
+  /// When [collectionId] was last picked from History, or null if the pick
   /// record names another session, is missing, or cannot be read.
-  Future<DateTime?> switchedAt(String sessionId) async {
+  Future<DateTime?> switchedAt(String collectionId) async {
     try {
-      if (_prefs.getString(_switchedSessionKey) != sessionId) return null;
+      if (_prefs.getString(_switchedCollectionKey) != collectionId) return null;
       final at = _prefs.getString(_switchedAtKey);
       return at == null ? null : DateTime.tryParse(at);
     } catch (_) {
@@ -232,24 +232,24 @@ class SessionStore {
     }
   }
 
-  /// Records that [sessionId], with words, was on screen with the app open
+  /// Records that [collectionId], with words, was on screen with the app open
   /// at [at] (owner, 2026-10-16). Kept beside the pointer like a pick, so
   /// being looked at never looks like an edit; [seenAt] only answers for the
   /// id it names.
-  Future<void> setSeen(String sessionId, DateTime at) async {
+  Future<void> setSeen(String collectionId, DateTime at) async {
     try {
-      await _prefs.setString(_seenSessionKey, sessionId);
+      await _prefs.setString(_seenCollectionKey, collectionId);
       await _prefs.setString(_seenAtKey, at.toIso8601String());
     } catch (_) {
       // ignored on purpose, see the class doc
     }
   }
 
-  /// When [sessionId] was last seen open, or null if the record names
+  /// When [collectionId] was last seen open, or null if the record names
   /// another session, is missing, or cannot be read.
-  Future<DateTime?> seenAt(String sessionId) async {
+  Future<DateTime?> seenAt(String collectionId) async {
     try {
-      if (_prefs.getString(_seenSessionKey) != sessionId) return null;
+      if (_prefs.getString(_seenCollectionKey) != collectionId) return null;
       final at = _prefs.getString(_seenAtKey);
       return at == null ? null : DateTime.tryParse(at);
     } catch (_) {

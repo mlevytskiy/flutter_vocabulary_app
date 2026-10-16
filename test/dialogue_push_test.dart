@@ -11,11 +11,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/dialogues/dialogue_push.dart';
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_picture_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 
@@ -35,17 +35,17 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
   late StoryRunStore runStore;
   late StoryPictureStore pictures;
   late List<http.Request> requests;
   late int Function(http.Request) answer;
-  late Session session;
+  late WordCollection collection;
   ProviderContainer? container;
 
   ProviderContainer start() {
     final c = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       storyRunStoreProvider.overrideWith((ref) async => runStore),
       storyPictureStoreProvider.overrideWithValue(pictures),
       dialoguePushServiceProvider.overrideWithValue(DialoguePushService(
@@ -66,12 +66,12 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('dialogue_push_test');
-    store = await SessionStore.open(directory: dir.path);
+    store = await CollectionStore.open(directory: dir.path);
     runStore = await StoryRunStore.open(directory: dir.path);
     pictures = StoryPictureStore(directory: dir.path, compress: (b, q) async => b);
     requests = [];
     answer = (_) => 200;
-    session = Session.create()
+    collection = WordCollection.create()
       ..words = [pair('r0', 'tide'), pair('r1', 'attic'), pair('r2', 'dusty')]
       ..publishedId = 'pub'
       ..editToken = 'tok'
@@ -95,11 +95,11 @@ void main() {
   });
 
   Future<void> save() async {
-    await store.put(session);
-    await store.setCurrentSessionId(session.sessionId);
+    await store.put(collection);
+    await store.setCurrentCollectionId(collection.collectionId);
   }
 
-  Future<Session> saved() async => (await store.byId(session.sessionId))!;
+  Future<WordCollection> saved() async => (await store.byId(collection.collectionId))!;
 
   Future<void> runOnce(ProviderContainer c) => c.read(dialoguePushProvider.notifier).run();
 
@@ -146,7 +146,7 @@ void main() {
   });
 
   test('a dialogue whose words were all deleted is hidden: the rows go, then it is removed', () async {
-    session
+    collection
       ..words = [pair('r0', 'tide'), pair('r2', 'dusty')]
       ..dialogues.single.wordRowIds = []
       ..dialogues.single.hidden = true;
@@ -166,14 +166,14 @@ void main() {
 
   test('a collected scene picture is uploaded to its dialogue', () async {
     final bytes = Uint8List.fromList([1, 2, 3]);
-    session.dialogues.single
+    collection.dialogues.single
       ..pushState = PushState.delivered
       ..scenePictureRunId = 'run-1'
       ..picturePushState = PushState.pending;
     await save();
     await runStore.put(StoryRun()
       ..runId = 'run-1'
-      ..sessionId = session.sessionId
+      ..collectionId = collection.collectionId
       ..groupId = 'dialogue-d1'
       ..groupName = 'The attic.'
       ..startedAt = DateTime(2026, 10, 13)
@@ -212,7 +212,7 @@ void main() {
   });
 
   test('a session without a link sends nothing', () async {
-    session
+    collection
       ..publishedId = null
       ..editToken = null;
     await save();

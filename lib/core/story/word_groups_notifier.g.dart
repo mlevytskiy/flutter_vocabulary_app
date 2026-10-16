@@ -7,7 +7,7 @@ part of 'word_groups_notifier.dart';
 // **************************************************************************
 
 String _$wordGroupsNotifierHash() =>
-    r'fdfb3a66b53de94ed81491357cfa87d42265c5e8';
+    r'aa2d8f9b853524601b82a16734800b4ef29b61b5';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,15 +31,15 @@ class _SystemHash {
 }
 
 abstract class _$WordGroupsNotifier extends BuildlessNotifier<WordGroupsState> {
-  late final String? sessionId;
+  late final String? collectionId;
 
   WordGroupsState build(
-    String? sessionId,
+    String? collectionId,
   );
 }
 
 /// The groups of one session and the learner's selection among them. A null
-/// [sessionId] is the current session; an id is a History session, which is
+/// [collectionId] is the current session; an id is a History session, which is
 /// read and saved on its own and never becomes current (AC-11). Lives in
 /// `lib/core/story/` so the Words screen and the learn page share it.
 ///
@@ -48,14 +48,14 @@ abstract class _$WordGroupsNotifier extends BuildlessNotifier<WordGroupsState> {
 const wordGroupsNotifierProvider = WordGroupsNotifierFamily();
 
 /// The groups of one session and the learner's selection among them. A null
-/// [sessionId] is the current session; an id is a History session, which is
+/// [collectionId] is the current session; an id is a History session, which is
 /// read and saved on its own and never becomes current (AC-11). Lives in
 /// `lib/core/story/` so the Words screen and the learn page share it.
 ///
 /// Copied from [WordGroupsNotifier].
 class WordGroupsNotifierFamily extends Family<WordGroupsState> {
   /// The groups of one session and the learner's selection among them. A null
-  /// [sessionId] is the current session; an id is a History session, which is
+  /// [collectionId] is the current session; an id is a History session, which is
   /// read and saved on its own and never becomes current (AC-11). Lives in
   /// `lib/core/story/` so the Words screen and the learn page share it.
   ///
@@ -63,16 +63,16 @@ class WordGroupsNotifierFamily extends Family<WordGroupsState> {
   const WordGroupsNotifierFamily();
 
   /// The groups of one session and the learner's selection among them. A null
-  /// [sessionId] is the current session; an id is a History session, which is
+  /// [collectionId] is the current session; an id is a History session, which is
   /// read and saved on its own and never becomes current (AC-11). Lives in
   /// `lib/core/story/` so the Words screen and the learn page share it.
   ///
   /// Copied from [WordGroupsNotifier].
   WordGroupsNotifierProvider call(
-    String? sessionId,
+    String? collectionId,
   ) {
     return WordGroupsNotifierProvider(
-      sessionId,
+      collectionId,
     );
   }
 
@@ -81,7 +81,7 @@ class WordGroupsNotifierFamily extends Family<WordGroupsState> {
     covariant WordGroupsNotifierProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
     );
   }
 
@@ -101,7 +101,7 @@ class WordGroupsNotifierFamily extends Family<WordGroupsState> {
 }
 
 /// The groups of one session and the learner's selection among them. A null
-/// [sessionId] is the current session; an id is a History session, which is
+/// [collectionId] is the current session; an id is a History session, which is
 /// read and saved on its own and never becomes current (AC-11). Lives in
 /// `lib/core/story/` so the Words screen and the learn page share it.
 ///
@@ -109,15 +109,15 @@ class WordGroupsNotifierFamily extends Family<WordGroupsState> {
 class WordGroupsNotifierProvider
     extends NotifierProviderImpl<WordGroupsNotifier, WordGroupsState> {
   /// The groups of one session and the learner's selection among them. A null
-  /// [sessionId] is the current session; an id is a History session, which is
+  /// [collectionId] is the current session; an id is a History session, which is
   /// read and saved on its own and never becomes current (AC-11). Lives in
   /// `lib/core/story/` so the Words screen and the learn page share it.
   ///
   /// Copied from [WordGroupsNotifier].
   WordGroupsNotifierProvider(
-    String? sessionId,
+    String? collectionId,
   ) : this._internal(
-          () => WordGroupsNotifier()..sessionId = sessionId,
+          () => WordGroupsNotifier()..collectionId = collectionId,
           from: wordGroupsNotifierProvider,
           name: r'wordGroupsNotifierProvider',
           debugGetCreateSourceHash:
@@ -127,7 +127,7 @@ class WordGroupsNotifierProvider
           dependencies: WordGroupsNotifierFamily._dependencies,
           allTransitiveDependencies:
               WordGroupsNotifierFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
         );
 
   WordGroupsNotifierProvider._internal(
@@ -137,17 +137,17 @@ class WordGroupsNotifierProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
 
   @override
   WordGroupsState runNotifierBuild(
     covariant WordGroupsNotifier notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
     );
   }
 
@@ -156,13 +156,13 @@ class WordGroupsNotifierProvider
     return ProviderOverride(
       origin: this,
       override: WordGroupsNotifierProvider._internal(
-        () => create()..sessionId = sessionId,
+        () => create()..collectionId = collectionId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
       ),
     );
   }
@@ -174,13 +174,14 @@ class WordGroupsNotifierProvider
 
   @override
   bool operator ==(Object other) {
-    return other is WordGroupsNotifierProvider && other.sessionId == sessionId;
+    return other is WordGroupsNotifierProvider &&
+        other.collectionId == collectionId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -189,8 +190,8 @@ class WordGroupsNotifierProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin WordGroupsNotifierRef on NotifierProviderRef<WordGroupsState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 }
 
 class _WordGroupsNotifierProviderElement
@@ -199,7 +200,8 @@ class _WordGroupsNotifierProviderElement
   _WordGroupsNotifierProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as WordGroupsNotifierProvider).sessionId;
+  String? get collectionId =>
+      (origin as WordGroupsNotifierProvider).collectionId;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

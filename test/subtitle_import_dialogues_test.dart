@@ -12,12 +12,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/dialogues/dialogue_rules.dart';
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_words_service.dart';
 import 'package:flutter_vocabulary_app/features/word_input/subtitle_import_flow.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
@@ -35,7 +35,7 @@ class FakeSubtitleWords extends SubtitleWordsService {
     required List<String> lines,
     required int maximum,
     required SubtitleModel model,
-    required List<String> sessionWords,
+    required List<String> collectionWords,
     bool dialogues = false,
   }) {
     asked.add(dialogues);
@@ -67,7 +67,7 @@ void main() {
     late FakeSubtitleWords service;
     late List<VocabWord> added;
     late List<(List<ImportedDialogue>, int)> dialoguesAdded;
-    late String sessionId;
+    late String collectionId;
 
     Future<void> pumpHost(WidgetTester tester, {required bool setting}) async {
       tester.view.physicalSize = const Size(800, 1600);
@@ -78,7 +78,7 @@ void main() {
       service = FakeSubtitleWords();
       added = [];
       dialoguesAdded = [];
-      sessionId = 'session-A';
+      collectionId = 'session-A';
       final container = ProviderContainer(
           overrides: [subtitleWordsServiceProvider.overrideWithValue(service)]);
       addTearDown(container.dispose);
@@ -91,8 +91,8 @@ void main() {
                 onPressed: () => runSubtitleImport(
                   context: context,
                   ref: ref,
-                  currentSessionId: () => sessionId,
-                  sessionWords: () => const [],
+                  currentCollectionId: () => collectionId,
+                  collectionWords: () => const [],
                   addWords: (words, _, __) => added.addAll(words),
                   addDialogues: (d, n) => dialoguesAdded.add((d, n)),
                   pickFile: () async => file(),
@@ -176,7 +176,7 @@ void main() {
         (tester) async {
       await pumpHost(tester, setting: true);
       await startImport(tester);
-      sessionId = 'session-B';
+      collectionId = 'session-B';
       service.pending!.complete(result(['reluctant'], [dialogue]));
       await tester.pumpAndSettle();
 
@@ -200,15 +200,15 @@ void main() {
     });
 
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
     late ProviderContainer container;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       dir = Directory.systemTemp.createTempSync('subtitle_import_dialogues_test');
-      store = await SessionStore.open(directory: dir.path);
+      store = await CollectionStore.open(directory: dir.path);
       container = ProviderContainer(
-          overrides: [sessionStoreProvider.overrideWith((ref) async => store)]);
+          overrides: [collectionStoreProvider.overrideWith((ref) async => store)]);
     });
 
     tearDown(() async {
@@ -220,10 +220,10 @@ void main() {
     WordPair pair(String word, [String rowId = '']) =>
         WordPair(word: word, translation: 'т', rowId: rowId);
 
-    Future<WordInputNotifier> current(Session s) async {
+    Future<WordInputNotifier> current(WordCollection s) async {
       s.lastLocalModifiedAt = DateTime.now();
       await store.put(s);
-      await store.setCurrentSessionId(s.sessionId);
+      await store.setCurrentCollectionId(s.collectionId);
       await container.read(wordInputNotifierProvider.future);
       return container.read(wordInputNotifierProvider.notifier);
     }
@@ -234,7 +234,7 @@ void main() {
         ..id = 'old'
         ..lines = ['tide']
         ..wordRowIds = ['r0'];
-      final s = Session.create()
+      final s = WordCollection.create()
         ..words = [pair('tide', 'r0')]
         ..dialogues = [existing];
       final notifier = await current(s);
@@ -248,7 +248,7 @@ void main() {
       ], 2);
       await notifier.flush();
 
-      final saved = (await store.byId(s.sessionId))!;
+      final saved = (await store.byId(s.collectionId))!;
       final ids = {for (final w in saved.words) w.word: w.rowId};
       expect(ids['attic'], isNotEmpty);
       expect(saved.dialogues.map((d) => d.id).first, 'old');
@@ -262,7 +262,7 @@ void main() {
 
     test('a shared session marks them pending with the import id and rows (ADR-0005)',
         () async {
-      final s = Session.create()
+      final s = WordCollection.create()
         ..words = [pair('tide', 'r0')]
         ..publishedId = 'pub'
         ..editToken = 'tok';
@@ -275,7 +275,7 @@ void main() {
       ], 2);
       await notifier.flush();
 
-      final saved = (await store.byId(s.sessionId))!;
+      final saved = (await store.byId(s.collectionId))!;
       final rows = [for (final w in saved.words.skip(1)) w.rowId];
       for (final d in saved.dialogues) {
         expect(d.pushState, PushState.pending);
@@ -286,14 +286,14 @@ void main() {
     });
 
     test('nothing kept: the session is unchanged', () async {
-      final s = Session.create()..words = [pair('tide', 'r0')];
+      final s = WordCollection.create()..words = [pair('tide', 'r0')];
       final notifier = await current(s);
       notifier.addAll([pair('attic')]);
       notifier.addImportDialogues([
         (lines: ['The cellar.'], words: ['cellar']),
       ], 1);
       await notifier.flush();
-      expect((await store.byId(s.sessionId))!.dialogues, isEmpty);
+      expect((await store.byId(s.collectionId))!.dialogues, isEmpty);
     });
   });
 }

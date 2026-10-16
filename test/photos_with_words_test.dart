@@ -9,7 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photos_with_words.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
@@ -30,15 +30,15 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
   late ProviderContainer container;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('photos_with_words_test');
-    store = await SessionStore.open(directory: dir.path);
+    store = await CollectionStore.open(directory: dir.path);
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
     ]);
   });
 
@@ -72,7 +72,7 @@ void main() {
 
   test('before the session loads, the list is empty', () {
     final loading = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) => Completer<SessionStore>().future),
+      collectionStoreProvider.overrideWith((ref) => Completer<CollectionStore>().future),
     ]);
     addTearDown(loading.dispose);
     expect(loading.read(photosWithWordsProvider), isEmpty);

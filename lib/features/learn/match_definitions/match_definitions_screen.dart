@@ -10,14 +10,14 @@ import 'match_definitions_notifier.dart';
 /// [MatchBoard] inside the shared frame (S-30, S-35). The phase, links and
 /// misses come from the notifier; this widget draws only the round body.
 class MatchDefinitionsScreen extends ConsumerWidget {
-  const MatchDefinitionsScreen({super.key, this.sessionId, required this.groupId});
+  const MatchDefinitionsScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = matchDefinitionsProvider(sessionId, groupId);
+    final provider = matchDefinitionsProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

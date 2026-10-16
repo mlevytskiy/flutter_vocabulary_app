@@ -75,8 +75,8 @@ void main() {
   late FakePageDriver driver;
   late FakeTranslate translate;
   late List<(List<VocabWord>, QuizletImportedSet)> added;
-  late String sessionId;
-  late List<String> session;
+  late String collectionId;
+  late List<String> collection;
 
   Future<void> pumpHost(WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
@@ -85,8 +85,8 @@ void main() {
     driver = FakePageDriver();
     translate = FakeTranslate();
     added = [];
-    sessionId = 'session-A';
-    session = ['tide'];
+    collectionId = 'session-A';
+    collection = ['tide'];
     await tester.pumpWidget(ProviderScope(
       overrides: [googleTranslateServiceProvider.overrideWithValue(translate)],
       child: MaterialApp(
@@ -95,8 +95,8 @@ void main() {
             builder: (context) => TextButton(
               onPressed: () => runQuizletImport(
                 context: context,
-                currentSessionId: () => sessionId,
-                sessionWords: () => session,
+                currentCollectionId: () => collectionId,
+                collectionWords: () => collection,
                 addWords: (words, set) => added.add((words, set)),
                 driverFactory: (_) => driver,
               ),
@@ -182,7 +182,7 @@ void main() {
       'the session words are left out; no new words: the dialog says so and '
       'Done adds nothing (AC-04b)', (tester) async {
     await pumpHost(tester);
-    session = ['Cat', 'dog'];
+    collection = ['Cat', 'dog'];
     await startImport(tester, cards: [
       ['cat.', 'x'],
       ['dog', 'y'],
@@ -229,7 +229,7 @@ void main() {
     await startImport(tester, cards: [
       ['cat', 'x'],
     ]);
-    sessionId = 'session-B';
+    collectionId = 'session-B';
     await settle(tester);
     expect(find.text(reading), findsNothing);
     expect(find.text('Done'), findsNothing);
@@ -244,7 +244,7 @@ void main() {
       ['cat', 'x'],
     ]);
     await settle(tester);
-    sessionId = 'session-B';
+    collectionId = 'session-B';
     await tester.tap(find.text('Done'));
     await settle(tester);
     expect(added, isEmpty);

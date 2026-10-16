@@ -7,7 +7,7 @@ part of 'translate_sentences_notifier.dart';
 // **************************************************************************
 
 String _$translateSentencesHash() =>
-    r'b86fbf8f01a1532f52066c984b926febfd9d9e03';
+    r'00a799b85bbe38609ed74ab7dbaa7a9bfda652ba';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -32,11 +32,11 @@ class _SystemHash {
 
 abstract class _$TranslateSentences
     extends BuildlessAutoDisposeAsyncNotifier<TranslateState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<TranslateState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -68,11 +68,11 @@ class TranslateSentencesFamily extends Family<AsyncValue<TranslateState>> {
   ///
   /// Copied from [TranslateSentences].
   TranslateSentencesProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return TranslateSentencesProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -82,7 +82,7 @@ class TranslateSentencesFamily extends Family<AsyncValue<TranslateState>> {
     covariant TranslateSentencesProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -115,11 +115,11 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
   ///
   /// Copied from [TranslateSentences].
   TranslateSentencesProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => TranslateSentences()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: translateSentencesProvider,
           name: r'translateSentencesProvider',
@@ -130,7 +130,7 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
           dependencies: TranslateSentencesFamily._dependencies,
           allTransitiveDependencies:
               TranslateSentencesFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -141,11 +141,11 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -153,7 +153,7 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
     covariant TranslateSentences notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -164,14 +164,14 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
       origin: this,
       override: TranslateSentencesProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -186,14 +186,14 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
   @override
   bool operator ==(Object other) {
     return other is TranslateSentencesProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -204,8 +204,8 @@ class TranslateSentencesProvider extends AutoDisposeAsyncNotifierProviderImpl<
 // ignore: unused_element
 mixin TranslateSentencesRef
     on AutoDisposeAsyncNotifierProviderRef<TranslateState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -217,7 +217,8 @@ class _TranslateSentencesProviderElement
   _TranslateSentencesProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as TranslateSentencesProvider).sessionId;
+  String? get collectionId =>
+      (origin as TranslateSentencesProvider).collectionId;
   @override
   String get groupId => (origin as TranslateSentencesProvider).groupId;
 }

@@ -6,10 +6,10 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
 /// get-words-from-subtitles-improvment T18: a dialogue follows its words
@@ -28,15 +28,15 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
   late ProviderContainer container;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('dialogues_follow_edits_test');
-    store = await SessionStore.open(directory: dir.path);
+    store = await CollectionStore.open(directory: dir.path);
     container = ProviderContainer(
-        overrides: [sessionStoreProvider.overrideWith((ref) async => store)]);
+        overrides: [collectionStoreProvider.overrideWith((ref) async => store)]);
   });
 
   tearDown(() async {
@@ -52,7 +52,7 @@ void main() {
   /// dialogue holding attic and stairs.
   Future<(WordInputNotifier, String)> current(
       {PushState push = PushState.none}) async {
-    final s = Session.create()
+    final s = WordCollection.create()
       ..words = [pair('r1', 'attic'), pair('r2', 'stairs'), pair('r3', 'fog')]
       ..dialogues = [
         FilmDialogue()
@@ -63,9 +63,9 @@ void main() {
       ]
       ..lastLocalModifiedAt = DateTime.now();
     await store.put(s);
-    await store.setCurrentSessionId(s.sessionId);
+    await store.setCurrentCollectionId(s.collectionId);
     await container.read(wordInputNotifierProvider.future);
-    return (container.read(wordInputNotifierProvider.notifier), s.sessionId);
+    return (container.read(wordInputNotifierProvider.notifier), s.collectionId);
   }
 
   Future<List<FilmDialogue>> saved(WordInputNotifier n, String id) async {
@@ -82,12 +82,12 @@ void main() {
   test('editing its translation keeps it, row id and all (AC-11)', () async {
     final (n, id) = await current();
     n.updateAt(0, translation: 'горище');
-    final session = (await store.byId(id))!;
+    final collection = (await store.byId(id))!;
     await n.flush();
     final after = (await store.byId(id))!;
     expect(after.words.first.rowId, 'r1');
     expect(after.dialogues.single.wordRowIds, ['r1', 'r2']);
-    expect(session.dialogues.single.wordRowIds, ['r1', 'r2']);
+    expect(collection.dialogues.single.wordRowIds, ['r1', 'r2']);
   });
 
   test('editing its word to a form still in the text keeps it', () async {

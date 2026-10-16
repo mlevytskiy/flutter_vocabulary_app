@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -41,7 +41,7 @@ class _Api implements LearnApiService {
   dynamic noSuchMethod(Invocation i) => throw StateError('unexpected: ${i.memberName}');
 }
 
-typedef _Record = ({String? sessionId, String rowId, String exerciseId, WordResultLabel label});
+typedef _Record = ({String? collectionId, String rowId, String exerciseId, WordResultLabel label});
 
 /// Records every call; [record] never completes (the quiz must not wait for it).
 class _Sink implements ExamResultSink {
@@ -49,17 +49,17 @@ class _Sink implements ExamResultSink {
 
   @override
   Future<void> record({
-    required String? sessionId,
+    required String? collectionId,
     required String rowId,
     required String exerciseId,
     required WordResultLabel label,
   }) {
-    records.add((sessionId: sessionId, rowId: rowId, exerciseId: exerciseId, label: label));
+    records.add((collectionId: collectionId, rowId: rowId, exerciseId: exerciseId, label: label));
     return Completer<void>().future;
   }
 
   @override
-  Map<String, WordResult> latest(Session session) => const {};
+  Map<String, WordResult> latest(WordCollection collection) => const {};
 }
 
 const _right = TypedAnswerResult(match: TypedMatch.right, answer: ' word ', firstTry: true, gaveUp: false);
@@ -79,7 +79,7 @@ void main() {
   ProviderContainer open(
     List<WordPair> group, {
     List<FilmDialogue> dialogues = const [],
-    String? sessionId,
+    String? collectionId,
     int seed = 1,
     List<WordPair>? otherWords,
   }) {
@@ -89,21 +89,21 @@ void main() {
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(seed)),
-      exerciseWordsProvider(sessionId, 'g').overrideWith((ref) async => (group: group, others: otherWords ?? others)),
-      exerciseDialoguesProvider(sessionId).overrideWith((ref) async => dialogues),
+      exerciseWordsProvider(collectionId, 'g').overrideWith((ref) async => (group: group, others: otherWords ?? others)),
+      exerciseDialoguesProvider(collectionId).overrideWith((ref) async => dialogues),
     ]);
     addTearDown(c.dispose);
     return c;
   }
 
-  Future<QuizState> load(ProviderContainer c, {String? sessionId}) => c.read(quizProvider(sessionId, 'g').future);
-  Quiz notifier(ProviderContainer c, {String? sessionId}) => c.read(quizProvider(sessionId, 'g').notifier);
-  QuizState now(ProviderContainer c, {String? sessionId}) => c.read(quizProvider(sessionId, 'g')).requireValue;
+  Future<QuizState> load(ProviderContainer c, {String? collectionId}) => c.read(quizProvider(collectionId, 'g').future);
+  Quiz notifier(ProviderContainer c, {String? collectionId}) => c.read(quizProvider(collectionId, 'g').notifier);
+  QuizState now(ProviderContainer c, {String? collectionId}) => c.read(quizProvider(collectionId, 'g')).requireValue;
 
   /// Answers the current question right (or wrong) and moves on.
-  void answer(ProviderContainer c, {bool right = true, String? sessionId}) {
-    final n = notifier(c, sessionId: sessionId);
-    final q = now(c, sessionId: sessionId).question!;
+  void answer(ProviderContainer c, {bool right = true, String? collectionId}) {
+    final n = notifier(c, collectionId: collectionId);
+    final q = now(c, collectionId: collectionId).question!;
     if (q.choice != null) {
       final r = q.choice!.rightIndex;
       n.pick(right ? r : (r + 1) % 4);
@@ -301,7 +301,7 @@ void main() {
       expect(q.choice, isNotNull);
       notifier(c).pick(q.choice!.rightIndex);
       expect(now(c).answer!.picked, q.choice!.rightIndex);
-      expect(sink.records, [(sessionId: null, rowId: q.rowId, exerciseId: 'quiz', label: WordResultLabel.known)]);
+      expect(sink.records, [(collectionId: null, rowId: q.rowId, exerciseId: 'quiz', label: WordResultLabel.known)]);
       notifier(c).pick((q.choice!.rightIndex + 1) % 4);
       notifier(c).skip();
       expect(now(c).answer!.picked, q.choice!.rightIndex);
@@ -383,10 +383,10 @@ void main() {
     });
 
     test('AC-10: a History session id is passed through', () async {
-      final c = open(words(5), sessionId: 'hist');
-      await load(c, sessionId: 'hist');
-      answer(c, sessionId: 'hist');
-      expect(sink.records.single.sessionId, 'hist');
+      final c = open(words(5), collectionId: 'hist');
+      await load(c, collectionId: 'hist');
+      answer(c, collectionId: 'hist');
+      expect(sink.records.single.collectionId, 'hist');
     });
   });
 

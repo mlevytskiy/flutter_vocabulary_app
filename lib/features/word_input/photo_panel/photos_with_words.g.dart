@@ -6,11 +6,11 @@ part of 'photos_with_words.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sourcesWithWordsHash() => r'bc101a896579c5171e64e05ad48a6a320e8f98bf';
+String _$sourcesWithWordsHash() => r'6a29c916a0cda937eaea375bd864b97b9ae13efe';
 
 /// The current session's sources with words that the photo panel lists,
 /// photos and sets mixed, oldest first by `takenAt` (sources added at the
-/// same time keep the order of `Session.sources`), derived in one pass over
+/// same time keep the order of `WordCollection.sources`), derived in one pass over
 /// the rows (sad §4). Only the current session is read, so another session's
 /// sources never appear (spec AC-16); a row whose word is cleared does not
 /// count (spec AC-15).

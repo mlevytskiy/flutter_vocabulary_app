@@ -8,13 +8,13 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/definition_result.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/dictionary_service.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -73,13 +73,13 @@ void main() {
   // leaves its store open for the same reason). Each test seeds its own
   // sessions and points the current-session pointer at its own.
   Directory? dir;
-  late SessionStore store;
+  late CollectionStore store;
   tearDownAll(() {
     if (dir != null && dir!.existsSync()) dir!.deleteSync(recursive: true);
   });
   late ProviderContainer container;
-  late Session left;
-  late Session picked;
+  late WordCollection left;
+  late WordCollection picked;
 
   /// [left] is current (warm unless [leftAgo] says otherwise), [picked] is a
   /// past session from History.
@@ -90,16 +90,16 @@ void main() {
     SharedPreferences.setMockInitialValues({'word_detail_mode': 'both'});
     await tester.runAsync(() async {
       if (dir == null) {
-        dir = Directory.systemTemp.createTempSync('switch_session_test');
-        store = await SessionStore.open(directory: dir!.path);
+        dir = Directory.systemTemp.createTempSync('switch_collection_test');
+        store = await CollectionStore.open(directory: dir!.path);
       }
       final leftAt = DateTime.now().subtract(leftAgo);
-      left = Session.create()
+      left = WordCollection.create()
         ..updatedAt = leftAt
         ..lastLocalModifiedAt = leftAt
         ..words = [WordPair(word: 'apple')];
       final pastAt = DateTime(2026, 9, 1, 12);
-      picked = Session.create()
+      picked = WordCollection.create()
         ..updatedAt = pastAt
         ..lastLocalModifiedAt = pastAt
         ..words = [
@@ -108,10 +108,10 @@ void main() {
         ];
       await store.put(left);
       await store.put(picked);
-      await store.setCurrentSessionId(left.sessionId);
+      await store.setCurrentCollectionId(left.collectionId);
     });
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       if (translate != null)
         googleTranslateServiceProvider.overrideWithValue(translate),
       if (dictionary != null)
@@ -144,7 +144,7 @@ void main() {
   Future<void> switchToPicked(WidgetTester tester) async {
     await tester.runAsync(() => container
         .read(wordInputNotifierProvider.notifier)
-        .switchTo(picked.sessionId));
+        .switchTo(picked.collectionId));
     await tester.pump();
     await tester.pump();
   }
@@ -156,8 +156,8 @@ void main() {
       (w) => w is TextField && w.decoration?.labelText == label);
 
   Future<void> expectPickedUntouched(WidgetTester tester) async {
-    expect(container.read(wordInputNotifierProvider).value!.sessionId,
-        picked.sessionId);
+    expect(container.read(wordInputNotifierProvider).value!.collectionId,
+        picked.collectionId);
     expect(words().where((w) => !w.isEmpty).map((w) => w.word),
         ['tea', 'milk']);
     expect(words().first.translation, 'чай');
@@ -169,12 +169,12 @@ void main() {
     await tester.runAsync(
         () => container.read(wordInputNotifierProvider.notifier).flush());
     await tester.runAsync(() async {
-      final stored = await store.byId(picked.sessionId);
+      final stored = await store.byId(picked.collectionId);
       expect(stored!.lastLocalModifiedAt, DateTime(2026, 9, 1, 12),
           reason: 'a switch is not an edit (ADR-0002)');
       expect(stored.words.first.translation, 'чай');
       expect(stored.words.first.definition, '');
-      final leftStored = await store.byId(left.sessionId);
+      final leftStored = await store.byId(left.collectionId);
       expect(leftStored!.words.single.word, 'apple');
       expect(leftStored.words.single.translation, '');
       expect(leftStored.words.single.definition, '');

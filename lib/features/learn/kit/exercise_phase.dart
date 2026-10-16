@@ -22,7 +22,7 @@ ExerciseFailure failureOf(Object error) {
 }
 
 /// Where an exercise screen stands (learn-kit S-06). Each exercise's
-/// `@riverpod` notifier (a family on sessionId + groupId) exposes its phase
+/// `@riverpod` notifier (a family on collectionId + groupId) exposes its phase
 /// plus its own round data; [ExerciseScaffold] draws every phase but the
 /// round body.
 sealed class ExercisePhase {

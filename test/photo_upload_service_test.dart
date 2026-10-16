@@ -10,7 +10,7 @@ import 'package:http/testing.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/photo_upload_service.dart';
-import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 
 /// good-looking-web T18: declared photos upload in the background, retried
@@ -122,7 +122,7 @@ void main() {
       events.add('uploaded');
       return ok(r);
     });
-    final publisher = SessionPublishService(client: client);
+    final publisher = CollectionPublishService(client: client);
     final service = uploader(client);
 
     final published = await publisher.publish(

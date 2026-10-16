@@ -10,14 +10,14 @@ import 'match_synonyms_notifier.dart';
 /// [MatchBoard] inside the shared frame (S-30, S-35). The phase, links and
 /// misses come from the notifier; this widget draws only the round body.
 class MatchSynonymsScreen extends ConsumerWidget {
-  const MatchSynonymsScreen({super.key, this.sessionId, required this.groupId});
+  const MatchSynonymsScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = matchSynonymsProvider(sessionId, groupId);
+    final provider = matchSynonymsProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

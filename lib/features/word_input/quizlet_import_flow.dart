@@ -23,8 +23,8 @@ typedef QuizletImportedSet = ({String id, String name, String url});
 /// before the results dialog and at Done (AC-16).
 Future<void> runQuizletImport({
   required BuildContext context,
-  required String? Function() currentSessionId,
-  required List<String> Function() sessionWords,
+  required String? Function() currentCollectionId,
+  required List<String> Function() collectionWords,
   required void Function(List<VocabWord> words, QuizletImportedSet set)
       addWords,
   QuizletPageDriverFactory? driverFactory,
@@ -32,7 +32,7 @@ Future<void> runQuizletImport({
   final link = await showQuizletLinkDialog(context);
   if (link == null || !context.mounted) return;
 
-  final startedIn = currentSessionId();
+  final startedIn = currentCollectionId();
   QuizletProposal? proposal;
 
   final outcome = await showQuizletProgressDialog(
@@ -40,7 +40,7 @@ Future<void> runQuizletImport({
     link,
     driverFactory: driverFactory,
     afterRead: (set) async {
-      proposal = proposeWords(set.cards, sessionWords(), set.statedCount);
+      proposal = proposeWords(set.cards, collectionWords(), set.statedCount);
     },
   );
 
@@ -59,7 +59,7 @@ Future<void> runQuizletImport({
   }
   final proposed = proposal;
   if (proposed == null || !context.mounted) return;
-  if (currentSessionId() != startedIn) {
+  if (currentCollectionId() != startedIn) {
     debugPrint('QUIZLET: the session changed during the import; words dropped');
     return;
   }
@@ -67,7 +67,7 @@ Future<void> runQuizletImport({
   final kept =
       await showQuizletResultDialog(context, proposed, setName: set.name);
   if (kept == null || kept.isEmpty || !context.mounted) return;
-  if (currentSessionId() != startedIn) {
+  if (currentCollectionId() != startedIn) {
     debugPrint('QUIZLET: the session changed during the import; words dropped');
     return;
   }

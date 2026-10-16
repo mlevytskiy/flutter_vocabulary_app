@@ -48,8 +48,8 @@ abstract final class SubtitleImportMessages {
 Future<void> runSubtitleImport({
   required BuildContext context,
   required WidgetRef ref,
-  required String? Function() currentSessionId,
-  required List<String> Function() sessionWords,
+  required String? Function() currentCollectionId,
+  required List<String> Function() collectionWords,
   required void Function(List<VocabWord> words, String film, String? poster) addWords,
   void Function(List<ImportedDialogue> dialogues, int keptCount)? addDialogues,
   Future<XFile?> Function()? pickFile,
@@ -74,7 +74,7 @@ Future<void> runSubtitleImport({
 
   await prefsNotifier.recordUsed(level: request.level, maximum: request.maximum);
   if (!context.mounted) return;
-  final startedIn = currentSessionId();
+  final startedIn = currentCollectionId();
   final prefs = ref.read(subtitleImportPrefsProvider);
   final withAi = prefs.translator != SubtitleTranslator.google;
   final withDialogues = withAi && ref.read(dialoguesSettingProvider);
@@ -88,7 +88,7 @@ Future<void> runSubtitleImport({
       lines,
       maximum: request.maximum,
       level: request.level,
-      sessionWords: sessionWords(),
+      collectionWords: collectionWords(),
       boostCloseRepeats: prefs.boostCloseRepeats,
       removeNames: prefs.removeNames,
     );
@@ -108,7 +108,7 @@ Future<void> runSubtitleImport({
               lines: picked.lines,
               maximum: request.maximum,
               model: prefs.modelInUse,
-              sessionWords: sessionWords(),
+              collectionWords: collectionWords(),
               dialogues: withDialogues,
             )
             .then((r) => (result = r).words)
@@ -153,7 +153,7 @@ Future<void> runSubtitleImport({
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text(SubtitleImportMessages.notPicked)));
     return;
   }
-  if (currentSessionId() != startedIn) {
+  if (currentCollectionId() != startedIn) {
     debugPrint('SUBTITLES: the session changed during the import; words dropped');
     return;
   }
@@ -172,9 +172,9 @@ Future<void> runSubtitleImport({
             outputTokens: result!.outputTokens,
           ),
   );
-  if (kept != null && kept.isNotEmpty && context.mounted && currentSessionId() == startedIn) {
+  if (kept != null && kept.isNotEmpty && context.mounted && currentCollectionId() == startedIn) {
     final posterUrl = await poster.timeout(_posterWait, onTimeout: () => null);
-    if (!context.mounted || currentSessionId() != startedIn) return;
+    if (!context.mounted || currentCollectionId() != startedIn) return;
     addWords(kept, subtitleFilmTitle(request), posterUrl);
     final dialogues = result?.dialogues ?? const [];
     if (withDialogues && dialogues.isNotEmpty) {

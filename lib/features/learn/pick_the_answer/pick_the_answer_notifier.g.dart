@@ -6,7 +6,7 @@ part of 'pick_the_answer_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pickTheAnswerHash() => r'4af27044683fd725cdaea53545db9039794d6f70';
+String _$pickTheAnswerHash() => r'4de191479ef7bde89a3eaba17259d7595cb36528';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$PickTheAnswer
     extends BuildlessAutoDisposeAsyncNotifier<PickState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<PickState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -71,11 +71,11 @@ class PickTheAnswerFamily extends Family<AsyncValue<PickState>> {
   ///
   /// Copied from [PickTheAnswer].
   PickTheAnswerProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return PickTheAnswerProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -85,7 +85,7 @@ class PickTheAnswerFamily extends Family<AsyncValue<PickState>> {
     covariant PickTheAnswerProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -120,11 +120,11 @@ class PickTheAnswerProvider
   ///
   /// Copied from [PickTheAnswer].
   PickTheAnswerProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => PickTheAnswer()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: pickTheAnswerProvider,
           name: r'pickTheAnswerProvider',
@@ -135,7 +135,7 @@ class PickTheAnswerProvider
           dependencies: PickTheAnswerFamily._dependencies,
           allTransitiveDependencies:
               PickTheAnswerFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -146,11 +146,11 @@ class PickTheAnswerProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -158,7 +158,7 @@ class PickTheAnswerProvider
     covariant PickTheAnswer notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -169,14 +169,14 @@ class PickTheAnswerProvider
       origin: this,
       override: PickTheAnswerProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -191,14 +191,14 @@ class PickTheAnswerProvider
   @override
   bool operator ==(Object other) {
     return other is PickTheAnswerProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -208,8 +208,8 @@ class PickTheAnswerProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin PickTheAnswerRef on AutoDisposeAsyncNotifierProviderRef<PickState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -221,7 +221,7 @@ class _PickTheAnswerProviderElement
   _PickTheAnswerProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as PickTheAnswerProvider).sessionId;
+  String? get collectionId => (origin as PickTheAnswerProvider).collectionId;
   @override
   String get groupId => (origin as PickTheAnswerProvider).groupId;
 }

@@ -121,7 +121,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // offers the update icon whenever the block is hidden.
       }); // Оновити для показу іконки при >= 2 літерах
       // Same guard for persistence: a no-op push still marks the session
-      // dirty and clears the notifier's restorableSessionId, which broke RESTORE.
+      // dirty and clears the notifier's restorableCollectionId, which broke RESTORE.
       if (wordChanged) _pushRow(index, word: wordController.text);
     });
 
@@ -215,8 +215,8 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// The session this screen writes into right now. A lookup reads it before
   /// its await and drops its result when a switch from History changed it in
   /// the meantime (edit-session-from-history, ADR-0003).
-  String? get _sessionIdNow =>
-      ref.read(wordInputNotifierProvider).valueOrNull?.sessionId;
+  String? get _collectionIdNow =>
+      ref.read(wordInputNotifierProvider).valueOrNull?.collectionId;
 
   // --- Lightning icon show/hide rules; Translation dots button (see
   // docs/lightning_icon_rules.md) ---
@@ -345,10 +345,10 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       _isLoadingTranslation[index] = true;
     });
 
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
     try {
       final translation = await ref.read(googleTranslateServiceProvider).translateWord(word, from: 'en', to: 'uk');
-      if (_sessionIdNow != sessionId) return null;
+      if (_collectionIdNow != collectionId) return null;
 
       if (mounted) {
         setState(() {
@@ -365,7 +365,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 
       return translation.result;
     } catch (e) {
-      if (_sessionIdNow != sessionId) return null;
+      if (_collectionIdNow != collectionId) return null;
       if (mounted) {
         setState(() {
           _isLoadingTranslation[index] = false;
@@ -402,7 +402,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   Future<void> _fillWordWithAI(int index) async {
     final translationText = _translationControllers[index].text.trim();
     if (translationText.isEmpty) return;
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
 
     setState(() {
       _isLoadingWordTranslation[index] = true;
@@ -418,7 +418,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
             from: 'auto',
             to: 'en',
           );
-      if (_sessionIdNow != sessionId) return;
+      if (_collectionIdNow != collectionId) return;
 
       _wordControllers[index].text = translation.text;
 
@@ -439,7 +439,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       });
       _pushRow(index, word: _wordControllers[index].text);
     } catch (e) {
-      if (_sessionIdNow != sessionId) return;
+      if (_collectionIdNow != collectionId) return;
       setState(() {
         _isLoadingWordTranslation[index] = false;
       });
@@ -472,7 +472,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (word.isEmpty) return;
 
     final wordStartsWithEnglishLetter = isEnglishLetter(word[0]);
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
 
     setState(() {
       _isLoadingTranslation[index] = true;
@@ -488,7 +488,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // Google Translate: English -> Ukrainian, with the part-of-speech
         // rule picking the best of the returned set.
         final translation = await translateService.translateWord(word, from: 'en', to: 'uk');
-        if (_sessionIdNow != sessionId) return;
+        if (_collectionIdNow != collectionId) return;
 
         _translationControllers[index].text = translation.best;
 
@@ -512,7 +512,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // Word doesn't start with an English letter -> auto-detect its
         // language and translate to English instead.
         final translation = await translateService.translate(word, from: 'auto', to: 'en');
-        if (_sessionIdNow != sessionId) return;
+        if (_collectionIdNow != collectionId) return;
         final gotRealTranslation = isRealTranslation(word, translation.text);
 
         if (gotRealTranslation) {
@@ -553,7 +553,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       }
     } catch (e) {
       // Помилка перекладу - показати повідомлення
-      if (_sessionIdNow != sessionId) return;
+      if (_collectionIdNow != collectionId) return;
       setState(() {
         _isLoadingTranslation[index] = false;
       });
@@ -575,11 +575,11 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     final word = _wordControllers[index].text.trim();
     if (word.length < 2) return;
 
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
     setState(() => _isLoadingDefinition[index] = true);
     final result = await ref.read(dictionaryServiceProvider).define(word);
     if (!mounted || index >= _wordControllers.length) return;
-    if (_sessionIdNow != sessionId) return;
+    if (_collectionIdNow != collectionId) return;
     setState(() => _isLoadingDefinition[index] = false);
 
     switch (result.kind) {
@@ -615,10 +615,10 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (index < 0 || index >= _wordControllers.length) return null;
     final word = _wordControllers[index].text.trim();
     if (word.length < 2) return null;
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
     final result = await ref.read(dictionaryServiceProvider).define(word);
     if (!mounted || index >= _wordControllers.length) return null;
-    if (_sessionIdNow != sessionId) return null;
+    if (_collectionIdNow != collectionId) return null;
     switch (result.kind) {
       case DefinitionKind.senses:
         setState(() {

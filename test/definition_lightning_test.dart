@@ -7,11 +7,11 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/definition_result.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/dictionary_service.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/lightning_rules.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
@@ -79,18 +79,18 @@ void main() {
       (tester) async {
     SharedPreferences.setMockInitialValues({'word_detail_mode': 'definition'});
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
     await tester.runAsync(() async {
       dir = Directory.systemTemp.createTempSync('definition_lightning_test');
-      store = await SessionStore.open(directory: dir.path);
-      final session = Session.create()
+      store = await CollectionStore.open(directory: dir.path);
+      final collection = WordCollection.create()
         ..words = [
           WordPair(word: 'tenacious'),
           WordPair(word: 'determinated'),
           WordPair(word: 'claim', translation: 'заява'),
         ];
-      await store.put(session);
-      await store.setCurrentSessionId(session.sessionId);
+      await store.put(collection);
+      await store.setCurrentCollectionId(collection.collectionId);
     });
     addTearDown(() async {
       await tester.runAsync(() async {
@@ -99,7 +99,7 @@ void main() {
     });
     final dictionary = FakeDictionary();
     final container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       dictionaryServiceProvider.overrideWithValue(dictionary),
     ]);
     await tester.runAsync(() async {

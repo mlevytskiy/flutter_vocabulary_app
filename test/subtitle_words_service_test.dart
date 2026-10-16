@@ -31,7 +31,7 @@ void main() {
         lines: const ['I was reluctant to leave.'],
         maximum: 30,
         model: SubtitleModel.haiku45,
-        sessionWords: const ['tide'],
+        collectionWords: const ['tide'],
       );
 
   Future<SubtitleWordsError> failureOf(SubtitleWordsService service) async {
@@ -133,7 +133,7 @@ void main() {
           lines: const ['I was reluctant to leave.'],
           maximum: 30,
           model: SubtitleModel.haiku45,
-          sessionWords: const ['tide'],
+          collectionWords: const ['tide'],
           dialogues: dialogues,
         );
 

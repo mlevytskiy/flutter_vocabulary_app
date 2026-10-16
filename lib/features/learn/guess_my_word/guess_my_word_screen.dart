@@ -9,14 +9,14 @@ import 'guess_my_word_notifier.dart';
 /// a grid of the round's words and the outcome of the current target, inside
 /// the shared frame (S-30, S-52). State lives in the notifier.
 class GuessMyWordScreen extends ConsumerWidget {
-  const GuessMyWordScreen({super.key, this.sessionId, required this.groupId});
+  const GuessMyWordScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = guessMyWordProvider(sessionId, groupId);
+    final provider = guessMyWordProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

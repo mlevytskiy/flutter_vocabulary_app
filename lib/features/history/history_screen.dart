@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/providers.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
@@ -13,16 +13,16 @@ class HistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sessions = ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
-    final currentSessionId =
-        ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId;
+    final collections = ref.watch(nonEmptyCollectionsProvider).valueOrNull ?? const <WordCollection>[];
+    final currentCollectionId =
+        ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('History'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: sessions.isEmpty
+      body: collections.isEmpty
           ? const Center(
               child: Text(
                 'No sessions yet',
@@ -30,19 +30,19 @@ class HistoryScreen extends ConsumerWidget {
               ),
             )
           : ListView.builder(
-              itemCount: sessions.length,
+              itemCount: collections.length,
               itemBuilder: (context, index) {
-                final session = sessions[index];
-                final words = session.words.where((w) => !w.isEmpty).length;
+                final collection = collections[index];
+                final words = collection.words.where((w) => !w.isEmpty).length;
                 return ListTile(
                   leading: const Icon(Icons.list_alt),
                   title: Text('$words ${words == 1 ? 'word' : 'words'}'),
-                  subtitle: Text(_formatTimestamp(session.updatedAt)),
-                  trailing: session.sessionId == currentSessionId
+                  subtitle: Text(_formatTimestamp(collection.updatedAt)),
+                  trailing: collection.collectionId == currentCollectionId
                       ? const Chip(label: Text('current'))
                       : null,
                   onTap: () =>
-                      WordsTableRoute(sessionId: session.sessionId).push(context),
+                      WordsTableRoute(collectionId: collection.collectionId).push(context),
                 );
               },
             ),

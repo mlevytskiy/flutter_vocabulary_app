@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/story/word_grouping.dart';
@@ -29,8 +29,8 @@ WordGroup grp(String id, String name, List<String> rowIds,
       ..dialogueId = dialogueId;
 
 /// [others] plain words o1..oN plus the given dialogue rows.
-Session sessionWith(int others, Map<String, List<String>> dialogues) {
-  final s = Session.create();
+WordCollection collectionWith(int others, Map<String, List<String>> dialogues) {
+  final s = WordCollection.create();
   final dialogueRows = {for (final r in dialogues.values) ...r};
   s.words = [
     for (final id in dialogueRows) row(id),
@@ -61,7 +61,7 @@ void main() {
     test('with 19 other words: the dialogue groups, then one "Other words"',
         () {
       final plan =
-          planGrouping(sessionWith(19, dialogues), const {}, counterIds());
+          planGrouping(collectionWith(19, dialogues), const {}, counterIds());
       expect(plan, isA<GroupingLocal>());
       final local = plan as GroupingLocal;
       expect(local.waiting, isEmpty);
@@ -73,7 +73,7 @@ void main() {
 
     test('with 25 other words: only those are split, into groups of 7 to 19',
         () {
-      final s = sessionWith(25, dialogues);
+      final s = collectionWith(25, dialogues);
       final plan = planGrouping(s, const {}, counterIds());
       expect(plan, isA<GroupingAsk>());
       final ask = plan as GroupingAsk;
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('a dialogue group is named after its dialogue card', () {
-      final s = sessionWith(0, {
+      final s = collectionWith(0, {
         'd1': ['a1']
       });
       s.dialogues.single.lines = ['- A: Where is it?'];
@@ -107,7 +107,7 @@ void main() {
 
   group('one word, one group (AC-06)', () {
     test('a word in two dialogues goes to the first one\'s group', () {
-      final s = sessionWith(0, {
+      final s = collectionWith(0, {
         'd1': ['x1'],
         'd2': ['x1', 'y1'],
         'd3': ['x1'],
@@ -121,7 +121,7 @@ void main() {
     });
 
     test('a dialogue word that is not a word to learn is in no group', () {
-      final s = sessionWith(0, {
+      final s = collectionWith(0, {
         'd1': ['a1', 'a2'],
         'd2': ['b1'],
       });
@@ -134,7 +134,7 @@ void main() {
     });
 
     test('a hidden dialogue has no group', () {
-      final s = sessionWith(0, {
+      final s = collectionWith(0, {
         'd1': ['a1']
       });
       s.dialogues.single.hidden = true;
@@ -147,7 +147,7 @@ void main() {
     test('only new dialogue words in no group make dialogue groups', () {
       // Before the import: 10 words o1..o10, a story group of o1..o3 and the
       // "All words" group of the rest, selected.
-      final s = sessionWith(10, {});
+      final s = collectionWith(10, {});
       s.groups = [
         grp('gs', 'Story', ids('o', 1, 3), storyRunId: 'run-1'),
         grp('ga', allWordsName, ids('o', 4, 10)),
@@ -179,7 +179,7 @@ void main() {
 
     test('a dialogue group keeps its id and story when grouping runs again',
         () {
-      final s = sessionWith(3, {
+      final s = collectionWith(3, {
         'd1': ['a1', 'a2']
       });
       final first =
@@ -204,7 +204,7 @@ void main() {
   group('other words follow mnemonic-story grouping (AC-25)', () {
     test('"Other words" of 12 and 15 more: the Worker splits them, keeping it',
         () {
-      final s = sessionWith(12, {
+      final s = collectionWith(12, {
         'd1': ['a1']
       });
       final first = (planGrouping(s) as GroupingLocal).groups;
@@ -235,7 +235,7 @@ void main() {
     });
 
     test('fewer than 7 left over wait', () {
-      final s = sessionWith(19, {
+      final s = collectionWith(19, {
         'd1': ['a1']
       });
       s.groups = (planGrouping(s) as GroupingLocal).groups;
@@ -251,7 +251,7 @@ void main() {
 
   group('a dialogue group follows its dialogue (AC-26)', () {
     test('an edited-away word moves to "Other words"; the group stays', () {
-      final s = sessionWith(2, {
+      final s = collectionWith(2, {
         'd1': ['a1', 'a2']
       });
       s.groups = (planGrouping(s) as GroupingLocal).groups;
@@ -266,7 +266,7 @@ void main() {
     });
 
     test('a dialogue that is gone takes its group with it', () {
-      final s = sessionWith(2, {
+      final s = collectionWith(2, {
         'd1': ['a1']
       });
       s.groups = (planGrouping(s) as GroupingLocal).groups;
@@ -282,7 +282,7 @@ void main() {
   });
 
   test('groupedWordsKey changes when a dialogue loses a word', () {
-    final s = sessionWith(2, {
+    final s = collectionWith(2, {
       'd1': ['a1', 'a2']
     });
     final before = groupedWordsKey(s);
@@ -291,7 +291,7 @@ void main() {
   });
 
   test('a session without dialogues keeps the "All words" name', () {
-    final groups = (planGrouping(sessionWith(3, {})) as GroupingLocal).groups;
+    final groups = (planGrouping(collectionWith(3, {})) as GroupingLocal).groups;
     expect(groups.single.name, allWordsName);
   });
 }

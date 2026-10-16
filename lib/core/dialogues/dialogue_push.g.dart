@@ -6,7 +6,7 @@ part of 'dialogue_push.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dialoguePushHash() => r'409f49c557b6559d1539be7a2c639aa709059222';
+String _$dialoguePushHash() => r'22415160de53b41171be36cb0cb54c54395ab3c4';
 
 /// Delivers what the sessions with a shared link still owe it
 /// (get-words-from-subtitles-improvment ADR-0005): each pending import's rows

@@ -7,7 +7,7 @@ acs: ["AC-04"]
 files_hint: ["lib/", "test/", "lib/core/models/word_collection.dart", "lib/core/services/collection_store.dart", "lib/core/services/collection_publish_service.dart", "lib/core/providers.dart", "test/fixtures/pre_rename_vocab/"]
 owner: "Maksym"
 estimate: "L"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Rename Session to WordCollection across the app with every stored name pinned

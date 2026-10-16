@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/providers.dart';
 import '../word_input/word_input_notifier.dart';
 
@@ -9,29 +9,29 @@ part 'tag_suggestions.g.dart';
 
 /// The tags already used on sources (a photo, a set, a film) in every
 /// session, most used first: what the Notes page suggests for a source's
-/// tag (notes-editing, owner 2026-10-15). Session tags are a separate pool.
+/// tag (notes-editing, owner 2026-10-15). A collection's own tags are a separate pool.
 @riverpod
 List<String> sourceTagSuggestions(Ref ref) => _byUse([
-      for (final session in _sessions(ref))
-        for (final source in session.sources) ...source.tags,
+      for (final collection in _collections(ref))
+        for (final source in collection.sources) ...source.tags,
     ]);
 
 /// The tags already given to whole sessions, most used first.
 @riverpod
-List<String> sessionTagSuggestions(Ref ref) => _byUse([
-      for (final session in _sessions(ref)) ...session.tags,
+List<String> collectionTagSuggestions(Ref ref) => _byUse([
+      for (final collection in _collections(ref)) ...collection.tags,
     ]);
 
 /// The stored sessions, with the current one as it is now in place of its
 /// stored copy.
-List<Session> _sessions(Ref ref) {
+List<WordCollection> _collections(Ref ref) {
   final current = ref.watch(wordInputNotifierProvider).valueOrNull;
   final stored =
-      ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
+      ref.watch(nonEmptyCollectionsProvider).valueOrNull ?? const <WordCollection>[];
   return [
     if (current != null) current,
     for (final s in stored)
-      if (s.sessionId != current?.sessionId) s,
+      if (s.collectionId != current?.collectionId) s,
   ];
 }
 

@@ -11,12 +11,12 @@ import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
 
 void main() {
   late List<http.Request> requests;
 
-  SessionPublishService serviceAnswering(int status, Object body) {
+  CollectionPublishService serviceAnswering(int status, Object body) {
     requests = [];
     final client = MockClient((request) async {
       requests.add(request);
@@ -26,7 +26,7 @@ void main() {
         headers: {'content-type': 'application/json'},
       );
     });
-    return SessionPublishService(client: client);
+    return CollectionPublishService(client: client);
   }
 
   const answer = {
@@ -81,7 +81,7 @@ void main() {
 
       expect(
         () => service.publish([WordPair(), WordPair(word: ' ')]),
-        throwsA(isA<SessionPublishException>()),
+        throwsA(isA<CollectionPublishException>()),
       );
       expect(requests, isEmpty);
     });
@@ -106,7 +106,7 @@ void main() {
       expect(
         () => service.publish([WordPair(word: 'tea', translation: 'чай')]),
         throwsA(
-          isA<SessionPublishException>()
+          isA<CollectionPublishException>()
               .having((e) => e.message, 'message', 'Unauthorized'),
         ),
       );
@@ -116,12 +116,12 @@ void main() {
       final client = MockClient(
         (_) async => http.Response('<html>502</html>', 502),
       );
-      final service = SessionPublishService(client: client);
+      final service = CollectionPublishService(client: client);
 
       expect(
         () => service.publish([WordPair(word: 'tea', translation: 'чай')]),
         throwsA(
-          isA<SessionPublishException>()
+          isA<CollectionPublishException>()
               .having((e) => e.message, 'message', contains('502')),
         ),
       );
@@ -184,7 +184,7 @@ void main() {
       });
       expect(
         () => service.publish(pairs, detail: WordDetailMode.definition),
-        throwsA(isA<SessionPublishException>()
+        throwsA(isA<CollectionPublishException>()
             .having((e) => e.message, 'message', contains('"gated"'))),
       );
     });

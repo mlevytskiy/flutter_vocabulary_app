@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -20,11 +20,11 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 /// learn-kit: the shared frame and widgets (S-06, S-08, S-11; AC-06 – AC-08,
 /// AC-10, AC-13, AC-14, AC-28 – AC-30, AC-34, AC-34c).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 void main() {
@@ -324,7 +324,7 @@ void main() {
     WordPair w(String id, String word, {String translation = 't'}) =>
         WordPair(word: word, translation: translation, rowId: id);
 
-    Session session() => Session.create()
+    WordCollection collection() => WordCollection.create()
       ..words = [w('a', 'cat'), w('b', 'dog'), w('c', 'bird'), w('d', 'fish'), w('e', 'blank', translation: '')]
       ..groups = [
         WordGroup()
@@ -334,11 +334,11 @@ void main() {
       ];
 
     test("the group's words in group order and the session's other words to learn", () async {
-      final current = session();
-      final history = session()..words.add(w('h', 'horse'));
+      final current = collection();
+      final history = collection()..words.add(w('h', 'horse'));
       final container = ProviderContainer(overrides: [
         wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
-        sessionByIdProvider(history.sessionId).overrideWith((ref) async => history),
+        collectionByIdProvider(history.collectionId).overrideWith((ref) async => history),
       ]);
       addTearDown(container.dispose);
 
@@ -346,7 +346,7 @@ void main() {
       expect(words.group.map((x) => x.word), ['bird', 'cat']);
       expect(words.others.map((x) => x.word), ['dog', 'fish']);
 
-      final past = await container.read(exerciseWordsProvider(history.sessionId, 'g').future);
+      final past = await container.read(exerciseWordsProvider(history.collectionId, 'g').future);
       expect(past.others.map((x) => x.word), ['dog', 'fish', 'horse']);
 
       final none = await container.read(exerciseWordsProvider(null, 'missing').future);

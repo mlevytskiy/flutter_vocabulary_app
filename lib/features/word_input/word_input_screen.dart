@@ -11,7 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../core/models/definition_result.dart';
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
@@ -174,7 +174,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// Which session the rows on screen were built from. Tracked as an id rather
   /// than a bool because RESTORE swaps one session for another and the screen
   /// has to rebuild its rows for the second one too.
-  String? _restoredSessionId;
+  String? _restoredCollectionId;
 
   /// True only while the "words from your last session are saved" snackbar is
   /// up, so the first edit dismisses that one and never someone else's.
@@ -267,10 +267,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     if (!Platform.isAndroid) return true;
     if (_isRecoveringLostPhoto || _isAnalyzingPhoto) return true;
     _isRecoveringLostPhoto = true;
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
     try {
       final LostDataResponse response = await ref.read(imagePickerProvider).retrieveLostData();
-      if (_sessionIdNow != sessionId) return true;
+      if (_collectionIdNow != collectionId) return true;
       if (response.isEmpty) return false;
       if (response.exception != null) {
         if (mounted) {
@@ -595,7 +595,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// text for a gallery photo, "Error analyzing photo" for a camera one.
   Future<void> _processPickedPhoto(XFile picked,
       {ImageSource source = ImageSource.camera}) async {
-    final sessionId = _sessionIdNow;
+    final collectionId = _collectionIdNow;
     setState(() {
       _isAnalyzingPhoto = true;
     });
@@ -625,7 +625,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             limit: _photoWordCap,
           );
       requestStopwatch.stop();
-      if (_sessionIdNow != sessionId) return;
+      if (_collectionIdNow != collectionId) return;
 
       if (mounted) {
         showVocabResultDialog(
@@ -636,7 +636,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
           aiDuration: result.aiDuration,
         ).then((selected) async {
           final source = await kept;
-          if (selected != null && selected.isNotEmpty && mounted && _sessionIdNow == sessionId) {
+          if (selected != null && selected.isNotEmpty && mounted && _collectionIdNow == collectionId) {
             _addWordsFromPhoto(selected, source: source);
           } else if (source != null) {
             // No row came from it, so it is not a source photo.
@@ -699,8 +699,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   Future<void> _importFromSubtitles() => runSubtitleImport(
         context: context,
         ref: ref,
-        currentSessionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.sessionId,
-        sessionWords: () => [
+        currentCollectionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.collectionId,
+        collectionWords: () => [
           for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty && pair.word.trim().length <= 500) pair.word.trim(),
         ].take(500).toList(),
@@ -723,8 +723,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// each pointing at it (AC-03, AC-13b).
   Future<void> _importFromQuizlet() => runQuizletImport(
         context: context,
-        currentSessionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.sessionId,
-        sessionWords: () => [
+        currentCollectionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.collectionId,
+        collectionWords: () => [
           for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty) pair.word.trim(),
         ],
@@ -952,19 +952,19 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // mutations, via updateAt/removeAt/reorder/addAll) never re-trigger it,
     // while RESTORE swapping in the previous session does.
     ref.listen(wordInputNotifierProvider, (previous, next) {
-      next.whenData((session) {
-        if (_restoredSessionId == session.sessionId) return;
-        _restoredSessionId = session.sessionId;
+      next.whenData((collection) {
+        if (_restoredCollectionId == collection.collectionId) return;
+        _restoredCollectionId = collection.collectionId;
         // Another session: the photo panel closes and nothing stays
         // selected (side-bar-for-main-screen, spec AC-15b).
         _photoPanel.close();
         // Read before restoring: rebuilding the rows can itself mutate the
         // notifier, which clears this.
-        final restorable = ref.read(wordInputNotifierProvider.notifier).restorableSessionId;
+        final restorable = ref.read(wordInputNotifierProvider.notifier).restorableCollectionId;
         // A switch from History cancels the offer (edit-session-from-history).
         if (restorable == null) _dismissRestoreSnackBar();
-        if (session.words.isNotEmpty) _restoreFromStore(session.words);
-        debugPrint('VOCAB: session ${session.sessionId} on screen, '
+        if (collection.words.isNotEmpty) _restoreFromStore(collection.words);
+        debugPrint('VOCAB: session ${collection.collectionId} on screen, '
             'RESTORE ${restorable == null ? 'not offered' : 'offered for $restorable'}');
         if (restorable != null) _showRestoreSnackBar();
       });
@@ -973,9 +973,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // The drawer is only a way to reach *other* sessions, so it exists only
     // when there is one to reach: with a single session there is no hamburger
     // and no swipe-in drawer.
-    final currentSessionId = ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId;
-    final sessions = ref.watch(nonEmptySessionsProvider).valueOrNull ?? const <Session>[];
-    final hasOtherSessions = sessions.any((s) => s.sessionId != currentSessionId);
+    final currentCollectionId = ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId;
+    final collections = ref.watch(nonEmptyCollectionsProvider).valueOrNull ?? const <WordCollection>[];
+    final hasOtherCollections = collections.any((s) => s.collectionId != currentCollectionId);
     // The one place the reorder preference is read. Written by the Settings
     // screen (task-13); this screen only reads it.
     final isDragMode = ref.watch(dragModeProvider);
@@ -1026,7 +1026,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         setState(() => _drawerOpen = open);
         if (open) _photoPanel.close();
       },
-      drawer: hasOtherSessions
+      drawer: hasOtherCollections
           ? Drawer(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -1176,9 +1176,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     await NotesRoute(selectedId: id).push<void>(context);
     if (!mounted) return;
     final notifier = ref.read(wordInputNotifierProvider.notifier);
-    final session = ref.read(wordInputNotifierProvider).valueOrNull;
-    if (!notifier.takeEditedElsewhere() || session == null) return;
-    _restoreFromStore(session.words, focusLast: false);
+    final collection = ref.read(wordInputNotifierProvider).valueOrNull;
+    if (!notifier.takeEditedElsewhere() || collection == null) return;
+    _restoreFromStore(collection.words, focusLast: false);
   }
 
   /// The top bar, which an open photo panel owns like the rest of the screen

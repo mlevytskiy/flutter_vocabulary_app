@@ -7,7 +7,7 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -41,10 +41,10 @@ void main() {
     addTearDown(tester.view.reset);
     SharedPreferences.setMockInitialValues({});
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
     await tester.runAsync(() async {
-      dir = Directory.systemTemp.createTempSync('session_seen_timer_test');
-      store = await SessionStore.open(directory: dir.path);
+      dir = Directory.systemTemp.createTempSync('collection_seen_timer_test');
+      store = await CollectionStore.open(directory: dir.path);
     });
     addTearDown(() async {
       await tester.runAsync(() async {
@@ -53,7 +53,7 @@ void main() {
     });
     final input = _CountingInput();
     final container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       wordInputNotifierProvider.overrideWith(() => input),
     ]);
     addTearDown(container.dispose);

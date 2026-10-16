@@ -3,7 +3,7 @@ import 'package:isar_community/isar.dart';
 part 'word_group.g.dart';
 
 /// One topical group of a session's words on the learn page (mnemonic-story,
-/// ADR-0003). Embedded inside `Session`: it lives exactly as long as the
+/// ADR-0003). Embedded inside `WordCollection`: it lives exactly as long as the
 /// session does.
 @embedded
 class WordGroup {

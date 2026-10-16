@@ -6,7 +6,7 @@ part of 'match_definitions_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$matchDefinitionsHash() => r'54b3e8ae0f742c971657c1dcd407461c1a73e1ca';
+String _$matchDefinitionsHash() => r'15205c77f488dc262f46025179214ee4707da979';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$MatchDefinitions
     extends BuildlessAutoDisposeAsyncNotifier<MatchRoundsState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<MatchRoundsState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -71,11 +71,11 @@ class MatchDefinitionsFamily extends Family<AsyncValue<MatchRoundsState>> {
   ///
   /// Copied from [MatchDefinitions].
   MatchDefinitionsProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return MatchDefinitionsProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -85,7 +85,7 @@ class MatchDefinitionsFamily extends Family<AsyncValue<MatchRoundsState>> {
     covariant MatchDefinitionsProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -120,11 +120,11 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   ///
   /// Copied from [MatchDefinitions].
   MatchDefinitionsProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => MatchDefinitions()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: matchDefinitionsProvider,
           name: r'matchDefinitionsProvider',
@@ -135,7 +135,7 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
           dependencies: MatchDefinitionsFamily._dependencies,
           allTransitiveDependencies:
               MatchDefinitionsFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -146,11 +146,11 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -158,7 +158,7 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     covariant MatchDefinitions notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -169,14 +169,14 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
       origin: this,
       override: MatchDefinitionsProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -191,14 +191,14 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   @override
   bool operator ==(Object other) {
     return other is MatchDefinitionsProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -209,8 +209,8 @@ class MatchDefinitionsProvider extends AutoDisposeAsyncNotifierProviderImpl<
 // ignore: unused_element
 mixin MatchDefinitionsRef
     on AutoDisposeAsyncNotifierProviderRef<MatchRoundsState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -222,7 +222,7 @@ class _MatchDefinitionsProviderElement
   _MatchDefinitionsProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as MatchDefinitionsProvider).sessionId;
+  String? get collectionId => (origin as MatchDefinitionsProvider).collectionId;
   @override
   String get groupId => (origin as MatchDefinitionsProvider).groupId;
 }

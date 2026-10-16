@@ -8,19 +8,22 @@ import 'word_group.dart';
 import 'word_pair.dart';
 import 'word_result.dart';
 
-part 'session.g.dart';
+part 'word_collection.g.dart';
 
 /// A set of words with an identity and timestamps — what the app calls
 /// "the words I am collecting now" versus everything already in history.
-/// Persisted by `SessionStore` (Isar collection `sessions`).
+/// Persisted by `CollectionStore`. Stored as the Isar collection `Session`
+/// and its `sessionId`: the old names are pinned with `@Name` (ADR-0002).
 @collection
-class Session {
+@Name('Session')
+class WordCollection {
   Id id = Isar.autoIncrement;
 
   /// Device-generated, stable for the lifetime of the session. Task-05 hangs
   /// the shared link on it.
   @Index(unique: true, replace: true)
-  late String sessionId;
+  @Name('sessionId')
+  late String collectionId;
 
   /// Last change to the *content* (words). Task-05 will publish this.
   late DateTime updatedAt;
@@ -61,7 +64,7 @@ class Session {
   List<FilmDialogue> dialogues = [];
 
   /// The Step 3 word results (learn-kit, S-22), append-only, newest last, at
-  /// most [maxResults]. Written only through `SessionStore.appendResult` — a
+  /// most [maxResults]. Written only through `CollectionStore.appendResult` — a
   /// result is not a word edit, so it moves neither time — and read through
   /// the `ExamResultSink`. A session from before has none.
   List<WordResult> results = [];
@@ -73,12 +76,12 @@ class Session {
   /// The most results a session keeps; the oldest goes first (AC-38).
   static const maxResults = 2000;
 
-  Session();
+  WordCollection();
 
-  static Session create() {
+  static WordCollection create() {
     final now = DateTime.now();
-    return Session()
-      ..sessionId =
+    return WordCollection()
+      ..collectionId =
           '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 32).toRadixString(36)}'
       ..updatedAt = now
       ..lastLocalModifiedAt = now;
@@ -87,8 +90,8 @@ class Session {
   @ignore
   bool get isEmpty => words.every((w) => w.isEmpty);
 
-  factory Session.fromJson(Map<String, dynamic> json) => Session()
-    ..sessionId = json['sessionId'] as String? ?? ''
+  factory WordCollection.fromJson(Map<String, dynamic> json) => WordCollection()
+    ..collectionId = json['sessionId'] as String? ?? ''
     ..updatedAt = DateTime.parse(json['updatedAt'] as String? ?? '1970-01-01')
     ..lastLocalModifiedAt =
         DateTime.parse(json['lastLocalModifiedAt'] as String? ?? '1970-01-01')
@@ -120,7 +123,7 @@ class Session {
     ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()];
 
   Map<String, dynamic> toJson() => {
-        'sessionId': sessionId,
+        'sessionId': collectionId,
         'updatedAt': updatedAt.toIso8601String(),
         'lastLocalModifiedAt': lastLocalModifiedAt.toIso8601String(),
         'isShared': isShared,

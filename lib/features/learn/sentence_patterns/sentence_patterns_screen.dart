@@ -12,9 +12,9 @@ import '../kit/word_marks.dart';
 import 'sentence_patterns_notifier.dart';
 
 class SentencePatternsScreen extends ConsumerStatefulWidget {
-  const SentencePatternsScreen({super.key, this.sessionId, required this.groupId});
+  const SentencePatternsScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -47,7 +47,7 @@ class _SentencePatternsScreenState extends ConsumerState<SentencePatternsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final provider = sentencePatternsProvider(widget.sessionId, widget.groupId);
+    final provider = sentencePatternsProvider(widget.collectionId, widget.groupId);
     // Anything still playing stops when the card changes (S-32).
     ref.listen(provider.select((a) => a.valueOrNull?.card), (_, __) => _pronunciation.stop());
     final async = ref.watch(provider);

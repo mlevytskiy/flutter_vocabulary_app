@@ -12,12 +12,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/features/history/history_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
@@ -66,7 +66,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
 
   setUpAll(() async {
     final saved = HttpOverrides.current;
@@ -78,10 +78,10 @@ void main() {
     }
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('quizlet_words_ordinary_test');
-    store = await SessionStore.open(directory: dir.path);
-    final session = Session.create();
-    await store.put(session);
-    await store.setCurrentSessionId(session.sessionId);
+    store = await CollectionStore.open(directory: dir.path);
+    final collection = WordCollection.create();
+    await store.put(collection);
+    await store.setCurrentCollectionId(collection.collectionId);
   });
 
   // The store is not closed: a debounced save started inside the widget
@@ -102,7 +102,7 @@ void main() {
         const MethodChannel('flutter_tts'), (_) async => null);
     final translate = FakeTranslate();
     final container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       googleTranslateServiceProvider.overrideWithValue(translate),
     ]);
     await tester.runAsync(() async {
@@ -151,10 +151,10 @@ void main() {
     await tester.tap(find.text('Done'));
     await settle();
 
-    Session session() => container.read(wordInputNotifierProvider).value!;
+    WordCollection collection() => container.read(wordInputNotifierProvider).value!;
     // Blank rows may sit between batches, as after a photo import; they are
     // not words.
-    final rows = session().words.where((p) => !p.isEmpty).toList();
+    final rows = collection().words.where((p) => !p.isEmpty).toList();
     final cat = rows[0];
     final dog = rows[1];
     expect(rows.length, 2);
@@ -199,7 +199,7 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 1));
     await tester.pumpWidget(const SizedBox());
-    final kept = Session.create()
+    final kept = WordCollection.create()
       ..words = [
         for (final p in rows)
           WordPair(
@@ -214,8 +214,8 @@ void main() {
     final photoDir = Directory.systemTemp.createTempSync('ordinary_photos');
     addTearDown(() => photoDir.deleteSync(recursive: true));
     final tableContainer = ProviderContainer(overrides: [
-      sessionByIdProvider(kept.sessionId).overrideWith((ref) async => kept),
-      nonEmptySessionsProvider.overrideWith((ref) => Stream.value([kept])),
+      collectionByIdProvider(kept.collectionId).overrideWith((ref) async => kept),
+      nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value([kept])),
       sourcePhotoStoreProvider
           .overrideWithValue(SourcePhotoStore(directory: photoDir.path)),
     ]);
@@ -223,11 +223,11 @@ void main() {
     await tester.runAsync(() async {
       tableContainer.read(wordDetailModeProvider);
       await tableContainer.read(wordDetailModeProvider.notifier).loaded;
-      await tableContainer.read(sessionByIdProvider(kept.sessionId).future);
+      await tableContainer.read(collectionByIdProvider(kept.collectionId).future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: tableContainer,
-      child: MaterialApp(home: WordsTableScreen(sessionId: kept.sessionId)),
+      child: MaterialApp(home: WordsTableScreen(collectionId: kept.collectionId)),
     ));
     await tester.pump();
     expect(find.text('cat'), findsOneWidget);

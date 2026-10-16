@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/word_input/word_input_notifier.dart';
-import '../models/session.dart';
+import '../models/word_collection.dart';
 import '../models/word_group.dart';
 import '../providers.dart';
 import 'story_run_tracker.dart';
@@ -61,14 +61,14 @@ class WordGroupsState {
 
 /// Asks the story run tracker to start a run for a group that has neither a
 /// story nor a run (AC-06). Tests replace it with `overrideWithValue`.
-typedef StoryRunStartHook = Future<void> Function(String sessionId, WordGroup group);
+typedef StoryRunStartHook = Future<void> Function(String collectionId, WordGroup group);
 
-final storyRunStartHookProvider = Provider<StoryRunStartHook>((ref) => (sessionId, group) async {
-      await ref.read(storyRunTrackerProvider.notifier).startFor(sessionId, group);
+final storyRunStartHookProvider = Provider<StoryRunStartHook>((ref) => (collectionId, group) async {
+      await ref.read(storyRunTrackerProvider.notifier).startFor(collectionId, group);
     });
 
 /// The groups of one session and the learner's selection among them. A null
-/// [sessionId] is the current session; an id is a History session, which is
+/// [collectionId] is the current session; an id is a History session, which is
 /// read and saved on its own and never becomes current (AC-11). Lives in
 /// `lib/core/story/` so the Words screen and the learn page share it.
 @Riverpod(keepAlive: true)
@@ -77,7 +77,7 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
   bool _disposed = false;
 
   @override
-  WordGroupsState build(String? sessionId) {
+  WordGroupsState build(String? collectionId) {
     // The notifier object outlives a rebuild, so the flag is reset here.
     _disposed = false;
     ref.onDispose(() => _disposed = true);
@@ -93,52 +93,52 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
   /// Makes [groupId] the selected group and saves it. An id the session does
   /// not have is ignored.
   Future<void> select(String groupId) async {
-    final session = await _session();
-    if (session == null || _disposed) return;
-    if (!session.groups.any((g) => g.id == groupId)) return;
-    if (session.selectedGroupId != groupId) {
-      session.selectedGroupId = groupId;
-      await _save(session);
+    final collection = await _collection();
+    if (collection == null || _disposed) return;
+    if (!collection.groups.any((g) => g.id == groupId)) return;
+    if (collection.selectedGroupId != groupId) {
+      collection.selectedGroupId = groupId;
+      await _save(collection);
     }
-    _publish(session, state.status);
-    await _startRunIfNeeded(session);
+    _publish(collection, state.status);
+    await _startRunIfNeeded(collection);
   }
 
   /// Publishes the session as it is saved now, without grouping: a story run
   /// finished and changed a group's story (AC-16).
   Future<void> reload() async {
-    final session = await _session();
-    if (session == null || _disposed) return;
-    _publish(session, state.status);
+    final collection = await _collection();
+    if (collection == null || _disposed) return;
+    _publish(collection, state.status);
   }
 
   Future<void> _ensureGrouped() async {
-    final session = await _session();
-    if (session == null || _disposed) return;
-    final runs = await _runsInProgress(session.sessionId);
+    final collection = await _collection();
+    if (collection == null || _disposed) return;
+    final runs = await _runsInProgress(collection.collectionId);
 
     var status = const GroupingIdle() as GroupingStatus;
     // A word edited while the Worker was thinking means the split no longer
     // fits: plan again with the new words (a few rounds at most).
     for (var round = 0; round < 3; round++) {
-      final plan = planGrouping(session, runs);
+      final plan = planGrouping(collection, runs);
       if (plan is GroupingLocal) {
-        _apply(session, plan.groups);
+        _apply(collection, plan.groups);
       } else if (plan is GroupingAsk) {
-        _publish(session, const GroupingInProgress(), hideGroups: true);
-        final keyBefore = groupedWordsKey(session);
+        _publish(collection, const GroupingInProgress(), hideGroups: true);
+        final keyBefore = groupedWordsKey(collection);
         final SplitResult result;
         try {
           final split = await ref.read(storyApiServiceProvider).group(plan.words, plan.keep);
           if (_disposed) return;
-          if (groupedWordsKey(session) != keyBefore) continue;
-          result = applySplit(session, split, runs);
+          if (groupedWordsKey(collection) != keyBefore) continue;
+          result = applySplit(collection, split, runs);
         } catch (_) {
           status = const GroupingFailed();
           break;
         }
         if (result is SplitOk) {
-          _apply(session, result.groups);
+          _apply(collection, result.groups);
         } else {
           status = const GroupingFailed();
         }
@@ -147,50 +147,50 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
     }
     if (_disposed) return;
     if (status is GroupingFailed) {
-      _publish(session, status, hideGroups: true);
+      _publish(collection, status, hideGroups: true);
       return;
     }
 
     // The remembered group may be gone: keep the effective one (AC-01).
-    session.selectedGroupId = selectedGroupIdOf(session);
-    await _save(session);
+    collection.selectedGroupId = selectedGroupIdOf(collection);
+    await _save(collection);
     if (_disposed) return;
-    _publish(session, status);
-    await _startRunIfNeeded(session);
+    _publish(collection, status);
+    await _startRunIfNeeded(collection);
   }
 
-  void _apply(Session session, List<WordGroup> groups) {
-    session.groups = groups;
-    session.groupedWordsKey = groupedWordsKey(session);
+  void _apply(WordCollection collection, List<WordGroup> groups) {
+    collection.groups = groups;
+    collection.groupedWordsKey = groupedWordsKey(collection);
   }
 
   /// The learn words that sit in no group.
-  int _waiting(Session session) {
-    final held = {for (final g in session.groups) ...g.rowIds};
-    return wordsToLearn(session).where((w) => !held.contains(w.rowId)).length;
+  int _waiting(WordCollection collection) {
+    final held = {for (final g in collection.groups) ...g.rowIds};
+    return wordsToLearn(collection).where((w) => !held.contains(w.rowId)).length;
   }
 
-  void _publish(Session session, GroupingStatus status, {bool hideGroups = false}) {
+  void _publish(WordCollection collection, GroupingStatus status, {bool hideGroups = false}) {
     if (_disposed) return;
-    final waiting = status is GroupingIdle ? _waiting(session) : 0;
+    final waiting = status is GroupingIdle ? _waiting(collection) : 0;
     state = WordGroupsState(
       status: waiting > 0 ? GroupingWaiting(waiting) : status,
-      groups: hideGroups ? const [] : [for (final g in session.groups) g.copy()],
-      selectedGroupId: hideGroups ? null : selectedGroupIdOf(session),
+      groups: hideGroups ? const [] : [for (final g in collection.groups) g.copy()],
+      selectedGroupId: hideGroups ? null : selectedGroupIdOf(collection),
     );
   }
 
-  Future<void> _startRunIfNeeded(Session session) async {
+  Future<void> _startRunIfNeeded(WordCollection collection) async {
     if (_disposed) return;
-    final id = selectedGroupIdOf(session);
-    final group = session.groups.where((g) => g.id == id).firstOrNull;
+    final id = selectedGroupIdOf(collection);
+    final group = collection.groups.where((g) => g.id == id).firstOrNull;
     if (group == null || group.storyRunId != null) return;
     // A dialogue group draws only on Start (get-words-from-subtitles-improvment
     // AC-24).
     if (group.dialogueId != null) return;
-    if ((await _runsInProgress(session.sessionId)).contains(group.id)) return;
+    if ((await _runsInProgress(collection.collectionId)).contains(group.id)) return;
     try {
-      await ref.read(storyRunStartHookProvider)(session.sessionId, group);
+      await ref.read(storyRunStartHookProvider)(collection.collectionId, group);
     } catch (_) {
       // starting a run is the tracker's business; it reports its own failures
     }
@@ -198,29 +198,29 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
 
   /// The current session's live object (held by the Words screen's notifier,
   /// which may have words not yet written), or a History session from the store.
-  Future<Session?> _session() async {
-    final wanted = sessionId;
+  Future<WordCollection?> _collection() async {
+    final wanted = collectionId;
     if (wanted == null) return ref.read(wordInputNotifierProvider.future);
     final current = ref.read(wordInputNotifierProvider).valueOrNull;
-    if (current != null && current.sessionId == wanted) return current;
-    final store = await ref.read(sessionStoreProvider.future);
+    if (current != null && current.collectionId == wanted) return current;
+    final store = await ref.read(collectionStoreProvider.future);
     return store.byId(wanted);
   }
 
   /// Saves without stamping the edit times: grouping is not an edit.
-  Future<void> _save(Session session) async {
-    final store = await ref.read(sessionStoreProvider.future);
-    await store.put(session);
+  Future<void> _save(WordCollection collection) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.put(collection);
   }
 
   /// Ids of the groups whose story run is going; they count as groups with a
   /// story (AC-05).
-  Future<Set<String>> _runsInProgress(String sessionId) async {
+  Future<Set<String>> _runsInProgress(String collectionId) async {
     try {
       final runs = await (await ref.read(storyRunStoreProvider.future)).uncollected();
       return {
         for (final r in runs)
-          if (r.sessionId == sessionId && r.outcome == 'running') r.groupId,
+          if (r.collectionId == collectionId && r.outcome == 'running') r.groupId,
       };
     } catch (_) {
       return const {};

@@ -8,7 +8,7 @@ part 'film_dialogue.g.dart';
 enum PushState { none, pending, delivered }
 
 /// A short exchange from a subtitle file, kept with the words it holds
-/// (get-words-from-subtitles-improvment, ADR-0003). Embedded inside `Session`,
+/// (get-words-from-subtitles-improvment, ADR-0003). Embedded inside `WordCollection`,
 /// in pager order: it lives exactly as long as the session does.
 @embedded
 class FilmDialogue {

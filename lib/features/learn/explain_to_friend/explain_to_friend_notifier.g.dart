@@ -6,7 +6,7 @@ part of 'explain_to_friend_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$explainToFriendHash() => r'aebfe74b5cc50971851dfa963cc1431ad2efa482';
+String _$explainToFriendHash() => r'96edc3b1b644f8613576de34f6a288d523e870c7';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$ExplainToFriend
     extends BuildlessAutoDisposeAsyncNotifier<ExplainState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<ExplainState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -71,11 +71,11 @@ class ExplainToFriendFamily extends Family<AsyncValue<ExplainState>> {
   ///
   /// Copied from [ExplainToFriend].
   ExplainToFriendProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return ExplainToFriendProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -85,7 +85,7 @@ class ExplainToFriendFamily extends Family<AsyncValue<ExplainState>> {
     covariant ExplainToFriendProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -120,11 +120,11 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
   ///
   /// Copied from [ExplainToFriend].
   ExplainToFriendProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => ExplainToFriend()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: explainToFriendProvider,
           name: r'explainToFriendProvider',
@@ -135,7 +135,7 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
           dependencies: ExplainToFriendFamily._dependencies,
           allTransitiveDependencies:
               ExplainToFriendFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -146,11 +146,11 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -158,7 +158,7 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
     covariant ExplainToFriend notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -169,14 +169,14 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
       origin: this,
       override: ExplainToFriendProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -191,14 +191,14 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
   @override
   bool operator ==(Object other) {
     return other is ExplainToFriendProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -208,8 +208,8 @@ class ExplainToFriendProvider extends AutoDisposeAsyncNotifierProviderImpl<
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin ExplainToFriendRef on AutoDisposeAsyncNotifierProviderRef<ExplainState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -221,7 +221,7 @@ class _ExplainToFriendProviderElement
   _ExplainToFriendProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as ExplainToFriendProvider).sessionId;
+  String? get collectionId => (origin as ExplainToFriendProvider).collectionId;
   @override
   String get groupId => (origin as ExplainToFriendProvider).groupId;
 }

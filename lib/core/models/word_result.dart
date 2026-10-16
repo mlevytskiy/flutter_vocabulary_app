@@ -7,7 +7,7 @@ part 'word_result.g.dart';
 enum WordResultLabel { known, repeat }
 
 /// One word result, written by an exam as soon as that word's result is final
-/// (S-23). Embedded inside `Session.results`, append-only, newest last; the
+/// (S-23). Embedded inside `WordCollection.results`, append-only, newest last; the
 /// latest per [rowId] wins across exams. Never part of a word row, a publish,
 /// an export or the lightning rules (AC-37).
 @embedded

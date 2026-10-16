@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercises.dart';
@@ -14,26 +14,26 @@ import 'fake_story_groups.dart';
 
 /// learn-part-step-1 T6 (AC-04, AC-06, AC-07, AC-13): the app's learn page.
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
-Session _session(int filled, {int bare = 0}) => Session.create()
+WordCollection _collection(int filled, {int bare = 0}) => WordCollection.create()
   ..words = [
     for (var i = 0; i < filled; i++) WordPair(word: 'w$i', translation: 't$i'),
     for (var i = 0; i < bare; i++) WordPair(word: 'bare$i'),
   ];
 
 void main() {
-  final current = _session(1, bare: 2);
-  final history = _session(3);
+  final current = _collection(1, bare: 2);
+  final history = _collection(3);
 
   late ProviderContainer container;
 
-  Future<void> pump(WidgetTester tester, {String? sessionId}) async {
+  Future<void> pump(WidgetTester tester, {String? collectionId}) async {
     // Tall enough that the whole list is built, so tiles can be counted.
     tester.view.physicalSize = const Size(800, 3000);
     tester.view.devicePixelRatio = 1.0;
@@ -41,17 +41,17 @@ void main() {
     container = ProviderContainer(overrides: [
       ...fakeGroupOverrides(),
       wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
-      sessionByIdProvider(history.sessionId)
+      collectionByIdProvider(history.collectionId)
           .overrideWith((ref) async => history),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordInputNotifierProvider.future);
-      await container.read(sessionByIdProvider(history.sessionId).future);
+      await container.read(collectionByIdProvider(history.collectionId).future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: MaterialApp(home: LearnScreen(sessionId: sessionId)),
+      child: MaterialApp(home: LearnScreen(collectionId: collectionId)),
     ));
     await tester.pump();
   }
@@ -312,16 +312,16 @@ void main() {
 
   testWidgets('AC-13: a History sessionId leaves the current session alone',
       (tester) async {
-    await pump(tester, sessionId: history.sessionId);
+    await pump(tester, collectionId: history.collectionId);
     expect(find.byType(LearnScreen), findsOneWidget);
-    expect(container.read(wordInputNotifierProvider).value!.sessionId,
-        current.sessionId);
+    expect(container.read(wordInputNotifierProvider).value!.collectionId,
+        current.collectionId);
   });
 
   test('LearnRoute sits under the table and carries the optional sessionId',
       () {
     expect(const LearnRoute().location, '/table/learn');
-    expect(const LearnRoute(sessionId: 'abc').location,
-        '/table/learn?session-id=abc');
+    expect(const LearnRoute(collectionId: 'abc').location,
+        '/table/learn?collection-id=abc');
   });
 }

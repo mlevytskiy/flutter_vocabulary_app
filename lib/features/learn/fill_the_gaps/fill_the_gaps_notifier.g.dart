@@ -6,7 +6,7 @@ part of 'fill_the_gaps_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$fillTheGapsHash() => r'a2005b1c5382abb031324606728c21a3096a60b2';
+String _$fillTheGapsHash() => r'10d500db80a34c553ce0dc6a1da27987b5425faf';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$FillTheGaps
     extends BuildlessAutoDisposeAsyncNotifier<FillState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<FillState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -51,11 +51,11 @@ class FillTheGapsFamily extends Family<AsyncValue<FillState>> {
 
   /// See also [FillTheGaps].
   FillTheGapsProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return FillTheGapsProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -65,7 +65,7 @@ class FillTheGapsFamily extends Family<AsyncValue<FillState>> {
     covariant FillTheGapsProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -90,11 +90,11 @@ class FillTheGapsProvider
     extends AutoDisposeAsyncNotifierProviderImpl<FillTheGaps, FillState> {
   /// See also [FillTheGaps].
   FillTheGapsProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => FillTheGaps()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: fillTheGapsProvider,
           name: r'fillTheGapsProvider',
@@ -105,7 +105,7 @@ class FillTheGapsProvider
           dependencies: FillTheGapsFamily._dependencies,
           allTransitiveDependencies:
               FillTheGapsFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -116,11 +116,11 @@ class FillTheGapsProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -128,7 +128,7 @@ class FillTheGapsProvider
     covariant FillTheGaps notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -139,14 +139,14 @@ class FillTheGapsProvider
       origin: this,
       override: FillTheGapsProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -161,14 +161,14 @@ class FillTheGapsProvider
   @override
   bool operator ==(Object other) {
     return other is FillTheGapsProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -178,8 +178,8 @@ class FillTheGapsProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin FillTheGapsRef on AutoDisposeAsyncNotifierProviderRef<FillState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -191,7 +191,7 @@ class _FillTheGapsProviderElement
   _FillTheGapsProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as FillTheGapsProvider).sessionId;
+  String? get collectionId => (origin as FillTheGapsProvider).collectionId;
   @override
   String get groupId => (origin as FillTheGapsProvider).groupId;
 }

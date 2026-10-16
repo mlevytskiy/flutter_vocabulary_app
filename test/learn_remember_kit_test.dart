@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/example_line.dart';
@@ -16,11 +16,11 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 /// learn-remember-or-not: kit additions S-31 (example lines, dialogues provider)
 /// and S-33 (summary heading); AC-06, AC-14.
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 FilmDialogue _d(List<String> lines, List<String> ids, {bool hidden = false}) => FilmDialogue()
@@ -60,11 +60,11 @@ void main() {
 
   group('exerciseDialoguesProvider (S-31)', () {
     test('current session when id is null, History session by id', () async {
-      final cur = Session.create()..dialogues = [_d(['cur'], ['b'])];
-      final hist = Session.create()..dialogues = [_d(['hist'], ['b'])];
+      final cur = WordCollection.create()..dialogues = [_d(['cur'], ['b'])];
+      final hist = WordCollection.create()..dialogues = [_d(['hist'], ['b'])];
       final c = ProviderContainer(overrides: [
         wordInputNotifierProvider.overrideWith(() => _FakeInput(cur)),
-        sessionByIdProvider('h').overrideWith((ref) async => hist),
+        collectionByIdProvider('h').overrideWith((ref) async => hist),
       ]);
       addTearDown(c.dispose);
       expect((await c.read(exerciseDialoguesProvider(null).future)).single.lines, ['cur']);
@@ -73,7 +73,7 @@ void main() {
 
     test('a missing History session gives no dialogues', () async {
       final c = ProviderContainer(overrides: [
-        sessionByIdProvider('h').overrideWith((ref) async => null),
+        collectionByIdProvider('h').overrideWith((ref) async => null),
       ]);
       addTearDown(c.dispose);
       expect(await c.read(exerciseDialoguesProvider('h').future), isEmpty);

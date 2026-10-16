@@ -53,7 +53,7 @@ void main() {
   });
 
   test('session words are skipped in any letter case', () {
-    final pick = SubtitleWordCounter.pick(['Tide and fog.', 'The tide.'], maximum: 10, level: EnglishLevel.b1, sessionWords: [' TIDE ']);
+    final pick = SubtitleWordCounter.pick(['Tide and fog.', 'The tide.'], maximum: 10, level: EnglishLevel.b1, collectionWords: [' TIDE ']);
     expect(pick.words, ['fog']);
   });
 

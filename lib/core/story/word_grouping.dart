@@ -2,13 +2,13 @@ import 'dart:math';
 
 import '../dialogues/dialogue_rules.dart' show cardName;
 import '../models/film_dialogue.dart';
-import '../models/session.dart';
+import '../models/word_collection.dart';
 import '../models/word_group.dart';
 import '../models/word_pair.dart';
 
 /// The pure grouping rules of the learn page (mnemonic-story, ADR-0005; sad §6
 /// S-01 and S-08). No Worker, no Isar store: everything here is a function over
-/// a [Session] the caller already holds. Only the topical split of the words
+/// a [WordCollection] the caller already holds. Only the topical split of the words
 /// needs an AI; the caller asks the Worker for it when [planGrouping] says
 /// [GroupingAsk], then hands the answer to [applySplit].
 
@@ -30,18 +30,18 @@ const String otherWordsName = 'Other words';
 /// The session's words to learn: a row with an English word plus a translation
 /// or a definition (learn-part-step-1). A row with no [WordPair.rowId] cannot
 /// belong to a group and is left out.
-List<WordPair> wordsToLearn(Session session) =>
-    session.words.where((w) => w.isFilled && w.rowId.isNotEmpty).toList();
+List<WordPair> wordsToLearn(WordCollection collection) =>
+    collection.words.where((w) => w.isFilled && w.rowId.isNotEmpty).toList();
 
 /// What the words looked like when grouping last ran: the row id and the
 /// English word of each word to learn, whatever the row order. A translation or
 /// definition edit leaves it unchanged (AC-03).
-String groupedWordsKey(Session session) {
+String groupedWordsKey(WordCollection collection) {
   final entries = [
-    for (final w in wordsToLearn(session)) '${w.rowId}\t${w.word.trim()}',
+    for (final w in wordsToLearn(collection)) '${w.rowId}\t${w.word.trim()}',
   ]..sort();
   // A dialogue that lost a word or became hidden regroups too (AC-26).
-  for (final d in session.dialogues) {
+  for (final d in collection.dialogues) {
     entries.add('${d.id}\t${d.hidden}\t${d.wordRowIds.join(',')}');
   }
   return entries.join('\n');
@@ -116,16 +116,16 @@ class SplitInvalid extends SplitResult {
 /// groups whose story run is going: they count as groups with a story, so their
 /// words never change (AC-05).
 GroupingPlan planGrouping(
-  Session session, [
+  WordCollection collection, [
   Set<String> runsInProgress = const {},
   String Function()? newId,
 ]) {
-  if (session.groupedWordsKey == groupedWordsKey(session)) {
+  if (collection.groupedWordsKey == groupedWordsKey(collection)) {
     return const GroupingUnchanged();
   }
-  if (!_hasDialogues(session)) return _plan(session, runsInProgress, newId);
-  final dialogueGroups = _dialogueGroups(session);
-  final plan = _plan(_withoutDialogueGroups(session, dialogueGroups),
+  if (!_hasDialogues(collection)) return _plan(collection, runsInProgress, newId);
+  final dialogueGroups = _dialogueGroups(collection);
+  final plan = _plan(_withoutDialogueGroups(collection, dialogueGroups),
       runsInProgress, newId, dialogueGroups.isNotEmpty);
   return plan is GroupingLocal
       ? GroupingLocal([...dialogueGroups, ...plan.groups], plan.waiting)
@@ -133,12 +133,12 @@ GroupingPlan planGrouping(
 }
 
 GroupingPlan _plan(
-  Session session,
+  WordCollection collection,
   Set<String> runsInProgress,
   String Function()? newId, [
   bool? besideDialogueGroups,
 ]) {
-  final basis = _Basis(session, runsInProgress);
+  final basis = _Basis(collection, runsInProgress);
 
   final make = newId ?? _randomId;
 
@@ -193,16 +193,16 @@ GroupingPlan _plan(
 /// fewer than 7 left-over words waiting (AC-04, AC-05). [runsInProgress] must be
 /// the same set given to [planGrouping].
 SplitResult applySplit(
-  Session session,
+  WordCollection collection,
   List<SplitGroup> split, [
   Set<String> runsInProgress = const {},
   String Function()? newId,
 ]) {
-  if (!_hasDialogues(session)) {
-    return _applySplit(session, split, runsInProgress, newId);
+  if (!_hasDialogues(collection)) {
+    return _applySplit(collection, split, runsInProgress, newId);
   }
-  final dialogueGroups = _dialogueGroups(session);
-  final result = _applySplit(_withoutDialogueGroups(session, dialogueGroups),
+  final dialogueGroups = _dialogueGroups(collection);
+  final result = _applySplit(_withoutDialogueGroups(collection, dialogueGroups),
       split, runsInProgress, newId);
   return result is SplitOk
       ? SplitOk([...dialogueGroups, ...result.groups], result.waiting)
@@ -210,12 +210,12 @@ SplitResult applySplit(
 }
 
 SplitResult _applySplit(
-  Session session,
+  WordCollection collection,
   List<SplitGroup> split,
   Set<String> runsInProgress,
   String Function()? newId,
 ) {
-  final basis = _Basis(session, runsInProgress);
+  final basis = _Basis(collection, runsInProgress);
   if (basis.learn.length <= maxGroupSize || basis.newWords.isEmpty) {
     return const SplitInvalid();
   }
@@ -277,8 +277,8 @@ SplitResult _applySplit(
 /// The group's current words, by row id: a deleted word is gone and an edited
 /// word shows its new form (AC-17). A row that stopped being a word to learn
 /// is gone too.
-List<WordPair> groupWords(Session session, WordGroup group) {
-  final byId = {for (final w in wordsToLearn(session)) w.rowId: w};
+List<WordPair> groupWords(WordCollection collection, WordGroup group) {
+  final byId = {for (final w in wordsToLearn(collection)) w.rowId: w};
   return [
     for (final id in group.rowIds)
       if (byId[id] != null) byId[id]!,
@@ -288,9 +288,9 @@ List<WordPair> groupWords(Session session, WordGroup group) {
 /// True when the group has a story and its English words are no longer the ones
 /// the story was made from (AC-17). A translation or definition edit does not
 /// count.
-bool isOutdated(Session session, WordGroup group) {
+bool isOutdated(WordCollection collection, WordGroup group) {
   if (group.storyRunId == null) return false;
-  final now = [for (final w in groupWords(session, group)) w.word.trim()]..sort();
+  final now = [for (final w in groupWords(collection, group)) w.word.trim()]..sort();
   final then = [for (final w in group.storyWords) w.trim()]..sort();
   if (now.length != then.length) return true;
   for (var i = 0; i < now.length; i++) {
@@ -301,17 +301,17 @@ bool isOutdated(Session session, WordGroup group) {
 
 /// The group the learn page shows as selected: the remembered one, else the
 /// first, else none (AC-01).
-String? selectedGroupIdOf(Session session) {
-  for (final g in session.groups) {
-    if (g.id == session.selectedGroupId) return g.id;
+String? selectedGroupIdOf(WordCollection collection) {
+  for (final g in collection.groups) {
+    if (g.id == collection.selectedGroupId) return g.id;
   }
-  return session.groups.isEmpty ? null : session.groups.first.id;
+  return collection.groups.isEmpty ? null : collection.groups.first.id;
 }
 
 /// A session that has, or had, film dialogues groups them first.
-bool _hasDialogues(Session session) =>
-    session.dialogues.isNotEmpty ||
-    session.groups.any((g) => g.dialogueId != null);
+bool _hasDialogues(WordCollection collection) =>
+    collection.dialogues.isNotEmpty ||
+    collection.groups.any((g) => g.dialogueId != null);
 
 /// The id a dialogue's group is made with, so planning and applying a split
 /// agree on it.
@@ -322,18 +322,18 @@ String _dialogueGroupId(String dialogueId) => 'dialogue-$dialogueId';
 /// gets one of its words to learn that are in no group yet (AC-06, AC-17).
 /// Dialogue groups are any size (AC-15) and never gain words; one left with
 /// none is gone, its dialogue with it or not (AC-26).
-List<WordGroup> _dialogueGroups(Session session) {
-  final learn = {for (final w in wordsToLearn(session)) w.rowId};
+List<WordGroup> _dialogueGroups(WordCollection collection) {
+  final learn = {for (final w in wordsToLearn(collection)) w.rowId};
   final visible = [
-    for (final d in session.dialogues)
+    for (final d in collection.dialogues)
       if (!d.hidden) d,
   ];
   final existing = {
-    for (final g in session.groups)
+    for (final g in collection.groups)
       if (g.dialogueId != null) g.dialogueId!: g,
   };
   final taken = <String>{
-    for (final g in session.groups)
+    for (final g in collection.groups)
       if (g.dialogueId == null) ...g.rowIds.where(learn.contains),
   };
   final byDialogue = <String, WordGroup>{};
@@ -370,17 +370,17 @@ List<WordGroup> _dialogueGroups(Session session) {
 
 /// The session as the topic grouping sees it: no dialogue group, and none of
 /// their words.
-Session _withoutDialogueGroups(
-    Session session, List<WordGroup> dialogueGroups) {
+WordCollection _withoutDialogueGroups(
+    WordCollection collection, List<WordGroup> dialogueGroups) {
   final held = {for (final g in dialogueGroups) ...g.rowIds};
-  return Session()
-    ..sessionId = session.sessionId
+  return WordCollection()
+    ..collectionId = collection.collectionId
     ..words = [
-      for (final w in session.words)
+      for (final w in collection.words)
         if (!held.contains(w.rowId)) w,
     ]
     ..groups = [
-      for (final g in session.groups)
+      for (final g in collection.groups)
         if (g.dialogueId == null) g,
     ];
 }
@@ -390,21 +390,21 @@ bool _isStoryGroup(WordGroup g, Set<String> runsInProgress) =>
     g.storyRunId != null || runsInProgress.contains(g.id);
 
 class _Basis {
-  final Session session;
+  final WordCollection collection;
   final Set<String> runsInProgress;
-  late final List<WordPair> learn = wordsToLearn(session);
+  late final List<WordPair> learn = wordsToLearn(collection);
   late final Map<String, WordPair> byId = {for (final w in learn) w.rowId: w};
 
   /// Groups with a story or a run, following their words (a word that left is
   /// dropped); a group left with no words is dropped.
   late final List<WordGroup> storyGroups = [
-    for (final g in session.groups)
+    for (final g in collection.groups)
       if (_isStoryGroup(g, runsInProgress)) _follow(g),
   ].where((g) => g.rowIds.isNotEmpty).toList();
 
   /// Groups without a story, as the session holds them.
   late final List<WordGroup> others = [
-    for (final g in session.groups)
+    for (final g in collection.groups)
       if (!_isStoryGroup(g, runsInProgress)) g,
   ];
 
@@ -440,7 +440,7 @@ class _Basis {
     return [for (final w in free) if (!held.contains(w.rowId)) w];
   }();
 
-  _Basis(this.session, this.runsInProgress);
+  _Basis(this.collection, this.runsInProgress);
 
   WordGroup _follow(WordGroup g) =>
       g.copy()..rowIds = [for (final id in g.rowIds) if (byId.containsKey(id)) id];
@@ -455,7 +455,7 @@ class _Basis {
     final keptById = {for (final g in kept) g.id: g};
     final storyById = {for (final g in storyGroups) g.id: g};
     final out = <WordGroup>[];
-    for (final g in session.groups) {
+    for (final g in collection.groups) {
       final s = storyById[g.id];
       if (s != null) {
         out.add(s);

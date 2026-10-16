@@ -6,11 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/edge_glass.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
@@ -38,9 +38,9 @@ void main() {
     }
   });
 
-  // One store for the file, never closed (see switch_session_test.dart).
+  // One store for the file, never closed (see switch_collection_test.dart).
   Directory? dir;
-  late SessionStore store;
+  late CollectionStore store;
   late ProviderContainer container;
   tearDownAll(() {
     if (dir != null && dir!.existsSync()) dir!.deleteSync(recursive: true);
@@ -65,32 +65,32 @@ void main() {
     if (dir != null) return;
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('main_screen_photo_panel_test');
-    store = await SessionStore.open(directory: dir!.path);
+    store = await CollectionStore.open(directory: dir!.path);
   }
 
-  Future<Session> pumpMain(WidgetTester tester,
+  Future<WordCollection> pumpMain(WidgetTester tester,
       {List<WordPair>? words,
       bool photos = true,
       List<SessionSource>? sources,
-      Session? otherSession}) async {
+      WordCollection? otherCollection}) async {
     SharedPreferences.setMockInitialValues({});
-    late Session current;
+    late WordCollection current;
     await tester.runAsync(() async {
       await ensureStore();
       final now = DateTime.now();
-      current = Session.create()
+      current = WordCollection.create()
         ..updatedAt = now
         ..lastLocalModifiedAt = now
         ..words = words ?? twentyRows()
         ..sources = sources ?? (photos ? [photo('p1', 1), photo('p2', 2)] : []);
       await store.put(current);
-      await store.setCurrentSessionId(current.sessionId);
+      await store.setCurrentCollectionId(current.collectionId);
     });
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
-      if (otherSession != null)
-        nonEmptySessionsProvider.overrideWith((ref) => Stream.value([current, otherSession])),
+      if (otherCollection != null)
+        nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value([current, otherCollection])),
     ]);
     await tester.runAsync(() async {
       await container.read(wordInputNotifierProvider.future);
@@ -521,7 +521,7 @@ void main() {
   testWidgets('the drawer does not open while the panel is open, and the tab hides behind it',
       (tester) async {
     await pumpMain(tester,
-        otherSession: Session.create()..words = [WordPair(word: 'older')]);
+        otherCollection: WordCollection.create()..words = [WordPair(word: 'older')]);
     await tester.pump();
     final scaffold = tester.state<ScaffoldState>(find.byType(Scaffold).first);
     expect(scaffold.hasDrawer, isTrue);
@@ -543,10 +543,10 @@ void main() {
 
   testWidgets('a new current session closes the panel and clears the selection (AC-15b)',
       (tester) async {
-    late Session other;
+    late WordCollection other;
     await tester.runAsync(() async {
       await ensureStore();
-      other = Session.create()
+      other = WordCollection.create()
         ..updatedAt = DateTime(2026, 9, 2)
         ..lastLocalModifiedAt = DateTime(2026, 9, 2)
         ..words = [WordPair(word: 'from', sourceId: 'q1')]
@@ -559,7 +559,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.runAsync(() =>
-        container.read(wordInputNotifierProvider.notifier).switchTo(other.sessionId));
+        container.read(wordInputNotifierProvider.notifier).switchTo(other.collectionId));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);

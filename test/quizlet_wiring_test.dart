@@ -13,13 +13,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_logo_icon.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_input_speed_dial.dart';
@@ -123,7 +123,7 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
 
   setUpAll(() async {
     final saved = HttpOverrides.current;
@@ -135,12 +135,12 @@ void main() {
     }
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('quizlet_wiring_test');
-    store = await SessionStore.open(directory: dir.path);
-    final session = Session.create()
+    store = await CollectionStore.open(directory: dir.path);
+    final collection = WordCollection.create()
       ..words = [WordPair(word: 'harbour', sourceId: 'photo-a')]
       ..sources = [photo('photo-a'), photo('photo-b')];
-    await store.put(session);
-    await store.setCurrentSessionId(session.sessionId);
+    await store.put(collection);
+    await store.setCurrentCollectionId(collection.collectionId);
   });
 
   // The store is not closed: a debounced save started inside the widget
@@ -152,7 +152,7 @@ void main() {
   group('notifier upsertSetSource (AC-13b)', () {
     late ProviderContainer container;
     setUp(() => container = ProviderContainer(overrides: [
-          sessionStoreProvider.overrideWith((ref) async => store),
+          collectionStoreProvider.overrideWith((ref) async => store),
         ]));
     tearDown(() => container.dispose());
 
@@ -216,7 +216,7 @@ void main() {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
           const MethodChannel('flutter_tts'), (_) async => null);
       container = ProviderContainer(overrides: [
-        sessionStoreProvider.overrideWith((ref) async => store),
+        collectionStoreProvider.overrideWith((ref) async => store),
         googleTranslateServiceProvider.overrideWithValue(FakeTranslate()),
       ]);
       await tester
@@ -237,9 +237,9 @@ void main() {
       await importFrom(tester,
           'Check out this set: https://quizlet.com/ua/123456/animals/?x=1');
 
-      Session session() => container.read(wordInputNotifierProvider).value!;
+      WordCollection collection() => container.read(wordInputNotifierProvider).value!;
       List<WordPair> rows() =>
-          session().words.where((p) => !p.isEmpty).toList();
+          collection().words.where((p) => !p.isEmpty).toList();
 
       expect(rows().map((p) => p.word), ['harbour', 'cat', 'dog']);
       expect(rows().map((p) => p.sourceId),
@@ -251,10 +251,10 @@ void main() {
       expect(rows()[1].definitionMarkedFilled, isTrue);
       expect(rows()[2].definition, '');
       expect(rows()[2].definitionMarkedFilled, isFalse);
-      expect(session().sources.map((s) => s.id),
+      expect(collection().sources.map((s) => s.id),
           ['photo-a', 'photo-b', 'quizlet-123456']);
-      expect(session().sources.last.name, 'Animals');
-      expect(session().sources.last.kind, SourceKind.set);
+      expect(collection().sources.last.name, 'Animals');
+      expect(collection().sources.last.kind, SourceKind.set);
 
       reply = page('Wild animals', [
         ['cat', 'a small animal'],
@@ -265,11 +265,11 @@ void main() {
       expect(rows().map((p) => p.word), ['harbour', 'cat', 'dog', 'fox']);
       expect(rows().last.sourceId, 'quizlet-123456');
       expect(
-          session().sources.where((s) => s.kind == SourceKind.set).length, 1);
-      expect(session().sources.map((s) => s.id),
+          collection().sources.where((s) => s.kind == SourceKind.set).length, 1);
+      expect(collection().sources.map((s) => s.id),
           ['photo-a', 'photo-b', 'quizlet-123456']);
-      expect(session().sources.last.name, 'Wild animals');
-      expect(session().sources.last.url,
+      expect(collection().sources.last.name, 'Wild animals');
+      expect(collection().sources.last.url,
           'https://quizlet.com/123456/wild-animals/');
 
       await tester.pumpWidget(const SizedBox());

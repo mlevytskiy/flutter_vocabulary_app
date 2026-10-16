@@ -7,10 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 
 /// Hermetic: a throwaway Isar directory per test, no network, no device.
 /// The first run downloads the native Isar library into the pub cache — see
@@ -32,12 +32,12 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    dir = Directory.systemTemp.createTempSync('session_store_test');
-    store = await SessionStore.open(directory: dir.path);
+    dir = Directory.systemTemp.createTempSync('collection_store_test');
+    store = await CollectionStore.open(directory: dir.path);
   });
 
   tearDown(() async {
@@ -68,7 +68,7 @@ void main() {
     // AC-2
     test('round-trips words, their characters and all four extras', () async {
       final options = twoGroups();
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [
           WordPair(word: 'with\ttab', translation: 'з\tтабом'),
           WordPair(word: 'multi\nline', translation: 'багато\nрядків'),
@@ -81,8 +81,8 @@ void main() {
           )..translationOptions = options,
         ];
 
-      await store.put(session);
-      final back = await store.byId(session.sessionId);
+      await store.put(collection);
+      final back = await store.byId(collection.collectionId);
 
       expect(back, isNotNull);
       expect(back!.words.map((w) => w.word).toList(),
@@ -110,24 +110,24 @@ void main() {
 
     // AC-3
     test('does not persist the trailing blank row', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [
           WordPair(word: 'a', translation: 'а'),
           WordPair(word: 'b', translation: 'б'),
           WordPair(),
         ];
 
-      await store.put(session);
+      await store.put(collection);
 
-      expect((await store.byId(session.sessionId))!.words.length, 2);
+      expect((await store.byId(collection.collectionId))!.words.length, 2);
       // ...and the caller's own list is left alone.
-      expect(session.words.length, 3);
+      expect(collection.words.length, 3);
     });
 
     // definition-mode AC-13: definitions survive a restart; a definition-only
     // row is not a blank row.
     test('round-trips definitions and keeps definition-only rows', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [
           WordPair(
             word: 'tenacious',
@@ -138,8 +138,8 @@ void main() {
           WordPair(word: 'claim', translation: 'заява'),
         ];
 
-      await store.put(session);
-      final back = (await store.byId(session.sessionId))!;
+      await store.put(collection);
+      final back = (await store.byId(collection.collectionId))!;
 
       expect(back.words.length, 2);
       expect(back.words[0].definition,
@@ -154,67 +154,67 @@ void main() {
       expect(await store.newest(), isNull);
       expect(await store.nonEmpty(), isEmpty);
       expect(await store.byId('nope'), isNull);
-      expect(await store.currentSessionId(), isNull);
+      expect(await store.currentCollectionId(), isNull);
     });
 
     // AC-5
     test('nonEmpty() skips all-blank sessions; watchNonEmpty() emits on write',
         () async {
-      final blank = Session.create()..words = [WordPair()];
+      final blank = WordCollection.create()..words = [WordPair()];
       await store.put(blank);
       expect(await store.nonEmpty(), isEmpty);
 
-      final emissions = <List<Session>>[];
+      final emissions = <List<WordCollection>>[];
       final sub = store.watchNonEmpty().listen(emissions.add);
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(emissions.length, 1, reason: 'fireImmediately');
       expect(emissions.first, isEmpty);
 
-      final filled = Session.create()
+      final filled = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
       await store.put(filled);
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       expect(emissions.length, greaterThan(1));
-      expect(emissions.last.map((s) => s.sessionId), [filled.sessionId]);
+      expect(emissions.last.map((s) => s.collectionId), [filled.collectionId]);
       await sub.cancel();
     });
 
     test('newest() is the session this device touched last', () async {
-      final older = Session.create()
+      final older = WordCollection.create()
         ..words = [WordPair(word: 'old', translation: 'старе')]
         ..lastLocalModifiedAt =
             DateTime.now().subtract(const Duration(hours: 2));
-      final newer = Session.create()
+      final newer = WordCollection.create()
         ..words = [WordPair(word: 'new', translation: 'нове')];
       await store.put(older);
       await store.put(newer);
 
-      expect((await store.newest())!.sessionId, newer.sessionId);
-      expect((await store.nonEmpty()).map((s) => s.sessionId).toList(),
-          [newer.sessionId, older.sessionId]);
+      expect((await store.newest())!.collectionId, newer.collectionId);
+      expect((await store.nonEmpty()).map((s) => s.collectionId).toList(),
+          [newer.collectionId, older.collectionId]);
     });
 
     test('put upserts on sessionId instead of piling up rows', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(session);
-      session.words.add(WordPair(word: 'b', translation: 'б'));
-      await store.put(session);
+      await store.put(collection);
+      collection.words.add(WordPair(word: 'b', translation: 'б'));
+      await store.put(collection);
 
       expect((await store.nonEmpty()).length, 1);
-      expect((await store.byId(session.sessionId))!.words.length, 2);
+      expect((await store.byId(collection.collectionId))!.words.length, 2);
     });
 
     test('delete removes the session; the pointer round-trips', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(session);
-      await store.setCurrentSessionId(session.sessionId);
-      expect(await store.currentSessionId(), session.sessionId);
+      await store.put(collection);
+      await store.setCurrentCollectionId(collection.collectionId);
+      expect(await store.currentCollectionId(), collection.collectionId);
 
-      await store.delete(session.sessionId);
-      expect(await store.byId(session.sessionId), isNull);
+      await store.delete(collection.collectionId);
+      expect(await store.byId(collection.collectionId), isNull);
       expect(await store.nonEmpty(), isEmpty);
     });
 
@@ -232,7 +232,7 @@ void main() {
       final at = DateTime(2026, 9, 29, 10, 30, 15);
       await store.setSwitched('A', at);
       await store.close();
-      store = await SessionStore.open(directory: dir.path);
+      store = await CollectionStore.open(directory: dir.path);
 
       expect(await store.switchedAt('A'), at);
     });

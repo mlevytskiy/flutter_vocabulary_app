@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/models/word_group.dart';
 import '../../core/providers.dart';
 import '../../core/services/story_api_service.dart';
@@ -25,26 +25,26 @@ const storyDayLimitMessage =
 /// opens `ExerciseRoute` for the selected group, and without a group the
 /// coming-soon screen.
 GoRouteData startRouteFor(String exerciseId,
-    {String? sessionId, required String? groupId, required WordGroup? group}) {
+    {String? collectionId, required String? groupId, required WordGroup? group}) {
   if (exerciseId == 'mnemonic-story' && groupId != null) {
-    return StoryRoute(sessionId: sessionId, groupId: groupId);
+    return StoryRoute(collectionId: collectionId, groupId: groupId);
   } else if (exerciseId == 'dialogs-from-movie' && group != null) {
     return group.dialogueId != null
-        ? DialogueRoute(sessionId: sessionId, groupId: group.id)
-        : StoryRoute(sessionId: sessionId, groupId: group.id);
+        ? DialogueRoute(collectionId: collectionId, groupId: group.id)
+        : StoryRoute(collectionId: collectionId, groupId: group.id);
   } else if (group != null) {
-    return ExerciseRoute(sessionId: sessionId, exercise: exerciseId, groupId: group.id);
+    return ExerciseRoute(collectionId: collectionId, exercise: exerciseId, groupId: group.id);
   }
   return ComingSoonRoute(exercise: exerciseId);
 }
 
-/// The learn page (learn-part-step-1, SCR-03). [sessionId] is the session the
+/// The learn page (learn-part-step-1, SCR-03). [collectionId] is the session the
 /// exercises will read: none is the current session, an id is a History row
 /// (AC-13). Ticks are transient UI state.
 class LearnScreen extends ConsumerStatefulWidget {
-  const LearnScreen({super.key, this.sessionId});
+  const LearnScreen({super.key, this.collectionId});
 
-  final String? sessionId;
+  final String? collectionId;
 
   @override
   ConsumerState<LearnScreen> createState() => _LearnScreenState();
@@ -107,13 +107,13 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   /// others open for the selected group ([startRouteFor]). A screen already
   /// shown is not shown again.
   Future<void> _start() async {
-    final grouping = ref.read(wordGroupsNotifierProvider(widget.sessionId));
+    final grouping = ref.read(wordGroupsNotifierProvider(widget.collectionId));
     final groupId = grouping.selectedGroupId;
     final group = grouping.groups.where((g) => g.id == groupId).firstOrNull;
     final opened = <String>{};
     for (final exercise in exercises.where((e) => _ticked.contains(e.id))) {
       final route = startRouteFor(exercise.id,
-          sessionId: widget.sessionId, groupId: groupId, group: group);
+          collectionId: widget.collectionId, groupId: groupId, group: group);
       if (!opened.add(route.location)) continue;
       await route.push<void>(context);
       if (!mounted) return;
@@ -133,7 +133,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   }
 
   WordGroupsNotifier get _groups =>
-      ref.read(wordGroupsNotifierProvider(widget.sessionId).notifier);
+      ref.read(wordGroupsNotifierProvider(widget.collectionId).notifier);
 
   /// Sticky until OK or until an exercise is ticked.
   void _showHint() {
@@ -165,12 +165,12 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   /// Dialogs from movie can be ticked only in a session with film dialogues
   /// (get-words-from-subtitles-improvment AC-16).
   bool get _hasDialogues =>
-      _session?.dialogues.any((d) => !d.hidden) ?? false;
+      _collection?.dialogues.any((d) => !d.hidden) ?? false;
 
   /// The session whose words the groups name.
-  Session? get _session => widget.sessionId == null
+  WordCollection? get _collection => widget.collectionId == null
       ? ref.watch(wordInputNotifierProvider).valueOrNull
-      : ref.watch(sessionByIdProvider(widget.sessionId!)).valueOrNull;
+      : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
 
   /// The group line, the group pager and the grouping messages above the
   /// exercise cards (AC-01 – AC-05, AC-19).
@@ -210,7 +210,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
                 .where((g) => g.dialogueId == null && g.name != otherWordsName),
           ],
           wordsByRowId: {
-            for (final w in wordsToLearn(_session ?? Session.create()))
+            for (final w in wordsToLearn(_collection ?? WordCollection.create()))
               w.rowId: w.word.trim(),
           },
           selectedId: grouping.selectedGroupId,
@@ -226,7 +226,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final grouping = ref.watch(wordGroupsNotifierProvider(widget.sessionId));
+    final grouping = ref.watch(wordGroupsNotifierProvider(widget.collectionId));
     // The story is made from the selected group, so Mnemonic story cannot
     // start without one (AC-04, AC-05).
     final canStart = _canStart(grouping);

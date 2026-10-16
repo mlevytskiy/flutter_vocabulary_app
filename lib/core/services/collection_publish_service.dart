@@ -9,9 +9,9 @@ import '../models/session_source.dart';
 import '../models/word_pair.dart';
 import '../providers.dart' show WordDetailMode;
 
-class SessionPublishException implements Exception {
+class CollectionPublishException implements Exception {
   final String message;
-  SessionPublishException(this.message);
+  CollectionPublishException(this.message);
 
   @override
   String toString() => message;
@@ -19,7 +19,7 @@ class SessionPublishException implements Exception {
 
 /// What `POST /sessions` answers: the id is the only credential the page has,
 /// the url is what gets handed to the person across the table.
-class PublishedSession {
+class PublishedCollection {
   final String id;
   final String url;
   final DateTime? expiresAt;
@@ -38,7 +38,7 @@ class PublishedSession {
   /// (get-words-from-subtitles-improvment ADR-0005).
   final List<FilmDialogue> declaredDialogues;
 
-  PublishedSession({
+  PublishedCollection({
     required this.id,
     required this.url,
     this.expiresAt,
@@ -58,17 +58,17 @@ const publishedSourceKinds = {SourceKind.photo, SourceKind.set};
 /// (task-05). Sits beside [VocabPhotoService] and reuses the same base URL and
 /// shared secret; the file share stays the guaranteed return path, this is
 /// the link next to it.
-class SessionPublishService {
+class CollectionPublishService {
   static const _timeout = Duration(seconds: 20);
 
   final http.Client _client;
 
-  SessionPublishService({http.Client? client})
+  CollectionPublishService({http.Client? client})
       : _client = client ?? http.Client();
 
   /// Blank pairs — the trailing empty row the input screen always keeps — are
   /// dropped here so they can never reach the page. Throws
-  /// [SessionPublishException] when nothing is left to publish.
+  /// [CollectionPublishException] when nothing is left to publish.
   ///
   /// [detail] is the learner's word detail mode at publishing time; the page
   /// and its AnkiDroid download show the columns it shows (definition-mode,
@@ -87,7 +87,7 @@ class SessionPublishService {
   /// `entries`, its import id and, when drawn, its scene picture declared
   /// like a photo (get-words-from-subtitles-improvment ADR-0005). None sends
   /// no `dialogues` key.
-  Future<PublishedSession> publish(
+  Future<PublishedCollection> publish(
     List<WordPair> pairs, {
     WordDetailMode detail = WordDetailMode.translation,
     List<SessionSource> sources = const [],
@@ -96,7 +96,7 @@ class SessionPublishService {
     List<FilmDialogue> dialogues = const [],
   }) async {
     if (VocabApiConfig.appSecret.isEmpty) {
-      throw SessionPublishException(
+      throw CollectionPublishException(
         'Vocab API secret is not configured. Fill in lib/config/vocab_api_config.dart.',
       );
     }
@@ -133,7 +133,7 @@ class SessionPublishService {
         },
     ];
     if (entries.isEmpty) {
-      throw SessionPublishException('There are no words to publish');
+      throw CollectionPublishException('There are no words to publish');
     }
 
     final position = <String, int>{
@@ -196,9 +196,9 @@ class SessionPublishService {
           // forever (AC-16): the person is waiting to hand over a link.
           .timeout(_timeout);
     } on TimeoutException {
-      throw SessionPublishException('The request timed out, please try again');
+      throw CollectionPublishException('The request timed out, please try again');
     } catch (e) {
-      throw SessionPublishException('Network error: $e');
+      throw CollectionPublishException('Network error: $e');
     }
 
     Map<String, dynamic> decoded;
@@ -206,24 +206,24 @@ class SessionPublishService {
       decoded =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
     } catch (_) {
-      throw SessionPublishException(
+      throw CollectionPublishException(
         'Unexpected response (status ${response.statusCode})',
       );
     }
 
     if (response.statusCode != 200) {
       final error = decoded['error'] as String? ?? 'Request failed';
-      throw SessionPublishException(error);
+      throw CollectionPublishException(error);
     }
 
     final id = decoded['id'] as String?;
     final url = decoded['url'] as String?;
     if (id == null || url == null) {
-      throw SessionPublishException('Unexpected response: no link returned');
+      throw CollectionPublishException('Unexpected response: no link returned');
     }
     final expiresAt = decoded['expiresAt'] as String?;
 
-    return PublishedSession(
+    return PublishedCollection(
       id: id,
       url: url,
       expiresAt: expiresAt != null ? DateTime.tryParse(expiresAt) : null,

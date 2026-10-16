@@ -18,30 +18,30 @@ import 'translate_sentences/translate_sentences_screen.dart';
 /// one `case` here when it ships. Anything else — an unknown id, or an
 /// exercise marked available whose screen is not built — opens the
 /// coming-soon screen, never an empty one (AC-04).
-Widget exerciseScreen(String exercise, String? sessionId, String groupId) {
+Widget exerciseScreen(String exercise, String? collectionId, String groupId) {
   switch (exercise) {
     case 'explain-to-friend':
-      return ExplainToFriendScreen(sessionId: sessionId, groupId: groupId);
+      return ExplainToFriendScreen(collectionId: collectionId, groupId: groupId);
     case 'fill-the-gaps':
-      return FillTheGapsScreen(sessionId: sessionId, groupId: groupId);
+      return FillTheGapsScreen(collectionId: collectionId, groupId: groupId);
     case 'guess-my-word':
-      return GuessMyWordScreen(sessionId: sessionId, groupId: groupId);
+      return GuessMyWordScreen(collectionId: collectionId, groupId: groupId);
     case 'match-definitions':
-      return MatchDefinitionsScreen(sessionId: sessionId, groupId: groupId);
+      return MatchDefinitionsScreen(collectionId: collectionId, groupId: groupId);
     case 'match-synonyms':
-      return MatchSynonymsScreen(sessionId: sessionId, groupId: groupId);
+      return MatchSynonymsScreen(collectionId: collectionId, groupId: groupId);
     case 'own-sentences':
-      return OwnSentencesScreen(sessionId: sessionId, groupId: groupId);
+      return OwnSentencesScreen(collectionId: collectionId, groupId: groupId);
     case 'pick-the-answer':
-      return PickTheAnswerScreen(sessionId: sessionId, groupId: groupId);
+      return PickTheAnswerScreen(collectionId: collectionId, groupId: groupId);
     case 'quiz':
-      return QuizScreen(sessionId: sessionId, groupId: groupId);
+      return QuizScreen(collectionId: collectionId, groupId: groupId);
     case 'remember-or-not':
-      return RememberOrNotScreen(sessionId: sessionId, groupId: groupId);
+      return RememberOrNotScreen(collectionId: collectionId, groupId: groupId);
     case 'sentence-patterns':
-      return SentencePatternsScreen(sessionId: sessionId, groupId: groupId);
+      return SentencePatternsScreen(collectionId: collectionId, groupId: groupId);
     case 'translate-sentences':
-      return TranslateSentencesScreen(sessionId: sessionId, groupId: groupId);
+      return TranslateSentencesScreen(collectionId: collectionId, groupId: groupId);
     default:
       return ComingSoonScreen(exerciseId: exercise);
   }

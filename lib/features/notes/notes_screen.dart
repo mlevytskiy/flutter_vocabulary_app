@@ -49,7 +49,7 @@ class NotesScreen extends ConsumerStatefulWidget {
   static Key linkFieldKey(int i) => i == 0 ? linkKey : ValueKey('notes-link-$i');
   static const addLinkKey = Key('notes-add-link');
   static const tagFieldKey = Key('notes-tag-field');
-  static const sessionTagFieldKey = Key('notes-session-tag-field');
+  static const collectionTagFieldKey = Key('notes-session-tag-field');
 
   /// One item's height, its title and spacing included.
   static const itemExtent = 300.0;
@@ -105,7 +105,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         const <WordPair>[];
     final mode = ref.watch(wordDetailModeProvider);
     final preloader = ref.watch(photoPreloaderProvider);
-    final sessionTags =
+    final collectionTags =
         ref.watch(wordInputNotifierProvider).valueOrNull?.tags ?? const [];
     final notifier = ref.read(wordInputNotifierProvider.notifier);
     return Scaffold(
@@ -126,11 +126,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               border: Border(bottom: BorderSide(color: Color(0x33954EF3))),
             ),
             child: TagEditor(
-              fieldKey: NotesScreen.sessionTagFieldKey,
+              fieldKey: NotesScreen.collectionTagFieldKey,
               label: 'Session tags',
-              tags: sessionTags,
-              suggestions: ref.watch(sessionTagSuggestionsProvider),
-              onChanged: notifier.setSessionTags,
+              tags: collectionTags,
+              suggestions: ref.watch(collectionTagSuggestionsProvider),
+              onChanged: notifier.setCollectionTags,
             ),
           ),
           Expanded(

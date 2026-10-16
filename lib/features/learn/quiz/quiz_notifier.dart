@@ -167,10 +167,10 @@ class Quiz extends _$Quiz {
   late Random _random;
 
   @override
-  Future<QuizState> build(String? sessionId, String groupId) async {
+  Future<QuizState> build(String? collectionId, String groupId) async {
     _random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
-    final dialogues = await ref.watch(exerciseDialoguesProvider(sessionId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
+    final dialogues = await ref.watch(exerciseDialoguesProvider(collectionId).future);
     final candidates = <WordPair>[
       for (final w in words.group)
         if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty) w,
@@ -214,8 +214,8 @@ class Quiz extends _$Quiz {
   }
 
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
-    ref.invalidate(exerciseDialoguesProvider(sessionId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
+    ref.invalidate(exerciseDialoguesProvider(collectionId));
     ref.invalidateSelf();
   }
 
@@ -244,7 +244,7 @@ class Quiz extends _$Quiz {
     if (s == null || q == null || s.answer != null) return;
     state = AsyncData(s._with(answers: [...s.answers]..[s.index] = answer));
     unawaited(ref.read(examResultSinkProvider).record(
-          sessionId: sessionId,
+          collectionId: collectionId,
           rowId: q.rowId,
           exerciseId: quizExerciseId,
           label: answer.label,

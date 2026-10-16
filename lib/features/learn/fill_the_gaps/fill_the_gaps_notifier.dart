@@ -68,9 +68,9 @@ class FillState {
 @riverpod
 class FillTheGaps extends _$FillTheGaps {
   @override
-  Future<FillState> build(String? sessionId, String groupId) async {
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
-    final dialogues = await ref.watch(exerciseDialoguesProvider(sessionId).future);
+  Future<FillState> build(String? collectionId, String groupId) async {
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
+    final dialogues = await ref.watch(exerciseDialoguesProvider(collectionId).future);
     // Under 3 words to learn, or under 3 with a translation: nothing to ask.
     final candidates = <WordPair>[
       for (final w in words.group)
@@ -83,8 +83,8 @@ class FillTheGaps extends _$FillTheGaps {
   }
 
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
-    ref.invalidate(exerciseDialoguesProvider(sessionId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
+    ref.invalidate(exerciseDialoguesProvider(collectionId));
     ref.invalidateSelf();
   }
 

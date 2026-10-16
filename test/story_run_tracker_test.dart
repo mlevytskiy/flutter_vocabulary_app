@@ -9,12 +9,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/offered_ai.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/story_picture_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
@@ -131,15 +131,15 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
   late StoryRunStore runStore;
   late FakeStoryApi api;
   late ProviderContainer container;
-  late Session session;
+  late WordCollection collection;
   late WordGroup group;
 
   ProviderContainer makeContainer() => ProviderContainer(overrides: [
-        sessionStoreProvider.overrideWith((ref) async => store),
+        collectionStoreProvider.overrideWith((ref) async => store),
         storyRunStoreProvider.overrideWith((ref) async => runStore),
         storyApiServiceProvider.overrideWithValue(api),
         storyPictureStoreProvider.overrideWithValue(
@@ -151,20 +151,20 @@ void main() {
   Future<void> boot({Map<String, Object> prefs = const {}}) async {
     SharedPreferences.setMockInitialValues(prefs);
     dir = Directory.systemTemp.createTempSync('story_run_tracker_test');
-    store = await SessionStore.open(directory: dir.path);
+    store = await CollectionStore.open(directory: dir.path);
     runStore = await StoryRunStore.open(directory: dir.path);
     api = FakeStoryApi();
-    session = Session.create();
-    session.words = [for (var i = 1; i <= 8; i++) WordPair(word: 'w$i', translation: 'п', rowId: 'r$i')];
+    collection = WordCollection.create();
+    collection.words = [for (var i = 1; i <= 8; i++) WordPair(word: 'w$i', translation: 'п', rowId: 'r$i')];
     group = WordGroup()
       ..id = 'g1'
       ..name = 'Food'
       ..rowIds = [for (var i = 1; i <= 8; i++) 'r$i'];
-    session.groups = [group];
-    session.selectedGroupId = 'g1';
-    session.lastLocalModifiedAt = DateTime.now();
-    await store.put(session);
-    await store.setCurrentSessionId(session.sessionId);
+    collection.groups = [group];
+    collection.selectedGroupId = 'g1';
+    collection.lastLocalModifiedAt = DateTime.now();
+    await store.put(collection);
+    await store.setCurrentCollectionId(collection.collectionId);
     container = makeContainer();
   }
 
@@ -176,10 +176,10 @@ void main() {
 
   StoryRunTracker tracker() => container.read(storyRunTrackerProvider.notifier);
 
-  Future<Session> saved() async => (await store.byId(session.sessionId))!;
+  Future<WordCollection> saved() async => (await store.byId(collection.collectionId))!;
 
   Future<StoryRun> startedRun() async {
-    final id = await tracker().startFor(session.sessionId, group);
+    final id = await tracker().startFor(collection.collectionId, group);
     expect(id, isNotNull);
     return (await runStore.byId(id!))!;
   }
@@ -202,7 +202,7 @@ void main() {
 
     expect(run.outcome, 'running');
     expect(run.collected, isFalse);
-    expect(run.sessionId, session.sessionId);
+    expect(run.collectionId, collection.collectionId);
     expect(run.groupId, 'g1');
     expect(run.groupName, 'Food');
     expect(run.words, [for (var i = 1; i <= 8; i++) 'w$i']);
@@ -285,7 +285,7 @@ void main() {
     final oldWords = (await saved()).groups.single.storyWords;
 
     group = (await saved()).groups.single;
-    final replacement = await tracker().startFor(session.sessionId, group, replacing: true);
+    final replacement = await tracker().startFor(collection.collectionId, group, replacing: true);
     expect(replacement, isNotNull);
     api.worker[replacement!] = [
       step('story', text: 's'),
@@ -301,7 +301,7 @@ void main() {
     expect((await saved()).groups.single.storyWords, oldWords);
     expect(await runStore.byId(old.runId), isNotNull, reason: 'earlier runs are never removed (AC-15)');
 
-    final again = await tracker().startFor(session.sessionId, (await saved()).groups.single, replacing: true);
+    final again = await tracker().startFor(collection.collectionId, (await saved()).groups.single, replacing: true);
     workerFinishes(again!);
     await tracker().poll();
     expect((await saved()).groups.single.storyRunId, again);
@@ -408,7 +408,7 @@ void main() {
     await boot();
     api.startResult = const StoryRefused(StoryRefusal.dayLimit);
 
-    final id = await tracker().startFor(session.sessionId, group);
+    final id = await tracker().startFor(collection.collectionId, group);
 
     expect(id, isNull);
     final run = (await runStore.newestFirst()).single;
@@ -423,7 +423,7 @@ void main() {
     await boot();
     api.startResult = const StoryRefused(StoryRefusal.notOffered, model: 'grok-imagine-image-2.0');
 
-    await tracker().startFor(session.sessionId, group);
+    await tracker().startFor(collection.collectionId, group);
 
     final refusal = container.read(storyRunTrackerProvider).refusals['g1']!;
     expect(refusal.reason, StoryRefusal.notOffered);
@@ -436,7 +436,7 @@ void main() {
     await boot();
     api.startThrows = StoryApiException(StoryApiError.network, 'offline');
 
-    final id = await tracker().startFor(session.sessionId, group);
+    final id = await tracker().startFor(collection.collectionId, group);
 
     expect(id, isNull);
     final run = (await runStore.newestFirst()).single;
@@ -449,7 +449,7 @@ void main() {
     await boot();
     final run = StoryRun()
       ..runId = 'lost'
-      ..sessionId = session.sessionId
+      ..collectionId = collection.collectionId
       ..groupId = 'g1'
       ..groupName = 'Food'
       ..words = ['w1']
@@ -468,38 +468,38 @@ void main() {
       () async {
     await boot();
     // a run in progress
-    final first = await tracker().startFor(session.sessionId, group);
+    final first = await tracker().startFor(collection.collectionId, group);
     expect(first, isNotNull);
-    expect(await tracker().startFor(session.sessionId, group), isNull);
+    expect(await tracker().startFor(collection.collectionId, group), isNull);
     expect(api.starts, hasLength(1));
 
     // a failed run waits for the learner's "Try again"
     api.worker[first!] = [step('story', outcome: 'failed', text: 's', missed: ['w1'])];
     await tracker().poll();
-    expect(await tracker().startFor(session.sessionId, group), isNull);
+    expect(await tracker().startFor(collection.collectionId, group), isNull);
     expect(api.starts, hasLength(1));
 
     // "Try again" is a start that replaces
-    expect(await tracker().startFor(session.sessionId, group, replacing: true), isNotNull);
+    expect(await tracker().startFor(collection.collectionId, group, replacing: true), isNotNull);
     expect(api.starts, hasLength(2));
 
     // a group that has a story
     final withStory = group.copy()..storyRunId = 'x';
-    expect(await tracker().startFor(session.sessionId, withStory), isNull);
+    expect(await tracker().startFor(collection.collectionId, withStory), isNull);
     expect(api.starts, hasLength(2));
   });
 
   test('the word-groups start hook starts a run through the tracker (AC-06)', () async {
     await boot();
 
-    await container.read(storyRunStartHookProvider)(session.sessionId, group);
+    await container.read(storyRunStartHookProvider)(collection.collectionId, group);
 
     expect(api.starts, hasLength(1));
   });
 
   test('a run for a History session is saved into that session, not the current one (AC-11)', () async {
     await boot();
-    final history = Session.create();
+    final history = WordCollection.create();
     history.words = [for (var i = 1; i <= 8; i++) WordPair(word: 'h$i', translation: 'п', rowId: 'h$i')];
     final hGroup = WordGroup()
       ..id = 'hg'
@@ -509,11 +509,11 @@ void main() {
     history.lastLocalModifiedAt = DateTime.now().subtract(const Duration(days: 3));
     await store.put(history);
 
-    final id = await tracker().startFor(history.sessionId, hGroup);
+    final id = await tracker().startFor(history.collectionId, hGroup);
     workerFinishes(id!);
     await tracker().poll();
 
-    expect((await store.byId(history.sessionId))!.groups.single.storyRunId, id);
+    expect((await store.byId(history.collectionId))!.groups.single.storyRunId, id);
     expect((await saved()).groups.single.storyRunId, isNull);
   });
 
@@ -612,7 +612,7 @@ void main() {
 
     Future<void> bootWithDialogue() async {
       await boot();
-      session.dialogues = [
+      collection.dialogues = [
         FilmDialogue()
           ..id = 'd1'
           ..lines = ['- Where is w1?', '- Up in the w2.']
@@ -623,8 +623,8 @@ void main() {
         ..name = 'Where is w1?'
         ..rowIds = ['r1', 'r2']
         ..dialogueId = 'd1';
-      session.groups = [dialogueGroup, group];
-      await store.put(session);
+      collection.groups = [dialogueGroup, group];
+      await store.put(collection);
     }
 
     void workerDraws(String runId, {int attempt = 1}) {
@@ -637,7 +637,7 @@ void main() {
 
     test('startScene saves a scene run with the dialogue and starts it with two AIs (AC-14)', () async {
       await bootWithDialogue();
-      final id = await tracker().startScene(session.sessionId, dialogueGroup);
+      final id = await tracker().startScene(collection.collectionId, dialogueGroup);
       expect(id, isNotNull);
 
       final run = (await runStore.byId(id!))!;
@@ -653,7 +653,7 @@ void main() {
 
     test('a drawn scene is collected in two steps and becomes the dialogue\'s picture (AC-14)', () async {
       await bootWithDialogue();
-      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      final id = (await tracker().startScene(collection.collectionId, dialogueGroup))!;
       workerDraws(id);
       await tracker().poll();
 
@@ -669,11 +669,11 @@ void main() {
 
     test('in a shared session the picture then waits for its upload (ADR-0005)', () async {
       await bootWithDialogue();
-      session
+      collection
         ..publishedId = 'pub'
         ..editToken = 'tok';
-      await store.put(session);
-      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      await store.put(collection);
+      final id = (await tracker().startScene(collection.collectionId, dialogueGroup))!;
       workerDraws(id);
       await tracker().poll();
       expect((await saved()).dialogues.single.picturePushState, PushState.pending);
@@ -681,24 +681,24 @@ void main() {
 
     test('a dialogue with a picture is never drawn again (AC-14)', () async {
       await bootWithDialogue();
-      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      final id = (await tracker().startScene(collection.collectionId, dialogueGroup))!;
       workerDraws(id);
       await tracker().poll();
 
-      expect(await tracker().startScene(session.sessionId, dialogueGroup), isNull);
+      expect(await tracker().startScene(collection.collectionId, dialogueGroup), isNull);
       expect(api.starts, hasLength(1));
     });
 
     test('a scene run going is not started twice', () async {
       await bootWithDialogue();
-      await tracker().startScene(session.sessionId, dialogueGroup);
-      expect(await tracker().startScene(session.sessionId, dialogueGroup), isNull);
+      await tracker().startScene(collection.collectionId, dialogueGroup);
+      expect(await tracker().startScene(collection.collectionId, dialogueGroup), isNull);
       expect(api.starts, hasLength(1));
     });
 
     test('a failed prompt stops the run; Try again redoes it (AC-18)', () async {
       await bootWithDialogue();
-      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      final id = (await tracker().startScene(collection.collectionId, dialogueGroup))!;
       api.worker[id] = [step('prompt', outcome: 'failed')];
       await tracker().poll();
       expect((await runStore.byId(id))!.outcome, 'failed');
@@ -711,7 +711,7 @@ void main() {
 
     test('a failed picture can be drawn again (AC-18)', () async {
       await bootWithDialogue();
-      final id = (await tracker().startScene(session.sessionId, dialogueGroup))!;
+      final id = (await tracker().startScene(collection.collectionId, dialogueGroup))!;
       api.worker[id] = [step('prompt'), step('picture', outcome: 'failed')];
       await tracker().poll();
       expect((await runStore.byId(id))!.outcome, 'failed');
@@ -728,7 +728,7 @@ void main() {
     test('the day limit is recorded for the dialogue group (AC-19)', () async {
       await bootWithDialogue();
       api.startResult = const StoryRefused(StoryRefusal.dayLimit);
-      expect(await tracker().startScene(session.sessionId, dialogueGroup), isNull);
+      expect(await tracker().startScene(collection.collectionId, dialogueGroup), isNull);
       expect(container.read(storyRunTrackerProvider).refusals['dialogue-d1']?.reason, StoryRefusal.dayLimit);
     });
   });
