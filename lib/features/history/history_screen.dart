@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/models/collection_name.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/providers.dart';
 import '../../router/routes.dart';
@@ -25,7 +26,7 @@ class HistoryScreen extends ConsumerWidget {
       body: collections.isEmpty
           ? const Center(
               child: Text(
-                'No sessions yet',
+                'No collections yet',
                 style: TextStyle(fontSize: 18, color: Colors.grey),
               ),
             )
@@ -36,7 +37,20 @@ class HistoryScreen extends ConsumerWidget {
                 final words = collection.words.where((w) => !w.isEmpty).length;
                 return ListTile(
                   leading: const Icon(Icons.list_alt),
-                  title: Text('$words ${words == 1 ? 'word' : 'words'}'),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          collection.name ??
+                              defaultCollectionName(
+                                  creationMomentOf(collection.collectionId) ?? collection.updatedAt),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('$words ${words == 1 ? 'word' : 'words'}'),
+                    ],
+                  ),
                   subtitle: Text(_formatTimestamp(collection.updatedAt)),
                   trailing: collection.collectionId == currentCollectionId
                       ? const Chip(label: Text('current'))

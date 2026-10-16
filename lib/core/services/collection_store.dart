@@ -180,6 +180,16 @@ class CollectionStore {
     }
   }
 
+  /// The id of every stored collection, binned ones too: a story run whose
+  /// collection is not here was erased (collections-screen T20).
+  Future<Set<String>> allIds() async {
+    try {
+      return (await _isar.wordCollections.where().collectionIdProperty().findAll()).toSet();
+    } catch (_) {
+      return const {};
+    }
+  }
+
   /// Sessions with at least one non-blank word, newest first.
   Future<List<WordCollection>> nonEmpty() async {
     try {
