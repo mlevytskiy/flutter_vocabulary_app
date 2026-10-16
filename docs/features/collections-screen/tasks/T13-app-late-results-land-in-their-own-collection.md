@@ -7,7 +7,7 @@ acs: ["AC-11", "AC-27"]
 files_hint: ["lib/features/word_input/word_input_notifier.dart", "lib/features/word_input/quizlet_import_flow.dart", "lib/features/word_input/subtitle_import_flow.dart", "lib/features/word_input/word_input_screen.dart", "test/late_results_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T13 — Deliver late translation, photo reading, Quizlet and subtitle results into the collection they started in

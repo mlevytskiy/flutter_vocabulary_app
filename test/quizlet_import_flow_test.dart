@@ -75,6 +75,7 @@ void main() {
   late FakePageDriver driver;
   late FakeTranslate translate;
   late List<(List<VocabWord>, QuizletImportedSet)> added;
+  late List<(String, List<VocabWord>, QuizletImportedSet)> addedLate;
   late String collectionId;
   late List<String> collection;
 
@@ -85,6 +86,7 @@ void main() {
     driver = FakePageDriver();
     translate = FakeTranslate();
     added = [];
+    addedLate = [];
     collectionId = 'session-A';
     collection = ['tide'];
     await tester.pumpWidget(ProviderScope(
@@ -98,6 +100,8 @@ void main() {
                 currentCollectionId: () => collectionId,
                 collectionWords: () => collection,
                 addWords: (words, set) => added.add((words, set)),
+                addWordsTo: (id, words, set) async =>
+                    addedLate.add((id, words, set)),
                 driverFactory: (_) => driver,
               ),
               child: const Text('import'),
@@ -223,22 +227,26 @@ void main() {
   });
 
   testWidgets(
-      'the session changed before the results dialog: words dropped, no '
-      'dialog (AC-16)', (tester) async {
+      'the collection changed before the results dialog: the dialog still '
+      'shows, Done delivers into the collection it started in (AC-11)',
+      (tester) async {
     await pumpHost(tester);
     await startImport(tester, cards: [
       ['cat', 'x'],
     ]);
     collectionId = 'session-B';
     await settle(tester);
-    expect(find.text(reading), findsNothing);
-    expect(find.text('Done'), findsNothing);
+    expect(find.text('Done'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await settle(tester);
     expect(added, isEmpty);
-    expect(find.byType(SnackBar), findsNothing);
+    expect(addedLate.single.$1, 'session-A');
+    expect(addedLate.single.$2.single.word, 'cat');
   });
 
-  testWidgets('the session changed while the results dialog was open (AC-16)',
-      (tester) async {
+  testWidgets(
+      'the collection changed while the results dialog was open: delivered '
+      'into the collection it started in (AC-11)', (tester) async {
     await pumpHost(tester);
     await startImport(tester, cards: [
       ['cat', 'x'],
@@ -248,6 +256,8 @@ void main() {
     await tester.tap(find.text('Done'));
     await settle(tester);
     expect(added, isEmpty);
+    expect(addedLate.single.$1, 'session-A');
+    expect(addedLate.single.$3.id, '123456');
   });
 
   testWidgets(

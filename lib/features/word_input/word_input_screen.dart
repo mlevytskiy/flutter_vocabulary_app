@@ -537,6 +537,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   Future<void> _processPickedPhoto(XFile picked,
       {ImageSource source = ImageSource.camera}) async {
     final collectionId = _collectionIdNow;
+    final notifier = ref.read(wordInputNotifierProvider.notifier);
     setState(() {
       _isAnalyzingPhoto = true;
     });
@@ -566,7 +567,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             limit: _photoWordCap,
           );
       requestStopwatch.stop();
-      if (_collectionIdNow != collectionId) return;
 
       if (mounted) {
         showVocabResultDialog(
@@ -577,7 +577,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
           aiDuration: result.aiDuration,
         ).then((selected) async {
           final source = await kept;
-          if (selected != null && selected.isNotEmpty && mounted && _collectionIdNow == collectionId) {
+          if (selected != null && selected.isNotEmpty && collectionId != null && _collectionIdNow != collectionId) {
+            // Another collection was opened since the photo was taken: the
+            // words go to the one it was taken in (ADR-0006, AC-11).
+            final delivered = await notifier.addWordsTo(collectionId,
+                [for (final w in selected) wordPairFromPhoto(w)],
+                photo: source);
+            if (!delivered && source != null) await ref.read(sourcePhotoStoreProvider).delete(source);
+          } else if (selected != null && selected.isNotEmpty && mounted) {
             _addWordsFromPhoto(selected, source: source);
           } else if (source != null) {
             // No row came from it, so it is not a source photo.
@@ -683,6 +690,16 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         addDialogues: (dialogues, keptCount) {
           if (mounted) ref.read(wordInputNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
         },
+        addWordsTo: (collectionId, words, film, poster, dialogues) async {
+          if (!mounted) return;
+          await ref.read(wordInputNotifierProvider.notifier).addWordsTo(
+                collectionId,
+                [for (final w in words) wordPairFromPhoto(w)],
+                film: film,
+                poster: poster,
+                dialogues: dialogues,
+              );
+        },
       );
 
   /// import-from-quizlet: the "Import from Quizlet" speed-dial item. On Done
@@ -702,6 +719,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               .read(wordInputNotifierProvider.notifier)
               .upsertSetSource(set.id, set.name, set.url);
           _addWordsFromPhoto(words, sourceId: sourceId);
+        },
+        addWordsTo: (collectionId, words, set) async {
+          if (!mounted) return;
+          await ref.read(wordInputNotifierProvider.notifier).addWordsTo(
+                collectionId,
+                [for (final w in words) wordPairFromPhoto(w)],
+                set: set,
+              );
         },
         driverFactory: widget.quizletDriverFactory,
       );
