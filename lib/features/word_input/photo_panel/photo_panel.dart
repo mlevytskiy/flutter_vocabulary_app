@@ -857,9 +857,14 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
           clipper: _RectClipper(_panelRect(t)),
           child: Opacity(
             opacity: Curves.easeOut.transform(p.clamp(0.0, 1.0)),
-            child: KeyedSubtree(
-              key: PhotoPanel.notesRevealKey,
-              child: widget.notesPage!(widget.controller.selectedId),
+            // The navigator's insets, as the pushed page gets them: the
+            // panel sits in a body whose top bar took the status bar's.
+            child: MediaQuery(
+              data: MediaQuery.of(Navigator.of(context).context),
+              child: KeyedSubtree(
+                key: PhotoPanel.notesRevealKey,
+                child: widget.notesPage!(widget.controller.selectedId),
+              ),
             ),
           ),
         ),

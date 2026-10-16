@@ -316,6 +316,9 @@ void main() {
 
     testWidgets('a drag past half-open turns the panel into the Notes page, '
         'which then opens on the selected source (owner, 2026-10-15)', (tester) async {
+      // A notch: the page in the panel keeps clear of it, as the pushed one.
+      tester.view.padding = const FakeViewPadding(top: 150);
+      addTearDown(tester.view.resetPadding);
       await pumpMain(tester);
       await openHalf(tester);
       await select(tester, 'p2');
@@ -333,10 +336,16 @@ void main() {
       expect(find.byKey(PhotoPanel.largeBrowserKey), findsNothing);
       final reveal = tester.getRect(find.byKey(PhotoPanel.notesRevealKey));
       expect(reveal.left, 0, reason: 'laid out on the whole screen, as pushed');
+      final revealTitle = tester.getRect(find.descendant(
+          of: find.byKey(PhotoPanel.notesRevealKey),
+          matching: find.text('Notes')));
 
       await gesture.up();
       await tester.pumpAndSettle();
       expect(find.byType(NotesScreen), findsOneWidget);
+      expect(tester.getRect(find.text('Notes')), revealTitle,
+          reason: 'the top bar is below the notch in both');
+      expect(revealTitle.top, greaterThan(150 / tester.view.devicePixelRatio));
       expect(find.byKey(PhotoPanel.notesRevealKey), findsNothing,
           reason: 'under Notes the panel is back at half-open');
       expect(find.byKey(NotesScreen.itemKey('p2')), findsOneWidget);

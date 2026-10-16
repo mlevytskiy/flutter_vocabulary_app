@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -58,13 +61,41 @@ class NotesScreen extends ConsumerStatefulWidget {
 class _NotesScreenState extends ConsumerState<NotesScreen> {
   ScrollController? _scroll;
 
+  /// The item in the middle of the list: only its picture flies as a hero,
+  /// so pictures built out of view do not fly off past the top bar.
+  final _heroIndex = ValueNotifier<int>(0);
+  double _viewport = 0;
+  int _count = 0;
+
   /// A picture is being pinched or is zoomed in: the list stands still.
   bool _zooming = false;
 
   @override
   void dispose() {
     _scroll?.dispose();
+    _heroIndex.dispose();
     super.dispose();
+  }
+
+  /// After a scroll, the item showing the most of itself; on a tie the one
+  /// that flies now keeps it.
+  void _followScroll() {
+    const extent = NotesScreen.itemExtent;
+    final offset = _scroll!.offset;
+    var best = _heroIndex.value;
+    double shown(int i) => (math.min(offset + _viewport, (i + 1) * extent) -
+            math.max(offset, i * extent))
+        .clamp(0.0, extent);
+    var most = shown(best);
+    for (var i = (offset ~/ extent).clamp(0, _count);
+        i < _count && i * extent < offset + _viewport;
+        i++) {
+      if (shown(i) > most) {
+        most = shown(i);
+        best = i;
+      }
+    }
+    _heroIndex.value = best;
   }
 
   @override
@@ -117,11 +148,18 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         .indexWhere((s) => s.source.id == widget.selectedId);
                     final end =
                         sources.length * NotesScreen.itemExtent - box.maxHeight;
-                    _scroll ??= ScrollController(
-                      initialScrollOffset:
-                          (NotesScreen.itemExtent * (at < 0 ? 0 : at))
-                              .clamp(0.0, end < 0 ? 0.0 : end),
-                    );
+                    _viewport = box.maxHeight;
+                    _count = sources.length;
+                    if (_scroll == null) {
+                      _scroll = ScrollController(
+                        initialScrollOffset:
+                            (NotesScreen.itemExtent * (at < 0 ? 0 : at))
+                                .clamp(0.0, end < 0 ? 0.0 : end),
+                      )..addListener(_followScroll);
+                      // The selected source flies in, wherever the list's
+                      // end puts it.
+                      _heroIndex.value = at < 0 ? 0 : at;
+                    }
                     return ListView.builder(
                       controller: _scroll,
                       physics: _zooming
@@ -134,6 +172,8 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                         item: sources[i],
                         title: _title(sources, i),
                         preloader: preloader,
+                        index: i,
+                        heroIndex: _heroIndex,
                         interactive: !widget.preview,
                         onZooming: (zooming) {
                           if (zooming != _zooming) {
@@ -185,6 +225,8 @@ class _NoteItem extends ConsumerStatefulWidget {
     required this.title,
     required this.lines,
     required this.preloader,
+    required this.index,
+    required this.heroIndex,
     required this.interactive,
     required this.onZooming,
   });
@@ -193,6 +235,10 @@ class _NoteItem extends ConsumerStatefulWidget {
   final String title;
   final List<_Line> lines;
   final PhotoPreloader preloader;
+
+  /// This item's place in the list, and the item whose picture flies.
+  final int index;
+  final ValueListenable<int> heroIndex;
 
   /// False while drawn inside the photo panel as a preview.
   final bool interactive;
@@ -347,7 +393,7 @@ class _NoteItemState extends ConsumerState<_NoteItem>
 
   Widget _picture(BuildContext context) {
     final source = widget.item.source;
-    final picture = SourceHero(
+    final hero = SourceHero(
       id: source.id,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
@@ -361,6 +407,12 @@ class _NoteItemState extends ConsumerState<_NoteItem>
               )
             : SourceTile(source: source, wordCount: widget.item.rows.length),
       ),
+    );
+    final picture = ValueListenableBuilder<int>(
+      valueListenable: widget.heroIndex,
+      builder: (context, heroIndex, child) =>
+          HeroMode(enabled: heroIndex == widget.index, child: child!),
+      child: hero,
     );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),

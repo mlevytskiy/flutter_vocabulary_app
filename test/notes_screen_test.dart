@@ -32,6 +32,23 @@ class _FakeInput extends WordInputNotifier {
   Future<Session> build() async => session;
 }
 
+/// Five photos, one word each.
+Session _photos() {
+  final ids = ['p1', 'p2', 'p3', 'p4', 'p5'];
+  return Session.create()
+    ..sources = [
+      for (final (i, id) in ids.indexed)
+        SessionSource()
+          ..id = id
+          ..fileName = '$id.jpg'
+          ..takenAt = DateTime(2026, 10, 15, 9 + i),
+    ]
+    ..words = [
+      for (final (i, id) in ids.indexed)
+        WordPair(word: 'w$i', translation: 't$i', sourceId: id, rowId: 'r$i'),
+    ];
+}
+
 Session _session() => Session.create()
   ..sources = [
     SessionSource()
@@ -56,12 +73,14 @@ void main() {
   late PhotoPanelController controller;
   late MapSourcePhotoStore store;
 
-  Future<void> pumpMain(WidgetTester tester, {MapSourcePhotoStore? photoStore}) async {
+  Future<void> pumpMain(WidgetTester tester,
+      {MapSourcePhotoStore? photoStore, Session? session}) async {
     final photos = photoStore ?? MapSourcePhotoStore({});
     SharedPreferences.setMockInitialValues({});
     controller = PhotoPanelController();
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(_session())),
+      wordInputNotifierProvider
+          .overrideWith(() => _FakeInput(session ?? _session())),
       sourcePhotoStoreProvider.overrideWithValue(photos),
       // A note's debounced write waits for a store that never opens.
       sessionStoreProvider
@@ -225,5 +244,79 @@ void main() {
     await tester.pumpAndSettle();
     final top = tester.getTopLeft(find.byKey(NotesScreen.itemKey('s1'))).dy;
     expect(top, lessThan(400));
+  });
+
+  testWidgets('only the picture in view flies, so none built out of view '
+      'flies past the top bar (owner, 2026-10-16)', (tester) async {
+    // A phone: the list is more than two items tall, so the selected item
+    // at its top is not the one in its middle.
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await pumpMain(tester,
+        session: _photos(),
+        photoStore: MapSourcePhotoStore(
+            {for (final id in ['p1', 'p2', 'p3', 'p4', 'p5']) id: kPng}));
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p3')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(PhotoPanel.expandKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    bool flying(String id) => tester.any(find.descendant(
+        of: heroOf(id).first,
+        matching: find.byWidgetPredicate((w) => w is Offstage && w.offstage),
+        skipOffstage: false));
+    expect(flying('p3'), isTrue);
+    // p2 is built above the list's top, p4 below p3.
+    for (final id in ['p1', 'p2', 'p4', 'p5']) {
+      expect(flying(id), isFalse, reason: '$id stays');
+    }
+    await tester.pumpAndSettle();
+
+    // Scrolled to another source, that one flies back: its picture leaves
+    // the Notes page.
+    await tester.drag(find.byKey(NotesScreen.itemKey('p3')),
+        const Offset(0, -NotesScreen.itemExtent));
+    await tester.pumpAndSettle();
+    bool lifted(String id) => !tester.any(find.descendant(
+        of: find.descendant(
+            of: find.byKey(NotesScreen.itemKey(id)), matching: heroOf(id)),
+        matching: find.byType(Image)));
+    expect(lifted('p4'), isFalse);
+    await tester.pageBack();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(lifted('p4'), isTrue);
+    for (final id in ['p3', 'p5']) {
+      expect(lifted(id), isFalse, reason: '$id stays');
+    }
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('the last source, which the list\'s end keeps low, flies in '
+      '(owner, 2026-10-16)', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await pumpMain(tester,
+        session: _photos(),
+        photoStore: MapSourcePhotoStore(
+            {for (final id in ['p1', 'p2', 'p3', 'p4', 'p5']) id: kPng}));
+    await tester.tap(find.byKey(PhotoPanel.tabKey));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p5')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(PhotoPanel.expandKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    bool flying(String id) => tester.any(find.descendant(
+        of: heroOf(id).first,
+        matching: find.byWidgetPredicate((w) => w is Offstage && w.offstage),
+        skipOffstage: false));
+    expect(flying('p5'), isTrue);
+    expect(flying('p4'), isFalse);
+    await tester.pumpAndSettle();
   });
 }
