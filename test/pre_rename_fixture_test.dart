@@ -11,6 +11,7 @@ import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
+import 'package:flutter_vocabulary_app/core/services/tag_rules.dart';
 
 /// AC-04 / ADR-0002: `test/fixtures/pre_rename_vocab/vocab.isar` was written
 /// by the build from before Session was renamed to WordCollection, and
@@ -81,8 +82,9 @@ void main() {
       }
       expect(await isar.collectionFolders.count(), 0);
 
-      expect([for (final c in collections) _utc({'id': c.id, ...c.toJson()})],
-          expected['sessions']);
+      expect([
+        for (final c in collections) _utc({'id': c.id, ...c.toJson()})
+      ], expected['sessions']);
       expect([for (final r in runs) _runJson(r)], expected['storyRuns']);
     } finally {
       await isar.close();
@@ -110,7 +112,8 @@ void main() {
     }
   });
 
-  test('opened by this build, the fixture keeps its counts and gains names '
+  test(
+      'opened by this build, the fixture keeps its counts and gains names '
       '(T6 backfill)', () async {
     final store = await CollectionStore.open(directory: dir.path);
     try {
@@ -122,16 +125,36 @@ void main() {
       expect(collections.expand((c) => c.groups), hasLength(6));
       expect(collections.expand((c) => c.dialogues), hasLength(6));
       expect(collections.expand((c) => c.results), hasLength(6));
-      expect(collections.expand((c) => c.tags), hasLength(6));
+      // collection-tags T6: the legacy tags are emptied and move, spelling
+      // kept, into the typed lists; nothing is lost.
+      expect(collections.expand((c) => c.tags), isEmpty);
+      // Source tags are copied up, so each collection's typed lists hold its
+      // own and its sources' legacy tags once each, ignoring case.
+      final legacyTexts = [
+        for (final s in expected['sessions'] as List)
+          ...mergeCaseDuplicates([
+            ...(s['tags'] as List).cast<String>(),
+            for (final src in s['sources'] as List)
+              ...((src['tags'] as List?) ?? const []).cast<String>(),
+          ]),
+      ];
+      final typedTexts = [
+        for (final c in collections) ...[...c.originTags, ...c.topicTags],
+      ];
+      expect(typedTexts..sort(), equals([...legacyTexts]..sort()));
       expect(await isar.storyRuns.count(), 3);
-      expect([for (final c in collections) _utc({'id': c.id, ...c.toJson()})],
-          expected['sessions']);
+      expect([
+        for (final c in collections) _utc({'id': c.id, ...c.toJson()})
+      ], [
+        for (final s in expected['sessions'] as List) _migrated(s)
+      ]);
       for (final c in collections) {
         final moment = creationMomentOf(c.collectionId);
         expect(moment, isNotNull);
         expect(c.name, defaultCollectionName(moment!));
         expect(c.folderId, isNull);
-        expect(c.keep, !c.isEmpty);
+        expect(c.keep,
+            !c.isEmpty || c.originTags.isNotEmpty || c.topicTags.isNotEmpty);
       }
       final byMoment = [...collections]..sort((a, b) =>
           creationMomentOf(a.collectionId)!
@@ -141,6 +164,47 @@ void main() {
       await store.close();
     }
   });
+}
+
+/// A fixture collection as the T6 tag migration leaves it: legacy `tags`
+/// sorted into origin / topic (case duplicates merged), emptied, and the
+/// sources' typed tags copied up to the collection.
+Map<String, dynamic> _migrated(Map<String, dynamic> session) {
+  final out = jsonDecode(jsonEncode(session)) as Map<String, dynamic>;
+  List<String> add(List<String> list, List<String> more) {
+    final keys = {for (final t in list) tagKey(t)};
+    return [
+      ...list,
+      for (final t in more)
+        if (keys.add(tagKey(t))) t,
+    ];
+  }
+
+  var origin = <String>[];
+  var topic = <String>[];
+  void move(List<String> tags, Map<String, dynamic> into) {
+    final sorted = sortLegacyTags(tags);
+    final o = mergeCaseDuplicates(sorted.origin);
+    final t = mergeCaseDuplicates(sorted.topic);
+    origin = add(origin, o);
+    topic = add(topic, t);
+    if (into != out) {
+      if (o.isNotEmpty) into['originTags'] = o;
+      if (t.isNotEmpty) into['topicTags'] = t;
+    }
+  }
+
+  move((out['tags'] as List).cast<String>(), out);
+  for (final src in out['sources'] as List) {
+    final tags = ((src['tags'] as List?) ?? const []).cast<String>();
+    if (tags.isEmpty) continue;
+    src.remove('tags');
+    move(tags, src as Map<String, dynamic>);
+  }
+  out['tags'] = <String>[];
+  if (origin.isNotEmpty) out['originTags'] = origin;
+  if (topic.isNotEmpty) out['topicTags'] = topic;
+  return out;
 }
 
 const _dateKeys = {'updatedAt', 'lastLocalModifiedAt', 'takenAt', 'at'};
