@@ -24,7 +24,8 @@ import 'filing.dart'
         placeInLevel,
         restoreTarget;
 import 'source_photo_store.dart' show SourcePhotoStore, uuidV4;
-import 'tag_rules.dart' show canAddTag, mergeCaseDuplicates, tagKey;
+import 'tag_rules.dart'
+    show canAddTag, mergeCaseDuplicates, sortLegacyTags, tagKey;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
 /// `shared_preferences` pointer saying which session is the current one — the
@@ -67,6 +68,7 @@ class CollectionStore {
     }
     await store._fillRowIdsEverywhere();
     await store._backfillFiling();
+    await store._backfillTypedTags();
     return store;
   }
 
@@ -158,6 +160,111 @@ class CollectionStore {
     } catch (e) {
       debugPrint('VOCAB: backfill failed, retried on the next open: $e');
     }
+  }
+
+  // ---- One-time typed-tag migration (collection-tags T6, ADR-0003) ----
+
+  /// Sorts the untyped tags from before collection-tags into origin and
+  /// topic tags (data-model §Migration, AC-17, AC-17b, AC-31, AC-32), in one
+  /// transaction over every collection whose legacy tags, or a source's,
+  /// are not empty, oldest creation moment first. Each legacy list is sorted
+  /// and its case duplicates merged, appended to the typed lists without
+  /// repeating a key, each source's tags are copied up to the collection past
+  /// the 10 cap, the library gains each (kind, key) it lacks with the first
+  /// spelling met (never dated, never un-forgotten), and the legacy lists are
+  /// emptied. Times stay; `keep` only rises. A failure is logged and the
+  /// next open retries; nothing here throws.
+  Future<void> _backfillTypedTags() async {
+    try {
+      await _isar.writeTxn(() async {
+        final legacy = await _isar.wordCollections
+            .filter()
+            .tagsIsNotEmpty()
+            .or()
+            .sourcesElement((s) => s.tagsIsNotEmpty())
+            .findAll();
+        if (legacy.isEmpty) return;
+        final moments = {
+          for (final c in legacy)
+            c.id: creationMomentOf(c.collectionId) ?? c.updatedAt,
+        };
+        legacy.sort((a, b) {
+          final byMoment = moments[a.id]!.compareTo(moments[b.id]!);
+          return byMoment != 0 ? byMoment : a.id.compareTo(b.id);
+        });
+        final known = {
+          for (final e in await _isar.tagLibraryEntrys.where().findAll())
+            (e.kind, e.key),
+        };
+        final newEntries = <TagLibraryEntry>[];
+        void meet(TagKind kind, String text) {
+          final key = tagKey(text);
+          if (key.isEmpty || !known.add((kind, key))) return;
+          newEntries.add(TagLibraryEntry()
+            ..kind = kind
+            ..key = key
+            ..text = text.trim());
+        }
+
+        /// [tags] sorted and merged, appended to the typed lists read and
+        /// written through [get] / [set]; returns the sorted lists.
+        ({List<String> origin, List<String> topic}) migrate(
+          List<String> tags,
+          List<String> Function(TagKind) get,
+          void Function(TagKind, List<String>) set,
+        ) {
+          final sorted = sortLegacyTags(tags);
+          final byKind = {
+            TagKind.origin: mergeCaseDuplicates(sorted.origin),
+            TagKind.topic: mergeCaseDuplicates(sorted.topic),
+          };
+          for (final MapEntry(key: kind, value: list) in byKind.entries) {
+            for (final t in list) {
+              meet(kind, t);
+            }
+            set(kind, _appendMissing(get(kind), list));
+          }
+          return (
+            origin: byKind[TagKind.origin]!,
+            topic: byKind[TagKind.topic]!
+          );
+        }
+
+        for (final c in legacy) {
+          migrate(c.tags, (k) => _tagsOf(c, k), (k, l) => _setTagsOf(c, k, l));
+          c.tags = [];
+          for (final s in c.sources) {
+            if (s.tags.isEmpty) continue;
+            final moved = migrate(s.tags, (k) => _sourceTagsOf(s, k), (k, l) {
+              if (k == TagKind.origin) {
+                s.originTags = l;
+              } else {
+                s.topicTags = l;
+              }
+            });
+            s.tags = [];
+            c.originTags = _appendMissing(c.originTags, moved.origin);
+            c.topicTags = _appendMissing(c.topicTags, moved.topic);
+          }
+          if (c.originTags.isNotEmpty || c.topicTags.isNotEmpty) c.keep = true;
+        }
+        await _isar.wordCollections.putAll(legacy);
+        await _isar.tagLibraryEntrys.putAll(newEntries);
+      });
+    } catch (e) {
+      debugPrint('VOCAB: tag migration failed, retried on the next open: $e');
+    }
+  }
+
+  /// [list] followed by each of [tags] whose key it does not hold yet,
+  /// ignoring the 10 cap (migration only, AC-17b).
+  static List<String> _appendMissing(List<String> list, List<String> tags) {
+    final keys = {for (final t in list) tagKey(t)};
+    return [
+      ...list,
+      for (final t in tags)
+        if (tagKey(t).isNotEmpty && keys.add(tagKey(t))) t,
+    ];
   }
 
   /// The earliest of [c]'s times, for an id with no readable moment
