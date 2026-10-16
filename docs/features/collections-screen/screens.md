@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 feature_size: "L"
 tool: "code"
 updated_at: "2026-10-16"
@@ -53,6 +53,7 @@ A  default                                   B  long name
 | success | A valid name is saved (F1, F5). | The dialog closes; the new name shows at once on SCR-01 / SCR-04 / SCR-11. | — |
 | loading | N/A: one local transaction, no visible wait (QG-4). | — | — |
 | cancel | **Cancel**, Back or a tap outside. | The dialog closes; nothing changes. | — |
+| empty / error | N/A: `validation` is this dialog's error state; nothing is read, so nothing can be empty. | — | — |
 
 ```text
 A  default                                   B  validation
@@ -148,7 +149,7 @@ C  empty folder                              D  dragging inside a folder
 
 | State | Trigger / condition | Components | Source-ref |
 |---|---|---|---|
-| collection | **Delete** or a bin drop on a non-current collection (AC-20). | `AlertDialog` "Delete "Lesson 3"?" with body "24 words. It goes to the recycle bin for 30 days. Its shared link keeps working."; **Cancel** / **Delete**. | wireframe A |
+| default · collection | **Delete** or a bin drop on a non-current collection (AC-20). | `AlertDialog` "Delete "Lesson 3"?" with body "24 words. It goes to the recycle bin for 30 days. Its shared link keeps working."; **Cancel** / **Delete**. | wireframe A |
 | folder | **Delete** or a bin drop on a folder without the current collection (AC-22). | Body "3 collections and 1 folder go to the recycle bin with it, for 30 days."; **Cancel** / **Delete**. | — |
 | folder with current | The folder holds the current collection (AC-22). | Body adds ""Lesson 4" stays, because it is the current collection. It moves to where this folder is."; **Cancel** / **Delete**. | wireframe B |
 | empty / error | N/A: a confirmation; the current collection itself never reaches it (refused on SCR-04, AC-21). | — | — |
@@ -199,7 +200,7 @@ A  default                                   B  empty
 
 | State | Trigger / condition | Components | Source-ref |
 |---|---|---|---|
-| one item | **Delete forever** in SCR-09 (AC-25). | `AlertDialog` "Delete "Lesson 2" forever?" with body "This cannot be undone. Its words and photos are erased from the phone."; **Cancel** / **Delete forever**. | wireframe |
+| default · one item | **Delete forever** in SCR-09 (AC-25). | `AlertDialog` "Delete "Lesson 2" forever?" with body "This cannot be undone. Its words and photos are erased from the phone."; **Cancel** / **Delete forever**. | wireframe |
 | one item with a shared link | The collection, or one inside the folder, was published (AC-25). | Body adds "Its shared page stays online until it expires, and can no longer be updated from the app." | wireframe |
 | empty / error | N/A: a confirmation; Empty is unavailable when the bin is empty (SCR-08). | — | — |
 | empty the bin | **Empty recycle bin** on SCR-08 (AC-25). | Title "Empty the recycle bin?", body "N items are erased for good. This cannot be undone.", plus the shared-page sentence when any of them was published; **Cancel** / **Empty**. | — |
