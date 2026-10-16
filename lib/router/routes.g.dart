@@ -418,12 +418,22 @@ mixin _$PhotoViewerRoute on GoRouteData {
 }
 
 mixin _$CollectionsRoute on GoRouteData {
-  static CollectionsRoute _fromState(GoRouterState state) =>
-      const CollectionsRoute();
+  static CollectionsRoute _fromState(GoRouterState state) => CollectionsRoute(
+        tagKind: _$convertMapValue(
+            'tag-kind', state.uri.queryParameters, _$TagKindEnumMap._$fromName),
+        tag: state.uri.queryParameters['tag'],
+      );
+
+  CollectionsRoute get _self => this as CollectionsRoute;
 
   @override
   String get location => GoRouteData.$location(
         '/collections',
+        queryParams: {
+          if (_self.tagKind != null)
+            'tag-kind': _$TagKindEnumMap[_self.tagKind!],
+          if (_self.tag != null) 'tag': _self.tag,
+        },
       );
 
   @override
@@ -439,6 +449,11 @@ mixin _$CollectionsRoute on GoRouteData {
   @override
   void replace(BuildContext context) => context.replace(location);
 }
+
+const _$TagKindEnumMap = {
+  TagKind.origin: 'origin',
+  TagKind.topic: 'topic',
+};
 
 mixin _$HistoryRoute on GoRouteData {
   static HistoryRoute _fromState(GoRouterState state) => const HistoryRoute();
@@ -505,4 +520,18 @@ mixin _$RecycleBinRoute on GoRouteData {
 
   @override
   void replace(BuildContext context) => context.replace(location);
+}
+
+T? _$convertMapValue<T>(
+  String key,
+  Map<String, String> map,
+  T? Function(String) converter,
+) {
+  final value = map[key];
+  return value == null ? null : converter(value);
+}
+
+extension<T extends Enum> on Map<T, String> {
+  T? _$fromName(String? value) =>
+      entries.where((element) => element.value == value).firstOrNull?.key;
 }
