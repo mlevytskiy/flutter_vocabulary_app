@@ -237,6 +237,525 @@ sequenceDiagram
 
 **Critical flow 3: the 30-day sweep at launch (AC-26)** — the store opens, `sweepBin` finds items whose `binnedAt` is at least 30 × 24 h ago, and in one transaction erases them (and every record inside an expired folder); their photo files are deleted after the commit. The `sequences` stage draws this flow and covers every remaining AC.
 
+### Flows by user story (sequences stage)
+
+Participants are generic: `user` is the learner or the partner, `ui` a screen or dialog, `service` the logic that owns the flow, `data-store` the phone's database, pointer or files (the Worker's database on the server side). Persist notes mark every write for `data-model`.
+
+### F1 — Rename a collection or folder (US-01, US-07)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the main screen of the current collection, or an item menu on the Collections screen
+    U->>UI: taps the edit button beside the title, or Rename in the item menu
+    UI-->>U: name dialog with the current name filled in
+    U->>UI: types a new name and saves
+    UI->>S: validate the name
+    alt empty, only spaces, over 60 characters or a line break
+        S-->>UI: refused by the name rule
+        UI-->>U: says a name must be 1 to 60 characters on one line, keeps the old name, dialog stays open
+    else valid name
+        S->>D: rename in one transaction, writes only the name and keep
+        Note over S,D: persists collection.name and collection.keep, or folder.name
+        D-->>S: committed
+        S-->>UI: renamed
+        UI-->>U: the icon shows the new name, and for the current collection the main screen title too
+        Note over UI,D: History and the title watch the stored name, so they follow at once and after a restart
+    end
+    opt Cancel
+        U->>UI: cancels
+        UI-->>U: nothing changes
+    end
+    Note over U,D: Postcondition: an edit of the words never changes the name, a default date name stays as it was made
+```
+
+### F2 — Browse the Collections screen (US-02)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the side menu is always available and holds Main, Collections, History
+    U->>UI: opens the side menu and taps Collections
+    UI->>S: open the top level
+    S->>D: read the folders and collections of the top level that are not in the bin, by order
+    D-->>S: items with name, word count, order
+    S->>D: read the current collection pointer
+    D-->>S: current collection id
+    S-->>UI: the level, path "Collections", Up unavailable
+    UI-->>U: icons in the learner's order, the current collection marked, the recycle bin last
+    U->>UI: taps the folder "English course", then "Unit 3"
+    UI->>S: open each folder
+    S->>D: read that folder's items, and its ancestors for the path
+    D-->>S: items and ancestors
+    S-->>UI: the level and the path
+    UI-->>U: the path reads Collections, English course, Unit 3
+    alt Up, or a tap on a part of the path
+        U->>UI: taps Up
+        UI->>S: open the parent folder
+        S-->>UI: the parent level
+        UI-->>U: back in "English course"
+    else the recycle bin icon at the top level
+        U->>UI: taps the bin icon
+        UI-->>U: the recycle bin screen, see F9
+    end
+    Note over U,D: Postcondition: browsing writes nothing and never changes the current collection
+```
+
+### F3 — Open a collection with a tap (US-03)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the Collections screen shows a folder holding "Lesson 3", the current collection is "Lesson 4"
+    U->>UI: taps "Lesson 3"
+    UI->>S: open "Lesson 3"
+    alt "Lesson 3" is already current
+        S-->>UI: nothing to switch
+        UI-->>U: the main screen on "Lesson 3", nothing else changes
+    else another collection
+        S->>D: flush the pending autosave of "Lesson 4"
+        Note over S,D: persists the words of "Lesson 4"
+        alt "Lesson 4" is empty, has no sources, notes or tags, and is not kept
+            S->>D: erase "Lesson 4" at once, no bin entry
+            Note over S,D: deletes the collection record
+        else kept or has content
+            Note over S,D: "Lesson 4" stays in its folder with everything it had
+        end
+        S->>D: set the current pointer to "Lesson 3"
+        Note over S,D: persists the current collection pointer
+        S->>D: read "Lesson 3"
+        D-->>S: its words and name
+        S-->>UI: "Lesson 3" is current
+        UI-->>U: the main screen with its words and its name as the title, no question asked
+    end
+    opt a translation, photo reading or import for "Lesson 4" returns later
+        S->>D: update "Lesson 4" with the result in one transaction, even if it is in the bin
+        Note over S,D: persists the result on "Lesson 4" only
+        Note over S,UI: the main screen on "Lesson 3" never shows it
+    end
+    Note over U,D: Postcondition: exactly one current collection, the one the learner tapped
+```
+
+### F4 — App launch or return (US-04)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,S: Trigger: the app is opened, or comes back to the foreground after any pause
+    U->>UI: opens the app
+    UI->>S: start
+    opt first open after the update
+        S->>D: read collections without a name
+        D-->>S: old collections
+        S->>D: name each from the moment in its id, else its earliest stored date, local time, top level, oldest first
+        Note over S,D: persists name, folder, order once per old collection, words untouched
+    end
+    S->>D: read bin items whose 30 times 24 hours are up
+    D-->>S: expired items
+    opt any expired
+        S->>D: erase them and everything inside expired folders in one transaction
+        S->>D: delete their photo files after the commit
+        Note over S,D: deletes collection and folder records and photo files
+    end
+    S->>D: read the current pointer and its collection
+    D-->>S: pointer and record
+    alt nothing stored at all
+        S->>D: create a first collection named by date and time at the top level and point at it
+        Note over S,D: persists the new collection and the pointer
+    else the pointer's collection exists and is not in the bin
+        Note over S,D: it stays current, however long the pause
+    else pointer missing, or its collection is in the bin
+        S->>D: read the newest collection outside the bin
+        alt one exists
+            S->>D: point at it
+        else none
+            S->>D: create a new collection and point at it
+        end
+        Note over S,D: persists the pointer
+    end
+    S-->>UI: the current collection
+    UI-->>U: the main screen with its words and name, no new collection, no restore offer
+    Note over U,D: Postcondition: the current collection changed only if it was missing, nothing older than 30 days stays in the bin
+```
+
+### F5 — New folder (US-05)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the Collections screen shows some folder or the top level
+    U->>UI: chooses New folder
+    UI-->>U: name dialog
+    U->>UI: types a name and saves
+    UI->>S: create the folder here
+    alt the name breaks the 1 to 60 characters, one line rule
+        S-->>UI: refused by the name rule
+        UI-->>U: same explanation as a rename, dialog stays open
+    else valid
+        S->>D: create the folder at the end of this level in one transaction
+        Note over S,D: persists folder with name, parent and order
+        D-->>S: committed
+        S-->>UI: the level with the new folder last
+        UI-->>U: the folder is the last icon, and opens on a tap like any other
+    end
+    Note over U,D: Postcondition: the folder is still there after a restart
+```
+
+### F6 — Rearrange by dragging (US-06)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the Collections screen shows a level
+    U->>UI: long-presses an icon
+    alt released without moving
+        UI-->>U: the item menu, see F1 and F8
+    else the finger moves
+        UI-->>U: dragging, the recycle bin drop zone shows
+        opt held over a folder for about a second
+            UI->>S: open that folder
+            S-->>UI: its level
+            UI-->>U: the drag goes on inside it
+        end
+        U->>UI: drops the item
+        alt on a folder icon
+            UI->>S: move into that folder
+            S->>D: read the target's ancestors
+            D-->>S: ancestors
+            alt the target is the dragged folder itself or inside it
+                S-->>UI: refused, a folder cannot go inside itself
+                UI-->>U: it springs back and the app says so
+            else allowed
+                S->>D: change its folder and renumber both levels in one transaction
+                Note over S,D: persists folderId or parentId, order, keep
+                UI-->>U: it shows inside the folder, a folder with all its contents
+            end
+        else on Up or a part of the path
+            UI->>S: move to that level
+            S->>D: change its folder and renumber in one transaction
+            Note over S,D: persists folderId or parentId, order, keep
+            UI-->>U: it leaves this level
+        else between icons or on another collection's icon
+            UI->>S: reorder to that place
+            S->>D: renumber the level in one transaction
+            Note over S,D: persists order and keep, collections never merge
+            UI-->>U: it takes that place and the rest shift along
+        else on the recycle bin drop zone
+            UI-->>U: delete, see F8
+        else an empty spot, outside, its own folder's path or Up, or Up at the top
+            UI-->>U: nothing moves, nothing opens
+        end
+    end
+    Note over U,D: Postcondition: a drag never changes the current collection, every move is still there after a restart
+```
+
+### F7 — New collection (US-08)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the Collections screen is inside "Unit 3"
+    U->>UI: chooses New collection
+    UI->>S: new collection in "Unit 3"
+    S->>D: flush the collection being left
+    alt the left one is empty, has no sources, notes or tags, and is not kept
+        S->>D: erase it at once, no bin entry
+        Note over S,D: deletes the collection record
+    else kept or has content
+        Note over S,D: it stays where it is
+    end
+    S->>D: create a kept, empty collection named by its date and time at the end of "Unit 3"
+    Note over S,D: persists the collection with name, folderId, order, keep
+    S->>D: point at it
+    Note over S,D: persists the current collection pointer
+    D-->>S: committed
+    S-->>UI: it is current
+    UI-->>U: the main screen on the new, empty collection
+    Note over U,D: Postcondition: it is kept even if left empty, and it shows in History only once it has words
+```
+
+### F8 — Delete to the recycle bin (US-09)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: an item menu Delete, or a drop on the recycle bin zone
+    U->>UI: deletes an item
+    UI->>S: what would go to the bin
+    S->>D: read the item, its contents and the current pointer
+    D-->>S: item, counts, current id
+    alt the item is the current collection
+        S-->>UI: refused, the current collection cannot be deleted
+        UI-->>U: open another collection first
+    else another collection
+        UI-->>U: confirm, naming it and its word count
+        U->>UI: confirms
+        UI->>S: bin it
+        S->>D: mark it binned with the time and its folder, in one transaction that re-checks the current pointer
+        Note over S,D: persists binnedAt and binnedFromFolderId
+        UI-->>U: it leaves its folder and History and is in the bin, its shared link keeps working
+    else a folder
+        UI-->>U: confirm, counting collections and folders, naming the current one as staying
+        U->>UI: confirms
+        UI->>S: bin the folder
+        alt the current collection is inside
+            S->>D: move the current collection to the folder's old place, then mark the folder binned, in one transaction
+            Note over S,D: persists the current collection's folderId and order, the folder's binnedAt and binnedFromFolderId
+            UI-->>U: the folder is in the bin as one item, and the app says the current collection stayed
+        else not inside
+            S->>D: mark the folder binned in one transaction
+            Note over S,D: persists binnedAt and binnedFromFolderId
+            UI-->>U: the folder and everything in it is one bin item
+        end
+    end
+    opt Cancel at the confirmation
+        UI-->>U: nothing changes
+    end
+    Note over U,D: Postcondition: nothing is erased, the current collection is never in the bin
+```
+
+### F9 — Restore or erase from the recycle bin (US-10)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    Note over U,UI: Precondition: the recycle bin icon at the top level of Collections
+    U->>UI: opens the recycle bin
+    UI->>S: list the bin
+    S->>D: read binned items
+    D-->>S: items with binnedAt
+    S-->>UI: items with N days left, 30 on the day of deletion down to 1
+    UI-->>U: the list, a collection here cannot be opened
+    U->>UI: opens an item's menu
+    alt Restore
+        UI->>S: restore it
+        S->>D: read its old folder
+        alt the old folder exists and is not in the bin
+            S->>D: clear the mark, back in the old folder, in one transaction
+        else gone or in the bin
+            S->>D: clear the mark, back at the top level, in one transaction
+        end
+        Note over S,D: persists binnedAt cleared, folderId, order
+        UI-->>U: it is back with everything it had, a folder with all that went with it
+    else Delete forever, or Empty recycle bin
+        UI-->>U: confirm, cannot be undone, a shared page stays online and can no longer be updated
+        U->>UI: confirms
+        UI->>S: erase
+        S->>D: delete the item, or every bin item, and everything inside, in one transaction
+        S->>D: delete their photo files after the commit
+        Note over S,D: deletes collection and folder records and photo files, story runs stay
+        UI-->>U: gone from the bin
+    end
+    Note over U,D: Postcondition: a restored item is outside the bin, an erased one never comes back
+```
+
+### F10 — Cross-cutting: background work against a filing change (AC-27)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant W as service (background writer)
+    participant D as data-store
+    Note over W,D: Precondition: autosave, a lookup, an import, a story, a scene picture, a dialogue delivery, a photo upload or an exercise result is in progress for a collection
+    W->>D: reads the collection
+    U->>UI: renames, moves, reorders, deletes or erases that collection
+    UI->>S: filing change
+    S->>D: one transaction writing only filing fields, or the erase
+    Note over S,D: persists name, folderId, order, binnedAt, or deletes the record
+    W->>D: writes its result, as an update by id or the autosave put
+    alt the record exists, in a folder or in the bin
+        D-->>W: the result is stored, filing fields kept from the stored record
+        Note over W,D: persists only the writer's own fields
+    else the record was erased for good
+        D-->>W: nothing written, the result is dropped and logged
+    end
+    Note over U,D: Postcondition: the new name, place and order hold after the work and after a restart, a binned collection stays in the bin
+```
+
+### F11 — History (US-11)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant D as data-store
+    U->>UI: opens History from the side menu
+    UI->>S: list collections with words
+    S->>D: read collections with words that are not in the bin, newest first, and the current pointer
+    D-->>S: collections and current id
+    alt none has words
+        S-->>UI: empty list
+        UI-->>U: there are no collections yet
+    else some
+        S-->>UI: rows with name, word count and date
+        UI-->>U: each row with name and word count, the date below, the current one marked current
+    end
+    U->>UI: taps a row
+    UI-->>U: that collection's words table
+```
+
+### F12 — Share as a link with the name (US-12)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant W as service (Worker)
+    participant WD as data-store (Worker)
+    participant PG as ui (shared page)
+    actor P as user (partner)
+    U->>UI: Share on the words table
+    UI-->>U: share sheet, warning that the name is visible to anyone with the link
+    U->>UI: Share link
+    UI->>S: publish the collection
+    S->>W: publish words, sources and title, with the edit token on a republish
+    alt the title breaks the name rule
+        W-->>S: refused
+        S-->>UI: the publish failed
+    else valid
+        W->>WD: store the collection and its title, same page and link on a republish
+        Note over W,WD: persists title on the published collection
+        W-->>S: the link
+        S-->>UI: the link
+        UI-->>U: link dialog
+    end
+    opt a later dialogue or picture delivery
+        S->>W: deliver to the same page
+        W->>WD: store the delivery, title untouched
+    end
+    P->>PG: opens the link
+    PG->>W: render the page
+    W->>WD: read the published collection
+    WD-->>W: words and title, or no title for a page published before
+    W-->>PG: the title as plain text, or "Vocabulary"
+    PG-->>P: the page titled with the name, nothing about folders, other collections or the bin, the name not editable
+    Note over U,P: Postcondition: a rename reaches the page only on the next Share link
+```
+
+### F13 — Share a file named after the collection (US-13)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as user (learner)
+    participant UI as ui
+    participant S as service
+    participant X as external-system (share targets)
+    U->>UI: Share file, then picks one of the five formats
+    UI->>S: make the file
+    S->>S: safe file name, each reserved or control character becomes "-", "collection" if nothing is left
+    alt PDF
+        S->>S: the name is also the PDF heading
+    else Anki, CSV, Quizlet, Word list
+        S->>S: the name only in the file name and the subject
+    end
+    S-->>UI: the file and the subject
+    UI->>X: hands over the file
+    Note over U,X: Postcondition: the collection's own name is unchanged
+```
+
+### Coverage (sequences stage)
+
+| User story | Flow(s) |
+|---|---|
+| US-01 | F1 |
+| US-02 | F2 |
+| US-03 | F3, design flow 2 |
+| US-04 | F4 |
+| US-05 | F5 |
+| US-06 | F6, F10 |
+| US-07 | F1, F10 |
+| US-08 | F7 |
+| US-09 | F8, F10 |
+| US-10 | F9 |
+| US-11 | F11 |
+| US-12 | F12 |
+| US-13 | F13 |
+| US-14 | N/A: wording on existing screens, no runtime path (AC-33) |
+
+| AC | Shown by |
+|---|---|
+| AC-01 | F1 valid branch |
+| AC-02 | F1 and F5 rule branches |
+| AC-03 | F1 postcondition, F7 default name |
+| AC-04 | F4 first-open backfill |
+| AC-05 | N/A: title layout (ellipsis, buttons stay visible) is a widget concern, no runtime path |
+| AC-06 | F2 top level |
+| AC-07 | F2 icons and current mark |
+| AC-08 | F2 folders, path, Up |
+| AC-09 | F3 another collection |
+| AC-10 | F3 already current |
+| AC-11 | F3 late result, design flow 2 |
+| AC-12 | F4 every branch |
+| AC-13 | F5 |
+| AC-14 | F6 drop branches, hover-open |
+| AC-15 | F6 folder into itself |
+| AC-16 | F6 no-op branch |
+| AC-17 | F1 item menu |
+| AC-18 | F7 |
+| AC-19 | F3 and F7 leave branches |
+| AC-20 | F8 another collection |
+| AC-21 | F8 current refused |
+| AC-22 | F8 folder branches |
+| AC-23 | F9 list |
+| AC-24 | F9 Restore |
+| AC-25 | F9 Delete forever or Empty |
+| AC-26 | F4 sweep |
+| AC-27 | F10, design flow 1 |
+| AC-28 | F11 |
+| AC-29 | F12 publish and delivery |
+| AC-30 | F12 partner |
+| AC-31 | F12 share sheet warning |
+| AC-32 | F13 |
+| AC-33 | N/A: wording only, no runtime path |
+
+**Flags for later stages (not decided here):**
+- F12: the Worker refusing a title that breaks the name rule is drawn as a failed publish; `api` fixes the error shape.
+- F4: the one-time backfill and the sweep run before the main screen shows; QG-3's 500 ms covers the Collections screen only, but a long first-open backfill should be measured during `ship`.
+
 ## 7. Deployment view
 
 The app ships as the same Android build; nothing new runs in the background. The one-time filing backfill and the bin sweep run inside the app when the store opens. The Worker deploys as today with `wrangler deploy` after D1 migration `0007` is applied. Because the column is nullable and the app only adds a field to the publish body, an old app against a new Worker and a new app against an old Worker both keep working (an old Worker ignores the unknown `title`).
