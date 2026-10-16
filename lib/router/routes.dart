@@ -252,5 +252,6 @@ class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
   final String? tag;
 
   @override
-  Widget build(BuildContext context, GoRouterState state) => const CollectionsScreen();
+  Widget build(BuildContext context, GoRouterState state) =>
+      CollectionsScreen(tagKind: tagKind, tag: tag);
 }

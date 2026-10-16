@@ -78,8 +78,9 @@ void main() {
     expect(find.byIcon(Icons.more_vert), findsNothing);
   });
 
-  testWidgets('round buttons: Settings, Recycle bin, plus; no top bar actions',
-      (t) async {
+  testWidgets(
+      'round buttons: Settings, Recycle bin, plus; top bar has only search '
+      'and filter (collection-tags SCR-04)', (t) async {
     await pump(t);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byTooltip('Recycle bin'), findsOneWidget);
@@ -87,7 +88,9 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(AppBar), matching: find.byType(IconButton)),
-        findsNothing);
+        findsNWidgets(2));
+    expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(find.byIcon(Icons.tune), findsOneWidget);
   });
 
   testWidgets('folder tap grows the path; path part and Up go back', (t) async {
