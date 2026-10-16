@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/models/tag_kind.dart';
 import '../features/collections/collections_screen.dart';
 import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
@@ -239,7 +240,11 @@ final appRouter = GoRouter(routes: $appRoutes);
 
 /// The Collections screen (collections-screen): folders and collections as icons.
 class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
-  const CollectionsRoute();
+  const CollectionsRoute({this.tagKind, this.tag});
+
+  /// A tag tap on the main screen filters the screen (collection-tags ADR-0008).
+  final TagKind? tagKind;
+  final String? tag;
 
   @override
   Widget build(BuildContext context, GoRouterState state) => const CollectionsScreen();

@@ -21,6 +21,7 @@ import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
 import '../collections/name_dialog.dart';
 import '../notes/notes_screen.dart';
+import 'collection_tag_line.dart';
 import 'lightning_rules.dart';
 import 'photo_panel/looks/look_a.dart';
 import 'photo_panel/photo_panel.dart';
@@ -984,6 +985,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         automaticallyImplyLeading: true,
         title: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        bottom: CollectionTagLine(
+          originTags: _originTags(),
+          topicTags: _topicTags(),
+          onTap: (kind, text) =>
+              CollectionsRoute(tagKind: kind, tag: text).push(context),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
@@ -1178,6 +1185,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     if (!notifier.takeEditedElsewhere() || collection == null) return;
     _restoreFromStore(collection.words, focusLast: false);
   }
+
+  // TODO(T8): read the collection's typed origin tags.
+  List<String> _originTags() => const [];
+
+  // TODO(T8): read the collection's typed topic tags.
+  List<String> _topicTags() => const [];
 
   /// The top bar, which an open photo panel owns like the rest of the screen
   /// (spec AC-11).
