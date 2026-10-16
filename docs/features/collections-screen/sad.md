@@ -308,22 +308,23 @@ ADR files live under `docs/features/collections-screen/adr/NNNN-<title>.md`.
 
 ## 11. Risks and technical debt
 
-<!-- 🎯 Why: ⭐ collects EVERYTHING that can break — not only the technical. Without §11 risks get
-     discussed at standups and lost; debt lives only in the head of whoever accepted it.
-     📋 Write: a risk/debt table — severity — mitigation — owner. Accepted debt in its own block.
-     📌 The first risk is often a product risk, not a technical one. That's normal. -->
-
-<!-- Severity literals: Low / Medium / High for regular risks; "Open question" for rows created by
-     a Save-as-OQ resolution during the Socratic walk (see references/socratic.md). -->
-
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| <e.g. Worker lag may reach hours during a downstream outage> | Medium | <alert >10 min, on-call playbook, retry backoff> | <DevOps> |
-| <e.g. No event-schema versioning in v1> | Medium | <ADR-NNNN planned for v2, tolerate unknown fields> | <Backend> |
-| Open architectural decision: <decision-headline> | Open question | Resolve before <stage trigger or YYYY-MM-DD>; <inline rationale from the Save-as-OQ> | <owner> |
+| A wrong `@Name` pin in the rename makes Isar open an empty collection, and the learner's data looks lost | High | Rename is its own first step (ADR-0002); the QG-2 migration test over a copy of the owner's data runs before any behaviour change ships; the old records are never deleted, so a fixed build reads them again | Maksym |
+| A writer added later puts a stale copy and reverts filing, or re-creates an erased collection | High | `put()` ignores filing fields and never inserts (ADR-0003); QG-1 test per writer; a new writer must use `update` (ADR-0006); architecture.md gets the rule | Maksym |
+| The rename touches ~98 files and collides with any parallel branch | Medium | Land it first on a quiet master as one mechanical commit; no other feature work in flight meanwhile | Maksym |
+| Isar loads every collection's words to draw the grid, and 300 collections miss the 500 ms target | Medium | Measure in a profile build first (QG-3); if it misses, keep a word count on the record, which needs the owner's approval as new data (rule 5) | Maksym |
+| Delivering late results into a collection that is no longer current changes import-from-quizlet's "a result for another session is dropped" and edit-session-from-history ADR-0003 | Medium | ADR-0006 supersedes them; tests for each lookup and import that returns after a switch | Maksym |
+| A drag conflicts with the grid's scroll or the side menu's edge swipe | Medium | Long press starts a drag only after the finger moves (AC-14); QG-6 widget test; device check during `ship` | Maksym |
+| The phone's clock moved forward erases bin items early | Low | Accepted by the spec (AC-26) | Maksym |
+| A shared page outlives its erased collection and can no longer be updated | Low | The erase confirmation says so (AC-25); the page expires on its own | Maksym |
+| Brownfield drift: architecture.md, the launch-rule tests and edit-session-from-history ADR-0002/0003 describe the 5-minute rule and dropping late results | Low | ADR-0006 and ADR-0007 supersede them; `implement` updates architecture.md and replaces `word_input_launch_rule_test.dart` | Maksym |
+| Open architectural decision: where a restored item lands in its folder's order (spec §8) | Open question | Resolve before `sdd:screens`; default for now: its old `order` when that is still within the level, otherwise the end. Both are possible because a binned item keeps its `order` | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
-- <e.g. the entity is immutable / unversioned — OK for v1, may need audit versioning in v2>
+- The retired `seen_*` and `switched_*` `shared_preferences` keys are removed once at startup, not migrated.
+- Story runs of an erased collection keep their pictures with no way to delete them (spec §8, owner 2026-10-16).
+- No word count on the record; the grid counts words from the loaded records until QG-3 says otherwise.
 
 ## 12. Glossary
 
