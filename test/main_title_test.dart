@@ -20,7 +20,7 @@ import 'seed_collections.dart';
 
 /// collections-screen T14 (SCR-01, SCR-02; AC-01, AC-02, AC-03, AC-05): the
 /// main screen's title is the current collection's stored name, with a white
-/// pencil button that renames it through the shared NameDialog.
+/// pencil button that opens the Collection details sheet (collection-tags T10).
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -47,7 +47,8 @@ void main() {
   Future<void> titleBecomes(WidgetTester tester, String text) async {
     for (var i = 0; i < 60; i++) {
       await tester.pump();
-      if (find.descendant(of: find.byType(AppBar), matching: find.text(text))
+      if (find
+          .descendant(of: find.byType(AppBar), matching: find.text(text))
           .evaluate()
           .isNotEmpty) {
         return;
@@ -101,8 +102,7 @@ void main() {
       .descendant(of: find.byType(AppBar), matching: find.byType(Text))
       .first;
   Finder editButton() => find.byTooltip('Rename collection');
-  Finder nameField() => find.descendant(
-      of: find.byType(AlertDialog), matching: find.byType(TextField));
+  Finder nameField() => find.byKey(const Key('details-name'));
 
   Future<void> openDialog(WidgetTester tester) async {
     await tester.tap(editButton());
@@ -110,7 +110,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
   }
 
-  testWidgets('SCR-01 default: the title is the stored name, edit button beside Next',
+  testWidgets(
+      'SCR-01 default: the title is the stored name, edit button beside Next',
       (tester) async {
     await pumpMain(tester, name: 'Kitchen words');
     expect((tester.widget(title()) as Text).data, 'Kitchen words');
@@ -118,34 +119,46 @@ void main() {
     final edit = tester.widget<ElevatedButton>(find.ancestor(
         of: find.byIcon(Icons.edit), matching: find.byType(ElevatedButton)));
     expect(edit.style?.backgroundColor?.resolve({}), Colors.white);
-    expect(find.descendant(
-        of: find.ancestor(
-            of: find.byIcon(Icons.edit), matching: find.byType(ElevatedButton)),
-        matching: find.byType(Text)), findsNothing);
+    expect(
+        find.descendant(
+            of: find.ancestor(
+                of: find.byIcon(Icons.edit),
+                matching: find.byType(ElevatedButton)),
+            matching: find.byType(Text)),
+        findsNothing);
     expect(find.text('Next'), findsOneComponent());
     await tearDownMain(tester);
   });
 
-  testWidgets('SCR-01 long name: one line with ellipsis, buttons keep full size',
+  testWidgets(
+      'SCR-01 long name: one line with ellipsis, buttons keep full size',
       (tester) async {
     await pumpMain(tester, name: 'A' * 60);
     final text = tester.widget<Text>(title());
     expect(text.maxLines, 1);
     expect(text.overflow, TextOverflow.ellipsis);
     expect(tester.takeException(), isNull);
-    expect(tester.getSize(find.ancestor(
-        of: find.text('Next'),
-        matching: find.byWidgetPredicate((w) => w is ElevatedButton))).width,
+    expect(
+        tester
+            .getSize(find.ancestor(
+                of: find.text('Next'),
+                matching: find.byWidgetPredicate((w) => w is ElevatedButton)))
+            .width,
         greaterThan(80));
-    expect(tester.getSize(find.ancestor(
-        of: find.byIcon(Icons.edit), matching: find.byType(ElevatedButton))).width,
+    expect(
+        tester
+            .getSize(find.ancestor(
+                of: find.byIcon(Icons.edit),
+                matching: find.byType(ElevatedButton)))
+            .width,
         greaterThanOrEqualTo(48));
     expect(tester.getRect(title()).right,
         lessThanOrEqualTo(tester.getRect(editButton()).left));
     await tearDownMain(tester);
   });
 
-  testWidgets('SCR-01 default name: a collection without a name shows its date name',
+  testWidgets(
+      'SCR-01 default name: a collection without a name shows its date name',
       (tester) async {
     await pumpMain(tester);
     await tester.pump();
@@ -155,15 +168,13 @@ void main() {
     await tearDownMain(tester);
   });
 
-  testWidgets('SCR-02: edit opens the dialog with the name selected',
+  testWidgets('SCR-02: edit opens the details sheet with the name filled in',
       (tester) async {
     await pumpMain(tester, name: 'Kitchen words');
     await openDialog(tester);
-    expect(find.text('Rename collection'), findsWidgets);
+    expect(find.text('Collection details'), findsOneWidget);
     final field = tester.widget<TextField>(nameField());
     expect(field.controller!.text, 'Kitchen words');
-    expect(field.controller!.selection,
-        const TextSelection(baseOffset: 0, extentOffset: 13));
     await tearDownMain(tester);
   });
 
@@ -172,46 +183,57 @@ void main() {
     await pumpMain(tester, name: 'Kitchen words');
     await openDialog(tester);
     await tester.enterText(nameField(), '');
-    await tester.tap(find.text('Save'));
     await tester.pump();
     expect(find.text(nameProblemMessage), findsOneWidget);
-    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Collection details'), findsOneWidget);
+    expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('details-confirm')))
+            .onPressed,
+        isNull);
     expect((tester.widget(title()) as Text).data, 'Kitchen words');
     await tearDownMain(tester);
   });
 
-  testWidgets('SCR-02 success: Save renames through the store and the title follows',
+  testWidgets(
+      'SCR-02 success: Save renames through the store and the title follows',
       (tester) async {
     await pumpMain(tester, name: 'Kitchen words');
     await openDialog(tester);
     await tester.enterText(nameField(), 'Garden');
     // The store write runs on the real clock, so the tap does too.
     await tester.runAsync(() async {
-      await tester.tap(find.text('Save'));
+      await tester.tap(find.byKey(const Key('details-confirm')));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await titleBecomes(tester, 'Garden');
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Collection details'), findsNothing);
     expect((tester.widget(title()) as Text).data, 'Garden');
     await tester.runAsync(() async {
       expect((await store.byId(current.collectionId))!.name, 'Garden');
       // The next autosave must not bring the old name back.
-      container.read(wordInputNotifierProvider.notifier).addAll([WordPair(word: 'pear')]);
+      container
+          .read(wordInputNotifierProvider.notifier)
+          .addAll([WordPair(word: 'pear')]);
       await container.read(wordInputNotifierProvider.notifier).flush();
       expect((await store.byId(current.collectionId))!.name, 'Garden');
     });
     await tearDownMain(tester);
   });
 
-  testWidgets('SCR-02 cancel: nothing changes', (tester) async {
+  testWidgets('SCR-02/03 discard: nothing changes', (tester) async {
     await pumpMain(tester, name: 'Kitchen words');
     await openDialog(tester);
     await tester.enterText(nameField(), 'Garden');
-    await tester.tap(find.text('Cancel'));
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(AlertDialog), findsNothing);
+    // a tap on the barrier after a change asks first
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard changes?'), findsOneWidget);
+    await tester.tap(find.text('Discard'));
+    await tester.pumpAndSettle();
+    expect(find.text('Collection details'), findsNothing);
     expect((tester.widget(title()) as Text).data, 'Kitchen words');
     await tester.runAsync(() async {
       expect((await store.byId(current.collectionId))!.name, 'Kitchen words');

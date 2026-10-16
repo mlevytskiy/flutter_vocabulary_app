@@ -19,7 +19,7 @@ import '../../core/providers.dart';
 import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
-import '../collections/name_dialog.dart';
+import '../collections/collection_details_sheet.dart';
 import '../notes/notes_screen.dart';
 import 'collection_tag_line.dart';
 import 'lightning_rules.dart';
@@ -665,19 +665,29 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             creationMomentOf(collection.collectionId) ?? collection.updatedAt);
   }
 
-  /// The pencil button: asks for a new name and renames through the store; the
-  /// title follows the stored name (AC-02, AC-03).
+  /// The pencil button: opens the Collection details sheet (name, description,
+  /// tags) and saves through the store; the title follows the stored name
+  /// (collection-tags AC-05).
   Future<void> _renameCollection() async {
     final collection = ref.read(wordInputNotifierProvider).valueOrNull;
     if (collection == null) return;
-    final name = await showNameDialog(
+    final details = await showCollectionDetailsSheet(
       context,
-      mode: NameDialogMode.renameCollection,
-      initial: _collectionTitle(),
+      mode: DetailsMode.edit,
+      initial: (
+        name: _collectionTitle(),
+        description: collection.description ?? '',
+        origin: [...collection.originTags],
+        topic: [...collection.topicTags],
+      ),
     );
-    if (name == null) return;
-    final store = await ref.read(collectionStoreProvider.future);
-    await store.rename(collection.collectionId, name);
+    if (details == null) return;
+    await ref.read(wordInputNotifierProvider.notifier).saveDetails(
+          name: details.name,
+          description: details.description,
+          origin: details.origin,
+          topic: details.topic,
+        );
   }
 
   /// words-from-subtitles: the "From subtitles" speed-dial item. Kept words
