@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Superseded
 owner: "Maksym"
 reviewers: ["Maksym (Tech Lead)"]
 updated_at: "2026-09-29"
@@ -9,7 +9,7 @@ ticket: "spec AC-09"
 
 # 0002 — Remember the switch time beside the current-session pointer
 
-- **Status:** Accepted
+- **Status:** Superseded by collections-screen [ADR-0007](../../collections-screen/adr/0007-reopen-the-current-collection-after-any-pause.md) (2026-10-16): the app reopens the current collection after any pause, so the switch and seen times are gone
 - **Date:** 2026-09-29
 - **Deciders:** Maksym (owner decision, 2026-09-29)
 

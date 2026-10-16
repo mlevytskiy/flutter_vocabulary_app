@@ -9,6 +9,8 @@ updated_at: "2026-10-16"
 
 - collection — a named set of words collected together and stored on the learner's device; one file on the Collections screen. Formerly called session: Worker routes, shared links and stored records still say session, and specs written before collections-screen use the old name. NOT a login session (the app has no accounts), NOT a Quizlet set (a set is one source a collection's words came from).
 - current collection — the one collection the main screen is editing; there is exactly one at a time, History marks it "current" and the main screen's title shows its name. NOT a published collection (sharing a collection does not make it current).
+- filing — where a collection or folder sits on the Collections screen: its folder, its place in that folder's order, and its recycle-bin mark. Only the Collections screen's own actions (rename, new folder, move, reorder, delete, restore) change it; background work never does. NOT a word group, NOT a tag.
+- kept collection — a collection the learner made with "New collection", renamed, moved, or that ever held a word; it stays when the learner leaves it empty. Only an untouched empty collection disappears on leaving. NOT a collection in the recycle bin.
 - folder — a named place on the Collections screen that holds collections and other folders, nested to any depth; it lives only on the learner's device. NOT a word group (a group splits one collection's words for learning), NOT a tag.
 - learner — the phone owner who collects words into collections and exports them. NOT partner (the partner only opens a shared link).
 - partner — a person who opens a collection's shared link; they have no app and no account. NOT learner (the partner never collects words on a device).
