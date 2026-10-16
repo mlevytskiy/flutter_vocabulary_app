@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/dialogues/dialogue_rules.dart';
 import '../../core/models/film_dialogue.dart';
+import '../../core/models/tag_kind.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
@@ -130,6 +131,9 @@ class WordInputNotifier extends _$WordInputNotifier {
             hasWords: !stored.isEmpty,
             hasSources: stored.sources.isNotEmpty,
             hasNotesOrTags: stored.tags.isNotEmpty ||
+                (stored.description ?? '').isNotEmpty ||
+                stored.originTags.isNotEmpty ||
+                stored.topicTags.isNotEmpty ||
                 stored.sources.any((s) =>
                     (s.title ?? '').isNotEmpty ||
                     (s.description ?? '').isNotEmpty ||
@@ -465,36 +469,95 @@ class WordInputNotifier extends _$WordInputNotifier {
     });
   }
 
-  /// Changes the note of the source [id] (notes-editing, owner 2026-10-15).
-  /// Every argument left out keeps its value; an empty title or description
-  /// is dropped.
-  void updateSourceNote(
+  /// Changes the note of the source [id] (notes-editing, owner 2026-10-15;
+  /// collection-tags ADR-0004): written through the store in one transaction,
+  /// then the stored record's sources and details are adopted, so a later
+  /// autosave cannot write an older copy back. Every argument left out keeps
+  /// its value; an empty title or description is dropped. Returns the kinds
+  /// whose tag the cap kept off the collection (AC-29).
+  Future<Set<TagKind>> updateSourceNote(
     String id, {
     String? title,
     String? description,
     List<String>? links,
-    List<String>? tags,
-  }) {
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
     final collection = state.valueOrNull;
-    final source = collection?.sources.where((s) => s.id == id).firstOrNull;
-    if (source == null) return;
-    if (title != null) source.title = title.trim().isEmpty ? null : title;
-    if (description != null) {
-      source.description = description.trim().isEmpty ? null : description;
+    if (collection == null || !collection.sources.any((s) => s.id == id)) {
+      return const {};
     }
-    if (links != null) source.links = [...links];
-    if (tags != null) source.tags = [...tags];
-    state = AsyncData(collection!);
-    _scheduleSave();
+    await flush();
+    final store = await ref.read(collectionStoreProvider.future);
+    final refused = await store.saveSourceNote(
+      collection.collectionId,
+      id,
+      title: title,
+      description: description,
+      links: links,
+      origin: origin,
+      topic: topic,
+    );
+    final stored = await store.byId(collection.collectionId);
+    if (stored != null) _adopt(stored, withSources: true);
+    return refused;
   }
 
-  /// Sets the current session's own tags (notes-editing).
-  void setCollectionTags(List<String> tags) {
+  /// Saves the collection details through the store (collection-tags Flow 1)
+  /// and adopts the stored values at once, without the debounce. Null keeps a
+  /// field. False when the store refused (a bad name) or the collection is
+  /// gone.
+  Future<bool> saveDetails({
+    String? name,
+    String? description,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
     final collection = state.valueOrNull;
-    if (collection == null) return;
-    collection.tags = [...tags];
-    state = AsyncData(collection);
-    _scheduleSave();
+    if (collection == null) return false;
+    await flush();
+    final store = await ref.read(collectionStoreProvider.future);
+    final stored = await store.setDetails(
+      collection.collectionId,
+      name: name,
+      description: description,
+      origin: origin,
+      topic: topic,
+    );
+    if (stored == null) return false;
+    _adopt(stored, withSources: false);
+    return true;
+  }
+
+  /// Sets the collection's tags of [kind] (the Notes page editor).
+  Future<bool> setCollectionTags(TagKind kind, List<String> tags) =>
+      saveDetails(
+        origin: kind == TagKind.origin ? tags : null,
+        topic: kind == TagKind.topic ? tags : null,
+      );
+
+  /// Takes the values only the store writes from the [stored] record into the
+  /// current one: details, tags, both times (never earlier than the ones held)
+  /// and, after a source note, the sources, which `put()` copies from the
+  /// caller.
+  void _adopt(WordCollection stored, {required bool withSources}) {
+    final c = state.valueOrNull;
+    if (c == null || c.collectionId != stored.collectionId) return;
+    c
+      ..name = stored.name
+      ..keep = stored.keep || c.keep
+      ..description = stored.description
+      ..originTags = [...stored.originTags]
+      ..topicTags = [...stored.topicTags]
+      ..updatedAt = stored.updatedAt.isAfter(c.updatedAt)
+          ? stored.updatedAt
+          : c.updatedAt
+      ..lastLocalModifiedAt =
+          stored.lastLocalModifiedAt.isAfter(c.lastLocalModifiedAt)
+              ? stored.lastLocalModifiedAt
+              : c.lastLocalModifiedAt;
+    if (withSources) c.sources = stored.sources.toList();
+    state = AsyncData(c);
   }
 
   /// Puts [pair] at [index] of the words (the Notes words dialog adds a word

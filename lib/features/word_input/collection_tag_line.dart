@@ -13,6 +13,7 @@ class CollectionTagLine extends StatelessWidget implements PreferredSizeWidget {
     required this.originTags,
     required this.topicTags,
     required this.onTap,
+    this.height,
   });
 
   static const double lineHeight = 40;
@@ -21,10 +22,15 @@ class CollectionTagLine extends StatelessWidget implements PreferredSizeWidget {
   final List<String> topicTags;
   final void Function(TagKind kind, String text) onTap;
 
+  /// When set, the line is exactly this tall and does not animate itself: the
+  /// screen drives the app bar's whole height (owner V8).
+  final double? height;
+
   bool get _hasTags => originTags.isNotEmpty || topicTags.isNotEmpty;
 
   @override
-  Size get preferredSize => Size.fromHeight(_hasTags ? lineHeight : 0);
+  Size get preferredSize =>
+      Size.fromHeight(height ?? (_hasTags ? lineHeight : 0));
 
   @override
   Widget build(BuildContext context) {
@@ -39,9 +45,10 @@ class CollectionTagLine extends StatelessWidget implements PreferredSizeWidget {
             kind: TagKind.topic, text: t, onTap: () => onTap(TagKind.topic, t)),
     ];
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration:
+          height == null ? const Duration(milliseconds: 200) : Duration.zero,
       curve: Curves.easeInOut,
-      height: _hasTags ? lineHeight : 0,
+      height: height ?? (_hasTags ? lineHeight : 0),
       clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(),
       child: ListView.separated(
