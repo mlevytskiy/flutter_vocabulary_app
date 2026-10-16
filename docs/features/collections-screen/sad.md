@@ -261,17 +261,18 @@ The app ships as the same Android build; nothing new runs in the background. The
 
 ## 9. Architecture decisions
 
-<!-- 🎯 Why: the REVERSE INDEX onto the adr/ folder. `ls adr/` gives the files; §9 gives the
-     semantics — why they exist, which SAD section they attach to, what status.
-     📋 Write: a 4-column table, one row per ADR. Mixed status is fine.
-     📌 e.g. «0001 | Store content as a table of typed blocks | Accepted | §4». -->
-
 | # | Title | Status | Section |
 |---|---|---|---|
-| <NNNN> | <imperative — e.g. "Use a sliding-window counter for rate limiting"> | Accepted | §<N> |
-| <NNNN> | <imperative — e.g. "Co-locate the worker in the API process"> | Accepted | §<N> |
+| 0001 | Change the app, the Worker and the shared page as three surfaces | Accepted | §4 |
+| 0002 | Rename Session to WordCollection with stored names pinned | Accepted | §4 |
+| 0003 | Keep filing on the collection row, written only by store transactions | Accepted | §4 |
+| 0004 | Store folders as their own Isar collection linked by parent id | Accepted | §4 |
+| 0005 | Mark a deleted item in place and let a binned folder's contents follow it | Accepted | §4 |
+| 0006 | Deliver late results into their own collection through an atomic store update | Accepted | §4 |
+| 0007 | Reopen the current collection after any pause | Accepted | §4 |
+| 0008 | Send the collection name as the shared page's title in a nullable column | Accepted | §4 |
 
-ADR files live under `docs/features/<slug>/adr/NNNN-<title>.md`.
+ADR files live under `docs/features/collections-screen/adr/NNNN-<title>.md`.
 
 ## 10. Quality requirements
 
