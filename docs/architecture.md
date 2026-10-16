@@ -47,6 +47,11 @@ lib/
                                 (never published: the Worker knows photo and set only). Stored
                                 name stays SourcePhoto (good-looking-web; import-from-quizlet,
                                 ADR-0005; side-panel-sources AC-22)
+                                tag_kind.dart — TagKind { origin, topic } (ordinal stored; collection-tags);
+                                tag_library_entry.dart (+.g) — Isar @collection TagLibraryEntry {kind, key,
+                                text, lastUsedAt, forgotten}, unique (kind, key); effective_tags.dart — legacy
+                                tags read as topic tags until the migration ran. WordCollection gains
+                                description, originTags, topicTags; SessionSource originTags, topicTags
                                 word_result.dart (+.g) — Isar @embedded WordResult {rowId, exerciseId,
                                 label known/repeat, at}: WordCollection.results, append-only, at most 2000;
                                 never in a row, a publish or an export (learn-kit S-22)
@@ -75,6 +80,14 @@ lib/
                                 system_gesture_exclusion.dart (side-bar-for-main-screen ADR-0002:
                                 the vocab/system_gesture_exclusion channel; MainActivity keeps the
                                 photo tab's screen edge from Android's Back gesture)
+                                tag_rules.dart (collection-tags: pure tag rules — 1-30 chars,
+                                10 per kind, case-insensitive keys, presets, legacy sort, word-start
+                                matching, suggestion ranking)
+                                collection_search.dart (collection-tags: CollectionSummary, search,
+                                filters, calendar-day ranges, sort, tag counts; pure)
+                                collection_store.dart also holds the tag writes (setDetails,
+                                saveSourceNote, addCollectionTags, forgetTag), the one-time typed-tag
+                                migration and watchSummaries() (ADR-0004/0003/0006/0009 of collection-tags)
                                 quizlet_link.dart (import-from-quizlet: pure rules — find a set link
                                 in pasted text, the plain https://quizlet.com/<id>/<name>/ form the
                                 Worker accepts, which web view navigations may be followed)
@@ -201,9 +214,14 @@ lib/
     notes/                            (notes-page, notes-editing) notes_screen.dart: one pager per
                                       panel source — note (title, description, links, tags), picture
                                       (pinch zoom, tap → PhotoViewerRoute), words (tap → the words
-                                      dialog); session tags above the list. tag_editor.dart (chips +
-                                      suggestions), tag_suggestions.dart (+.g: source and session tag
-                                      pools from every session), photo_viewer_screen.dart
+                                      dialog); the collection's origin + topic tag fields above the
+                                      list, two typed fields per source note (collection-tags T12).
+                                      tag_editor.dart (the old untyped chips editor),
+                                      photo_viewer_screen.dart
+    tags/                             (collection-tags) tag_chip.dart (one chip look per TagKind),
+                                      typed_tag_field.dart (hint, examples, ranked suggestion row,
+                                      autocomplete, limits, long-press Forget), tag_suggestions.dart
+                                      (+.g: tagSuggestions(kind) = library + live use counts + presets)
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
                                       the Worker side is vocab-photo-api/src/learn/
       exercises.dart                  Exercise (id, name, stage, available) + the const list of thirteen (learn-kit),
