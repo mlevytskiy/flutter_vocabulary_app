@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -6,6 +7,8 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart' show WordDetailMode;
+import 'anki_export.dart';
+import 'safe_file_name.dart';
 
 /// The file formats the Share file menu offers. Anki stays the first and
 /// keeps its own spec (`anki_export.dart`); the others follow the word detail
@@ -23,13 +26,9 @@ enum ShareFormat {
   final String subtitle;
   final String extension;
 
-  /// Distinct file names, so the Anki and Quizlet .txt files never collide.
-  String fileName(String date) => switch (this) {
-        ShareFormat.anki => 'vocabulary_$date.txt',
-        ShareFormat.quizlet => 'vocabulary_quizlet_$date.txt',
-        ShareFormat.wordList => 'vocabulary_list_$date.txt',
-        _ => 'vocabulary_$date.$extension',
-      };
+  /// The shared file is named after the collection (collections-screen
+  /// AC-32): [name] made safe by [safeFileName], then the extension.
+  String fileName(String name) => '${safeFileName(name)}.$extension';
 
   String get mimeType => switch (this) {
         ShareFormat.csv => 'text/csv',
@@ -147,6 +146,51 @@ Future<Uint8List> generatePdfFile(
     ),
   );
   return doc.save();
+}
+
+/// One file ready for the phone's share sheet.
+class ShareFile {
+  final String fileName;
+  final String subject;
+  final String mimeType;
+  final List<int> bytes;
+
+  const ShareFile({
+    required this.fileName,
+    required this.subject,
+    required this.mimeType,
+    required this.bytes,
+  });
+}
+
+/// The file [format] makes of [wordPairs] for the collection called [name]
+/// (collections-screen AC-32): its file name and the share's subject carry
+/// the name; only the PDF also shows it inside, as its heading. [font] is
+/// read only for the PDF.
+Future<ShareFile> makeShareFile(
+  ShareFormat format,
+  List<WordPair> wordPairs, {
+  required String name,
+  WordDetailMode detail = WordDetailMode.translation,
+  Future<pw.Font> Function() font = loadPdfFont,
+}) async {
+  final List<int> bytes = switch (format) {
+    ShareFormat.anki =>
+      utf8.encode(generateAnkiFile(wordPairs, detail: detail)),
+    ShareFormat.csv => utf8.encode(generateCsvFile(wordPairs, detail: detail)),
+    ShareFormat.quizlet =>
+      utf8.encode(generateQuizletFile(wordPairs, detail: detail)),
+    ShareFormat.wordList =>
+      utf8.encode(generateWordListFile(wordPairs, detail: detail)),
+    ShareFormat.pdf => await generatePdfFile(wordPairs,
+        font: await font(), detail: detail, title: name),
+  };
+  return ShareFile(
+    fileName: format.fileName(name),
+    subject: name,
+    mimeType: format.mimeType,
+    bytes: bytes,
+  );
 }
 
 Future<pw.Font> loadPdfFont() async =>

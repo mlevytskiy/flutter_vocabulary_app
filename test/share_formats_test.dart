@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -57,9 +58,50 @@ void main() {
     expect(String.fromCharCodes(bytes), contains('NotoSans'));
   });
 
-  test('file names never collide between the .txt formats', () {
-    final names = {for (final f in ShareFormat.values) f.fileName('2026-10-14')};
-    expect(names, hasLength(ShareFormat.values.length));
-    expect(ShareFormat.anki.fileName('2026-10-14'), 'vocabulary_2026-10-14.txt');
+  // collections-screen T24: every format is named after the collection and
+  // carries it as the subject; only the PDF shows it inside (AC-32).
+  group('named after the collection (T24)', () {
+    const name = 'Unit 3: phrasal verbs?';
+    final font = pw.Font.ttf(ByteData.sublistView(
+        File('assets/fonts/NotoSans-Regular.ttf').readAsBytesSync()));
+
+    for (final format in ShareFormat.values) {
+      test('${format.title}: file name and subject carry the name', () async {
+        final file = await makeShareFile(format, words,
+            name: name, font: () async => font);
+        expect(file.fileName, 'Unit 3- phrasal verbs-.${format.extension}');
+        expect(file.subject, name);
+        expect(file.mimeType, format.mimeType);
+        if (format != ShareFormat.pdf) {
+          expect(utf8.decode(file.bytes), isNot(contains('Unit 3')));
+        }
+      });
+    }
+
+    test('a default name keeps its date and swaps the colon', () async {
+      final file = await makeShareFile(ShareFormat.csv, words,
+          name: '16.10.2026 14:30', font: () async => font);
+      expect(file.fileName, '16.10.2026 14-30.csv');
+      expect(file.subject, '16.10.2026 14:30');
+    });
+
+    test('nothing left falls back to "collection"', () async {
+      final file = await makeShareFile(ShareFormat.wordList, words,
+          name: '???', font: () async => font);
+      expect(file.fileName, '---.txt');
+      final blank = await makeShareFile(ShareFormat.wordList, words,
+          name: '   ', font: () async => font);
+      expect(blank.fileName, 'collection.txt');
+    });
+
+    test('the PDF shows the name as its heading', () async {
+      final named = await makeShareFile(ShareFormat.pdf, words,
+          name: name, font: () async => font);
+      final other = await makeShareFile(ShareFormat.pdf, words,
+          name: 'Another one', font: () async => font);
+      expect(String.fromCharCodes(named.bytes.take(5)), '%PDF-');
+      // The heading is drawn: the page differs only by the name.
+      expect(named.bytes, isNot(equals(other.bytes)));
+    });
   });
 }

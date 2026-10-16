@@ -332,6 +332,44 @@ void main() {
     expect(find.textContaining('30 days'), findsNothing);
   });
 
+  // collections-screen T24: the sheet warns that the name is public, and
+  // Share link sends it as the page's title (AC-29, AC-31).
+  testWidgets('the sheet says the collection\'s name is public', (tester) async {
+    final named = WordCollection.create()
+      ..name = 'Speaking club 12'
+      ..words = [WordPair(word: 'get over', translation: 'подолати')];
+    await pumpTable(tester, WordDetailMode.translation, shown: named);
+    await openSheet(tester);
+    expect(
+        find.text('The collection\'s name, "Speaking club 12", is visible to '
+            'anyone with the link.'),
+        findsOneWidget);
+    expect(find.text('Share file'), findsOneWidget);
+    expect(find.text('Share link'), findsOneWidget);
+  });
+
+  testWidgets('a collection not yet named warns with its default name',
+      (tester) async {
+    final unnamed = WordCollection.create()
+      ..updatedAt = DateTime(2026, 10, 16, 14, 30)
+      ..words = [WordPair(word: 'cup', translation: 'чашка')];
+    await pumpTable(tester, WordDetailMode.translation, shown: unnamed);
+    await openSheet(tester);
+    expect(find.textContaining('"16.10.2026 14:30"'), findsOneWidget);
+  });
+
+  testWidgets('Share link sends the name as the title', (tester) async {
+    final publisher = _FakePublisher();
+    final named = WordCollection.create()
+      ..name = 'Speaking club 12'
+      ..words = [WordPair(word: 'get over', translation: 'подолати')];
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: named);
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(publisher.sentTitle, 'Speaking club 12');
+  });
+
   testWidgets('tapping the photo stack opens the viewer; swipe and close',
       (tester) async {
     await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
@@ -533,14 +571,19 @@ class _FakePublisher extends CollectionPublishService {
   /// The film dialogues the last publish was given.
   List<FilmDialogue>? sentDialogues;
 
+  /// The title the last publish was given (collections-screen T24).
+  String? sentTitle;
+
   @override
   Future<PublishedCollection> publish(List<WordPair> pairs,
       {WordDetailMode detail = WordDetailMode.translation,
       List<SessionSource> sources = const [],
       String? publishedId,
       String? editToken,
-      List<FilmDialogue> dialogues = const []}) async {
+      List<FilmDialogue> dialogues = const [],
+      String? title}) async {
     sentSources = sources;
+    sentTitle = title;
     sentDialogues = dialogues;
     return PublishedCollection(id: 'id', url: 'https://example.test/s/id');
   }
