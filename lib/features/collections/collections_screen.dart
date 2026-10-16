@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../router/routes.dart';
 import 'collections_notifier.dart';
 import 'collections_view.dart';
 
@@ -43,6 +44,7 @@ class CollectionsScreen extends ConsumerWidget {
             child: CollectionsGrid(
               items: state.items,
               showBin: state.isTopLevel,
+              onBinTap: () => const RecycleBinRoute().push(context),
               onTap: (item) {
                 if (item.isFolder) notifier.open(item.id);
               },

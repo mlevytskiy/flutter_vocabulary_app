@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/collections/collections_screen.dart';
+import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
@@ -50,6 +51,7 @@ part 'routes.g.dart';
     TypedGoRoute<CollectionsRoute>(path: 'collections'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
+    TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
   ],
 )
 class WordInputRoute extends GoRouteData with _$WordInputRoute {
@@ -222,6 +224,15 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
 
   @override
   Widget build(BuildContext context, GoRouterState state) => const SettingsScreen();
+}
+
+/// The recycle bin (collections-screen SCR-08); opened from the top-level bin
+/// icon on the Collections screen.
+class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
+  const RecycleBinRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const RecycleBinScreen();
 }
 
 final appRouter = GoRouter(routes: $appRoutes);

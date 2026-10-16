@@ -6,7 +6,7 @@ part of 'story_run_tracker.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$storyRunTrackerHash() => r'815a50978185d9d84d0ce1ca4cd8bd15b60fb5fb';
+String _$storyRunTrackerHash() => r'ec14e7082b6bba4bd2d4468aaca5d38ad60db99a';
 
 /// Starts story runs, follows them on the Worker and collects their results to
 /// the phone (mnemonic-story ADR-0002, sad §6 S-02, S-04, S-05).
