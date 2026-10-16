@@ -76,9 +76,9 @@ C4Context
 
     Person(learner, "Learner", "Collects words into collections, tags and finds them")
     Person(partner, "Partner", "Opens a shared link")
-    System(app, "Vocabulary app", "Flutter phone app; tags, description and tag library live only here")
-    System_Ext(worker, "vocab-photo-api Worker", "Publishes a collection; unchanged, receives no tags or description")
-    System_Ext(page, "Shared page", "Public page of a published collection; unchanged")
+    System(app, "Vocabulary app", "Flutter phone app, tags, description and tag library live only here")
+    System_Ext(worker, "vocab-photo-api Worker", "Publishes a collection, unchanged, receives no tags or description")
+    System_Ext(page, "Shared page", "Public page of a published collection, unchanged")
 
     Rel(learner, app, "Tags, describes, searches, filters")
     Rel(app, worker, "Publishes words and sources only", "HTTPS")
@@ -158,7 +158,7 @@ C4Container
         ContainerDb(db, "Isar database", "isar_community 3.3.0-dev.1", "Session (WordCollection) records, CollectionFolder, TagLibraryEntry")
     }
 
-    System_Ext(worker, "vocab-photo-api Worker", "Unchanged; receives no tags or description")
+    System_Ext(worker, "vocab-photo-api Worker", "Unchanged, receives no tags or description")
 
     Rel(learner, ui, "Taps, types")
     Rel(ui, state, "Reads and calls")
@@ -200,7 +200,214 @@ sequenceDiagram
     Store-->>Writer: done, details unchanged
 ```
 
-The `sequences` stage adds the remaining flows: source tag copy-up, migration, search and filter, tag-tap navigation and Forget.
+### Flow 3 (US-01): make a new collection with details
+
+```mermaid
+sequenceDiagram
+    actor User as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    Note over User,UI: SCR-04 Collections, folder open
+    User->>UI: New collection
+    UI->>Svc: ask ranked suggestions per kind
+    Svc-->>UI: own tags first, then presets (up to 8 each)
+    UI-->>User: SCR-02 sheet with hints, helper lines, suggestion rows
+    User->>UI: name, description, taps or types tags, Create
+    UI->>Svc: validate name, description, each new tag
+    alt name empty or over 60, description over 500
+        Svc-->>UI: field problem
+        UI-->>User: message under the field, Create unavailable (AC-03)
+    else a new tag empty, over 30, multi-line, or 11th of its kind
+        Svc-->>UI: tag problem
+        UI-->>User: tag not added, message under the field (AC-04, AC-10)
+    else valid
+        UI->>Svc: create collection with details in the open folder
+        Svc->>DB: one transaction: new collection, description, typed tags, kept
+        Note over Svc,DB: persists collection (description, origin tags, topic tags) + touches library entries (kind, key, last used)
+        DB-->>Svc: stored
+        Svc-->>UI: new collection is current
+        UI-->>User: SCR-01 main screen, tag line if tagged (AC-01, AC-02, AC-27)
+    end
+    opt user dismisses the sheet after a change
+        UI-->>User: SCR-03 Discard changes? (AC-36)
+    end
+```
+
+### Flow 4 (US-02): leaving a collection that only has details
+
+```mermaid
+sequenceDiagram
+    actor User as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    Note over User,DB: earlier, saving a non-empty description or any typed tag (or Create) set keep, never cleared
+    User->>UI: opens another collection
+    UI->>Svc: leave current collection
+    Svc->>DB: read stored record
+    alt keep set, or words, sources or notes
+        Svc-->>UI: kept, still listed on the Collections screen (AC-28)
+    else untouched and empty
+        Svc->>DB: erase untouched empty collection (today's rule)
+    end
+```
+
+### Flow 5 (US-03, US-04): suggestions, autocomplete and Forget
+
+```mermaid
+sequenceDiagram
+    actor User as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    Note over UI,Svc: library and summaries already in memory (re-read after store writes)
+    User->>UI: types co in a topic field
+    UI->>Svc: rank matches for topic, query co
+    Svc->>Svc: word-start match ignoring case, in-use by collection count then last added, then unused library, then presets, minus added and forgotten
+    Svc-->>UI: Cooking, Home cooking (not Tacos) (AC-08, AC-35)
+    User->>UI: types food and confirms
+    UI->>Svc: resolve spelling
+    alt same key in library or presets
+        Svc-->>UI: existing spelling Food (AC-09)
+    else new text
+        Svc-->>UI: as typed
+    end
+    Note over UI: the same text may also be an origin tag (AC-11), tag joins the field, saved with the sheet or Notes save
+    User->>UI: long-presses own tag Fodo, Forget this tag
+    UI->>Svc: forget topic Fodo
+    Svc->>DB: mark library entry forgotten
+    Note over Svc,DB: persists library entry (forgotten)
+    Svc-->>UI: Fodo gone from suggestions, collections keep it (AC-12, AC-30)
+```
+
+### Flow 6 (US-05): tag line and a tag tap
+
+```mermaid
+sequenceDiagram
+    actor User as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    Note over UI: SCR-01, current collection in memory
+    alt collection has a tag
+        UI-->>User: tag line under the top bar, origin then topic, grows in (AC-13)
+    else no tag
+        UI-->>User: no tag line
+    end
+    User->>UI: taps topic tag Food
+    UI->>UI: push Collections with kind topic, text Food
+    UI->>Svc: filter summaries by topic Food, sort My order
+    Svc-->>UI: matches from all folders, binned excluded
+    UI-->>User: SCR-05 results with chip Food (AC-14)
+    alt Back
+        UI-->>User: SCR-01 main screen (AC-39)
+    else Clear filters
+        UI-->>User: SCR-04 folder Collections opens at by default
+    else tap a result
+        UI->>Svc: open that collection
+        Svc-->>UI: it is current
+        UI-->>User: SCR-01 on that collection
+    end
+```
+
+### Flow 7 (US-06): tag a source and copy it up
+
+```mermaid
+sequenceDiagram
+    actor User as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    Note over User,UI: SCR-08 Notes page, typed fields per source (AC-34)
+    User->>UI: adds topic Restaurants to photo Page 12
+    UI->>Svc: save source note
+    Svc->>DB: one transaction: save the source, then each newly added tag (in the saved source, not in the stored one, ignoring case) touches its library entry and is copied up
+    alt collection already has it (ignoring case)
+        Note over Svc,DB: source only
+    else collection has fewer than 10 of that kind
+        Note over Svc,DB: persists source tags + collection topic tags + library entry last used (AC-15, AC-33)
+    else collection has 10 of that kind
+        Note over Svc,DB: persists source tags only
+        Svc-->>UI: not added to the collection: topic
+        UI-->>User: snackbar The collection already has 10 topic tags, each refused kind named once (AC-29)
+    end
+    DB-->>Svc: stored record
+    Svc-->>UI: stored sources, typed tags and times adopted
+    UI-->>User: tag line shows Restaurants
+    User->>UI: removes Restaurants from the source
+    UI->>Svc: save source note
+    Svc->>DB: save the source only, collection untouched (AC-16)
+```
+
+### Flow 8 (US-07): search and filter Collections
+
+```mermaid
+sequenceDiagram
+    actor User as <user>
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    DB-->>Svc: after any store write (debounced): summaries of every non-binned collection, empty ones too
+    Note over Svc,DB: reads collections + folders, created from id moment or last edit (AC-25)
+    User->>UI: search cook, filter origin Series + topic Food, Created last 30 days, sort Recently edited
+    UI->>Svc: search summaries (query, filter, sort)
+    Svc->>Svc: substring on name, description, tags, all picked tags, local calendar-day ranges, sort
+    opt custom range start after end, in SCR-07 before any search
+        UI-->>User: start must be on or before end, range not applied (AC-21)
+    end
+    alt matches
+        Svc-->>UI: flat results with folder paths
+        UI-->>User: SCR-05 list, chips, Clear, drag and delete mode off (AC-19, AC-20, AC-20b, AC-22, AC-37)
+    else nothing matches
+        UI-->>User: No collections match + Clear filters (AC-24)
+    end
+    Note over Svc: binned collections never in the summaries (AC-23), empty collections are (AC-27)
+    User->>UI: opens filter sheet
+    UI->>Svc: tag counts per kind from summaries
+    Svc-->>UI: tags on live collections with counts, most used then A-Z (AC-38)
+```
+
+### Flow 9 (US-08): first start after the update — migration
+
+```mermaid
+sequenceDiagram
+    participant UI as <ui>
+    participant Svc as <service>
+    participant DB as <data-store>
+    UI->>Svc: open the store
+    Svc->>DB: read records with legacy tags, oldest creation moment first
+    alt none
+        Svc-->>UI: nothing to do
+    else some
+        Svc->>Svc: per list: origin preset match to origin, else topic, merge case duplicates (first wins), keep long and over-limit, copy source tags up past the cap
+        Svc->>DB: one transaction: typed lists written, legacy lists emptied, library upserted in visit order (last used left empty so it ranks below later adds, no un-forget)
+        Note over Svc,DB: persists collections (origin, topic, emptied legacy) + library entries (kind, key)
+        alt transaction fails
+            Svc-->>UI: logged, retried on next open, legacy tags read as topic tags in memory (never shown as no tags)
+        else ok
+            Svc-->>UI: migrated (AC-17, AC-17b, AC-31, AC-32)
+        end
+    end
+```
+
+### AC coverage of the runtime view
+
+| AC | Where | AC | Where |
+|---|---|---|---|
+| AC-01, AC-02 | Flow 3 valid | AC-20, AC-20b, AC-37 | Flow 8 matches |
+| AC-03, AC-04, AC-10 | Flow 3 alts | AC-21 | Flow 8 alt |
+| AC-05, AC-06 | Flow 1 (save, times move only on change) | AC-22, AC-24 | Flow 8 |
+| AC-07, AC-08, AC-35 | Flow 3 suggestions, Flow 5 | AC-23, AC-27 | Flow 8 note; Flow 3 |
+| AC-09, AC-11 | Flow 5 | AC-25 | Flow 8 note |
+| AC-12, AC-30 | Flow 5 Forget | AC-26 | N/A runtime: publish and export build their payload without description or tags; pinned by a payload test |
+| AC-13, AC-14, AC-39 | Flow 6 | AC-28 | Flow 4 |
+| AC-15, AC-16, AC-29, AC-33, AC-34 | Flow 7 | AC-31, AC-32, AC-17, AC-17b | Flow 9 |
+| AC-18 | Flow 2 (stale put), Flow 7 (adopt) | AC-19, AC-38 | Flow 8 |
+| AC-36 | Flow 3 opt | | |
+
+Every §4 user story has a flow: US-01 → 3, US-02 → 1, 2, 4, US-03/US-04 → 5, US-05 → 6, US-06 → 7, US-07 → 8, US-08 → 9. US-09 is non-runtime (AC-26).
+
+Flags for design: none. All participants map to §5 (UI = Screens, service = Notifiers and rules + CollectionStore, data-store = Isar).
 
 ## 7. Deployment view
 
@@ -211,9 +418,10 @@ The `sequences` stage adds the remaining flows: source tag copy-up, migration, s
 | Concept | Convention | Where defined |
 |---|---|---|
 | Tag identity | A tag is (kind, text). Equality within a kind ignores case through a lowercase `key`. The first stored spelling wins, and new text is stored as typed. | `tag_rules.dart`, ADR-0001 |
+| Legacy fallback | Until the migration has succeeded, a record whose typed lists are empty and whose legacy `tags` are not empty reads its legacy tags as topic tags (summaries, notifier, Notes). | ADR-0003 |
 | Tag limits | New input must be 1–30 characters on one line, trimmed, and a new add needs fewer than 10 tags of that kind. Existing over-limit data is kept (grandfathered). | `tag_rules.dart` |
 | Protected collection fields | `put()`/`update()` copy filing **and** `description`, `originTags`, `topicTags` from the stored record. Only `setDetails`, `addCollectionTags`, the migration and `create(details)` write them. | ADR-0004 (extends collections-screen ADR-0003) |
-| Kept collection | A description or any typed tag counts as "notes or tags" in `isEmptyAndUntouched` (AC-28). | `filing.dart`, `word_input_notifier.dart:128-140` |
+| Kept collection | `setDetails` / `create(details)` set `keep` when they save a non-empty description or any typed tag. It is never cleared (AC-28). | ADR-0004, `filing.dart` |
 | Times | Edited = `updatedAt`, Created = `creationMomentOf(collectionId) ?? updatedAt`. Day ranges use local calendar days. | ADR-0005, `collection_search.dart` |
 | Privacy | Description and typed tags are never added to publish payloads or export files. A test pins that. | AC-26, §3 |
 | Error handling | Store methods never throw to the UI (existing convention). Validation messages come from pure rule functions and are shown under the field. | `collection_store.dart` class doc |
