@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/offered_ai.dart';
 import '../../core/models/story_run.dart';
 import '../../core/providers.dart';
+import '../word_input/word_input_notifier.dart';
+import '../words_table/include_photos.dart';
+import '../words_table/photo_viewer.dart';
+import '../words_table/widgets/photo_stack.dart';
 
 /// Every story run, newest first, re-emitted after each write.
 final storyRunsProvider = StreamProvider.autoDispose<List<StoryRun>>((ref) async* {
@@ -85,9 +89,13 @@ String? listPriceLine(OfferedAi ai) {
 /// of a story run, with prices (AC-12), and the way to the story runs (AC-14).
 ///
 /// [onOpenStoryRuns] is what "Story runs" does; the route supplies it.
+///
+/// words-photo-panel: the Words screen's "Include photos (N)" switch, for
+/// the collection [collectionId] (null: the current one), is at the top.
 class WordsSettingsScreen extends ConsumerWidget {
-  const WordsSettingsScreen({super.key, this.onOpenStoryRuns});
+  const WordsSettingsScreen({super.key, this.collectionId, this.onOpenStoryRuns});
 
+  final String? collectionId;
   final VoidCallback? onOpenStoryRuns;
 
   static const _titles = {
@@ -134,12 +142,50 @@ class WordsSettingsScreen extends ConsumerWidget {
       );
     }
 
+    final includePhotos = _includePhotosTile(context, ref);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Words settings'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
-      body: body,
+      body: includePhotos == null
+          ? body
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                includePhotos,
+                const Divider(),
+                Expanded(child: body),
+              ],
+            ),
+    );
+  }
+
+  /// The "Include photos (N)" switch, moved here from above the Words
+  /// screen's table (words-photo-panel); with no photo linked to a filled
+  /// row it is not shown, as before.
+  Widget? _includePhotosTile(BuildContext context, WidgetRef ref) {
+    final id = collectionId;
+    final collection = id == null
+        ? ref.watch(wordInputNotifierProvider).valueOrNull
+        : ref.watch(collectionByIdProvider(id)).valueOrNull;
+    final photos =
+        linkedPhotos(linkedSources(collection, filledPairs(collection)));
+    if (photos.isEmpty) return null;
+    return SwitchListTile(
+      // Tapping the stack opens the photos, as on the page.
+      secondary: Semantics(
+        button: true,
+        label: 'Show photos',
+        child: GestureDetector(
+          onTap: () => showPhotoViewer(context, photos),
+          child: PhotoStack(photos: photos),
+        ),
+      ),
+      title: Text('Include photos (${photos.length})'),
+      value: ref.watch(includePhotosProvider(id)),
+      onChanged: (value) =>
+          ref.read(includePhotosProvider(id).notifier).set(value),
     );
   }
 }
