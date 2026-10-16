@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'models/offered_ai.dart';
+import 'models/collection_folder.dart';
 import 'models/word_collection.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
@@ -18,6 +19,7 @@ import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
 import 'services/collection_publish_service.dart';
+import 'services/collection_level.dart';
 import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
@@ -188,13 +190,30 @@ Future<WordCollection?> collectionById(Ref ref, String collectionId) async {
   return store.byId(collectionId);
 }
 
-/// Every session that has at least one non-blank word, newest first, re-emitted
-/// after every write. The drawer rule on the input screen and the History
-/// screen (task-10) both read this one stream.
+/// History (collections-screen F11): every collection that has at least one
+/// non-blank word and is not in the recycle bin, directly or through a folder
+/// above it, newest first, re-emitted after every write. The drawer rule on
+/// the input screen, the History screen and the tag suggestions read this.
 @riverpod
 Stream<List<WordCollection>> nonEmptyCollections(Ref ref) async* {
   final store = await ref.watch(collectionStoreProvider.future);
-  yield* store.watchNonEmpty();
+  yield* store.watchHistory();
+}
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+@riverpod
+Stream<List<LevelItem>> collectionLevel(Ref ref, String? folderId) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchLevel(folderId);
+}
+
+/// Every folder, binned ones too, for the Collections path and the tree.
+@riverpod
+Stream<List<CollectionFolder>> collectionFolders(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchFolders();
 }
 
 /// Whether the word list is in drag-and-drop (reorder) mode. A pure display

@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-13", "AC-14", "AC-15", "AC-17", "AC-28"]
 files_hint: ["lib/core/services/collection_store.dart", "test/collection_filing_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Add rename, new folder, move and reorder transactions and the level, path and History streams

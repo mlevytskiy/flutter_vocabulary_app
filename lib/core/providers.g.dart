@@ -543,11 +543,12 @@ class _CollectionByIdProviderElement
 }
 
 String _$nonEmptyCollectionsHash() =>
-    r'a07de87f72b0e162ea7fc78ec8d85851ed99aeb3';
+    r'0736779d8ae8680bceb1731f22ddacf9be9bdec6';
 
-/// Every session that has at least one non-blank word, newest first, re-emitted
-/// after every write. The drawer rule on the input screen and the History
-/// screen (task-10) both read this one stream.
+/// History (collections-screen F11): every collection that has at least one
+/// non-blank word and is not in the recycle bin, directly or through a folder
+/// above it, newest first, re-emitted after every write. The drawer rule on
+/// the input screen, the History screen and the tag suggestions read this.
 ///
 /// Copied from [nonEmptyCollections].
 @ProviderFor(nonEmptyCollections)
@@ -566,6 +567,183 @@ final nonEmptyCollectionsProvider =
 // ignore: unused_element
 typedef NonEmptyCollectionsRef
     = AutoDisposeStreamProviderRef<List<WordCollection>>;
+String _$collectionLevelHash() => r'35c09f3e0dc5b9ca13c5d35021e6ce1ef3d65d15';
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+///
+/// Copied from [collectionLevel].
+@ProviderFor(collectionLevel)
+const collectionLevelProvider = CollectionLevelFamily();
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+///
+/// Copied from [collectionLevel].
+class CollectionLevelFamily extends Family<AsyncValue<List<LevelItem>>> {
+  /// One level of the Collections screen (collections-screen T8): the folders
+  /// and collections in [folderId], null being the top level, that are not in
+  /// the bin, by order, re-emitted after every write.
+  ///
+  /// Copied from [collectionLevel].
+  const CollectionLevelFamily();
+
+  /// One level of the Collections screen (collections-screen T8): the folders
+  /// and collections in [folderId], null being the top level, that are not in
+  /// the bin, by order, re-emitted after every write.
+  ///
+  /// Copied from [collectionLevel].
+  CollectionLevelProvider call(
+    String? folderId,
+  ) {
+    return CollectionLevelProvider(
+      folderId,
+    );
+  }
+
+  @override
+  CollectionLevelProvider getProviderOverride(
+    covariant CollectionLevelProvider provider,
+  ) {
+    return call(
+      provider.folderId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'collectionLevelProvider';
+}
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+///
+/// Copied from [collectionLevel].
+class CollectionLevelProvider
+    extends AutoDisposeStreamProvider<List<LevelItem>> {
+  /// One level of the Collections screen (collections-screen T8): the folders
+  /// and collections in [folderId], null being the top level, that are not in
+  /// the bin, by order, re-emitted after every write.
+  ///
+  /// Copied from [collectionLevel].
+  CollectionLevelProvider(
+    String? folderId,
+  ) : this._internal(
+          (ref) => collectionLevel(
+            ref as CollectionLevelRef,
+            folderId,
+          ),
+          from: collectionLevelProvider,
+          name: r'collectionLevelProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$collectionLevelHash,
+          dependencies: CollectionLevelFamily._dependencies,
+          allTransitiveDependencies:
+              CollectionLevelFamily._allTransitiveDependencies,
+          folderId: folderId,
+        );
+
+  CollectionLevelProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.folderId,
+  }) : super.internal();
+
+  final String? folderId;
+
+  @override
+  Override overrideWith(
+    Stream<List<LevelItem>> Function(CollectionLevelRef provider) create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: CollectionLevelProvider._internal(
+        (ref) => create(ref as CollectionLevelRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        folderId: folderId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeStreamProviderElement<List<LevelItem>> createElement() {
+    return _CollectionLevelProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CollectionLevelProvider && other.folderId == folderId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, folderId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin CollectionLevelRef on AutoDisposeStreamProviderRef<List<LevelItem>> {
+  /// The parameter `folderId` of this provider.
+  String? get folderId;
+}
+
+class _CollectionLevelProviderElement
+    extends AutoDisposeStreamProviderElement<List<LevelItem>>
+    with CollectionLevelRef {
+  _CollectionLevelProviderElement(super.provider);
+
+  @override
+  String? get folderId => (origin as CollectionLevelProvider).folderId;
+}
+
+String _$collectionFoldersHash() => r'0201bdb7340183c54b86017aa80dc98dee5f1df7';
+
+/// Every folder, binned ones too, for the Collections path and the tree.
+///
+/// Copied from [collectionFolders].
+@ProviderFor(collectionFolders)
+final collectionFoldersProvider =
+    AutoDisposeStreamProvider<List<CollectionFolder>>.internal(
+  collectionFolders,
+  name: r'collectionFoldersProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$collectionFoldersHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CollectionFoldersRef
+    = AutoDisposeStreamProviderRef<List<CollectionFolder>>;
 String _$dialoguePushServiceHash() =>
     r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
 
