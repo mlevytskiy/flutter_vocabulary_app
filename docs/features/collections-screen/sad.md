@@ -842,7 +842,7 @@ ADR files live under `docs/features/collections-screen/adr/NNNN-<title>.md`.
 | The phone's clock moved forward erases bin items early | Low | Accepted by the spec (AC-26) | Maksym |
 | A shared page outlives its erased collection and can no longer be updated | Low | The erase confirmation says so (AC-25); the page expires on its own | Maksym |
 | Brownfield drift: architecture.md, the launch-rule tests and edit-session-from-history ADR-0002/0003 describe the 5-minute rule and dropping late results | Low | ADR-0006 and ADR-0007 supersede them; `implement` updates architecture.md and replaces `word_input_launch_rule_test.dart` | Maksym |
-| Open architectural decision: where a restored item lands in its folder's order (spec §8) | Open question | Resolve before `sdd:screens`; spec default: its old position when its neighbours are still there, otherwise the end. Both are possible because a binned item keeps its `order` | Maksym |
+| Resolved 2026-10-16 (`sdd:screens`): where a restored item lands in its folder's order (spec §8) | Low | Its old position when it is still within the level, otherwise the end; a binned item keeps its `order` (screens SCR-08) | Maksym |
 
 **Accepted debt (acceptable in v1, plan to fix later):**
 - The retired `seen_*` and `switched_*` `shared_preferences` keys are removed once at startup, not migrated.
