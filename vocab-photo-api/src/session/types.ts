@@ -115,6 +115,8 @@ export interface StoredSession {
   /** The revision of the last republish; 0 when never republished (ADR-0008). */
   replacedRev: number;
   detail: SessionDetail;
+  /** The collection's name as the page's title (collections-screen, ADR-0008); null shows "Vocabulary". */
+  title: string | null;
   rows: StoredRow[];
   sources: StoredSource[];
   /** Film dialogues with at least one word still in the table, in phone order (empty without dialogues). */
@@ -195,6 +197,10 @@ export function isRev(value: unknown): value is number {
 
 export type ParsedEntries = { ok: true; entries: SessionEntry[]; keptIndexes: number[] } | { ok: false; error: string };
 export type ParsedDetail = { ok: true; detail: SessionDetail } | { ok: false; error: string };
+export type ParsedTitle = { ok: true; title: string | null } | { ok: false; error: string; code: "title_invalid" };
+
+/** A collection name: 1 to 60 characters (code points, as the app counts runes), one line. */
+export const MAX_TITLE_CHARS = 60;
 /** `code` is set when the answer should carry one (`invalid_source`, sad §8). */
 export type ParsedSources =
   | { ok: true; sources: DeclaredSource[] }
@@ -289,6 +295,22 @@ export function parseDetail(value: unknown): ParsedDetail {
     return { ok: true, detail: value as SessionDetail };
   }
   return { ok: false, error: "`detail` must be one of: translation, definition, both" };
+}
+
+/**
+ * `title` is optional (older apps never send it; absent stores NULL). A string must be 1 to
+ * 60 characters, not only spaces, with no line break; it is kept as typed, untrimmed
+ * (collections-screen contract, AC-02). The app checks the same rule before sending.
+ */
+export function parseTitle(value: unknown): ParsedTitle {
+  if (value === undefined) return { ok: true, title: null };
+  if (typeof value === "string") {
+    const chars = [...value].length;
+    if (chars >= 1 && chars <= MAX_TITLE_CHARS && value.trim() !== "" && !/[\r\n]/.test(value)) {
+      return { ok: true, title: value };
+    }
+  }
+  return { ok: false, error: `\`title\` must be 1 to ${MAX_TITLE_CHARS} characters on one line`, code: "title_invalid" };
 }
 
 /**
