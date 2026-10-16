@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/models/tag_kind.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_level.dart';
+import '../../core/services/collection_search.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'bin_dialogs.dart';
 import 'collection_drag.dart';
 import 'collection_icon.dart';
 import 'collections_notifier.dart';
+import 'collections_results_view.dart';
+import 'collections_search_notifier.dart';
 import 'collections_speed_dial.dart';
 import 'collections_view.dart';
 import 'fly_to_bin.dart';
@@ -20,8 +24,15 @@ import 'name_dialog.dart';
 /// it) and the plus button with New folder and New collection. A tap on the
 /// recycle bin offers to open it or to switch delete mode, where each icon
 /// gets a small bin button that flies it into the recycle bin.
+///
+/// The top bar's search and filter icons (collection-tags SCR-05) swap the
+/// folder view for a flat list of matches from every folder; [tagKind] and
+/// [tag], from a tag tap on the main screen, open the screen filtered.
 class CollectionsScreen extends ConsumerStatefulWidget {
-  const CollectionsScreen({super.key});
+  const CollectionsScreen({super.key, this.tagKind, this.tag});
+
+  final TagKind? tagKind;
+  final String? tag;
 
   @override
   ConsumerState<CollectionsScreen> createState() => _CollectionsScreenState();
@@ -48,6 +59,35 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   CollectionItemView? _dragged;
   String? _dragFrom;
   bool _dragging = false;
+
+  /// The search field's text (collection-tags SCR-05).
+  final _query = TextEditingController();
+
+  CollectionsSearchProvider get _searchProvider =>
+      collectionsSearchProvider(widget.tagKind, widget.tag);
+
+  @override
+  void dispose() {
+    _query.dispose();
+    super.dispose();
+  }
+
+  void _openSearch() {
+    // Delete mode has no place while searching (AC-22).
+    setState(() => _deleteMode = false);
+    ref.read(_searchProvider.notifier).openSearch();
+  }
+
+  /// Clear / Clear filters / the first Back: the folder view comes back at
+  /// the folder it was showing (AC-24, AC-39).
+  void _clearSearch() {
+    _query.clear();
+    ref.read(_searchProvider.notifier).clear();
+  }
+
+  /// The filter icon. TODO(T14): open the filter sheet (SCR-06) here and
+  /// apply its result with `ref.read(_searchProvider.notifier).setFilter`.
+  void onOpenFilter() {}
 
   void _dragStarted(CollectionItemView item) {
     setState(() {
@@ -139,17 +179,19 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
               title: Text(goToBinText),
             ),
           ),
-          SimpleDialogOption(
-            onPressed: () =>
-                Navigator.pop(context, _BinAction.toggleDeleteMode),
-            child: ListTile(
-              leading: Icon(_deleteMode
-                  ? Icons.check_circle_outline
-                  : Icons.radio_button_unchecked),
-              title: Text(
-                  _deleteMode ? disableDeleteModeText : enableDeleteModeText),
+          // Not offered while a search or filter is on (AC-22).
+          if (!_searchLocked)
+            SimpleDialogOption(
+              onPressed: () =>
+                  Navigator.pop(context, _BinAction.toggleDeleteMode),
+              child: ListTile(
+                leading: Icon(_deleteMode
+                    ? Icons.check_circle_outline
+                    : Icons.radio_button_unchecked),
+                title: Text(
+                    _deleteMode ? disableDeleteModeText : enableDeleteModeText),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -160,6 +202,12 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
       case _BinAction.toggleDeleteMode:
         setState(() => _deleteMode = !_deleteMode);
     }
+  }
+
+  /// A search or filter is on: no drag, reorder or delete mode (AC-22).
+  bool get _searchLocked {
+    final search = ref.read(_searchProvider);
+    return search.searching || search.filter.isActive;
   }
 
   /// Delete mode's small bin button: the picture flies into the recycle-bin
@@ -210,6 +258,16 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final search = ref.watch(_searchProvider);
+    final searchNotifier = ref.read(_searchProvider.notifier);
+    final locked = search.searching || search.filter.isActive;
+    List<CollectionSummary>? results;
+    if (search.showsResults) {
+      final summaries = ref.watch(collectionSummariesProvider).valueOrNull;
+      results = summaries == null
+          ? null
+          : searchCollections(summaries, search.filter, now: DateTime.now());
+    }
     final state = ref.watch(collectionsNotifierProvider);
     final folders =
         ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
@@ -221,13 +279,44 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
           levelIds: [for (final i in state.items ?? const []) i.id],
           fromFolderId: _dragFrom,
         );
-    return Listener(
+    // Back from a search started here clears it first; from a tag tap it
+    // pops straight to the main screen (ux-flows, "Back from SCR-05").
+    return PopScope(
+      canPop: !locked || search.enteredFromTag,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _clearSearch();
+      },
+      child: Listener(
         onPointerUp: (_) => _dragStopped(),
         onPointerCancel: (_) => _dragStopped(),
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Collections'),
+            title: search.searching
+                ? TextField(
+                    controller: _query,
+                    autofocus: true,
+                    textInputAction: TextInputAction.search,
+                    decoration: const InputDecoration(
+                      hintText: 'Search collections',
+                      border: InputBorder.none,
+                    ),
+                    onChanged: searchNotifier.setQuery,
+                  )
+                : const Text('Collections'),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+            actions: [
+              if (!search.searching)
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Search',
+                  onPressed: _openSearch,
+                ),
+              IconButton(
+                icon: const Icon(Icons.tune),
+                tooltip: 'Filter',
+                onPressed: onOpenFilter,
+              ),
+            ],
           ),
           // Settings bottom-left like the main screen's, the recycle bin in
           // the middle, the plus button bottom-right.
@@ -283,83 +372,101 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
               ],
             ),
           ),
-          body: Column(
-            children: [
-              if (!state.isTopLevel)
-                CollectionsPathBar(
-                  parts: state.path,
-                  upEnabled: true,
-                  onUp: notifier.up,
-                  onPart: notifier.open,
-                  upWrapper: (context, up) => UpDropTarget(
-                      level: level(), onDecision: _decide, child: up),
-                  partWrapper: (context, part, child) => PathPartDropTarget(
-                    part: part,
-                    level: level(),
-                    onDecision: _decide,
-                    onHoverOpen: notifier.open,
-                    child: child,
-                  ),
-                ),
-              Expanded(
-                child: CollectionsGrid(
-                  items: state.items,
-                  // Room below the last row for the round buttons.
-                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
-                  onBin: _deleteMode ? _binByButton : null,
-                  hidden: _flying,
-                  onTap: (item) {
-                    if (item.isFolder) {
-                      notifier.open(item.id);
-                    } else {
-                      _openCollection(item.id);
-                    }
-                  },
-                  itemWrapper: (context, item, icon) {
-                    final ids = [for (final i in state.items ?? const []) i.id];
-                    final index = ids.indexOf(item.id);
-                    // Invisible gap targets on the tile's left edge (and the last
-                    // tile's right edge) reorder to that place.
-                    return Stack(
-                      children: [
-                        DraggableCollectionIcon(
-                          item: item,
+          body: search.showsResults
+              ? CollectionsResultsView(
+                  filter: search.filter,
+                  results: results,
+                  onOpen: _openCollection,
+                  onClear: _clearSearch,
+                  onRemoveTag: searchNotifier.removeTag,
+                  onClearCreated: searchNotifier.clearCreated,
+                  onClearEdited: searchNotifier.clearEdited,
+                )
+              : Column(
+                  children: [
+                    if (!state.isTopLevel)
+                      CollectionsPathBar(
+                        parts: state.path,
+                        upEnabled: true,
+                        onUp: notifier.up,
+                        onPart: notifier.open,
+                        upWrapper: (context, up) => UpDropTarget(
+                            level: level(), onDecision: _decide, child: up),
+                        partWrapper: (context, part, child) =>
+                            PathPartDropTarget(
+                          part: part,
                           level: level(),
                           onDecision: _decide,
                           onHoverOpen: notifier.open,
-                          onDragStarted: () => _dragStarted(item),
-                          onDragEnded: _dragStopped,
-                          child: icon,
+                          child: child,
                         ),
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 8,
-                          child: CollectionGapTarget(
-                              index: index,
-                              level: level(),
-                              onDecision: _decide),
-                        ),
-                        if (index == ids.length - 1)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            bottom: 0,
-                            width: 8,
-                            child: CollectionGapTarget(
-                                index: ids.length,
-                                level: level(),
-                                onDecision: _decide),
-                          ),
-                      ],
-                    );
-                  },
+                      ),
+                    Expanded(
+                      child: CollectionsGrid(
+                        items: state.items,
+                        // Room below the last row for the round buttons.
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
+                        onBin: _deleteMode ? _binByButton : null,
+                        hidden: _flying,
+                        onTap: (item) {
+                          if (item.isFolder) {
+                            notifier.open(item.id);
+                          } else {
+                            _openCollection(item.id);
+                          }
+                        },
+                        // No drag or reorder while the search field is open (AC-22).
+                        itemWrapper: locked
+                            ? null
+                            : (context, item, icon) {
+                                final ids = [
+                                  for (final i in state.items ?? const []) i.id
+                                ];
+                                final index = ids.indexOf(item.id);
+                                // Invisible gap targets on the tile's left edge (and the last
+                                // tile's right edge) reorder to that place.
+                                return Stack(
+                                  children: [
+                                    DraggableCollectionIcon(
+                                      item: item,
+                                      level: level(),
+                                      onDecision: _decide,
+                                      onHoverOpen: notifier.open,
+                                      onDragStarted: () => _dragStarted(item),
+                                      onDragEnded: _dragStopped,
+                                      child: icon,
+                                    ),
+                                    Positioned(
+                                      left: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: 8,
+                                      child: CollectionGapTarget(
+                                          index: index,
+                                          level: level(),
+                                          onDecision: _decide),
+                                    ),
+                                    if (index == ids.length - 1)
+                                      Positioned(
+                                        right: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: 8,
+                                        child: CollectionGapTarget(
+                                            index: ids.length,
+                                            level: level(),
+                                            onDecision: _decide),
+                                      ),
+                                  ],
+                                );
+                              },
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        ));
+        ),
+      ),
+    );
   }
 }
 
