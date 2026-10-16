@@ -38,6 +38,8 @@ Consequences for callers:
 - `setDetails` moves `updatedAt` and `lastLocalModifiedAt` only when a value actually changed (AC-06, ADR-0005).
 - `setDetails` and `create(details)` set `keep = true` when they save a non-empty description or any typed tag, and never clear it, following the existing never-set-back rule. Leaving a collection then needs only today's `keep` check (AC-28, owner batch 6).
 
+Implementation note (T5): `put()` also never moves `updatedAt` or `lastLocalModifiedAt` backwards: it keeps the later of the stored and the caller's time. Even a stale copy that wasn't adopted can't roll the edited time back.
+
 ## Consequences
 
 **Positive**
