@@ -7,7 +7,7 @@ acs: ["AC-29"]
 files_hint: ["docs/features/collections-screen/migrations/01_add_session_title.up.sql", "docs/features/collections-screen/migrations/01_add_session_title.down.sql", "vocab-photo-api/migrations/", "vocab-photo-api/migrations/down/"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T21 — Promote the staged D1 title migration into the Worker as 0007
