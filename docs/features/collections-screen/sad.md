@@ -102,49 +102,85 @@ Each tactical decision in later sections should trace to one of these seeds. Tac
 
 ## 5. Building block view
 
-<!-- 🎯 Why: INTERNAL DECOMPOSITION — modules, containers, datastores. The static topology: who
-     may talk to whom. Without §5, §6 (the flows) has no vocabulary of participants.
-     📋 Write: 1 ¶ on the style (layered / hexagonal / clean / event-driven) + a folder tree + a
-     C4Container block.
-     📌 Draw ONE Container per declared `target_surface` (frontmatter): a fullstack
-     [backend-service, web-frontend] = a backend-API container + a web/SPA container; a
-     [backend-service, mobile-app] = the API + the mobile app. The Container(web, …) line below is
-     just one surface's container — swap/add per what was declared in §4. → _shared/surfaces.md
-     📌 e.g. «web app, content API, media worker, datastore, object store, CDN». -->
-
-<One paragraph: layered / hexagonal / clean / event-driven, and why.>
+The app keeps the repo's layering: feature folders under `lib/features/`, shared models and services under `lib/core/`, typed routes in `lib/router/routes.dart`, services reached through `lib/core/providers.dart`. The new screens are a feature folder of their own. They talk to the rest only through `CollectionStore` and routes, never by importing another feature's screen (architecture.md rule 3).
 
 **Internal decomposition:**
 
 ```
-<e.g. modules/<feature>/>
-├── domain/       <entities + sentinel errors>
-├── app/          <use cases / services>
-├── infra/        <repository + integration impl>
-├── ports/        <handlers, DTOs, error mapping>
-└── wiring        <self-wiring entry point>
+lib/
+  core/
+    models/
+      word_collection.dart (+.g)   WordCollection — renamed Session, @Name('Session'); new fields:
+                                   name, folderId, order, binnedAt, binnedFromFolderId, keep (ADR-0003, ADR-0005)
+      collection_folder.dart (+.g) CollectionFolder — new Isar collection: folderId, name, parentId,
+                                   order, binnedAt, binnedFromFolderId (ADR-0004)
+      collection_name.dart         pure: the 1–60 characters, one-line rule; the default name
+                                   "dd.MM.yyyy HH:mm"; the creation moment from a collectionId
+    services/
+      collection_store.dart        renamed SessionStore. put() keeps filing fields and never inserts;
+                                   create(); update(id, change) (ADR-0006); rename, move, reorder,
+                                   bin, restore, erase, sweepBin; watchLevel(folderId), watchBin(),
+                                   watchHistory(); the one-time filing backfill on open
+      filing.dart                  pure rules: ancestors/descendants of a folder, "is it in the bin
+                                   (itself or an ancestor)", a folder into itself (AC-15), the level
+                                   renumbering, the restore target (AC-24), days left (AC-23),
+                                   the 30-day expiry (AC-26), the empty-and-untouched rule (AC-19)
+  features/
+    collections/
+      collections_screen.dart      the folder window: path, Up, New folder, New collection, grid
+      collections_notifier.dart(+.g) the open folder id, the level's items, the path; actions
+                                   call CollectionStore
+      collection_icon.dart         one folder or collection icon with its ⋮ button; LongPressDraggable
+                                   and DragTarget built into Flutter
+      collection_drag.dart         drop-target rules for the grid, Up, the path and the bin zone,
+                                   the 1 s hover-to-open timer (widget State)
+      recycle_bin_screen.dart      bin list with "N days left", item menu, Empty recycle bin
+      name_dialog.dart             the name dialog shared by the main screen and Collections
+    word_input/                    title shows the name + edit button; the side menu always on,
+                                   with Main / Collections / History; launch rule (ADR-0007)
+    history/                       rows show name + word count; binned collections left out
+    words_table/                   share_formats.dart: safeFileName(name); PDF heading; share subject
+  router/routes.dart               + CollectionsRoute, RecycleBinRoute
+vocab-photo-api/
+  migrations/0007_session_title.sql  nullable title on sessions (+ down)
+  src/session/                       handlers.ts reads title on create/republish; page.ts heading
+                                     and "collection" wording
 ```
 
-**C4 Container (L2):** <!-- syntax → references/c4-mermaid-syntax.md. Real names, no <placeholder> stubs. ONE Container per declared target_surface (frontmatter); the web container below is one example surface. -->
+- **Extend vs new module.** `CollectionStore` stays the one owner of collection persistence. Folders go in the same store (same Isar instance, same transactions), because a move, a bin or an erase must change a folder and its collections in one transaction.
+- **Story runs after an erase** (spec §8 open question, resolved by the owner 2026-10-16): the runs stay in Words settings → Story runs, marked "from a deleted collection", and their pictures are kept. The mark is worked out when the list is shown (no collection with that id exists any more); `StoryRun` and its store do not change.
+- **The 30-day sweep** (`sweepBin`) runs when the store opens and when the app comes back to the foreground. It erases the records and the `source_photos/` files of each expired collection and of everything inside an expired folder.
+
+**C4 Container (L2):**
 
 ```mermaid
 C4Container
-    title <feature> — Containers
+    title collections-screen — Containers
 
-    Person(actor, "<Actor>")
+    Person(learner, "Learner")
+    Person(partner, "Partner")
 
-    Container_Boundary(app, "<Our system>") {
-        Container(web, "<Web/UI>", "<technology>", "<purpose>")
-        Container(api, "<API/handler>", "<technology>", "<purpose>")
-        ContainerDb(db, "<Datastore>", "<technology>", "<purpose>")
+    Container_Boundary(phone, "Vocabulary app on the phone") {
+        Container(mobile, "Flutter app", "Flutter, Riverpod, go_router", "Main screen, Collections screen, recycle bin, History, share sheet")
+        ContainerDb(isar, "Isar vocab", "isar_community 3.3.0-dev.1", "Collections with their filing fields, folders, story runs")
+        ContainerDb(prefs, "shared_preferences", "key-value", "The current collection pointer")
+        ContainerDb(files, "Photo files", "app documents dir", "source_photos and mnemonic_pictures")
     }
 
-    System_Ext(ext, "<External>", "<purpose>")
+    Container_Boundary(cloud, "Cloudflare") {
+        Container(worker, "vocab-photo-api", "TypeScript Worker", "Stores published collections with their title")
+        ContainerDb(d1, "D1", "SQLite", "sessions table with the new nullable title")
+        Container(page, "Shared page", "Server-rendered HTML and plain JavaScript", "Shows one published collection titled with its name")
+    }
 
-    Rel(actor, web, "<interaction>", "<protocol>")
-    Rel(web, api, "<calls>")
-    Rel(api, db, "<reads/writes>", "<driver>")
-    Rel(api, ext, "<emits>", "<protocol>")
+    Rel(learner, mobile, "Names, files, opens, deletes, restores")
+    Rel(mobile, isar, "Reads and writes collections and folders", "Isar transactions")
+    Rel(mobile, prefs, "Reads and sets the current collection")
+    Rel(mobile, files, "Keeps and erases photos")
+    Rel(mobile, worker, "Publishes a collection with its name", "HTTPS JSON")
+    Rel(worker, d1, "Stores the title", "D1")
+    Rel(worker, page, "Renders")
+    Rel(partner, page, "Reads", "HTTPS")
 ```
 
 ## 6. Runtime view
