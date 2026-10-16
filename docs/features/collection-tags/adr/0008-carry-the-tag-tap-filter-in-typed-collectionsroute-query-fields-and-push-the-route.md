@@ -25,11 +25,11 @@ Tapping a tag on the main screen opens the Collections screen filtered by that t
 ## Considered options
 
 1. **Typed query fields** `tagKind` and `tag` (both nullable) on `CollectionsRoute`, opened with `.push(context)` from the tag line. The screen seeds its search notifier from them.
-2. **Set a provider before navigating**: write the filter into the Collections search notifier, then `go`.
+2. **Seed a provider, then push**: write the filter into the Collections search notifier, then `const CollectionsRoute().push(context)`.
 
 ## Decision outcome
 
-**Chosen:** option 1. The filter is part of the route, so it survives a rebuild and is testable through the router, and `push` gives the required Back. Option 2 hides navigation state in a provider and makes Back depend on stack order.
+**Chosen:** option 1. The filter is part of the route, so it survives a rebuild and is testable through the router, and `push` gives the required Back. Option 2 also gives the right Back, but it keeps navigation state in a provider. A stale filter could then show when Collections is next opened from the side menu, unless every other entry resets it.
 
 ## Consequences
 

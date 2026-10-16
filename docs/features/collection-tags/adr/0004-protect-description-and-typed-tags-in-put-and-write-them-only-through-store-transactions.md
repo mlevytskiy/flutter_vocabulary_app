@@ -33,8 +33,8 @@ ticket: "roadmap #25 — collection-tags"
 **Chosen:** option 1. It closes AC-18 by construction for every writer, now and future. Option 2 depends on every background writer re-reading before saving, which is the bug class this app already hit with filing.
 
 Consequences for callers:
-- The Notes page's collection fields and the details sheet call the notifier, which calls `setDetails` at once, not debounced. It adopts the stored description and tags into its in-memory copy, so the tag line and the Notes chips update immediately. A later autosave of that copy cannot write older values back, because `put()` ignores them. Tests pin both (owner condition, D4).
-- `updateSourceNote` diffs the source's tag lists. Each newly added tag goes to `addCollectionTags`, which reports the ones refused by the 10 cap (AC-29 snackbar) and touches the library.
+- The Notes page's collection fields and the details sheet call the notifier, which calls `setDetails` at once, not debounced. It adopts the stored description, tags, `updatedAt` and `lastLocalModifiedAt` into its in-memory copy, so the tag line and the Notes chips update immediately. `put()` takes both times from the caller (`collection_store.dart:399-400`), and `markShared`, `updateDialogues` and `markDialoguesPublished` put the notifier's copy unstamped, so without this adoption a later put would roll the edited time back. A later autosave of that copy cannot write older values back, because `put()` ignores them. Tests pin both (owner condition, D4).
+- `updateSourceNote` (today a sync `void` that ends in the debounced autosave, `word_input_notifier.dart:471-489`) becomes `Future<CopyUpResult>`. It saves the source through `store.update` at once. It diffs the source's tag lists, and each newly added tag goes to `addCollectionTags` in the same transaction, which touches the library. It adopts the stored sources, typed tags and times, and returns the kinds whose tags the 10 cap refused. The Notes page shows the AC-29 snackbar from that result.
 - `setDetails` moves `updatedAt` and `lastLocalModifiedAt` only when a value actually changed (AC-06, ADR-0005).
 - `isEmptyAndUntouched` counts a description or any typed tag as "notes or tags" (AC-28).
 
@@ -47,7 +47,7 @@ Consequences for callers:
 - Two more protected fields that every `put()` test must cover. The notifier must adopt stored values after each details save.
 
 **Neutral**
-- Source tags stay inside `sources`, which are caller-copied (§11 risk). A test pins a source tag surviving the autosave (owner D11).
+- Source tags stay inside `sources`, which are caller-copied (§11 risk). Saving them at once plus adoption closes the window. A required test pins a source tag surviving the autosave (owner D11).
 
 ## Links
 

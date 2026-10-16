@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Final
 owner: "Maksym (app owner); decisions delegated to a Fable 5.1 owner proxy, 2026-10-16"
 reviewers: ["Tech Lead", "Security Lead"]
 updated_at: "2026-10-16"
@@ -114,17 +114,20 @@ lib/
       session_source.dart         + originTags, topicTags; tags kept (legacy)
       tag_kind.dart               enum TagKind { origin, topic } (stored by ordinal: origin first)
       tag_library_entry.dart(+.g) Isar @collection TagLibraryEntry {kind, text, key, lastUsedAt, forgotten}
+                                    (written only by CollectionStore, ADR-0009)
     services/
-      collection_store.dart       + setDetails(), addCollectionTags(), migration _backfillTypedTags(),
-                                    watchSummaries(); put()/update() copy description + typed tags from stored
-      tag_library_store.dart      the library: record use, forget, watch entries (same Isar instance)
+      collection_store.dart       + create(details), setDetails(), addCollectionTags() → notAdded, migration
+                                    _backfillTypedTags(), watchSummaries() (300 ms debounce), library writes
+                                    (touchTags, forgetTag) inside the same writeTxn, watchLibrary();
+                                    put()/update() copy description, typed tags (and filing) from stored
       tag_rules.dart              pure: normalise/validate (1-30, one line), case-insensitive key, limits (10/kind),
                                     presets (ordered lists), migration sort, word-start matching, ranking
       collection_search.dart      pure: CollectionSummary, matches(search, filter), sort, date ranges, tag counts
   features/
     tags/                          (new, shared by the sheet, Notes and Collections)
       tag_chip.dart               the one chip look per kind (icon + tint)
-      typed_tag_field.dart        TagEditor grown into one kind's field: hint, helper line, suggestion row,
+      typed_tag_field.dart        TagEditor grown into one kind's field: hint, helper line, suggestion row
+                                    (always shown, or only while focused on the Notes page: AC-34),
                                     autocomplete, limit messages, long-press Forget
       tag_suggestions.dart        moved from notes/ (cut-and-paste) and typed: ranked suggestions per kind
     collections/
@@ -136,6 +139,7 @@ lib/
       collection_tag_line.dart    the animated line in the AppBar's bottom slot
     notes/
       notes_screen.dart           collection + source fields become two typed fields each
+  core/providers.dart             + collectionSummaries (stream of watchSummaries), tagLibrary (stream of watchLibrary)
   router/routes.dart              CollectionsRoute gains optional tagKind + tag
 ```
 
@@ -150,7 +154,7 @@ C4Container
     Container_Boundary(app, "Vocabulary app (mobile-app)") {
         Container(ui, "Screens", "Flutter widgets", "Main screen + tag line, Collection details sheet, Notes page, Collections screen with search and filter")
         Container(state, "Notifiers and rules", "Riverpod + pure Dart", "Word input notifier, Collections search notifier, tag rules, collection search")
-        Container(stores, "CollectionStore + TagLibraryStore", "Dart services", "Protected writes of description and typed tags, migration, summaries")
+        Container(stores, "CollectionStore", "Dart service", "Protected writes of description and typed tags, tag library, migration, summaries")
         ContainerDb(db, "Isar database", "isar_community 3.3.0-dev.1", "Session (WordCollection) records, CollectionFolder, TagLibraryEntry")
     }
 
@@ -173,14 +177,13 @@ sequenceDiagram
     participant Sheet as Collection details sheet
     participant Notifier as Word input notifier
     participant Store as CollectionStore
-    participant Library as TagLibraryStore
     Learner->>Sheet: changes description and tags, taps Save
     Sheet->>Notifier: save details (name, description, origin, topic)
     Notifier->>Store: setDetails in one transaction
     Store->>Store: write description and typed tags, move updatedAt and lastLocalModifiedAt if changed
-    Store->>Library: record use of each newly added tag
+    Store->>Store: in the same transaction, touch library entries of newly added tags
     Store-->>Notifier: stored record
-    Notifier->>Notifier: adopt stored description and tags into its copy
+    Notifier->>Notifier: adopt stored description, tags, updatedAt and lastLocalModifiedAt into its copy
     Notifier-->>Sheet: done
     Sheet-->>Learner: closes, title and tag line updated
 ```
@@ -215,6 +218,8 @@ The `sequences` stage adds the remaining flows: source tag copy-up, migration, s
 | Privacy | Description and typed tags are never added to publish payloads or export files. A test pins that. | AC-26, §3 |
 | Error handling | Store methods never throw to the UI (existing convention). Validation messages come from pure rule functions and are shown under the field. | `collection_store.dart` class doc |
 | Logging | The existing `VOCAB:` debug prints. The migration logs one line on failure and retries on the next open. | `_backfillFiling` precedent |
+| Providers | `collectionSummaries` and `tagLibrary` live in `core/providers.dart` (rule 2). `tagSuggestions(kind)` in `features/tags/` combines them into the ranked list. | ADR-0009 |
+| Notifier adoption | After `setDetails`, `addCollectionTags` or a source save, the word input notifier copies the stored description, typed tags, sources, `updatedAt` and `lastLocalModifiedAt` into its in-memory copy before any later `put()`. | ADR-0004 |
 | Navigation | Typed routes only. The tag filter rides on `CollectionsRoute` query fields. | CLAUDE.md rule 1, ADR-0008 |
 | Internationalisation | N/A — English UI | — |
 
@@ -230,6 +235,7 @@ The `sequences` stage adds the remaining flows: source tag copy-up, migration, s
 | 0006 | Search and filter collections in memory over summaries re-read after each store write | Accepted | §4, §5 |
 | 0007 | Build the typed tag field on built-in chips and RawAutocomplete without a package | Accepted | §4 |
 | 0008 | Carry the tag-tap filter in typed CollectionsRoute query fields and push the route | Accepted | §4 |
+| 0009 | Write the tag library inside CollectionStore transactions and expose it and the summaries as core providers | Accepted | §5, §8 |
 
 ADR files live under `docs/features/collection-tags/adr/NNNN-<title>.md`. **CLAUDE.md approval lines (proposed; the owner adds them before implementation — not written by an agent):**
 - Rule 3: "collection-tags (owner via Fable 5.1 proxy, 2026-10-16) adds the Collection details sheet (name, description, origin and topic tag fields) for New collection and the main screen's edit button, the tag line under the main screen's top bar, typed tag fields with suggestion rows and Forget on the Notes page, and search, the filter sheet, the flat result list and filter chips on the Collections screen".
@@ -240,24 +246,24 @@ ADR files live under `docs/features/collection-tags/adr/NNNN-<title>.md`. **CLAU
 **QG-1. Write safety**
 - **When:** the learner saves a description or tags, and then any other save of that collection follows: the main screen's autosave, a rename or move, a source note edit, a finished story, a dialogue delivery, a learn result, a late lookup or import.
 - **Then:** "0 cases where a background save undoes a typed tag or description". After the migration, "100 % of pre-update tags present after the move (0 lost, 0 duplicated within a kind; merging spellings that differ only by case into the first one is not a loss, AC-17b)".
-- **How verify:** store tests run `put()` with a stale copy after `setDetails`, once for each writer path. A migration test runs over a fixture of untyped tags on collections and sources, covering case duplicates, a 40-character tag, 14 tags and source-only tags.
+- **How verify:** store tests run `put()` with a stale copy after `setDetails` and after `addCollectionTags`, once for each writer path (autosave, `markShared`, `updateDialogues`, `markDialoguesPublished`, a story run, a learn result, a late lookup). They check that description, typed tags, `updatedAt` and `lastLocalModifiedAt` stay as the details save left them. A notifier test checks the tag line updates at once after a Notes-page save and stays after the next autosave (owner D4). A test checks a source tag survives the autosave (owner D11). A migration test runs over a fixture of untyped tags on collections and sources, covering case duplicates, a 40-character tag, 14 tags and source-only tags.
 
 **QG-2. Responsiveness**
 - **When:** the learner types in search, changes a filter, or types in a tag field.
 - **Then:** "results update ≤ 100 ms after a keystroke or filter change with 500 collections and 2,000 tags". "Suggestions update ≤ 50 ms after a keystroke with 1,000 library tags". The migration adds "≤ 1 s added to startup for 500 collections; runs once".
-- **How verify:** the pure `collection_search` function is timed in a unit test with a seeded list of 500 summaries. The suggestion function is timed with 1,000 entries. A store test times the migration over 500 seeded collections.
+- **How verify:** search uses a "widget/perf test with a seeded store of 500 collections, on the CI runner", seeded with 2,000 tags. It times the pure `collection_search` call per keystroke. Autocomplete uses a "unit test timing the suggestion function" with 1,000 library tags. The migration uses a "test with a seeded store; launch log on the owner's phone".
 
 **QG-3. Look unchanged outside the approved additions**
 - **When:** a collection has no tags.
 - **Then:** the main screen looks exactly as today. With tags, "adds no more than one line (≈ 40 dp) under the top bar and none when the collection has no tags".
-- **How verify:** a widget test at phone width checks the AppBar's bottom height (0 without tags, ≤ 40 with tags). Existing main-screen golden and widget tests stay green.
+- **How verify:** a "widget test on a phone-width screen" checks the AppBar's bottom height: 0 without tags, one line (≈ 40 dp) with tags. Existing main-screen golden and widget tests stay green.
 
 ## 11. Risks and technical debt
 
 | Risk / debt | Severity | Mitigation | Owner |
 |---|---|---|---|
-| Source tags still live inside `sources`, which `put()` copies from the caller, so a stale writer holding old sources could undo a source tag edit (a pre-existing risk for source notes) | Medium | Source note edits already save through `store.update`. The copy-up to the collection goes through `addCollectionTags`, which is protected. A test pins a source tag surviving the autosave. | Tech Lead |
-| The summary re-read loads whole records (words included) after every store write; with many large collections typing stays fast but a write burst (late lookups) may re-read often | Low | Re-reads are serialised by `_watchFiling`. Keystrokes filter in memory only. Revisit with Isar property queries if 500+ collections lag. | Tech Lead |
+| Source tags still live inside `sources`, which `put()` copies from the caller, so a stale writer holding old sources could undo a source tag edit (a pre-existing risk for source notes: `updateSourceNote` today ends in the debounced autosave, `word_input_notifier.dart:471-489`) | Medium | `updateSourceNote` becomes async. It saves the source through `store.update` at once and sends new tags to `addCollectionTags`, then adopts the stored sources, typed tags and times (ADR-0004). A required test pins a source tag surviving the autosave. | Tech Lead |
+| The summary re-read loads whole records (words included) after store writes, and the 500 ms autosave writes often | Medium | `watchSummaries()` coalesces store events with a trailing 300 ms debounce, so one burst means one re-read (ADR-0006). Keystrokes filter in memory only. A test with 500 seeded collections checks it. Revisit with Isar property queries if it lags. | Tech Lead |
 | The migration sorts on the origin presets: an old "Travel" becomes an origin tag | Low | Owner accepted (C4). The learner can move it. | owner |
 | "First spelling wins" locks in a typo's case across the library; there is no rename | Low | Owner accepted (V7). Forget clears unused entries. | owner |
 | No tag on folders or words, and no auto-tags on import | Low | Non-goals (spec §3), tracked in spec §8. | owner |

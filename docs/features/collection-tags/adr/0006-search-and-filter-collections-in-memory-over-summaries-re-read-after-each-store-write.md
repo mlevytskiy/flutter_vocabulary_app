@@ -25,7 +25,7 @@ Search matches name, description and tags by substring, and the filter combines 
 
 ## Considered options
 
-1. **A store stream `watchSummaries()`** built on `_watchFiling`. After each write it emits light `CollectionSummary` values for every non-binned collection (empty ones included): id, name, description, origin and topic tags, source tag keys, folder path, tree position, created, edited. A pure `searchCollections(summaries, query, filter, sort)` runs in memory on each keystroke.
+1. **A store stream `watchSummaries()`** built on `_watchFiling` with a trailing 300 ms debounce. After each write it emits light `CollectionSummary` values for every non-binned collection (empty ones included): id, name, description, origin and topic tags, source tag keys, folder path, tree position, created, edited. A pure `searchCollections(summaries, query, filter, sort)` runs in memory on each keystroke.
 2. **Isar queries per keystroke**, with filter conditions on name, description and tag lists.
 
 ## Decision outcome
@@ -38,7 +38,7 @@ Search matches name, description and tags by substring, and the filter combines 
 - Fast typing, and all the matching rules are unit-tested in one place.
 
 **Negative**
-- After each store write the stream re-reads every record, words included (§11 Low risk). Writes are serialised and debounced by `_watchFiling`.
+- After each store write the stream re-reads every record, words included (§11 Low risk). `_watchFiling` serialises re-reads but does not debounce (`collection_store.dart:624-653`), so `watchSummaries()` adds a trailing 300 ms debounce. A burst of writes, such as the 500 ms autosave or late lookups, then costs one re-read.
 
 **Neutral**
 - Moving to property queries later only changes `watchSummaries()`.

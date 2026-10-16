@@ -25,12 +25,14 @@ The owner asked for a nice-looking tag component and to research libraries (spec
 
 ## Considered options
 
+Chips-input packages (textfield_tags, choose_input_chips and others) were excluded before the comparison. The owner declined them (batch 1, Q3j) and rule 5 forbids packages without approval.
+
 1. **Grow `TagEditor` into `TypedTagField`** on Flutter's `InputChip`, `ActionChip` and `RawAutocomplete`, in a new `lib/features/tags/` folder. `tag_suggestions.dart` moves there by cut-and-paste.
-2. **Adopt a chips-input package** (textfield_tags or choose_input_chips) and style it.
+2. **A new field built on Material 3 `SearchAnchor`** (a search view with a suggestion list), with chips shown above it, leaving `TagEditor` as it is.
 
 ## Decision outcome
 
-**Chosen:** option 1. There is no dependency risk, it reuses tested code, and the look comes from one `TagChip` widget (icon + tint per kind) used everywhere: sheet, Notes, tag line and filter. Option 2 adds an unmaintained or unproven dependency and still needs all the custom behaviour on top.
+**Chosen:** option 1. It reuses tested code and keeps the chips and the field inline, which the sheet and the Notes page need. The look comes from one `TagChip` widget (icon + tint per kind) used everywhere: sheet, Notes, tag line and filter. Option 2 opens a full-screen search view for each tag, which is heavy inside a bottom sheet, and it would leave two tag widgets to maintain.
 
 ## Consequences
 
