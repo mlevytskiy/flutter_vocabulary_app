@@ -482,7 +482,7 @@ void main() {
       await pumpHistoryTable(tester, 'past', pastExists: false);
       await askAndAnswer(tester, 'Yes');
 
-      expect(find.text("This session can't be opened for editing"),
+      expect(find.text("This collection can't be opened for editing"),
           findsOneWidget);
       expect(find.byType(WordsTableScreen), findsOneWidget);
       expect(find.byType(_MainStub), findsNothing);
