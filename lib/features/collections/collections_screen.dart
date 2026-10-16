@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/providers.dart';
+import '../../core/services/collection_level.dart';
 import '../../router/routes.dart';
+import 'bin_dialogs.dart';
+import 'bin_drop_zone.dart';
 import 'collection_drag.dart';
 import 'collections_notifier.dart';
 import 'collections_view.dart';
@@ -115,8 +118,36 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     await store.rename(item.id, name);
   }
 
-  /// Delete from the item menu. // T18: fills this (the rules of AC-20 to AC-22).
-  Future<void> onDelete(CollectionItemView item) async {}
+  /// Delete from the item menu or a bin drop (AC-14, AC-20 to AC-22): the
+  /// current collection is refused; otherwise the learner confirms (SCR-07),
+  /// then the store bins it.
+  Future<void> onDelete(CollectionItemView item) async {
+    if (item.isCurrent) {
+      _snack(refusedCurrentText);
+      return;
+    }
+    final store = await ref.read(collectionStoreProvider.future);
+    final p = await store.binPreview(item.id);
+    if (p == null || !mounted) return;
+    final ok = await confirmBin(
+      context,
+      BinPreviewView(
+        name: p.name,
+        isFolder: p.isFolder,
+        wordCount: p.wordCount,
+        collections: p.collections,
+        folders: p.folders,
+        currentStaysName: p.currentStaysName,
+      ),
+    );
+    if (!ok || !mounted) return;
+    final r = await store.bin(item.id);
+    if (r.result == BinResult.refusedCurrent) {
+      _snack(refusedCurrentText);
+    } else if (r.stayedName != null) {
+      _snack(stayedText(r.stayedName!));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,6 +256,13 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                   },
                 ),
               ),
+              if (_dragging && !state.isTopLevel)
+                BinDropTarget(
+                  level: level(),
+                  onDecision: _decide,
+                  builder: (context, highlighted) =>
+                      BinDropZone(highlighted: highlighted),
+                ),
             ],
           ),
         ));

@@ -7,7 +7,7 @@ acs: ["AC-14", "AC-20", "AC-21", "AC-22"]
 files_hint: ["lib/features/collections/collections_screen.dart", "lib/features/collections/collection_drag.dart", "lib/features/collections/bin_drop_zone.dart", "test/collections_delete_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T18 — Delete from the menu or the bin drop zone with the confirmation, the current-collection refusal and the stayed message
