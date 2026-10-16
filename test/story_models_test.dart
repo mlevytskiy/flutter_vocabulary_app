@@ -10,6 +10,8 @@ import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 
+import 'seed_collections.dart';
+
 /// mnemonic-story T10: the stable row id, word groups in the session, and the
 /// story run collection (ADR-0003). Hermetic, like collection_store_test.dart.
 void main() {
@@ -55,7 +57,7 @@ void main() {
         ];
       expect(collection.words.every((w) => w.rowId.isEmpty), isTrue);
 
-      await store.put(collection);
+      await seedCollection(store, collection);
       final first = (await store.byId(collection.collectionId))!;
       final ids = first.words.map((w) => w.rowId).toList();
 
@@ -71,7 +73,7 @@ void main() {
     test('saving again keeps the ids a row already has', () async {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а', rowId: 'keep-me')];
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = (await store.byId(collection.collectionId))!;
       expect(back.words.single.rowId, 'keep-me');
 
@@ -104,7 +106,7 @@ void main() {
         ..selectedGroupId = 'g1'
         ..groupedWordsKey = 'a|b';
 
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = (await store.byId(collection.collectionId))!;
 
       expect(back.groups.map((g) => g.id).toList(), ['g1', 'g2']);
@@ -122,7 +124,7 @@ void main() {
         () async {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = (await store.byId(collection.collectionId))!;
       expect(back.groups, isEmpty);
       expect(back.selectedGroupId, isNull);

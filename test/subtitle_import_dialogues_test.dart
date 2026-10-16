@@ -22,6 +22,8 @@ import 'package:flutter_vocabulary_app/core/services/subtitle_words_service.dart
 import 'package:flutter_vocabulary_app/features/word_input/subtitle_import_flow.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
+import 'seed_collections.dart';
+
 /// get-words-from-subtitles-improvment T17: dialogues ride with the subtitle
 /// import to Done and are kept with the words in one save (sad §6 flow 1).
 class FakeSubtitleWords extends SubtitleWordsService {
@@ -222,7 +224,7 @@ void main() {
 
     Future<WordInputNotifier> current(WordCollection s) async {
       s.lastLocalModifiedAt = DateTime.now();
-      await store.put(s);
+      await seedCollection(store, s);
       await store.setCurrentCollectionId(s.collectionId);
       await container.read(wordInputNotifierProvider.future);
       return container.read(wordInputNotifierProvider.notifier);

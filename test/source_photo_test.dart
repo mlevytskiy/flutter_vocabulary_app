@@ -16,6 +16,8 @@ import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// good-looking-web T17: the app keeps each source photo and links the rows
 /// recognised from it (spec AC-25, AC-26).
 void main() {
@@ -80,7 +82,7 @@ void main() {
               ..name = 'Biology'
               ..url = 'https://quizlet.com/123/biology/',
           ];
-        await store.put(collection);
+        await seedCollection(store, collection);
         final back = (await store.byId(collection.collectionId))!;
         expect(back.sources.map((s) => s.kind).toList(),
             [SourceKind.photo, SourceKind.set]);
@@ -189,7 +191,7 @@ void main() {
           WordPair(word: 'typed', translation: 'набраний'),
         ];
 
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = (await store.byId(collection.collectionId))!;
 
       expect(back.sources.single.id, 'a1b2');
@@ -208,7 +210,7 @@ void main() {
     test('a session without photos stores and loads with none', () async {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = (await store.byId(collection.collectionId))!;
       expect(back.sources, isEmpty);
       expect(back.publishedId, isNull);
@@ -328,7 +330,7 @@ void main() {
       final prev = WordCollection.create()
         ..sources = [photo('p1')]
         ..words = [WordPair(word: 'apple', sourceId: 'p1')];
-      await store.put(prev);
+      await seedCollection(store, prev);
       await store.setCurrentCollectionId(prev.collectionId);
 
       await container.read(wordInputNotifierProvider.future);

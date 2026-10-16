@@ -16,6 +16,8 @@ import 'package:flutter_vocabulary_app/features/word_input/lightning_rules.dart'
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// definition-mode T12: the Definition lightning (spec AC-05..AC-07).
 class FakeDictionary extends DictionaryService {
   final lookups = <String>[];
@@ -89,7 +91,7 @@ void main() {
           WordPair(word: 'determinated'),
           WordPair(word: 'claim', translation: 'заява'),
         ];
-      await store.put(collection);
+      await seedCollection(store, collection);
       await store.setCurrentCollectionId(collection.collectionId);
     });
     addTearDown(() async {

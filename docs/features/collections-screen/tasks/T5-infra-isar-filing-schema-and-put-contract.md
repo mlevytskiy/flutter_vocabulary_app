@@ -7,7 +7,7 @@ acs: ["AC-19", "AC-27"]
 files_hint: ["lib/core/models/word_collection.dart", "lib/core/models/word_collection.g.dart", "lib/core/models/collection_folder.dart", "lib/core/models/collection_folder.g.dart", "lib/core/services/collection_store.dart", "lib/features/word_input/word_input_notifier.dart", "test/collection_store_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Add the filing fields and CollectionFolder to Isar, and make put() keep filing and never insert
@@ -33,3 +33,5 @@ status: "todo"
 ## Notes
 
 Compile-coupled with the notifier's new-collection path: both change in this task. Depends on T3 only through `defaultCollectionName`; after T2 because it edits the renamed files.
+
+Found while implementing (2026-10-16): Isar does not apply a Dart field default to a property an old record lacks, so a pre-feature record reads `order` as Isar's null long (`-9223372036854775808`), not `0` (`keep` reads `false`, the nullable fields `null`, as data-model.md says). Pinned in `test/pre_rename_fixture_test.dart`. Harmless because T6's backfill numbers every record with `name == null`. Tests that seed stored collections use `seedCollection(store, c)` from `test/seed_collections.dart`, since `put()` no longer inserts.

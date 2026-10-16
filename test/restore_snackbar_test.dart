@@ -13,6 +13,8 @@ import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// The launch rule: a previous session gone cold (over 5 minutes) is offered
 /// back by the RESTORE snackbar as soon as the app starts.
 void main() {
@@ -43,7 +45,7 @@ void main() {
         ..words = [WordPair(word: 'harbour', translation: 'гавань')]
         ..lastLocalModifiedAt =
             DateTime.now().subtract(const Duration(minutes: 30));
-      await store.put(prev);
+      await seedCollection(store, prev);
       await store.setCurrentCollectionId(prev.collectionId);
     });
     addTearDown(() async {

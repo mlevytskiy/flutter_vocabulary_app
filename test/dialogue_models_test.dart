@@ -12,6 +12,8 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 
+import 'seed_collections.dart';
+
 /// get-words-from-subtitles-improvment T12: film dialogues in the session, the
 /// dialogue group link and the scene run kind (ADR-0003). Hermetic, like
 /// story_models_test.dart.
@@ -118,7 +120,7 @@ void main() {
             ..rowIds = ['r1']
             ..dialogueId = 'd1'
         ];
-      await collections.put(collection);
+      await seedCollection(collections, collection);
 
       final read = (await collections.byId(collection.collectionId))!;
       expect(read.dialogues.map((d) => d.id), ['d1', 'd2']);
@@ -140,7 +142,7 @@ void main() {
         () async {
       final collection = WordCollection.create()
         ..groups = [WordGroup()..id = 'g1'];
-      await collections.put(collection);
+      await seedCollection(collections, collection);
       final read = (await collections.byId(collection.collectionId))!;
       expect(read.dialogues, isEmpty);
       expect(read.groups.single.dialogueId, isNull);

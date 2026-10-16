@@ -7,10 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
+import 'package:flutter_vocabulary_app/core/models/collection_name.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
+
+import 'seed_collections.dart';
 
 /// Hermetic: a throwaway Isar directory per test, no network, no device.
 /// The first run downloads the native Isar library into the pub cache — see
@@ -81,7 +85,7 @@ void main() {
           )..translationOptions = options,
         ];
 
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = await store.byId(collection.collectionId);
 
       expect(back, isNotNull);
@@ -117,7 +121,7 @@ void main() {
           WordPair(),
         ];
 
-      await store.put(collection);
+      await seedCollection(store, collection);
 
       expect((await store.byId(collection.collectionId))!.words.length, 2);
       // ...and the caller's own list is left alone.
@@ -138,7 +142,7 @@ void main() {
           WordPair(word: 'claim', translation: 'заява'),
         ];
 
-      await store.put(collection);
+      await seedCollection(store, collection);
       final back = (await store.byId(collection.collectionId))!;
 
       expect(back.words.length, 2);
@@ -161,7 +165,7 @@ void main() {
     test('nonEmpty() skips all-blank sessions; watchNonEmpty() emits on write',
         () async {
       final blank = WordCollection.create()..words = [WordPair()];
-      await store.put(blank);
+      await seedCollection(store, blank);
       expect(await store.nonEmpty(), isEmpty);
 
       final emissions = <List<WordCollection>>[];
@@ -172,7 +176,7 @@ void main() {
 
       final filled = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(filled);
+      await seedCollection(store, filled);
       await Future<void>.delayed(const Duration(milliseconds: 100));
 
       expect(emissions.length, greaterThan(1));
@@ -187,8 +191,8 @@ void main() {
             DateTime.now().subtract(const Duration(hours: 2));
       final newer = WordCollection.create()
         ..words = [WordPair(word: 'new', translation: 'нове')];
-      await store.put(older);
-      await store.put(newer);
+      await seedCollection(store, older);
+      await seedCollection(store, newer);
 
       expect((await store.newest())!.collectionId, newer.collectionId);
       expect((await store.nonEmpty()).map((s) => s.collectionId).toList(),
@@ -198,7 +202,7 @@ void main() {
     test('put upserts on sessionId instead of piling up rows', () async {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(collection);
+      await seedCollection(store, collection);
       collection.words.add(WordPair(word: 'b', translation: 'б'));
       await store.put(collection);
 
@@ -209,7 +213,7 @@ void main() {
     test('delete removes the session; the pointer round-trips', () async {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(collection);
+      await seedCollection(store, collection);
       await store.setCurrentCollectionId(collection.collectionId);
       expect(await store.currentCollectionId(), collection.collectionId);
 
@@ -245,6 +249,140 @@ void main() {
       await prefs.setString('switched_at', 'not a time');
 
       expect(await store.switchedAt('A'), isNull);
+    });
+  });
+
+  // collections-screen T5 (ADR-0003, data-model.md put() contract): only
+  // create() inserts; put() keeps the stored filing and may only raise keep.
+  group('filing', () {
+    Isar isar() => Isar.getInstance('vocab')!;
+
+    test('create() inserts an unkept collection named after its moment',
+        () async {
+      final before = DateTime.now();
+      final made = await store.create();
+      final stored = await store.byId(made.collectionId);
+
+      expect(stored, isNotNull);
+      expect(stored!.keep, isFalse);
+      expect(stored.folderId, isNull);
+      expect(stored.binnedAt, isNull);
+      expect(stored.binnedFromFolderId, isNull);
+      expect(stored.name, made.name);
+      expect(
+          stored.name,
+          anyOf(defaultCollectionName(before),
+              defaultCollectionName(DateTime.now())));
+    });
+
+    test('create(keep: true, folderId:) inserts a kept collection there',
+        () async {
+      final made = await store.create(folderId: 'folder-1', keep: true);
+      final stored = await store.byId(made.collectionId);
+
+      expect(stored!.keep, isTrue);
+      expect(stored.folderId, 'folder-1');
+    });
+
+    test('create() puts the new collection at the end of its level', () async {
+      await isar()
+          .writeTxn(() => isar().collectionFolders.put(CollectionFolder()
+            ..folderId = 'folder-1'
+            ..name = 'English course'
+            ..order = 0));
+      final a = await store.create();
+      final b = await store.create();
+      final inside = await store.create(folderId: 'folder-1');
+
+      expect((await store.byId(a.collectionId))!.order, 1);
+      expect((await store.byId(b.collectionId))!.order, 2);
+      expect((await store.byId(inside.collectionId))!.order, 0);
+    });
+
+    test('put() copies the six filing fields from the stored record', () async {
+      final made = await store.create(folderId: 'folder-1', keep: true);
+      final binned = DateTime(2026, 10, 1, 9);
+      await isar().writeTxn(() async {
+        final s = (await isar()
+            .wordCollections
+            .filter()
+            .collectionIdEqualTo(made.collectionId)
+            .findFirst())!;
+        await isar().wordCollections.put(s
+          ..name = 'Lesson 3'
+          ..order = 4
+          ..binnedAt = binned
+          ..binnedFromFolderId = 'folder-2');
+      });
+
+      final stale = WordCollection()
+        ..collectionId = made.collectionId
+        ..updatedAt = made.updatedAt
+        ..lastLocalModifiedAt = made.lastLocalModifiedAt
+        ..name = 'stale'
+        ..folderId = null
+        ..order = 0
+        ..binnedAt = null
+        ..binnedFromFolderId = null
+        ..keep = false
+        ..tags = ['a'];
+      await store.put(stale);
+      final stored = (await store.byId(made.collectionId))!;
+
+      expect(stored.tags, ['a']);
+      expect(stored.name, 'Lesson 3');
+      expect(stored.folderId, 'folder-1');
+      expect(stored.order, 4);
+      expect(stored.binnedAt, binned);
+      expect(stored.binnedFromFolderId, 'folder-2');
+      expect(stored.keep, isTrue);
+    });
+
+    test('put() raises keep only when the copy has a word', () async {
+      final made = await store.create();
+      made.words = [WordPair()];
+      await store.put(made);
+      expect((await store.byId(made.collectionId))!.keep, isFalse);
+
+      made.words = [WordPair(word: 'apple'), WordPair()];
+      await store.put(made);
+      expect((await store.byId(made.collectionId))!.keep, isTrue);
+    });
+
+    test('put() never lowers keep', () async {
+      final made = await store.create(keep: true);
+      await store.put(made..keep = false);
+
+      expect((await store.byId(made.collectionId))!.keep, isTrue);
+    });
+
+    test('put() writes nothing when no record with that id exists', () async {
+      final ghost = WordCollection.create()
+        ..words = [WordPair(word: 'apple', translation: 'яблуко')];
+      await store.put(ghost);
+
+      expect(await store.byId(ghost.collectionId), isNull);
+      expect(await isar().wordCollections.count(), 0);
+    });
+
+    test('a folder round-trips through the store\'s Isar', () async {
+      await isar()
+          .writeTxn(() => isar().collectionFolders.put(CollectionFolder()
+            ..folderId = 'folder-1'
+            ..name = 'English course'
+            ..parentId = null
+            ..order = 2));
+      final f = await isar()
+          .collectionFolders
+          .filter()
+          .folderIdEqualTo('folder-1')
+          .findFirst();
+
+      expect(f!.name, 'English course');
+      expect(f.parentId, isNull);
+      expect(f.order, 2);
+      expect(f.binnedAt, isNull);
+      expect(f.binnedFromFolderId, isNull);
     });
   });
 }

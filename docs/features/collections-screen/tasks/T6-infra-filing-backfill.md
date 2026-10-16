@@ -34,3 +34,5 @@ status: "todo"
 ## Notes
 
 —
+
+From T5 (2026-10-16): a pre-feature record reads `order` as Isar's null long (`-9223372036854775808`), not `0`, so the backfill must write `order` for every record it names, and must not take `order == 0` as "not yet backfilled" (use `name == null`).

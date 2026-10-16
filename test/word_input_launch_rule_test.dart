@@ -11,6 +11,8 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
+import 'seed_collections.dart';
+
 /// The four launch cases from `docs/tasks/task-03-words-survive-restart.md`.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -61,7 +63,7 @@ void main() {
       ..updatedAt = at
       ..lastLocalModifiedAt = at
       ..words = words ?? [WordPair(word: 'apple', translation: 'яблуко')];
-    await store.put(s);
+    await seedCollection(store, s);
     if (makeCurrent) await store.setCurrentCollectionId(s.collectionId);
     return s;
   }

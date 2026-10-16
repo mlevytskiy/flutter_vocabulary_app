@@ -73,6 +73,33 @@ class WordCollection {
   /// 2026-10-15, notes-editing). A source's own tags live on the source.
   List<String> tags = [];
 
+  // --- filing (collections-screen, ADR-0003, ADR-0005) --------------------
+  // Copied from the stored record by `CollectionStore.put()`, never from the
+  // caller: only the store's filing transactions write them (data-model.md).
+
+  /// The display name, 1–60 characters, one line (`collection_name.dart`).
+  /// Written by `CollectionStore.create()` and rename; null only on a record
+  /// from before collections-screen until the backfill names it.
+  String? name;
+
+  /// The `CollectionFolder.folderId` it sits in; null is the top level.
+  @Index()
+  String? folderId;
+
+  /// Its place in its level, shared with that level's folders.
+  int order = 0;
+
+  /// When the learner deleted it; null when it is not in the bin (ADR-0005).
+  @Index()
+  DateTime? binnedAt;
+
+  /// The folder it was deleted from, the restore target (AC-24).
+  String? binnedFromFolderId;
+
+  /// True once made with New collection, renamed, moved, reordered or given
+  /// a word (AC-19). Never set back to false.
+  bool keep = false;
+
   /// The most results a session keeps; the oldest goes first (AC-38).
   static const maxResults = 2000;
 

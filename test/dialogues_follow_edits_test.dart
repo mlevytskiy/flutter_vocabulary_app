@@ -12,6 +12,8 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
+import 'seed_collections.dart';
+
 /// get-words-from-subtitles-improvment T18: a dialogue follows its words
 /// through every edit, in the same save (AC-11, AC-26).
 void main() {
@@ -62,7 +64,7 @@ void main() {
           ..pushState = push,
       ]
       ..lastLocalModifiedAt = DateTime.now();
-    await store.put(s);
+    await seedCollection(store, s);
     await store.setCurrentCollectionId(s.collectionId);
     await container.read(wordInputNotifierProvider.future);
     return (container.read(wordInputNotifierProvider.notifier), s.collectionId);

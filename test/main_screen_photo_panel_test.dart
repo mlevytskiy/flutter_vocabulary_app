@@ -23,6 +23,8 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dar
 import 'photo_panel_test_host.dart' show mainScreenRouter;
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
 
+import 'seed_collections.dart';
+
 /// side-bar-for-main-screen T13/T14: the photo panel on the real main screen
 /// (spec AC-02, AC-04, AC-05, AC-06, AC-10, AC-11, AC-15, AC-15b, AC-17).
 void main() {
@@ -83,7 +85,7 @@ void main() {
         ..lastLocalModifiedAt = now
         ..words = words ?? twentyRows()
         ..sources = sources ?? (photos ? [photo('p1', 1), photo('p2', 2)] : []);
-      await store.put(current);
+      await seedCollection(store, current);
       await store.setCurrentCollectionId(current.collectionId);
     });
     container = ProviderContainer(overrides: [
@@ -551,7 +553,7 @@ void main() {
         ..lastLocalModifiedAt = DateTime(2026, 9, 2)
         ..words = [WordPair(word: 'from', sourceId: 'q1')]
         ..sources = [photo('q1', 5)];
-      await store.put(other);
+      await seedCollection(store, other);
     });
     await pumpMain(tester);
     await openHalf(tester);

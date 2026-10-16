@@ -18,6 +18,8 @@ import 'package:flutter_vocabulary_app/core/story/word_grouping.dart';
 import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
+import 'seed_collections.dart';
+
 /// mnemonic-story T14: the word-groups notifier groups a session when its words
 /// changed, keeps the selection, and leaves the current session alone when it
 /// works on a History session (AC-01 – AC-05, AC-11).
@@ -98,7 +100,7 @@ void main() {
   /// Makes [s] the current session, as the launch rule would.
   Future<WordCollection> makeCurrent(WordCollection s) async {
     s.lastLocalModifiedAt = DateTime.now();
-    await store.put(s);
+    await seedCollection(store, s);
     await store.setCurrentCollectionId(s.collectionId);
     return (await container.read(wordInputNotifierProvider.future));
   }
@@ -329,7 +331,7 @@ void main() {
     final cur = await makeCurrent(collectionOf(10));
     final history = collectionOf(25, prefix: 'h');
     history.lastLocalModifiedAt = DateTime.now().subtract(const Duration(days: 3));
-    await store.put(history);
+    await seedCollection(store, history);
     api.reply = (w, k) async => [
           SplitGroup(name: 'Food', rowIds: ids(1, 13, prefix: 'h')),
           SplitGroup(name: 'Travel', rowIds: ids(14, 25, prefix: 'h')),

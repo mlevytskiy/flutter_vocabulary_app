@@ -28,6 +28,8 @@ import 'package:flutter_vocabulary_app/core/services/vocab_photo_service.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// Records every pick; answers with [next] (a file, null for "closed", or an
 /// error to throw).
 class FakePicker extends ImagePicker {
@@ -143,7 +145,7 @@ void main() {
     dir = Directory.systemTemp.createTempSync('photo_import_flow_test');
     store = await CollectionStore.open(directory: dir.path);
     final collection = WordCollection.create()..words = [WordPair(word: 'harbour')];
-    await store.put(collection);
+    await seedCollection(store, collection);
     await store.setCurrentCollectionId(collection.collectionId);
   });
 

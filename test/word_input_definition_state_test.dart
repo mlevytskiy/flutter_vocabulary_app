@@ -13,6 +13,8 @@ import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// definition-mode T10: the real input screen carries each row's definition
 /// through edits (spec AC-11; spec §8 resolved — a word edit keeps the
 /// definition text and drops its stored senses).
@@ -39,7 +41,7 @@ void main() {
       dir = Directory.systemTemp.createTempSync('definition_state_test');
       store = await CollectionStore.open(directory: dir.path);
       final collection = WordCollection.create()..words = words;
-      await store.put(collection);
+      await seedCollection(store, collection);
       await store.setCurrentCollectionId(collection.collectionId);
     });
     container = ProviderContainer(overrides: [

@@ -106,9 +106,8 @@ class WordInputNotifier extends _$WordInputNotifier {
   }
 
   Future<WordCollection> _startNewCollection(CollectionStore store) async {
-    final collection = WordCollection.create();
-    collection.words.add(WordPair());
-    await store.put(collection);
+    final collection = await store.create();
+    collection.words = [WordPair()];
     await store.setCurrentCollectionId(collection.collectionId);
     return collection;
   }

@@ -14,6 +14,8 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
+import 'seed_collections.dart';
+
 /// definition-mode T10: the notifier keeps definitions through every row
 /// operation (spec AC-11, AC-13).
 void main() {
@@ -129,7 +131,7 @@ void main() {
   test('a reused stored session can grow', () async {
     final warm = WordCollection.create()
       ..words = [WordPair(word: 'apple', translation: 'яблуко')];
-    await store.put(warm);
+    await seedCollection(store, warm);
     await store.setCurrentCollectionId(warm.collectionId);
 
     final collection = await container.read(wordInputNotifierProvider.future);
@@ -165,7 +167,7 @@ void main() {
         ..updatedAt = at
         ..lastLocalModifiedAt = at
         ..words = [WordPair(word: word, translation: word)];
-      await store.put(s);
+      await seedCollection(store, s);
       return s;
     }
 

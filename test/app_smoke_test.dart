@@ -20,6 +20,8 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
+import 'seed_collections.dart';
+
 /// The app smoke test (docs/testing.md): the real `App` with its router and
 /// providers starts on a stored session and reaches every screen -- the words
 /// table, History, a past session's table and Settings. It checks the wiring,
@@ -54,8 +56,8 @@ void main() {
         ..updatedAt = pastAt
         ..lastLocalModifiedAt = pastAt
         ..words = [WordPair(word: 'tea', translation: 'чай')];
-      await store.put(now);
-      await store.put(past);
+      await seedCollection(store, now);
+      await seedCollection(store, past);
       await store.setCurrentCollectionId(now.collectionId);
     });
     // Isar's watch and reads never complete under the test's fake clock, so

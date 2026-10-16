@@ -2,9 +2,12 @@ import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/collection_folder.dart';
+import '../models/collection_name.dart';
 import '../models/word_collection.dart';
 import '../models/story_run.dart';
 import '../models/word_result.dart';
+import 'filing.dart' show ordersOf, placeInLevel;
 import 'source_photo_store.dart' show uuidV4;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
@@ -29,7 +32,8 @@ class CollectionStore {
     final dir =
         directory ?? (await getApplicationDocumentsDirectory()).path;
     final isar = Isar.getInstance('vocab') ??
-        await Isar.open([WordCollectionSchema, StoryRunSchema],
+        await Isar.open(
+            [WordCollectionSchema, StoryRunSchema, CollectionFolderSchema],
             directory: dir, name: 'vocab');
     final prefs = await SharedPreferences.getInstance();
     final store = CollectionStore._(isar, prefs);
@@ -107,9 +111,81 @@ class CollectionStore {
     }
   }
 
-  /// Upsert on [WordCollection.collectionId]. Blank pairs — the trailing empty row the
+  /// Inserts a new collection named after this moment
+  /// (`defaultCollectionName`), at the end of its level: [folderId], null
+  /// being the top level. The only way a collection comes into being
+  /// (ADR-0003): first launch and the launch rule pass `keep: false`, New
+  /// collection `keep: true` (AC-19). Returns the new collection, with no
+  /// words; on a failed write it is returned unsaved, see the class doc.
+  Future<WordCollection> create({String? folderId, bool keep = false}) async {
+    final collection = WordCollection.create();
+    collection
+      ..name = defaultCollectionName(collection.updatedAt)
+      ..folderId = folderId
+      ..keep = keep;
+    try {
+      await _isar.writeTxn(() async {
+        collection.id = await _isar.wordCollections.put(collection);
+        await _renumberLevel(folderId, newCollection: collection);
+      });
+    } catch (_) {
+      // Losing the write is survivable; crashing the app is not.
+    }
+    return collection;
+  }
+
+  /// Numbers one level 0..n-1 in its current order with [newCollection]
+  /// placed at the end (data-model.md). The level is its collections and
+  /// folders that are not in the bin. Runs inside a write transaction.
+  Future<void> _renumberLevel(String? folderId,
+      {required WordCollection newCollection}) async {
+    final collections = await (folderId == null
+            ? _isar.wordCollections.where().folderIdIsNull()
+            : _isar.wordCollections.where().folderIdEqualTo(folderId))
+        .filter()
+        .binnedAtIsNull()
+        .findAll();
+    final folders = await (folderId == null
+            ? _isar.collectionFolders.filter().parentIdIsNull()
+            : _isar.collectionFolders.filter().parentIdEqualTo(folderId))
+        .binnedAtIsNull()
+        .findAll();
+    final byKey = <String, ({int order, Future<void> Function(int) write})>{
+      for (final c in collections)
+        if (c.id != newCollection.id)
+          'c:${c.collectionId}': (
+            order: c.order,
+            write: (o) async => _isar.wordCollections.put(c..order = o),
+          ),
+      for (final f in folders)
+        'f:${f.folderId}': (
+          order: f.order,
+          write: (o) async => _isar.collectionFolders.put(f..order = o),
+        ),
+    };
+    final level = byKey.keys.toList()
+      ..sort((a, b) => byKey[a]!.order.compareTo(byKey[b]!.order));
+    final newKey = 'c:${newCollection.collectionId}';
+    final orders = ordersOf(placeInLevel(level, newKey));
+    for (final MapEntry(:key, value: order) in orders.entries) {
+      if (key == newKey) {
+        await _isar.wordCollections.put(newCollection..order = order);
+      } else if (byKey[key]!.order != order) {
+        await byKey[key]!.write(order);
+      }
+    }
+  }
+
+  /// Saves the caller's copy over the stored collection with the same
+  /// [WordCollection.collectionId]. Blank pairs — the trailing empty row the
   /// screen always keeps — are stripped before the write and the caller's own
-  /// session object is left untouched.
+  /// collection object is left untouched.
+  ///
+  /// Never inserts: with no stored record of that id nothing is written, so
+  /// an erased collection never comes back (ADR-0003). The filing fields
+  /// (name, folderId, order, binnedAt, binnedFromFolderId, keep) come from
+  /// the stored record, never from the caller; the one exception is that
+  /// `keep` becomes true when the copy has a word, and it is never lowered.
   Future<void> put(WordCollection s) async {
     try {
       // A row keeps its id for good, so a new one gets it now, on the
@@ -122,8 +198,9 @@ class CollectionStore {
             .filter()
             .collectionIdEqualTo(s.collectionId)
             .findFirst();
+        if (existing == null) return;
         final toWrite = WordCollection()
-          ..id = existing?.id ?? Isar.autoIncrement
+          ..id = existing.id
           ..collectionId = s.collectionId
           ..updatedAt = s.updatedAt
           ..lastLocalModifiedAt = s.lastLocalModifiedAt
@@ -142,7 +219,13 @@ class CollectionStore {
           ..tags = [...s.tags]
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
-          ..results = existing?.results ?? [for (final r in s.results) r.copy()];
+          ..results = existing.results
+          ..name = existing.name
+          ..folderId = existing.folderId
+          ..order = existing.order
+          ..binnedAt = existing.binnedAt
+          ..binnedFromFolderId = existing.binnedFromFolderId
+          ..keep = existing.keep || !s.isEmpty;
         s.id = await _isar.wordCollections.put(toWrite);
       });
     } catch (_) {

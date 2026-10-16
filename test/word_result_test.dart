@@ -21,6 +21,8 @@ import 'package:flutter_vocabulary_app/features/learn/own_sentences/own_sentence
 import 'package:flutter_vocabulary_app/features/learn/translate_sentences/translate_sentences_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/anki_export.dart';
 
+import 'seed_collections.dart';
+
 /// Translate sentences data: one fair card per word.
 class _TranslateApi implements LearnApiService {
   @override
@@ -99,7 +101,7 @@ void main() {
   });
 
   test('AC-35, AC-37: appendResult saves at once and moves neither time', () async {
-    await store.put(collection('append'));
+    await seedCollection(store, collection('append'));
     expect(await store.appendResult('append', result('r1', WordResultLabel.known, t0)), isTrue);
     await store.appendResult('append', result('r1', WordResultLabel.repeat, t0.add(const Duration(minutes: 1))));
     final read = (await store.byId('append'))!;
@@ -115,7 +117,7 @@ void main() {
 
   test('a later put of a stale session object keeps the stored results', () async {
     final s = collection('stale');
-    await store.put(s);
+    await seedCollection(store, s);
     await store.appendResult('stale', result('r1', WordResultLabel.known, t0));
     // The words notifier still holds `s`, which never saw the result.
     s.words.add(WordPair(word: 'run', translation: 'бігти', rowId: 'r2'));
@@ -131,7 +133,7 @@ void main() {
         for (var i = 0; i < WordCollection.maxResults; i++)
           result('r$i', WordResultLabel.known, t0.add(Duration(seconds: i))),
       ];
-    await store.put(s);
+    await seedCollection(store, s);
     expect((await store.byId('cap'))!.results.length, WordCollection.maxResults);
     await store.appendResult('cap', result('new', WordResultLabel.repeat, t0.add(const Duration(days: 1))));
     final read = (await store.byId('cap'))!;
@@ -155,7 +157,7 @@ void main() {
     });
 
     test('AC-35: record saves the word, the exercise and the time on that session at once', () async {
-      await store.put(collection('sink'));
+      await seedCollection(store, collection('sink'));
       await sink.record(collectionId: 'sink', rowId: 'r1', exerciseId: 'own-sentences', label: WordResultLabel.repeat);
       final r = (await store.byId('sink'))!.results.single;
       expect((r.rowId, r.exerciseId, r.label), ('r1', 'own-sentences', WordResultLabel.repeat));
@@ -163,20 +165,20 @@ void main() {
     });
 
     test('no session id means the current session', () async {
-      await store.put(collection('current'));
+      await seedCollection(store, collection('current'));
       await store.setCurrentCollectionId('current');
       await sink.record(collectionId: null, rowId: 'r1', exerciseId: 'quiz', label: WordResultLabel.known);
       expect((await store.byId('current'))!.results.single.label, WordResultLabel.known);
     });
 
     test('an empty rowId is not written', () async {
-      await store.put(collection('empty'));
+      await seedCollection(store, collection('empty'));
       await sink.record(collectionId: 'empty', rowId: '', exerciseId: 'quiz', label: WordResultLabel.known);
       expect((await store.byId('empty'))!.results, isEmpty);
     });
 
     test("AC-35: a word's current result is its most recent one from any exam", () async {
-      await store.put(collection('latest')..words.add(WordPair(word: 'run', translation: 'бігти', rowId: 'r2')));
+      await seedCollection(store, collection('latest')..words.add(WordPair(word: 'run', translation: 'бігти', rowId: 'r2')));
       await sink.record(collectionId: 'latest', rowId: 'r1', exerciseId: 'quiz', label: WordResultLabel.repeat);
       now = t0.add(const Duration(minutes: 5));
       await sink.record(collectionId: 'latest', rowId: 'r1', exerciseId: 'translate-sentences', label: WordResultLabel.known);
@@ -198,7 +200,7 @@ void main() {
         for (var i = 0; i < 5; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 'q$i'),
       ];
       final s = collection('quiz')..words = words;
-      await store.put(s);
+      await seedCollection(store, s);
       final anki = generateAnkiFile((await store.byId('quiz'))!.words);
       final container = ProviderContainer(overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
@@ -229,7 +231,7 @@ void main() {
         for (var i = 0; i < 3; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 't$i'),
       ];
       final s = collection('trans')..words = words;
-      await store.put(s);
+      await seedCollection(store, s);
       final anki = generateAnkiFile((await store.byId('trans'))!.words);
       final container = ProviderContainer(overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
@@ -259,7 +261,7 @@ void main() {
         for (var i = 0; i < 3; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 'o$i'),
       ];
       final s = collection('own')..words = words;
-      await store.put(s);
+      await seedCollection(store, s);
       final anki = generateAnkiFile((await store.byId('own'))!.words);
       final container = ProviderContainer(overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
@@ -289,7 +291,7 @@ void main() {
         for (var i = 0; i < 3; i++) WordPair(word: 'word$i', translation: 'слово$i', rowId: 'e$i'),
       ];
       final s = collection('explain')..words = words;
-      await store.put(s);
+      await seedCollection(store, s);
       final anki = generateAnkiFile((await store.byId('explain'))!.words);
       final container = ProviderContainer(overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),

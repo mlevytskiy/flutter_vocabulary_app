@@ -21,6 +21,8 @@ import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
 import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
 
+import 'seed_collections.dart';
+
 /// mnemonic-story T15: the story run tracker starts runs, follows them while a
 /// screen is open and collects them (AC-06 – AC-10, AC-16, AC-19).
 
@@ -163,7 +165,7 @@ void main() {
     collection.groups = [group];
     collection.selectedGroupId = 'g1';
     collection.lastLocalModifiedAt = DateTime.now();
-    await store.put(collection);
+    await seedCollection(store, collection);
     await store.setCurrentCollectionId(collection.collectionId);
     container = makeContainer();
   }
@@ -507,7 +509,7 @@ void main() {
       ..rowIds = [for (var i = 1; i <= 8; i++) 'h$i'];
     history.groups = [hGroup];
     history.lastLocalModifiedAt = DateTime.now().subtract(const Duration(days: 3));
-    await store.put(history);
+    await seedCollection(store, history);
 
     final id = await tracker().startFor(history.collectionId, hGroup);
     workerFinishes(id!);
@@ -624,7 +626,7 @@ void main() {
         ..rowIds = ['r1', 'r2']
         ..dialogueId = 'd1';
       collection.groups = [dialogueGroup, group];
-      await store.put(collection);
+      await seedCollection(store, collection);
     }
 
     void workerDraws(String runId, {int attempt = 1}) {
@@ -672,7 +674,7 @@ void main() {
       collection
         ..publishedId = 'pub'
         ..editToken = 'tok';
-      await store.put(collection);
+      await seedCollection(store, collection);
       final id = (await tracker().startScene(collection.collectionId, dialogueGroup))!;
       workerDraws(id);
       await tracker().poll();

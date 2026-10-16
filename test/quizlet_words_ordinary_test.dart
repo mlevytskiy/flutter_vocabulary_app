@@ -26,6 +26,8 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dar
 import 'package:flutter_vocabulary_app/features/words_table/anki_export.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
+import 'seed_collections.dart';
+
 class FakePageDriver implements QuizletPageDriver {
   FakePageDriver(this.reply);
   final String reply;
@@ -80,7 +82,7 @@ void main() {
     dir = Directory.systemTemp.createTempSync('quizlet_words_ordinary_test');
     store = await CollectionStore.open(directory: dir.path);
     final collection = WordCollection.create();
-    await store.put(collection);
+    await seedCollection(store, collection);
     await store.setCurrentCollectionId(collection.collectionId);
   });
 

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
@@ -16,6 +17,9 @@ import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 /// must open the same file and read every collection, word, source, group,
 /// dialogue, result, tag and story run unchanged, through the pinned stored
 /// names (`Session`, `sessionId`).
+/// What Isar reads for an `int` property a stored record does not have.
+const _isarNullLong = -9223372036854775808;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -47,7 +51,8 @@ void main() {
   });
 
   test('the renamed schema reads every pre-rename field unchanged', () async {
-    final isar = await Isar.open([WordCollectionSchema, StoryRunSchema],
+    final isar = await Isar.open(
+        [WordCollectionSchema, StoryRunSchema, CollectionFolderSchema],
         directory: dir.path, name: 'vocab');
     try {
       final collections = await isar.wordCollections.where().findAll();
@@ -61,6 +66,19 @@ void main() {
       expect(collections.expand((c) => c.results), hasLength(6));
       expect(collections.expand((c) => c.tags), hasLength(6));
       expect(runs, hasLength(3));
+      // collections-screen T5: the filing fields of pre-feature records read
+      // as null / false. Isar skips Dart defaults for a property the record
+      // lacks, so `order` reads as Isar's null long, not 0, until the
+      // backfill (T6) numbers every record with no name.
+      for (final c in collections) {
+        expect(c.name, isNull);
+        expect(c.folderId, isNull);
+        expect(c.order, _isarNullLong);
+        expect(c.binnedAt, isNull);
+        expect(c.binnedFromFolderId, isNull);
+        expect(c.keep, isFalse);
+      }
+      expect(await isar.collectionFolders.count(), 0);
 
       expect([for (final c in collections) _utc({'id': c.id, ...c.toJson()})],
           expected['sessions']);

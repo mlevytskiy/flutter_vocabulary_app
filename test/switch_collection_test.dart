@@ -18,6 +18,8 @@ import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// edit-session-from-history T5 (ADR-0003, AC-07b, AC-09): a lookup that comes
 /// back after a switch never lands in the picked session, and a RESTORE offer
 /// from the last launch goes away with the switch.
@@ -106,8 +108,8 @@ void main() {
           WordPair(word: 'tea', translation: 'чай'),
           WordPair(word: 'milk', translation: 'молоко'),
         ];
-      await store.put(left);
-      await store.put(picked);
+      await seedCollection(store, left);
+      await seedCollection(store, picked);
       await store.setCurrentCollectionId(left.collectionId);
     });
     container = ProviderContainer(overrides: [

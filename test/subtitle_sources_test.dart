@@ -27,6 +27,8 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 
 import 'photo_panel_test_host.dart';
 
+import 'seed_collections.dart';
+
 /// side-panel-sources AC-22: words from film subtitles are a source of their
 /// own, listed in the half-open panel like a Quizlet set, and never declared
 /// to the Worker.
@@ -89,7 +91,7 @@ void main() {
               ..kind = SourceKind.subtitles
               ..name = 'Harbour Lights',
           ];
-        await store.put(collection);
+        await seedCollection(store, collection);
         final back = (await store.byId(collection.collectionId))!;
         expect([for (final s in back.sources) '${s.id}|${s.kind.name}|${s.fileName}|${s.name}|${s.url}'], [
           'p1|photo|p1.jpg|null|null',

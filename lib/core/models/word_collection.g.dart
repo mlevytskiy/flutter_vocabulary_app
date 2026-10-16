@@ -17,77 +17,107 @@ const WordCollectionSchema = CollectionSchema(
   name: r'Session',
   id: 4817823809690647594,
   properties: {
-    r'dialogues': PropertySchema(
+    r'binnedAt': PropertySchema(
       id: 0,
+      name: r'binnedAt',
+      type: IsarType.dateTime,
+    ),
+    r'binnedFromFolderId': PropertySchema(
+      id: 1,
+      name: r'binnedFromFolderId',
+      type: IsarType.string,
+    ),
+    r'dialogues': PropertySchema(
+      id: 2,
       name: r'dialogues',
       type: IsarType.objectList,
       target: r'FilmDialogue',
     ),
     r'editToken': PropertySchema(
-      id: 1,
+      id: 3,
       name: r'editToken',
       type: IsarType.string,
     ),
+    r'folderId': PropertySchema(
+      id: 4,
+      name: r'folderId',
+      type: IsarType.string,
+    ),
     r'groupedWordsKey': PropertySchema(
-      id: 2,
+      id: 5,
       name: r'groupedWordsKey',
       type: IsarType.string,
     ),
     r'groups': PropertySchema(
-      id: 3,
+      id: 6,
       name: r'groups',
       type: IsarType.objectList,
       target: r'WordGroup',
     ),
     r'isShared': PropertySchema(
-      id: 4,
+      id: 7,
       name: r'isShared',
       type: IsarType.bool,
     ),
+    r'keep': PropertySchema(
+      id: 8,
+      name: r'keep',
+      type: IsarType.bool,
+    ),
     r'lastLocalModifiedAt': PropertySchema(
-      id: 5,
+      id: 9,
       name: r'lastLocalModifiedAt',
       type: IsarType.dateTime,
     ),
+    r'name': PropertySchema(
+      id: 10,
+      name: r'name',
+      type: IsarType.string,
+    ),
+    r'order': PropertySchema(
+      id: 11,
+      name: r'order',
+      type: IsarType.long,
+    ),
     r'publishedId': PropertySchema(
-      id: 6,
+      id: 12,
       name: r'publishedId',
       type: IsarType.string,
     ),
     r'results': PropertySchema(
-      id: 7,
+      id: 13,
       name: r'results',
       type: IsarType.objectList,
       target: r'WordResult',
     ),
     r'selectedGroupId': PropertySchema(
-      id: 8,
+      id: 14,
       name: r'selectedGroupId',
       type: IsarType.string,
     ),
     r'sessionId': PropertySchema(
-      id: 9,
+      id: 15,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'sources': PropertySchema(
-      id: 10,
+      id: 16,
       name: r'sources',
       type: IsarType.objectList,
       target: r'SourcePhoto',
     ),
     r'tags': PropertySchema(
-      id: 11,
+      id: 17,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'updatedAt': PropertySchema(
-      id: 12,
+      id: 18,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 13,
+      id: 19,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -109,6 +139,32 @@ const WordCollectionSchema = CollectionSchema(
           name: r'sessionId',
           type: IndexType.hash,
           caseSensitive: true,
+        )
+      ],
+    ),
+    r'folderId': IndexSchema(
+      id: 6340065978996931043,
+      name: r'folderId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'folderId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
+    r'binnedAt': IndexSchema(
+      id: 3986165981865880220,
+      name: r'binnedAt',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'binnedAt',
+          type: IndexType.value,
+          caseSensitive: false,
         )
       ],
     )
@@ -133,6 +189,12 @@ int _wordCollectionEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.binnedFromFolderId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.dialogues.length * 3;
   {
     final offsets = allOffsets[FilmDialogue]!;
@@ -143,6 +205,12 @@ int _wordCollectionEstimateSize(
   }
   {
     final value = object.editToken;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.folderId;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
@@ -159,6 +227,12 @@ int _wordCollectionEstimateSize(
     for (var i = 0; i < object.groups.length; i++) {
       final value = object.groups[i];
       bytesCount += WordGroupSchema.estimateSize(value, offsets, allOffsets);
+    }
+  }
+  {
+    final value = object.name;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
     }
   }
   {
@@ -215,41 +289,47 @@ void _wordCollectionSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
+  writer.writeDateTime(offsets[0], object.binnedAt);
+  writer.writeString(offsets[1], object.binnedFromFolderId);
   writer.writeObjectList<FilmDialogue>(
-    offsets[0],
+    offsets[2],
     allOffsets,
     FilmDialogueSchema.serialize,
     object.dialogues,
   );
-  writer.writeString(offsets[1], object.editToken);
-  writer.writeString(offsets[2], object.groupedWordsKey);
+  writer.writeString(offsets[3], object.editToken);
+  writer.writeString(offsets[4], object.folderId);
+  writer.writeString(offsets[5], object.groupedWordsKey);
   writer.writeObjectList<WordGroup>(
-    offsets[3],
+    offsets[6],
     allOffsets,
     WordGroupSchema.serialize,
     object.groups,
   );
-  writer.writeBool(offsets[4], object.isShared);
-  writer.writeDateTime(offsets[5], object.lastLocalModifiedAt);
-  writer.writeString(offsets[6], object.publishedId);
+  writer.writeBool(offsets[7], object.isShared);
+  writer.writeBool(offsets[8], object.keep);
+  writer.writeDateTime(offsets[9], object.lastLocalModifiedAt);
+  writer.writeString(offsets[10], object.name);
+  writer.writeLong(offsets[11], object.order);
+  writer.writeString(offsets[12], object.publishedId);
   writer.writeObjectList<WordResult>(
-    offsets[7],
+    offsets[13],
     allOffsets,
     WordResultSchema.serialize,
     object.results,
   );
-  writer.writeString(offsets[8], object.selectedGroupId);
-  writer.writeString(offsets[9], object.collectionId);
+  writer.writeString(offsets[14], object.selectedGroupId);
+  writer.writeString(offsets[15], object.collectionId);
   writer.writeObjectList<SessionSource>(
-    offsets[10],
+    offsets[16],
     allOffsets,
     SessionSourceSchema.serialize,
     object.sources,
   );
-  writer.writeStringList(offsets[11], object.tags);
-  writer.writeDateTime(offsets[12], object.updatedAt);
+  writer.writeStringList(offsets[17], object.tags);
+  writer.writeDateTime(offsets[18], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[13],
+    offsets[19],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -263,46 +343,52 @@ WordCollection _wordCollectionDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = WordCollection();
+  object.binnedAt = reader.readDateTimeOrNull(offsets[0]);
+  object.binnedFromFolderId = reader.readStringOrNull(offsets[1]);
   object.dialogues = reader.readObjectList<FilmDialogue>(
-        offsets[0],
+        offsets[2],
         FilmDialogueSchema.deserialize,
         allOffsets,
         FilmDialogue(),
       ) ??
       [];
-  object.editToken = reader.readStringOrNull(offsets[1]);
-  object.groupedWordsKey = reader.readStringOrNull(offsets[2]);
+  object.editToken = reader.readStringOrNull(offsets[3]);
+  object.folderId = reader.readStringOrNull(offsets[4]);
+  object.groupedWordsKey = reader.readStringOrNull(offsets[5]);
   object.groups = reader.readObjectList<WordGroup>(
-        offsets[3],
+        offsets[6],
         WordGroupSchema.deserialize,
         allOffsets,
         WordGroup(),
       ) ??
       [];
   object.id = id;
-  object.isShared = reader.readBool(offsets[4]);
-  object.lastLocalModifiedAt = reader.readDateTime(offsets[5]);
-  object.publishedId = reader.readStringOrNull(offsets[6]);
+  object.isShared = reader.readBool(offsets[7]);
+  object.keep = reader.readBool(offsets[8]);
+  object.lastLocalModifiedAt = reader.readDateTime(offsets[9]);
+  object.name = reader.readStringOrNull(offsets[10]);
+  object.order = reader.readLong(offsets[11]);
+  object.publishedId = reader.readStringOrNull(offsets[12]);
   object.results = reader.readObjectList<WordResult>(
-        offsets[7],
+        offsets[13],
         WordResultSchema.deserialize,
         allOffsets,
         WordResult(),
       ) ??
       [];
-  object.selectedGroupId = reader.readStringOrNull(offsets[8]);
-  object.collectionId = reader.readString(offsets[9]);
+  object.selectedGroupId = reader.readStringOrNull(offsets[14]);
+  object.collectionId = reader.readString(offsets[15]);
   object.sources = reader.readObjectList<SessionSource>(
-        offsets[10],
+        offsets[16],
         SessionSourceSchema.deserialize,
         allOffsets,
         SessionSource(),
       ) ??
       [];
-  object.tags = reader.readStringList(offsets[11]) ?? [];
-  object.updatedAt = reader.readDateTime(offsets[12]);
+  object.tags = reader.readStringList(offsets[17]) ?? [];
+  object.updatedAt = reader.readDateTime(offsets[18]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[13],
+        offsets[19],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -319,6 +405,10 @@ P _wordCollectionDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 1:
+      return (reader.readStringOrNull(offset)) as P;
+    case 2:
       return (reader.readObjectList<FilmDialogue>(
             offset,
             FilmDialogueSchema.deserialize,
@@ -326,11 +416,13 @@ P _wordCollectionDeserializeProp<P>(
             FilmDialogue(),
           ) ??
           []) as P;
-    case 1:
-      return (reader.readStringOrNull(offset)) as P;
-    case 2:
-      return (reader.readStringOrNull(offset)) as P;
     case 3:
+      return (reader.readStringOrNull(offset)) as P;
+    case 4:
+      return (reader.readStringOrNull(offset)) as P;
+    case 5:
+      return (reader.readStringOrNull(offset)) as P;
+    case 6:
       return (reader.readObjectList<WordGroup>(
             offset,
             WordGroupSchema.deserialize,
@@ -338,13 +430,19 @@ P _wordCollectionDeserializeProp<P>(
             WordGroup(),
           ) ??
           []) as P;
-    case 4:
-      return (reader.readBool(offset)) as P;
-    case 5:
-      return (reader.readDateTime(offset)) as P;
-    case 6:
-      return (reader.readStringOrNull(offset)) as P;
     case 7:
+      return (reader.readBool(offset)) as P;
+    case 8:
+      return (reader.readBool(offset)) as P;
+    case 9:
+      return (reader.readDateTime(offset)) as P;
+    case 10:
+      return (reader.readStringOrNull(offset)) as P;
+    case 11:
+      return (reader.readLong(offset)) as P;
+    case 12:
+      return (reader.readStringOrNull(offset)) as P;
+    case 13:
       return (reader.readObjectList<WordResult>(
             offset,
             WordResultSchema.deserialize,
@@ -352,11 +450,11 @@ P _wordCollectionDeserializeProp<P>(
             WordResult(),
           ) ??
           []) as P;
-    case 8:
+    case 14:
       return (reader.readStringOrNull(offset)) as P;
-    case 9:
+    case 15:
       return (reader.readString(offset)) as P;
-    case 10:
+    case 16:
       return (reader.readObjectList<SessionSource>(
             offset,
             SessionSourceSchema.deserialize,
@@ -364,11 +462,11 @@ P _wordCollectionDeserializeProp<P>(
             SessionSource(),
           ) ??
           []) as P;
-    case 11:
+    case 17:
       return (reader.readStringList(offset) ?? []) as P;
-    case 12:
+    case 18:
       return (reader.readDateTime(offset)) as P;
-    case 13:
+    case 19:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -456,6 +554,14 @@ extension WordCollectionQueryWhereSort
   QueryBuilder<WordCollection, WordCollection, QAfterWhere> anyId() {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(const IdWhereClause.any());
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhere> anyBinnedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'binnedAt'),
+      );
     });
   }
 }
@@ -575,10 +681,420 @@ extension WordCollectionQueryWhere
       }
     });
   }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      folderIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'folderId',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      folderIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'folderId',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      folderIdEqualTo(String? folderId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'folderId',
+        value: [folderId],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      folderIdNotEqualTo(String? folderId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [],
+              upper: [folderId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [folderId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [folderId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'folderId',
+              lower: [],
+              upper: [folderId],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'binnedAt',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'binnedAt',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtEqualTo(DateTime? binnedAt) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'binnedAt',
+        value: [binnedAt],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtNotEqualTo(DateTime? binnedAt) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'binnedAt',
+              lower: [],
+              upper: [binnedAt],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'binnedAt',
+              lower: [binnedAt],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'binnedAt',
+              lower: [binnedAt],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'binnedAt',
+              lower: [],
+              upper: [binnedAt],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtGreaterThan(
+    DateTime? binnedAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'binnedAt',
+        lower: [binnedAt],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtLessThan(
+    DateTime? binnedAt, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'binnedAt',
+        lower: [],
+        upper: [binnedAt],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterWhereClause>
+      binnedAtBetween(
+    DateTime? lowerBinnedAt,
+    DateTime? upperBinnedAt, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'binnedAt',
+        lower: [lowerBinnedAt],
+        includeLower: includeLower,
+        upper: [upperBinnedAt],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
 }
 
 extension WordCollectionQueryFilter
     on QueryBuilder<WordCollection, WordCollection, QFilterCondition> {
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedAtIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'binnedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedAtIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'binnedAt',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedAtEqualTo(DateTime? value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'binnedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedAtGreaterThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'binnedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedAtLessThan(
+    DateTime? value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'binnedAt',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedAtBetween(
+    DateTime? lower,
+    DateTime? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'binnedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'binnedFromFolderId',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'binnedFromFolderId',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'binnedFromFolderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'binnedFromFolderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'binnedFromFolderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'binnedFromFolderId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'binnedFromFolderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'binnedFromFolderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'binnedFromFolderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'binnedFromFolderId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'binnedFromFolderId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      binnedFromFolderIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'binnedFromFolderId',
+        value: '',
+      ));
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       dialoguesLengthEqualTo(int length) {
     return QueryBuilder.apply(this, (query) {
@@ -817,6 +1333,160 @@ extension WordCollectionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'editToken',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'folderId',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'folderId',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'folderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'folderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'folderId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'folderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'folderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'folderId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'folderId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'folderId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      folderIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'folderId',
         value: '',
       ));
     });
@@ -1131,6 +1801,16 @@ extension WordCollectionQueryFilter
   }
 
   QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      keepEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'keep',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
       lastLocalModifiedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -1178,6 +1858,216 @@ extension WordCollectionQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
         property: r'lastLocalModifiedAt',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'name',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'name',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'name',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'name',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'name',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'name',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      orderEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'order',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      orderGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'order',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      orderLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'order',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      orderBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'order',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
@@ -2222,6 +3112,33 @@ extension WordCollectionQueryLinks
 
 extension WordCollectionQuerySortBy
     on QueryBuilder<WordCollection, WordCollection, QSortBy> {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByBinnedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByBinnedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByBinnedFromFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedFromFolderId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByBinnedFromFolderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedFromFolderId', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
@@ -2232,6 +3149,19 @@ extension WordCollectionQuerySortBy
       sortByEditTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByFolderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.desc);
     });
   }
 
@@ -2262,6 +3192,18 @@ extension WordCollectionQuerySortBy
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByKeep() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'keep', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByKeepDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'keep', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
       sortByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
@@ -2273,6 +3215,30 @@ extension WordCollectionQuerySortBy
       sortByLastLocalModifiedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'name', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.desc);
     });
   }
 
@@ -2334,6 +3300,33 @@ extension WordCollectionQuerySortBy
 
 extension WordCollectionQuerySortThenBy
     on QueryBuilder<WordCollection, WordCollection, QSortThenBy> {
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByBinnedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedAt', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByBinnedAtDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByBinnedFromFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedFromFolderId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByBinnedFromFolderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'binnedFromFolderId', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
@@ -2344,6 +3337,19 @@ extension WordCollectionQuerySortThenBy
       thenByEditTokenDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByFolderId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByFolderIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'folderId', Sort.desc);
     });
   }
 
@@ -2386,6 +3392,18 @@ extension WordCollectionQuerySortThenBy
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByKeep() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'keep', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByKeepDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'keep', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
       thenByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
@@ -2397,6 +3415,30 @@ extension WordCollectionQuerySortThenBy
       thenByLastLocalModifiedAtDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'lastLocalModifiedAt', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByName() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'name', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByNameDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByOrderDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'order', Sort.desc);
     });
   }
 
@@ -2458,10 +3500,31 @@ extension WordCollectionQuerySortThenBy
 
 extension WordCollectionQueryWhereDistinct
     on QueryBuilder<WordCollection, WordCollection, QDistinct> {
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByBinnedAt() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'binnedAt');
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByBinnedFromFolderId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'binnedFromFolderId',
+          caseSensitive: caseSensitive);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByEditToken(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'editToken', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByFolderId(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'folderId', caseSensitive: caseSensitive);
     });
   }
 
@@ -2479,10 +3542,29 @@ extension WordCollectionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByKeep() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'keep');
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QDistinct>
       distinctByLastLocalModifiedAt() {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'lastLocalModifiedAt');
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByName(
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByOrder() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'order');
     });
   }
 
@@ -2530,6 +3612,19 @@ extension WordCollectionQueryProperty
     });
   }
 
+  QueryBuilder<WordCollection, DateTime?, QQueryOperations> binnedAtProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'binnedAt');
+    });
+  }
+
+  QueryBuilder<WordCollection, String?, QQueryOperations>
+      binnedFromFolderIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'binnedFromFolderId');
+    });
+  }
+
   QueryBuilder<WordCollection, List<FilmDialogue>, QQueryOperations>
       dialoguesProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -2540,6 +3635,12 @@ extension WordCollectionQueryProperty
   QueryBuilder<WordCollection, String?, QQueryOperations> editTokenProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'editToken');
+    });
+  }
+
+  QueryBuilder<WordCollection, String?, QQueryOperations> folderIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'folderId');
     });
   }
 
@@ -2563,10 +3664,28 @@ extension WordCollectionQueryProperty
     });
   }
 
+  QueryBuilder<WordCollection, bool, QQueryOperations> keepProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'keep');
+    });
+  }
+
   QueryBuilder<WordCollection, DateTime, QQueryOperations>
       lastLocalModifiedAtProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'lastLocalModifiedAt');
+    });
+  }
+
+  QueryBuilder<WordCollection, String?, QQueryOperations> nameProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<WordCollection, int, QQueryOperations> orderProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'order');
     });
   }
 

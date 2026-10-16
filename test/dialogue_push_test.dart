@@ -19,6 +19,8 @@ import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_picture_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 
+import 'seed_collections.dart';
+
 /// get-words-from-subtitles-improvment T24: an import's rows and dialogues,
 /// and later scene pictures, reach the shared link on their own (ADR-0005).
 void main() {
@@ -95,7 +97,7 @@ void main() {
   });
 
   Future<void> save() async {
-    await store.put(collection);
+    await seedCollection(store, collection);
     await store.setCurrentCollectionId(collection.collectionId);
   }
 

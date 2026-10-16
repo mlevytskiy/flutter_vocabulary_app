@@ -26,6 +26,8 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/word_input_sp
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
+import 'seed_collections.dart';
+
 /// Stands in for the web view: loads at once and returns [reply].
 class FakePageDriver implements QuizletPageDriver {
   FakePageDriver(this.reply);
@@ -139,7 +141,7 @@ void main() {
     final collection = WordCollection.create()
       ..words = [WordPair(word: 'harbour', sourceId: 'photo-a')]
       ..sources = [photo('photo-a'), photo('photo-b')];
-    await store.put(collection);
+    await seedCollection(store, collection);
     await store.setCurrentCollectionId(collection.collectionId);
   });
 
