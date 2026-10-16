@@ -48,7 +48,7 @@ lib/
                                 name stays SourcePhoto (good-looking-web; import-from-quizlet,
                                 ADR-0005; side-panel-sources AC-22)
                                 word_result.dart (+.g) — Isar @embedded WordResult {rowId, exerciseId,
-                                label known/repeat, at}: Session.results, append-only, at most 2000;
+                                label known/repeat, at}: WordCollection.results, append-only, at most 2000;
                                 never in a row, a publish or an export (learn-kit S-22)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
@@ -344,7 +344,7 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
 
 ```mermaid
 flowchart LR
-  S[WordInputScreen] -->|ref.watch| N[WordInputNotifier<br/>Session]
+  S[WordInputScreen] -->|ref.watch| N[WordInputNotifier<br/>WordCollection]
   S -->|ref.read| P[vocabPhotoServiceProvider<br/>photoScalerProvider]
   N -->|put/byId/newest| W[sessionStoreProvider<br/>CollectionStore: Isar 'vocab'<br/>+ current_session_id pointer]
   S -->|WordsTableRoute().go| T[WordsTableScreen]
@@ -353,7 +353,7 @@ flowchart LR
   L -->|Start: ComingSoonRoute push| C[ComingSoonScreen]
   L -->|Start with a group: ExerciseRoute push| EX[exerciseScreen<br/>kit: ExerciseScaffold]
   EX -->|fetchData / check| LA[learnApiServiceProvider<br/>Worker /learn/data, /learn/check]
-  EX -->|record| ER[examResultSinkProvider<br/>Session.results]
+  EX -->|record| ER[examResultSinkProvider<br/>WordCollection.results]
   L -->|Start with Mnemonic story: StoryRoute push| Y[StoryScreen]
   L -->|ensureGrouped| GN[wordGroupsNotifierProvider<br/>core/story]
   GN -->|POST /story/grouping| SA[storyApiServiceProvider<br/>Worker /story/*]
@@ -483,7 +483,7 @@ The Worker side is in `vocab-photo-api/README.md`; the design is in
 With "Get dialogues from subtitles" on, a subtitle import asks the Worker for words and up to 10
 film dialogues in one request. The results dialog is unchanged; at Done the words are added and
 `addImportDialogues` links each dialogue to the import's kept rows by `WordPair.rowId`
-(`atDone`), all in one debounced save. Dialogues live in `Session.dialogues` (`FilmDialogue`,
+(`atDone`), all in one debounced save. Dialogues live in `WordCollection.dialogues` (`FilmDialogue`,
 embedded, pager order). Every later save runs `afterEdit`: links only shrink, and a dialogue left
 with no words goes (or stays hidden while its delivery is pending). The AC-05 matching rule exists
 twice, in `src/story/word-check.ts` and `lib/core/dialogues/dialogue_match.dart`, pinned by one case
