@@ -1,0 +1,234 @@
+# collections-screen — the delta to the Worker's publish route and shared page.
+# DERIVED, not hand-written:
+#   fields + constraints  ← data-model.md (D1 `sessions.title`, nullable; WordCollection.name
+#                           1–60 characters, one line), staged migrations/01_add_session_title
+#   responses             ← sad.md §6 F12 alt-branches (title breaks the name rule → refused;
+#                           valid → stored; delivery → title untouched; old page → "Vocabulary")
+#   endpoints + shape     ← spec.md US-12, AC-29, AC-30; sad.md §4 choice 6, ADR-0008
+# Only what changes is described. Every other part of POST /sessions (entries, sources,
+# dialogues, detail, republish) and every other route is unchanged; the full body is
+# documented in src/session/handlers.ts. Wire conventions are the Worker's own, as in
+# learn-part-step-1 and words-from-subtitles: `x-app-secret` on app routes, public pages,
+# unversioned paths, `{error, code?}` JSON errors. See api-sync-report.md "Deviations".
+openapi: 3.1.0
+
+info:
+  title: vocab-photo-api — collection title on the shared page
+  version: 0.1.0
+  description: |
+    A learner keeps many collections, and the partner who opens a shared link cannot tell
+    which lesson's words they are looking at: every shared page is titled "Vocabulary".
+    The app now sends the collection's name with a Share link, and the shared page shows it
+    as its title. The name is the only filing data that leaves the phone: folders, other
+    collections and the recycle bin never do (AC-30). A rename reaches the page only on
+    the next Share link, which republishes over the same page and link (AC-29). Dialogue
+    and picture deliveries never change it, and a page published before this feature, or
+    from an older app, keeps "Vocabulary" until it is shared again.
+
+servers:
+  - url: https://vocab-photo-api.<account>.workers.dev
+    description: Production (the real host is in lib/config/vocab_api_config.dart, gitignored)
+  - url: http://localhost:8787
+    description: Local (`wrangler dev`)
+
+# The Worker has no bearer auth. App routes check the `x-app-secret` header
+# (src/index.ts); the shared page is `public: true` and the link is its only credential.
+security: []
+
+tags:
+  - name: publish
+    description: The app's publish route (src/session/handlers.ts)
+  - name: page
+    description: The shared page (src/session/page.ts)
+
+paths:
+  /sessions:
+    post:
+      summary: Publish or republish a collection, now with its title
+      description: |
+        Unchanged apart from the optional `title`. With `publishedId` and the matching
+        `editToken`, the same page and link are overwritten and `title` replaces the stored
+        one. Sending no `title` stores NULL, so an older app keeps the "Vocabulary" heading.
+        A new link is published if the id has expired or the token is wrong (ADR-0008 of
+        good-looking-web).
+
+        `title` is checked before anything is stored (sad §6 F12): a string of 1 to 60
+        characters, not only spaces, with no line break (`\n` or `\r`). Anything else is
+        refused, and nothing is published. The app runs the same check before sending, so
+        this is a backstop. Length is counted in characters, not bytes (spec AC-02).
+
+        `title` is stored as typed (no trimming) and rendered only as escaped text
+        (spec §6.1).
+
+        `POST /sessions/{id}/dialogues` and `POST /sessions/{id}/dialogues/{dialogueId}/picture`
+        do not read `title` and never change it (AC-29).
+      operationId: createSession
+      tags: [publish]
+      security:
+        - AppSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PublishBody" }
+            examples:
+              firstPublish:
+                summary: First Share link of a named collection
+                value:
+                  title: Speaking club 12
+                  detail: translation
+                  entries:
+                    - { word: "get over", translation: "подолати" }
+              republish:
+                summary: Share link again after a rename, same page and link
+                value:
+                  title: Speaking club 12 — idioms
+                  publishedId: k3v9q2m8x1
+                  editToken: <edit token from the first publish>
+                  entries:
+                    - { word: "get over", translation: "подолати" }
+              olderApp:
+                summary: A publish from an app before this feature (no title, stays "Vocabulary")
+                value:
+                  entries:
+                    - { word: "get over", translation: "подолати" }
+      responses:
+        "200":
+          description: Published. The response shape is unchanged; the title is not echoed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PublishResult" }
+              examples:
+                published:
+                  value:
+                    id: k3v9q2m8x1
+                    url: https://vocab-photo-api.<account>.workers.dev/s/k3v9q2m8x1
+                    expiresAt: "2026-11-15T10:30:00.000Z"
+                    editToken: <edit token>
+        "400":
+          description: |
+            The body is invalid. NEW: `title` breaks the name rule (sad §6 F12, "the title
+            breaks the name rule" branch). Existing 400s (bad entries, sources, dialogues,
+            detail, republish fields) are unchanged.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkerError" }
+              examples:
+                titleInvalid:
+                  value:
+                    error: "`title` must be 1 to 60 characters on one line"
+                    code: title_invalid
+        "401":
+          description: Missing or wrong `x-app-secret` (unchanged).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkerError" }
+              examples:
+                unauthorized: { value: { error: Unauthorized } }
+        "413":
+          description: Body over the existing size limit (unchanged; a 60-character title does not move it).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkerError" }
+              examples:
+                tooLarge: { value: { error: Payload is too large } }
+
+  /s/{id}:
+    get:
+      summary: Shared page of a published collection, titled with its name
+      description: |
+        Unchanged apart from the heading. The document `<title>` and the page's `<h1>` show
+        the stored `title` through `escapeHtml`, or "Vocabulary" when it is NULL (AC-29). A
+        name holding markup appears as literal text (spec §6.1). The name is not editable on
+        the page, and nothing about the learner's folders, other collections or recycle bin
+        is part of the page (AC-30). The phone and wide layouts keep their structure: only
+        the heading text changes (ux-flows "Platform decisions").
+      operationId: getSessionPage
+      tags: [page]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The published collection's id (existing `ID_PATTERN`, src/session/types.ts).
+          schema: { type: string }
+      responses:
+        "200":
+          description: The shared page.
+          content:
+            text/html:
+              schema: { type: string }
+              examples:
+                named:
+                  summary: Published with the name "Speaking club 12"
+                  value: |
+                    <!doctype html><html lang="en"><head><title>Speaking club 12</title>…</head><body>
+                    <main data-session="k3v9q2m8x1" …><header class="title"><h1>Speaking club 12</h1>
+                    <span class="meta-short">24 words · until 15.11.2026</span></header>…</main></body></html>
+                markupInName:
+                  summary: A name with markup is shown as text
+                  value: |
+                    …<title>&lt;b&gt;Unit 3&lt;/b&gt;</title>…<h1>&lt;b&gt;Unit 3&lt;/b&gt;</h1>…
+                beforeThisFeature:
+                  summary: Published before this feature (title NULL)
+                  value: |
+                    …<title>Vocabulary</title>…<h1>Vocabulary</h1>…
+        "404":
+          description: Expired or unknown link — the existing "This word list is gone" page (unchanged).
+          content:
+            text/html:
+              schema: { type: string }
+
+components:
+  securitySchemes:
+    AppSecret:
+      type: apiKey
+      in: header
+      name: x-app-secret
+      description: The app's shared secret (lib/config/vocab_api_config.dart). Unchanged.
+
+  schemas:
+    CollectionTitle:
+      description: |
+        The collection's name (data-model.md WordCollection.name → D1 sessions.title).
+        1–60 characters, not only spaces, no line break. Two collections may share a name.
+      type: string
+      minLength: 1
+      maxLength: 60
+      pattern: "^(?=.*\\S)[^\\r\\n]{1,60}$"
+      examples: ["Speaking club 12", "16.10.2026 14:30"]
+
+    PublishBody:
+      description: |
+        The existing publish body (src/session/handlers.ts `handleCreateSession`) plus
+        `title`. Only `title` is new; the other properties are listed for orientation and
+        keep their current rules.
+      type: object
+      required: [entries]
+      properties:
+        title:
+          $ref: "#/components/schemas/CollectionTitle"
+        detail: { type: string, enum: [translation, definition, both] }
+        entries: { type: array, items: { type: object } }
+        sources: { type: array, items: { type: object } }
+        dialogues: { type: array, items: { type: object } }
+        publishedId: { type: string }
+        editToken: { type: string }
+      additionalProperties: true
+
+    PublishResult:
+      description: Unchanged.
+      type: object
+      required: [id, url, expiresAt, editToken]
+      properties:
+        id: { type: string }
+        url: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+        editToken: { type: string }
+
+    WorkerError:
+      description: The Worker's existing JSON error shape; `code` is present on newer errors.
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        code: { type: string, examples: [title_invalid] }
