@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/collection_folder.dart';
 import '../models/collection_name.dart';
+import '../models/tag_library_entry.dart';
 import '../models/word_collection.dart';
 import '../models/session_source.dart';
 import '../models/story_run.dart';
@@ -50,7 +51,12 @@ class CollectionStore {
         directory ?? (await getApplicationDocumentsDirectory()).path;
     final isar = Isar.getInstance('vocab') ??
         await Isar.open(
-            [WordCollectionSchema, StoryRunSchema, CollectionFolderSchema],
+            [
+              WordCollectionSchema,
+              StoryRunSchema,
+              CollectionFolderSchema,
+              TagLibraryEntrySchema,
+            ],
             directory: dir, name: 'vocab');
     final prefs = await SharedPreferences.getInstance();
     final store = CollectionStore._(isar, prefs);
