@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-03", "AC-04"]
 files_hint: ["lib/core/models/collection_name.dart", "test/collection_name_test.dart"]
 owner: "Maksym"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Add the pure name rule, the default date name and the creation moment from a collection id
