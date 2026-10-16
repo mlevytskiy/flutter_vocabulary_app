@@ -34,10 +34,10 @@ A collection needs a name, a folder, a place in its level's order, a bin mark an
 **Chosen:** option 1. It follows the `results` precedent, keeps one record per collection (no orphans to reconcile), and lets every list read one query. Option 2 gives the protection by construction, but every list joins two collections, an erase must keep both in step, and it would still need the "never re-create" rule.
 
 The rules:
-- `put()` takes the filing fields from the stored record, and **does nothing when no record with that id exists**. Only `CollectionStore.create()` inserts (first launch, "New collection").
+- `put()` takes the filing fields from the stored record (the one exception is raising `keep`, below), and **does nothing when no record with that id exists**. Only `CollectionStore.create()` inserts (first launch, "New collection").
 - `rename`, `move`, `reorder`, `bin`, `restore`, `erase` and `sweepBin` are each one Isar write transaction that reads the stored records, checks the invariants (the current collection cannot be binned, a folder cannot go inside itself) and writes only filing fields. They are not debounced (QG-4).
 - The default name is stored as text at creation ("16.10.2026 14:30", local time). The one-time backfill on store open names existing collections from the timestamp inside their id, or from their earliest stored date (AC-04), puts them at the top level and orders them oldest first.
-- `keep` is set by New collection, rename, move, reorder and the first word (AC-19).
+- `keep` is set by New collection, rename, move and reorder (filing transactions), and by `put()` when its copy has words: `put()` may raise it to true but never clears it, so a stale copy cannot harm it (AC-19). `keep` was approved as new data by the owner on 2026-10-16 during design.
 
 ## Consequences
 

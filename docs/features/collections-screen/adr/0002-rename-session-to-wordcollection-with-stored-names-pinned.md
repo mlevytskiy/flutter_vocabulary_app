@@ -27,11 +27,10 @@ The owner decided that "collection" replaces "session" in the app's code as well
 
 1. **`WordCollection`** — class `WordCollection`, field `collectionId`, `CollectionStore`, `collectionStoreProvider`, `collectionByIdProvider`, files `word_collection.dart`, `collection_store.dart`.
 2. **`VocabCollection`** — the same, with the repo's `vocab` prefix (beside the older, unrelated `VocabWord`).
-3. **Keep `Session` in code** — change only the visible texts.
 
 ## Decision outcome
 
-**Chosen:** option 1, `WordCollection`. It reads naturally, clashes with neither Isar nor `dart:collection`, and is not confused with `VocabWord`. Option 3 would contradict the spec's decision and leave two words for one thing.
+**Chosen:** option 1, `WordCollection`. It reads naturally, clashes with neither Isar nor `dart:collection`, and is not confused with `VocabWord`.
 
 How it is done:
 - `@Name('Session')` on the class and `@Name('sessionId')` on `collectionId` (and on every other renamed stored field, including `StoryRun.sessionId`), so the Isar schema keeps its stored names and old records open unchanged.

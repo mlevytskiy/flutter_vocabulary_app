@@ -26,11 +26,11 @@ The shared page shows the collection's name as its title (AC-29). A rename reach
 ## Considered options
 
 1. **A nullable `title` column** — migration `0007` adds `title TEXT NULL`; create and republish set it from an optional `title` in the body (1–60 characters, one line, else 400); dialogue and picture routes never touch it; the page shows `escapeHtml(title)` or "Vocabulary".
-2. **Title derived on the page from the first source's name** — no storage change.
+2. **A separate `session_meta` table keyed by session id** — the title (and any later page metadata) outside `sessions`.
 
 ## Decision outcome
 
-**Chosen:** option 1. Option 2 shows a set's or film's name, not the collection's, and cannot follow a rename. A nullable column keeps pages published before this feature on "Vocabulary" with no backfill, and an old Worker simply ignores the extra field.
+**Chosen:** option 1. A one-to-one side table adds a join to every page render and a second row to delete on cleanup, for one short field. A nullable column keeps pages published before this feature on "Vocabulary" with no backfill, and an old Worker simply ignores the extra field.
 
 ## Consequences
 

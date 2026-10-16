@@ -26,11 +26,11 @@ Almost all of collections-screen is in the app: names, folders, the recycle bin,
 ## Considered options
 
 1. **Three surfaces: mobile-app, backend-service, web-frontend** — the app files and publishes, the Worker stores the title, the page shows it.
-2. **App only, with the name in an existing published field** — e.g. as a fake first word row or inside a source name, so the Worker needs no change.
+2. **Two surfaces: mobile-app and backend-service** — treat the page's heading change as part of the Worker, since the Worker renders it.
 
 ## Decision outcome
 
-**Chosen:** option 1. The page must show the name as its title and nothing else may change shape for the partner; smuggling it through a word row or a source would show up as data on the page and in the partner's exports. A nullable column is the honest home (ADR-0008).
+**Chosen:** option 1. The page is a separate UI surface with its own layouts and tests (good-looking-web ADR-0001), and its heading and wording change is visible to the partner, so `screens`, `plan-tests` and `review` must see it as a surface. The title's storage is ADR-0008.
 
 ## Consequences
 

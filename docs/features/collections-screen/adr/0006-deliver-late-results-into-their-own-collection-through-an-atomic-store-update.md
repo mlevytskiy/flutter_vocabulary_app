@@ -27,11 +27,10 @@ A translation, photo reading, Quizlet or subtitle import still running when the 
 
 1. **`CollectionStore.update(collectionId, change)`** — reads the stored record, applies `change`, writes it, all inside one write transaction; does nothing if the record is gone. Late results and every background writer use it.
 2. **A revision check on `put()`** — each record carries a revision; a `put()` from an older copy is refused.
-3. **Keep dropping late results** — only stop them reaching the wrong collection.
 
 ## Decision outcome
 
-**Chosen:** option 1. It delivers the result where it belongs (option 3 fails AC-11's "finishes into the collection it started in") and never throws away the main screen's newer words the way a refused stale `put()` would (option 2 would refuse legitimate autosaves after any background write).
+**Chosen:** option 1. It delivers the result where it belongs (AC-11) and never throws away the main screen's newer words the way a refused stale `put()` would (option 2 would refuse legitimate autosaves after any background write).
 
 The rules:
 - When a result returns for a collection id other than the current one, the notifier calls `update` on that id instead of changing its own state.
