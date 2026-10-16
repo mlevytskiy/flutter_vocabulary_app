@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/dialogues/dialogue_rules.dart' show afterPublish;
+import '../../core/models/collection_name.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
@@ -16,8 +17,8 @@ import '../../core/services/collection_publish_service.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
-import 'anki_export.dart';
 import 'photo_viewer.dart';
+import 'safe_file_name.dart';
 import 'share_formats.dart';
 import 'widgets/learn_share_bar.dart';
 
@@ -62,11 +63,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     });
   }
 
-  // The format itself moved to anki_export.dart so the shared page's download
-  // (task-07) and this file can be kept byte-identical against one spec.
-  String _generateCloseUpB2Format(List<WordPair> wordPairs) =>
-      generateAnkiFile(wordPairs, detail: ref.read(wordDetailModeProvider));
-
   Future<void> _shareWords(List<WordPair> wordPairs) async {
     if (wordPairs.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -103,40 +99,19 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final origin = _shareOrigin(context);
     final detail = ref.read(wordDetailModeProvider);
     try {
-      // Get current date for filename
-      final now = DateTime.now();
-      final dateStr =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      // Named after the collection, the name the subject (AC-32).
+      final made = await makeShareFile(format, wordPairs,
+          name: _collectionName(_collection()), detail: detail);
 
       // Get temporary directory
       final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/${format.fileName(dateStr)}';
-
-      // Create file
-      final file = File(filePath);
-      switch (format) {
-        case ShareFormat.anki:
-          await file.writeAsString(_generateCloseUpB2Format(wordPairs));
-        case ShareFormat.csv:
-          await file
-              .writeAsString(generateCsvFile(wordPairs, detail: detail));
-        case ShareFormat.quizlet:
-          await file
-              .writeAsString(generateQuizletFile(wordPairs, detail: detail));
-        case ShareFormat.wordList:
-          await file
-              .writeAsString(generateWordListFile(wordPairs, detail: detail));
-        case ShareFormat.pdf:
-          await file.writeAsBytes(await generatePdfFile(wordPairs,
-              font: await loadPdfFont(), detail: detail));
-      }
+      final filePath = '${directory.path}/${made.fileName}';
+      await File(filePath).writeAsBytes(made.bytes);
 
       // Share file
       await Share.shareXFiles(
-        [XFile(filePath, mimeType: format.mimeType)],
-        subject: format == ShareFormat.anki
-            ? 'English Vocabulary - Close-up B2 Format'
-            : 'English Vocabulary',
+        [XFile(filePath, mimeType: made.mimeType)],
+        subject: made.subject,
         sharePositionOrigin: origin,
       );
     } catch (e) {
@@ -204,30 +179,39 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
         child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.insert_drive_file_outlined),
-                title: const Text('Share file'),
-                subtitle: const Text('Anki, CSV, PDF, Quizlet or word list'),
-                onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
-              ),
-              ListTile(
-                leading: const Icon(Icons.link),
-                title: const Text('Share link'),
-                subtitle:
-                    const Text('A web page anyone with the link can read'),
-                onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
-              ),
-              if (warning != null)
+          // Scrolls only when the warnings do not fit a short screen.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 ListTile(
-                  leading: Icon(publishedBefore
-                      ? Icons.warning_amber_outlined
-                      : Icons.photo_library_outlined),
-                  subtitle: Text(warning),
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: const Text('Share file'),
+                  subtitle: const Text('Anki, CSV, PDF, Quizlet or word list'),
+                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
                 ),
-            ],
+                ListTile(
+                  leading: const Icon(Icons.link),
+                  title: const Text('Share link'),
+                  subtitle:
+                      const Text('A web page anyone with the link can read'),
+                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
+                ),
+                if (warning != null)
+                  ListTile(
+                    leading: Icon(publishedBefore
+                        ? Icons.warning_amber_outlined
+                        : Icons.photo_library_outlined),
+                    subtitle: Text(warning),
+                  ),
+                // The name goes on the public page (AC-31).
+                ListTile(
+                  leading: const Icon(Icons.label_outline),
+                  subtitle:
+                      Text(publicNameWarning(_collectionName(collection))),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -271,12 +255,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
               // Switched off, no photo reaches the page (AC-24); a set
               // always does (AC-15).
               sources: [
-                for (final source in collection?.sources ?? const <SessionSource>[])
+                for (final source
+                    in collection?.sources ?? const <SessionSource>[])
                   if (includePhotos || source.kind == SourceKind.set) source,
               ],
               publishedId: collection?.publishedId,
               editToken: collection?.editToken,
-              dialogues: collection?.dialogues ?? const []);
+              dialogues: collection?.dialogues ?? const [],
+              title: collection == null ? null : _collectionName(collection));
       // Never awaited: the link dialog does not wait for photos (AC-37).
       ref
           .read(photoUploadServiceProvider)
@@ -311,6 +297,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   /// The session this screen shows: the notifier's for the current one, the
   /// stored one for a History row.
+  /// The collection's name; one not yet backfilled shows its default name
+  /// (AC-03), and with no collection the file falls back to "collection".
+  String _collectionName(WordCollection? collection) => collection == null
+      ? ''
+      : collection.name ?? defaultCollectionName(collection.updatedAt);
+
   WordCollection? _collection() {
     final collectionId = widget.collectionId;
     return collectionId == null
@@ -339,8 +331,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       ),
     );
     if (yes != true || !mounted) return;
-    final switched =
-        await ref.read(wordInputNotifierProvider.notifier).switchTo(collectionId);
+    final switched = await ref
+        .read(wordInputNotifierProvider.notifier)
+        .switchTo(collectionId);
     if (!mounted) return;
     if (switched) {
       const WordInputRoute().go(context);
@@ -458,8 +451,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   Future<void> _openLink(String url) async {
     bool opened;
     try {
-      opened = await launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication);
+      opened =
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (_) {
       opened = false;
     }

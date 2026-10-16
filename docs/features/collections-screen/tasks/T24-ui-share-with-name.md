@@ -7,7 +7,7 @@ acs: ["AC-29", "AC-31", "AC-32"]
 files_hint: ["lib/core/services/collection_publish_service.dart", "lib/features/words_table/share_formats.dart", "lib/features/words_table/", "test/collection_publish_service_test.dart", "test/share_formats_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T24 — Send the name with Share link, warn that it is public, and name shared files after it

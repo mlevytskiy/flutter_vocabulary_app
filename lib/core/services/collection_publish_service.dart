@@ -87,6 +87,10 @@ class CollectionPublishService {
   /// `entries`, its import id and, when drawn, its scene picture declared
   /// like a photo (get-words-from-subtitles-improvment ADR-0005). None sends
   /// no `dialogues` key.
+  ///
+  /// [title] is the collection's name, sent on a create and a republish so
+  /// the shared page shows it (collections-screen AC-29, ADR-0008); null
+  /// sends no `title`. Dialogue and picture deliveries never send it.
   Future<PublishedCollection> publish(
     List<WordPair> pairs, {
     WordDetailMode detail = WordDetailMode.translation,
@@ -94,6 +98,7 @@ class CollectionPublishService {
     String? publishedId,
     String? editToken,
     List<FilmDialogue> dialogues = const [],
+    String? title,
   }) async {
     if (VocabApiConfig.appSecret.isEmpty) {
       throw CollectionPublishException(
@@ -170,6 +175,7 @@ class CollectionPublishService {
               'x-app-secret': VocabApiConfig.appSecret,
             },
             body: jsonEncode({
+              if (title != null) 'title': title,
               'detail': detail.name,
               'entries': entries,
               if (declared.isNotEmpty)
@@ -196,7 +202,8 @@ class CollectionPublishService {
           // forever (AC-16): the person is waiting to hand over a link.
           .timeout(_timeout);
     } on TimeoutException {
-      throw CollectionPublishException('The request timed out, please try again');
+      throw CollectionPublishException(
+          'The request timed out, please try again');
     } catch (e) {
       throw CollectionPublishException('Network error: $e');
     }

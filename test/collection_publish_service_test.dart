@@ -12,6 +12,8 @@ import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
+import 'package:flutter_vocabulary_app/core/dialogues/dialogue_push.dart';
+import 'dart:typed_data';
 
 void main() {
   late List<http.Request> requests;
@@ -347,21 +349,26 @@ void main() {
   });
 
   group('dialogues (get-words-from-subtitles-improvment T23)', () {
-    WordPair pair(String id, String word) => WordPair(word: word, translation: 'т', rowId: id);
+    WordPair pair(String id, String word) =>
+        WordPair(word: word, translation: 'т', rowId: id);
     FilmDialogue dialogue(String id, List<String> rowIds) => FilmDialogue()
       ..id = id
       ..lines = ['$id line']
       ..wordRowIds = rowIds;
 
-    test('a session without dialogues publishes the same body as before', () async {
+    test('a session without dialogues publishes the same body as before',
+        () async {
       final service = serviceAnswering(200, answer);
-      final published = await service.publish([pair('r1', 'fog')], dialogues: const []);
+      final published =
+          await service.publish([pair('r1', 'fog')], dialogues: const []);
       final body = jsonDecode(utf8.decode(requests.single.bodyBytes)) as Map;
       expect(body.keys, ['detail', 'entries']);
       expect(published.declaredDialogues, isEmpty);
     });
 
-    test('sends visible dialogues with their rows\' positions in entries and declared pictures', () async {
+    test(
+        'sends visible dialogues with their rows\' positions in entries and declared pictures',
+        () async {
       final service = serviceAnswering(200, answer);
       final published = await service.publish([
         pair('r1', 'fog'),
@@ -393,6 +400,59 @@ void main() {
         },
       ]);
       expect(published.declaredDialogues.map((d) => d.id), ['d1', 'd2']);
+    });
+  });
+
+  // collections-screen T24: the collection's name is the page's title on a
+  // create and a republish; deliveries never send it (AC-29).
+  group('the title (collections-screen T24)', () {
+    test('a first publish sends the name as title', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish(
+          [WordPair(word: 'get over', translation: 'подолати')],
+          title: 'Speaking club 12');
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
+      expect(body['title'], 'Speaking club 12');
+    });
+
+    test('a republish sends the renamed title with the id and token', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish(
+          [WordPair(word: 'get over', translation: 'подолати')],
+          title: 'Speaking club 12 — idioms',
+          publishedId: 'k3v9q2m8x1',
+          editToken: 'tok');
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes));
+      expect(body['title'], 'Speaking club 12 — idioms');
+      expect(body['publishedId'], 'k3v9q2m8x1');
+      expect(body['editToken'], 'tok');
+    });
+
+    test('no name sends no title key', () async {
+      final service = serviceAnswering(200, answer);
+      await service.publish([WordPair(word: 'cup', translation: 'чашка')]);
+      final body = jsonDecode(utf8.decode(requests.single.bodyBytes)) as Map;
+      expect(body.containsKey('title'), isFalse);
+    });
+
+    test('dialogue and picture deliveries never send a title', () async {
+      final sent = <http.Request>[];
+      final push = DialoguePushService(client: MockClient((request) async {
+        sent.add(request);
+        return http.Response('{}', 200);
+      }));
+      await push.append('k3v9q2m8x1', 'tok', {
+        'entries': [
+          {'word': 'cup', 'translation': 'чашка'}
+        ],
+      });
+      await push.uploadPicture(
+          'k3v9q2m8x1', 'tok', 'd1', Uint8List.fromList([0xFF, 0xD8]));
+      final appended = jsonDecode(utf8.decode(sent[0].bodyBytes)) as Map;
+      expect(appended.containsKey('title'), isFalse);
+      expect(sent[1].bodyBytes, [0xFF, 0xD8]);
+      expect(utf8.decode(sent[1].bodyBytes, allowMalformed: true),
+          isNot(contains('title')));
     });
   });
 }
