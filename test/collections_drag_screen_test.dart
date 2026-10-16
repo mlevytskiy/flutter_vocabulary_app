@@ -156,11 +156,9 @@ void main() {
     expect(store.calls, isEmpty);
   });
 
-  testWidgets('no-op drops do nothing: empty spot, Up at top, own gap',
-      (t) async {
+  testWidgets('a no-op drop on an empty spot does nothing', (t) async {
     await pump(t);
-    await drag(t, find.text('Films words'), const Offset(400, 500));
-    await drag(t, find.text('Films words'), t.getCenter(find.text('Up')));
+    await drag(t, find.text('Films words'), const Offset(400, 350));
     expect(store.calls, isEmpty);
     expect(find.byType(SnackBar), findsNothing);
     expect(find.text('Collections'), findsWidgets);
@@ -215,8 +213,7 @@ void main() {
           t.getCenter(find.text('English course'))),
       () => drag(t, find.text('English course'),
           t.getCenter(find.text('English course'))),
-      () => drag(t, find.text('Films words'), const Offset(400, 500)),
-      () => drag(t, find.text('Films words'), t.getCenter(find.text('Up'))),
+      () => drag(t, find.text('Films words'), const Offset(400, 350)),
     ];
     for (var i = 0; i < 50; i++) {
       await kinds[i % kinds.length]();

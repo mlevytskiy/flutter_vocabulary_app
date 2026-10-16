@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_icon.dart';
+import 'package:flutter_vocabulary_app/features/collections/collection_pictures.dart';
+import 'package:flutter_vocabulary_app/features/collections/collections_notifier.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_view.dart';
 
 Widget _wrap(Widget child) => MaterialApp(home: Scaffold(body: child));
 
 void main() {
   group('CollectionIcon', () {
-    testWidgets('collection shows name, word count and current badge', (t) async {
-      var taps = 0, menus = 0;
+    testWidgets('collection shows name, word count and current badge',
+        (t) async {
+      var taps = 0;
       await t.pumpWidget(_wrap(SizedBox(
         width: 110,
         child: CollectionIcon(
@@ -17,40 +21,47 @@ void main() {
           wordCount: 32,
           isCurrent: true,
           onTap: () => taps++,
-          onMenu: () => menus++,
         ),
       )));
       expect(find.text('Phrasal verbs'), findsOneWidget);
       expect(find.text('32 words'), findsOneWidget);
       expect(find.text('current'), findsOneWidget);
+      expect(find.byType(DocumentPicture), findsOneWidget);
+      expect(find.byIcon(Icons.more_vert), findsNothing);
       await t.tap(find.text('Phrasal verbs'));
-      await t.tap(find.byIcon(Icons.more_vert));
       expect(taps, 1);
-      expect(menus, 1);
     });
 
-    testWidgets('folder shows name, no word count, no badge, has ⋮', (t) async {
+    testWidgets('folder shows the folder picture, name, no word count, no ⋮',
+        (t) async {
       await t.pumpWidget(_wrap(CollectionIcon(
         kind: CollectionIconKind.folder,
         name: 'Films',
         onTap: () {},
-        onMenu: () {},
       )));
       expect(find.text('Films'), findsOneWidget);
+      expect(find.byType(FolderPicture), findsOneWidget);
       expect(find.textContaining('words'), findsNothing);
       expect(find.text('current'), findsNothing);
-      expect(find.byIcon(Icons.more_vert), findsOneWidget);
+      expect(find.byIcon(Icons.more_vert), findsNothing);
     });
 
-    testWidgets('recycle bin has no ⋮', (t) async {
-      await t.pumpWidget(_wrap(CollectionIcon(
-        kind: CollectionIconKind.recycleBin,
-        name: 'Recycle bin',
-        onTap: () {},
-        onMenu: () {},
+    testWidgets('a collection shows one corner badge per kind of source',
+        (t) async {
+      await t.pumpWidget(_wrap(const CollectionIcon(
+        kind: CollectionIconKind.collection,
+        name: 'Mixed',
+        badges: [SourceBadge.quizlet, SourceBadge.movie, SourceBadge.image],
       )));
-      expect(find.text('Recycle bin'), findsOneWidget);
-      expect(find.byIcon(Icons.more_vert), findsNothing);
+      final badges = t
+          .widgetList<SourceBadgePicture>(find.byType(SourceBadgePicture))
+          .map((b) => b.badge);
+      expect(
+          badges, [SourceBadge.quizlet, SourceBadge.movie, SourceBadge.image]);
+      expect(find.text('Q'), findsOneWidget);
+      // as many sources as you like, the outline stays plain
+      expect(t.widget<DocumentPicture>(find.byType(DocumentPicture)).look,
+          DocumentLook.plain);
     });
 
     testWidgets('long name: two lines with ellipsis', (t) async {
@@ -108,57 +119,36 @@ void main() {
       CollectionItemView(id: 'a', isFolder: true, name: 'English course'),
       CollectionItemView(id: 'b', isFolder: true, name: 'Films'),
       CollectionItemView(
-          id: 'c', isFolder: false, name: 'Phrasal verbs', wordCount: 32, isCurrent: true),
-      CollectionItemView(id: 'd', isFolder: false, name: '16.10.2026 14:30', wordCount: 0),
+          id: 'c',
+          isFolder: false,
+          name: 'Phrasal verbs',
+          wordCount: 32,
+          isCurrent: true),
+      CollectionItemView(
+          id: 'd', isFolder: false, name: '16.10.2026 14:30', wordCount: 0),
     ];
 
-    testWidgets('keeps order and appends the bin last when told', (t) async {
+    testWidgets('keeps order; no recycle bin tile', (t) async {
       final tapped = <String>[];
-      var binTaps = 0;
       await t.pumpWidget(_wrap(CollectionsGrid(
         items: items,
-        showBin: true,
         onTap: (i) => tapped.add(i.id),
-        onMenu: (_) {},
-        onBinTap: () => binTaps++,
       )));
-      final icons = t.widgetList<CollectionIcon>(find.byType(CollectionIcon)).toList();
+      final icons =
+          t.widgetList<CollectionIcon>(find.byType(CollectionIcon)).toList();
       expect(icons.map((i) => i.name),
-          ['English course', 'Films', 'Phrasal verbs', '16.10.2026 14:30', 'Recycle bin']);
-      expect(icons.last.kind, CollectionIconKind.recycleBin);
+          ['English course', 'Films', 'Phrasal verbs', '16.10.2026 14:30']);
+      expect(find.text('Recycle bin'), findsNothing);
       expect(find.text('0 words'), findsOneWidget);
       expect(find.text('current'), findsOneWidget);
       await t.tap(find.text('Films'));
-      await t.tap(find.text('Recycle bin'));
       expect(tapped, ['b']);
-      expect(binTaps, 1);
-    });
-
-    testWidgets('menu callback gets the item', (t) async {
-      final menued = <String>[];
-      await t.pumpWidget(_wrap(CollectionsGrid(
-        items: items,
-        onTap: (_) {},
-        onMenu: (i) => menued.add(i.id),
-      )));
-      await t.tap(find.byIcon(Icons.more_vert).at(2));
-      expect(menued, ['c']);
-    });
-
-    testWidgets('no bin inside a folder', (t) async {
-      await t.pumpWidget(_wrap(CollectionsGrid(
-        items: items,
-        onTap: (_) {},
-        onMenu: (_) {},
-      )));
-      expect(find.text('Recycle bin'), findsNothing);
     });
 
     testWidgets('itemBuilder wraps each item icon (drag slot)', (t) async {
       await t.pumpWidget(_wrap(CollectionsGrid(
         items: items,
         onTap: (_) {},
-        onMenu: (_) {},
         itemWrapper: (context, item, icon) =>
             KeyedSubtree(key: ValueKey('wrap-${item.id}'), child: icon),
       )));
@@ -171,7 +161,6 @@ void main() {
       await t.pumpWidget(_wrap(CollectionsGrid(
         items: const [],
         onTap: (_) {},
-        onMenu: (_) {},
       )));
       expect(find.text('This folder is empty'), findsOneWidget);
       expect(find.byType(CollectionIcon), findsNothing);
@@ -180,9 +169,7 @@ void main() {
     testWidgets('loading shows a spinner and no icons', (t) async {
       await t.pumpWidget(_wrap(CollectionsGrid(
         items: null,
-        showBin: true,
         onTap: (_) {},
-        onMenu: (_) {},
       )));
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.byType(CollectionIcon), findsNothing);
@@ -191,17 +178,36 @@ void main() {
 
     testWidgets('300 collections and 50 folders build', (t) async {
       final many = [
-        for (var i = 0; i < 50; i++) CollectionItemView(id: 'f$i', isFolder: true, name: 'F$i'),
+        for (var i = 0; i < 50; i++)
+          CollectionItemView(id: 'f$i', isFolder: true, name: 'F$i'),
         for (var i = 0; i < 300; i++)
-          CollectionItemView(id: 'c$i', isFolder: false, name: 'C$i', wordCount: i),
+          CollectionItemView(
+              id: 'c$i', isFolder: false, name: 'C$i', wordCount: i),
       ];
       await t.pumpWidget(_wrap(CollectionsGrid(
         items: many,
-        showBin: true,
         onTap: (_) {},
-        onMenu: (_) {},
       )));
       expect(find.text('F0'), findsOneWidget);
+    });
+  });
+
+  group('badgesOf', () {
+    SessionSource src(SourceKind k) => SessionSource()..kind = k;
+
+    test('none for no sources', () => expect(badgesOf(const []), isEmpty));
+
+    test('one per kind, Quizlet, film, photo; duplicates once', () {
+      expect(
+          badgesOf([
+            src(SourceKind.photo),
+            src(SourceKind.subtitles),
+            src(SourceKind.photo),
+            src(SourceKind.set),
+          ]),
+          [SourceBadge.quizlet, SourceBadge.movie, SourceBadge.image]);
+      expect(badgesOf([src(SourceKind.photo), src(SourceKind.subtitles)]),
+          [SourceBadge.movie, SourceBadge.image]);
     });
   });
 }

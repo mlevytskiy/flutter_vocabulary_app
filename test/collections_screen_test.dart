@@ -58,26 +58,36 @@ void main() {
       child: const MaterialApp(home: CollectionsScreen()),
     ));
     await t.pump();
-    await t.pump();
+    // a short step also runs the plus button's start-up timer
+    await t.pump(const Duration(milliseconds: 1));
   }
 
-  testWidgets('top level: path, Up disabled, items in order, current, bin last',
+  testWidgets('top level: no path bar, items in order, current, no ⋮',
       (t) async {
     await pump(t);
     expect(find.widgetWithText(AppBar, 'Collections'), findsOneWidget);
-    final up = t.widget<TextButton>(upButton);
-    expect(up.onPressed, isNull);
+    expect(find.text('Up'), findsNothing);
     expect(find.text('English course'), findsOneWidget);
     expect(find.text('Phrasal verbs'), findsOneWidget);
     expect(find.text('32 words'), findsOneWidget);
     expect(find.text('current'), findsOneWidget);
-    expect(find.text('Recycle bin'), findsOneWidget);
     expect(t.getTopLeft(find.text('English course')).dx,
         lessThan(t.getTopLeft(find.text('Phrasal verbs')).dx));
-    expect(t.getTopLeft(find.text('Phrasal verbs')).dx,
-        lessThan(t.getTopLeft(find.text('Recycle bin')).dx));
-    // two items have a menu button, the bin has none
-    expect(find.byIcon(Icons.more_vert), findsNWidgets(2));
+    // no bin tile and no menu buttons; the bin is a round button
+    expect(find.text('Recycle bin'), findsNothing);
+    expect(find.byIcon(Icons.more_vert), findsNothing);
+  });
+
+  testWidgets('round buttons: Settings, Recycle bin, plus; no top bar actions',
+      (t) async {
+    await pump(t);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+    expect(find.byTooltip('Recycle bin'), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(AppBar), matching: find.byType(IconButton)),
+        findsNothing);
   });
 
   testWidgets('folder tap grows the path; path part and Up go back', (t) async {
@@ -87,7 +97,6 @@ void main() {
     await t.pump();
     expect(find.text('Unit 3'), findsOneWidget);
     expect(find.text('›'), findsOneWidget);
-    expect(find.text('Recycle bin'), findsNothing);
     expect(t.widget<TextButton>(upButton).onPressed, isNotNull);
 
     await t.tap(find.text('Unit 3'));
@@ -108,7 +117,7 @@ void main() {
     await t.pump();
     await t.pump();
     expect(find.text('›'), findsNothing);
-    expect(find.text('Recycle bin'), findsOneWidget);
+    expect(find.text('Up'), findsNothing);
   });
 
   testWidgets('empty folder shows the hint', (t) async {
@@ -123,9 +132,10 @@ void main() {
     expect(find.text('Up'), findsOneWidget);
   });
 
-  testWidgets('loading shows the path bar and a spinner', (t) async {
+  testWidgets('loading at the top level shows a spinner, no path bar',
+      (t) async {
     await pump(t, loading: true);
-    expect(find.text('Up'), findsOneWidget);
+    expect(find.text('Up'), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 }

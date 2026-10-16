@@ -5,6 +5,11 @@ import 'core/dialogues/dialogue_push.dart';
 import 'core/story/story_run_tracker.dart';
 import 'router/routes.dart';
 
+/// The top bars' colour: the main screen's word-row background
+/// (`word_row_item.dart`), chosen by the owner 2026-10-16. Change it here to
+/// recolour every top bar.
+const topBarColor = Color(0x57d9c1ff);
+
 class App extends ConsumerWidget {
   const App({super.key});
 
@@ -21,8 +26,12 @@ class App extends ConsumerWidget {
       routerConfig: appRouter,
       title: 'English Vocabulary',
       debugShowCheckedModeBanner: false,
+      // Every top bar is `inversePrimary`, so [topBarColor] goes there, and
+      // to any bar that sets no colour.
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)
+            .copyWith(inversePrimary: topBarColor),
+        appBarTheme: const AppBarTheme(backgroundColor: topBarColor),
         useMaterial3: true,
       ),
     );

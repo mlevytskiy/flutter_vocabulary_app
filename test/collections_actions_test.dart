@@ -9,7 +9,6 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
-import 'package:flutter_vocabulary_app/features/collections/name_dialog.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
 class _FakeInput extends WordInputNotifier {
@@ -101,22 +100,18 @@ void main() {
     await t.pump();
   }
 
-  Future<void> openMenuOf(WidgetTester t, String name) async {
-    final icon = find.descendant(
-      of: find
-          .ancestor(of: find.text(name), matching: find.byType(InkWell))
-          .first,
-      matching: find.byIcon(Icons.more_vert),
-    );
-    await t.tap(icon.first);
+  /// Opens the plus button and taps one of its actions.
+  Future<void> plus(WidgetTester t, String action) async {
+    await t.tap(find.byIcon(Icons.add));
+    await t.pumpAndSettle();
+    await t.tap(find.text(action));
     await t.pumpAndSettle();
   }
 
   testWidgets('New folder asks for a name and creates it in the open folder',
       (t) async {
     await pump(t);
-    await t.tap(find.byTooltip('New folder'));
-    await t.pumpAndSettle();
+    await plus(t, 'New folder');
     expect(find.text('New folder'), findsWidgets);
     await t.enterText(find.byType(TextField), 'Unit 9');
     await t.tap(find.text('Create'));
@@ -126,69 +121,21 @@ void main() {
 
   testWidgets('Cancel in the New folder dialog creates nothing', (t) async {
     await pump(t);
-    await t.tap(find.byTooltip('New folder'));
-    await t.pumpAndSettle();
+    await plus(t, 'New folder');
     await t.tap(find.text('Cancel'));
     await t.pumpAndSettle();
     expect(store.created, isEmpty);
     expect(find.byType(AlertDialog), findsNothing);
   });
 
-  testWidgets('the menu button opens Rename and Delete; Rename renames',
+  testWidgets('no item menu: no ⋮, and a long press opens nothing',
       (t) async {
     await pump(t);
-    await openMenuOf(t, 'Films words');
-    expect(find.text('Rename'), findsOneWidget);
-    expect(find.text('Delete'), findsOneWidget);
-    await t.tap(find.text('Rename'));
-    await t.pumpAndSettle();
-    expect(find.text('Rename collection'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Films words'), findsOneWidget);
-    await t.enterText(find.byType(TextField), 'Movies');
-    await t.tap(find.text('Save'));
-    await t.pumpAndSettle();
-    expect(store.renamed.single.name, 'Movies');
-    expect(store.renamed.single.id, other.collectionId);
-  });
-
-  testWidgets('a folder renames through the folder dialog', (t) async {
-    await pump(t);
-    await openMenuOf(t, 'English course');
-    await t.tap(find.text('Rename'));
-    await t.pumpAndSettle();
-    expect(find.text('Rename folder'), findsOneWidget);
-    await t.enterText(find.byType(TextField), 'Course');
-    await t.tap(find.text('Save'));
-    await t.pumpAndSettle();
-    expect(store.renamed, [(id: 'f1', name: 'Course')]);
-  });
-
-  testWidgets('an invalid name keeps the dialog open and renames nothing',
-      (t) async {
-    await pump(t);
-    await openMenuOf(t, 'Films words');
-    await t.tap(find.text('Rename'));
-    await t.pumpAndSettle();
-    await t.enterText(find.byType(TextField), '');
-    await t.tap(find.text('Save'));
-    await t.pumpAndSettle();
-    expect(find.text(nameProblemMessage), findsOneWidget);
-    expect(store.renamed, isEmpty);
-  });
-
-  testWidgets('the current collection\'s menu still shows Delete', (t) async {
-    await pump(t);
-    await openMenuOf(t, 'Phrasal verbs');
-    expect(find.text('Rename'), findsOneWidget);
-    expect(find.text('Delete'), findsOneWidget);
-  });
-
-  testWidgets('a long press released without moving opens the menu', (t) async {
-    await pump(t);
+    expect(find.byIcon(Icons.more_vert), findsNothing);
     await t.longPress(find.text('Films words'));
     await t.pumpAndSettle();
-    expect(find.text('Rename'), findsOneWidget);
-    expect(find.text('Delete'), findsOneWidget);
+    expect(find.text('Rename'), findsNothing);
+    expect(find.text('Delete'), findsNothing);
   });
 
   testWidgets('a tap on a collection opens it and goes to the main screen',
@@ -212,8 +159,7 @@ void main() {
   testWidgets('New collection makes one at the top level and opens main',
       (t) async {
     await pump(t);
-    await t.tap(find.byTooltip('New collection'));
-    await t.pumpAndSettle();
+    await plus(t, 'New collection');
     expect(input.made, [null]);
     expect(find.text('MAIN SCREEN'), findsOneWidget);
   });
@@ -223,8 +169,7 @@ void main() {
     await pump(t);
     await t.tap(find.text('English course'));
     await t.pumpAndSettle();
-    await t.tap(find.byTooltip('New collection'));
-    await t.pumpAndSettle();
+    await plus(t, 'New collection');
     expect(input.made, ['f1']);
     expect(find.text('MAIN SCREEN'), findsOneWidget);
   });

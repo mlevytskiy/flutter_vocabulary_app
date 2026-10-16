@@ -111,7 +111,7 @@ void main() {
     await tester.tap(find.text('Collections'));
     await tester.pumpAndSettle();
     expect(find.byType(CollectionsScreen), findsOneWidget);
-    expect(find.text('Recycle bin'), findsOneWidget);
+    expect(find.byTooltip('Recycle bin'), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(WordInputScreen), findsOneWidget);

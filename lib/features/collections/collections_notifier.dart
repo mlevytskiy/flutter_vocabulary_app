@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/models/session_source.dart';
 import '../../core/providers.dart';
 import '../../core/services/filing.dart';
 import '../word_input/word_input_notifier.dart';
+import 'collection_pictures.dart';
 import 'collections_view.dart';
 
 part 'collections_notifier.g.dart';
@@ -36,9 +38,11 @@ class CollectionsNotifier extends _$CollectionsNotifier {
 
   @override
   CollectionsState build() {
-    final folders = ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
+    final folders =
+        ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
     final level = ref.watch(collectionLevelProvider(_folderId)).valueOrNull;
-    final currentId = ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId;
+    final currentId =
+        ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId;
 
     final byId = {for (final f in folders) f.folderId: f};
     final parentOf = {for (final f in folders) f.folderId: f.parentId};
@@ -59,6 +63,7 @@ class CollectionsNotifier extends _$CollectionsNotifier {
                 name: i.name,
                 wordCount: i.wordCount,
                 isCurrent: !i.isFolder && i.id == currentId,
+                badges: badgesOf(i.collection?.sources ?? const []),
               ))
           .toList(),
     );
@@ -74,7 +79,19 @@ class CollectionsNotifier extends _$CollectionsNotifier {
   /// One level up; nothing at the top level.
   void up() {
     if (_folderId == null) return;
-    final parent = state.path.length >= 2 ? state.path[state.path.length - 2].id : null;
+    final parent =
+        state.path.length >= 2 ? state.path[state.path.length - 2].id : null;
     open(parent);
   }
+}
+
+/// One badge per kind of source a collection has, in Stitch's order: Quizlet,
+/// film, photo.
+List<SourceBadge> badgesOf(List<SessionSource> sources) {
+  final kinds = {for (final s in sources) s.kind};
+  return [
+    if (kinds.contains(SourceKind.set)) SourceBadge.quizlet,
+    if (kinds.contains(SourceKind.subtitles)) SourceBadge.movie,
+    if (kinds.contains(SourceKind.photo)) SourceBadge.image,
+  ];
 }

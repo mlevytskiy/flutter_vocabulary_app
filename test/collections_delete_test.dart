@@ -110,19 +110,6 @@ void main() {
     await t.pump();
   }
 
-  Future<void> menuDelete(WidgetTester t, String name) async {
-    final icon = find.descendant(
-      of: find
-          .ancestor(of: find.text(name), matching: find.byType(InkWell))
-          .first,
-      matching: find.byIcon(Icons.more_vert),
-    );
-    await t.tap(icon.first);
-    await t.pumpAndSettle();
-    await t.tap(find.text('Delete'));
-    await t.pumpAndSettle();
-  }
-
   Future<void> drag(WidgetTester t, Finder from, Offset to) async {
     final g = await t.startGesture(t.getCenter(from));
     await t.pump(kLongPressTimeout + const Duration(milliseconds: 100));
@@ -134,10 +121,14 @@ void main() {
     await t.pumpAndSettle();
   }
 
+  /// Drags [name] onto the recycle-bin button.
+  Future<void> binDrop(WidgetTester t, String name) =>
+      drag(t, find.text(name), t.getCenter(find.byTooltip('Recycle bin')));
+
   testWidgets('SCR-07 collection: confirmation with the word count, then bin',
       (t) async {
     await pump(t);
-    await menuDelete(t, 'Films words');
+    await binDrop(t, 'Films words');
     expect(find.text('Delete "Films words"?'), findsOneWidget);
     expect(find.textContaining('1 word. It goes to the recycle bin'),
         findsOneWidget);
@@ -150,7 +141,7 @@ void main() {
 
   testWidgets('SCR-07 cancel changes nothing', (t) async {
     await pump(t);
-    await menuDelete(t, 'Films words');
+    await binDrop(t, 'Films words');
     await t.tap(find.text('Cancel'));
     await t.pumpAndSettle();
     expect(store.binned, isEmpty);
@@ -158,7 +149,7 @@ void main() {
 
   testWidgets('SCR-07 folder: counts, then bin', (t) async {
     await pump(t);
-    await menuDelete(t, 'English course');
+    await binDrop(t, 'English course');
     expect(
         find.textContaining('3 collections and 1 folder go to the recycle bin'),
         findsOneWidget);
@@ -181,7 +172,7 @@ void main() {
         currentStaysName: 'Lesson 4'
       )
       ..stayedName = 'Lesson 4';
-    await menuDelete(t, 'English course');
+    await binDrop(t, 'English course');
     expect(
         find.textContaining(
             '"Lesson 4" stays, because it is the current collection'),
@@ -192,54 +183,41 @@ void main() {
     expect(find.text(stayedText('Lesson 4')), findsOneWidget);
   });
 
-  testWidgets('SCR-04 refused current: Delete from the menu', (t) async {
-    await pump(t);
-    await menuDelete(t, 'Phrasal verbs');
-    expect(find.text(refusedCurrentText), findsOneWidget);
-    expect(find.byType(AlertDialog), findsNothing);
-    expect(store.previewed, isEmpty);
-    expect(store.binned, isEmpty);
-  });
-
-  testWidgets('a drop on the bin icon (top level) asks, then bins', (t) async {
+  testWidgets('a drop on the bin button (top level) asks, then bins',
+      (t) async {
     await pump(t);
     expect(find.byType(BinDropZone), findsNothing);
-    await drag(
-        t, find.text('Films words'), t.getCenter(find.text('Recycle bin')));
+    await binDrop(t, 'Films words');
     expect(find.text('Delete "Films words"?'), findsOneWidget);
     await t.tap(find.widgetWithText(TextButton, 'Delete'));
     await t.pumpAndSettle();
     expect(store.binned, [films.collectionId]);
   });
 
-  testWidgets('the current collection dropped on the bin icon is refused',
+  testWidgets('the current collection dropped on the bin button is refused',
       (t) async {
     await pump(t);
-    await drag(
-        t, find.text('Phrasal verbs'), t.getCenter(find.text('Recycle bin')));
+    await binDrop(t, 'Phrasal verbs');
     expect(find.text(refusedCurrentText), findsOneWidget);
     expect(store.binned, isEmpty);
     expect(store.previewed, isEmpty);
   });
 
-  testWidgets(
-      'inside a folder the BinDropZone shows only while dragging and takes the drop',
+  testWidgets('inside a folder the bin button takes the drop; no drop zone',
       (t) async {
     await pump(t);
     await t.tap(find.text('English course'));
     await t.pumpAndSettle();
-    expect(find.byType(BinDropZone), findsNothing);
     final g = await t.startGesture(t.getCenter(find.text('Lesson 3')));
     await t.pump(kLongPressTimeout + const Duration(milliseconds: 100));
     await g.moveBy(const Offset(0, 30));
     await t.pump();
-    expect(find.byType(BinDropZone), findsOneWidget);
-    await g.moveTo(t.getCenter(find.byType(BinDropZone)));
+    expect(find.byType(BinDropZone), findsNothing);
+    await g.moveTo(t.getCenter(find.byTooltip('Recycle bin')));
     await t.pump();
     await g.up();
     await t.pumpAndSettle();
     expect(find.text('Delete "Lesson 3"?'), findsOneWidget);
-    expect(find.byType(BinDropZone), findsNothing);
     await t.tap(find.widgetWithText(TextButton, 'Delete'));
     await t.pumpAndSettle();
     expect(store.binned, [lesson.collectionId]);

@@ -193,12 +193,14 @@ void main() {
               child: CollectionsGrid(
                 items: const [_en, _fr, _c1, _c2],
                 onTap: (_) {},
-                onMenu: (_) {},
-                showBin: true,
                 itemWrapper: (c, item, child) => icon(item, child),
-                binWrapper: (c, bin) =>
-                    BinDropTarget(level: level, onDecision: decisions.add, child: bin),
               ),
+            ),
+            // The screen's recycle-bin button, as a plain drop target.
+            BinDropTarget(
+              level: level,
+              onDecision: decisions.add,
+              child: const SizedBox(height: 40, child: Text('Recycle bin')),
             ),
           ]),
         ),

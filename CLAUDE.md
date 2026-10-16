@@ -26,7 +26,14 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    the recycle-bin drop zone shown during a drag, the name in History rows, on the shared page and in shared files' names
    and titles, the share sheet's warning that the name is public, "collection" replacing "session" in every text, and (owner,
    2026-10-16, T23) on phone widths the shared page's title row wraps and its h1 breaks long names, with the tab title
-   "<name> — N words";
+   "<name> — N words"; collections-restyle (owner, 2026-10-16) gives the Collections screen the Stitch
+   folder and document icons with a corner badge per kind of source (Quizlet, film, photo), removes the ⋮ buttons,
+   the long-press Rename/Delete menu, the top bar's New folder / New collection icons, the recycle-bin tile, the
+   drop zone shown during a drag and, at the top level, the "↑ Up  Collections" line, and adds three round buttons
+   like the main screen's: Settings, the recycle bin (also the drop target to delete) and a plus with New folder
+   and New collection; a tap on the recycle bin opens a dialog with "Go to recycle bin" and "Enable/Disable
+   delete mode", where every icon but the current collection shows a small round bin button whose tap flies the
+   picture into the recycle-bin button (it bounces) and bins the item without asking; every top bar takes the main screen's word-row colour (`topBarColor` in `lib/app.dart`);
    the session → collection rename of classes, fields, files and providers, with stored names pinned, is an approved
    exception to "move code, do not rewrite it" (collections-screen ADR-0002)). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'collection_icon.dart';
+import 'collection_pictures.dart';
 
 /// One item of a Collections level, as the grid shows it.
 @immutable
@@ -11,6 +12,7 @@ class CollectionItemView {
     required this.name,
     this.wordCount = 0,
     this.isCurrent = false,
+    this.badges = const [],
   });
 
   final String id;
@@ -18,6 +20,9 @@ class CollectionItemView {
   final String name;
   final int wordCount;
   final bool isCurrent;
+
+  /// A collection's kinds of source, as its icon's corner badges.
+  final List<SourceBadge> badges;
 }
 
 /// One part of the path: [id] is null for the top level ("Collections").
@@ -47,7 +52,8 @@ class CollectionsPathBar extends StatelessWidget {
   final ValueChanged<String?> onPart;
 
   /// Wraps each path part, e.g. in a drop target (T17).
-  final Widget Function(BuildContext context, PathPart part, Widget child)? partWrapper;
+  final Widget Function(BuildContext context, PathPart part, Widget child)?
+      partWrapper;
 
   /// Wraps the Up button, e.g. in a drop target (T17).
   final Widget Function(BuildContext context, Widget child)? upWrapper;
@@ -98,32 +104,35 @@ class CollectionsPathBar extends StatelessWidget {
   }
 }
 
-/// The icons of one level in the learner's order, with the recycle bin
-/// appended last when [showBin] (top level only). [items] null = loading.
+/// The icons of one level in the learner's order. [items] null = loading.
 class CollectionsGrid extends StatelessWidget {
   const CollectionsGrid({
     super.key,
     required this.items,
     required this.onTap,
-    required this.onMenu,
-    this.showBin = false,
-    this.onBinTap,
     this.itemWrapper,
-    this.binWrapper,
+    this.padding = const EdgeInsets.all(8),
+    this.onBin,
+    this.hidden = const {},
   });
 
   final List<CollectionItemView>? items;
   final ValueChanged<CollectionItemView> onTap;
-  final ValueChanged<CollectionItemView> onMenu;
-  final bool showBin;
-  final VoidCallback? onBinTap;
 
   /// Wraps each item's icon, e.g. in a `LongPressDraggable` (T17).
-  final Widget Function(BuildContext context, CollectionItemView item, Widget icon)?
-      itemWrapper;
+  final Widget Function(
+      BuildContext context, CollectionItemView item, Widget icon)? itemWrapper;
 
-  /// Wraps the bin icon, e.g. in a drop target (T18).
-  final Widget Function(BuildContext context, Widget icon)? binWrapper;
+  /// Room around the grid, e.g. below it for the screen's round buttons.
+  final EdgeInsets padding;
+
+  /// Delete mode: every item but the current collection gets a small bin
+  /// button; this gets the item and its picture's global rectangle.
+  final void Function(CollectionItemView item, Rect picture)? onBin;
+
+  /// Items drawn invisible but still taking their place, e.g. while their
+  /// picture flies to the recycle bin.
+  final Set<String> hidden;
 
   static const emptyText = 'This folder is empty';
 
@@ -133,40 +142,40 @@ class CollectionsGrid extends StatelessWidget {
     if (list == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (list.isEmpty && !showBin) {
+    if (list.isEmpty) {
       return const Center(
-        child: Text(emptyText, style: TextStyle(fontSize: 18, color: Colors.grey)),
+        child:
+            Text(emptyText, style: TextStyle(fontSize: 18, color: Colors.grey)),
       );
     }
-    final count = list.length + (showBin ? 1 : 0);
     return GridView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: padding,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 110,
         mainAxisExtent: 160,
         mainAxisSpacing: 8,
         crossAxisSpacing: 8,
       ),
-      itemCount: count,
+      itemCount: list.length,
       itemBuilder: (context, i) {
-        if (i == list.length) {
-          final bin = CollectionIcon(
-            kind: CollectionIconKind.recycleBin,
-            name: 'Recycle bin',
-            onTap: onBinTap,
-          );
-          return binWrapper?.call(context, bin) ?? bin;
-        }
         final item = list[i];
         final icon = CollectionIcon(
-          kind: item.isFolder ? CollectionIconKind.folder : CollectionIconKind.collection,
+          kind: item.isFolder
+              ? CollectionIconKind.folder
+              : CollectionIconKind.collection,
           name: item.name,
           wordCount: item.wordCount,
           isCurrent: item.isCurrent,
+          badges: item.badges,
           onTap: () => onTap(item),
-          onMenu: () => onMenu(item),
+          onBin: onBin == null || item.isCurrent
+              ? null
+              : (rect) => onBin!(item, rect),
         );
-        return itemWrapper?.call(context, item, icon) ?? icon;
+        final shown = itemWrapper?.call(context, item, icon) ?? icon;
+        return hidden.contains(item.id)
+            ? Opacity(opacity: 0, child: shown)
+            : shown;
       },
     );
   }

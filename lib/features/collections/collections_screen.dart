@@ -6,15 +6,20 @@ import '../../core/services/collection_level.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'bin_dialogs.dart';
-import 'bin_drop_zone.dart';
 import 'collection_drag.dart';
+import 'collection_icon.dart';
 import 'collections_notifier.dart';
+import 'collections_speed_dial.dart';
 import 'collections_view.dart';
+import 'fly_to_bin.dart';
 import 'name_dialog.dart';
 
-/// The Collections screen (SCR-04): the path bar and the icon grid of one
-/// level. New folder / New collection and the item menu are wired by T16/T17,
-/// the recycle bin by T19.
+/// The Collections screen (SCR-04): the path bar (inside a folder) and the
+/// icon grid of one level, with three round buttons along the bottom:
+/// Settings, the recycle bin (also where a dragged icon is dropped to delete
+/// it) and the plus button with New folder and New collection. A tap on the
+/// recycle bin offers to open it or to switch delete mode, where each icon
+/// gets a small bin button that flies it into the recycle bin.
 class CollectionsScreen extends ConsumerStatefulWidget {
   const CollectionsScreen({super.key});
 
@@ -22,11 +27,20 @@ class CollectionsScreen extends ConsumerStatefulWidget {
   ConsumerState<CollectionsScreen> createState() => _CollectionsScreenState();
 }
 
-enum _ItemAction { rename, delete }
+enum _BinAction { open, toggleDeleteMode }
 
 class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
-  /// The icon of each item on screen, to anchor its menu (SCR-05).
-  final _anchors = <String, BuildContext>{};
+  /// Delete mode: every icon but the current collection has a small bin
+  /// button. A screen-only switch; it is off whenever the screen opens.
+  bool _deleteMode = false;
+
+  /// Items whose picture is flying to the recycle bin; drawn invisible.
+  final _flying = <String>{};
+
+  /// The recycle-bin button, where flights land; [_binBounce] while it
+  /// swallows one.
+  final _binKey = GlobalKey();
+  bool _binBounce = false;
 
   /// The item being dragged and the folder the drag started in (null = top
   /// level), kept in this State because the dragged icon's own widget can go
@@ -80,46 +94,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     await store.createFolder(parentId: parentId, name: name);
   }
 
-  /// The item menu (SCR-05): Rename and Delete, also for the current
-  /// collection (Delete is not hidden; T18 answers the refusal).
-  Future<void> openItemMenu(CollectionItemView item) async {
-    final anchor = _anchors[item.id];
-    final box = anchor?.findRenderObject() as RenderBox?;
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    if (anchor == null || box == null || !box.attached) return;
-    final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
-    final action = await showMenu<_ItemAction>(
-      context: context,
-      position:
-          RelativeRect.fromRect(topLeft & box.size, Offset.zero & overlay.size),
-      items: const [
-        PopupMenuItem(value: _ItemAction.rename, child: Text('Rename')),
-        PopupMenuItem(value: _ItemAction.delete, child: Text('Delete')),
-      ],
-    );
-    if (!mounted || action == null) return;
-    switch (action) {
-      case _ItemAction.rename:
-        await _rename(item);
-      case _ItemAction.delete:
-        await onDelete(item);
-    }
-  }
-
-  Future<void> _rename(CollectionItemView item) async {
-    final name = await showNameDialog(
-      context,
-      mode: item.isFolder
-          ? NameDialogMode.renameFolder
-          : NameDialogMode.renameCollection,
-      initial: item.name,
-    );
-    if (name == null) return;
-    final store = await ref.read(collectionStoreProvider.future);
-    await store.rename(item.id, name);
-  }
-
-  /// Delete from the item menu or a bin drop (AC-14, AC-20 to AC-22): the
+  /// Delete by a drop on the recycle bin (AC-14, AC-20 to AC-22): the
   /// current collection is refused; otherwise the learner confirms (SCR-07),
   /// then the store bins it.
   Future<void> onDelete(CollectionItemView item) async {
@@ -143,6 +118,76 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     );
     if (!ok || !mounted) return;
     final r = await store.bin(item.id);
+    if (r.result == BinResult.refusedCurrent) {
+      _snack(refusedCurrentText);
+    } else if (r.stayedName != null) {
+      _snack(stayedText(r.stayedName!));
+    }
+  }
+
+  /// The recycle-bin button: open the bin, or switch delete mode.
+  Future<void> _binMenu() async {
+    final action = await showDialog<_BinAction>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: const Text('Recycle bin'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, _BinAction.open),
+            child: const ListTile(
+              leading: Icon(Icons.delete_outline),
+              title: Text(goToBinText),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () =>
+                Navigator.pop(context, _BinAction.toggleDeleteMode),
+            child: ListTile(
+              leading: Icon(_deleteMode
+                  ? Icons.check_circle_outline
+                  : Icons.radio_button_unchecked),
+              title: Text(
+                  _deleteMode ? disableDeleteModeText : enableDeleteModeText),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _BinAction.open:
+        const RecycleBinRoute().push(context);
+      case _BinAction.toggleDeleteMode:
+        setState(() => _deleteMode = !_deleteMode);
+    }
+  }
+
+  /// Delete mode's small bin button: the picture flies into the recycle-bin
+  /// button, then the store bins the item, with no question (it can come
+  /// back from the bin). A folder holding the current collection keeps it out
+  /// and says so (AC-22).
+  Future<void> _binByButton(CollectionItemView item, Rect picture) async {
+    final bin = _binKey.currentContext?.findRenderObject() as RenderBox?;
+    if (bin == null || _flying.contains(item.id)) return;
+    final landing = bin.localToGlobal(bin.size.center(Offset.zero));
+    setState(() => _flying.add(item.id));
+    await flyToBin(
+      context,
+      from: picture,
+      to: landing,
+      child: CollectionPicture(
+        kind: item.isFolder
+            ? CollectionIconKind.folder
+            : CollectionIconKind.collection,
+        badges: item.badges,
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _binBounce = true);
+    final store = await ref.read(collectionStoreProvider.future);
+    final r = await store.bin(item.id);
+    if (!mounted) return;
+    setState(() => _flying.remove(item.id));
     if (r.result == BinResult.refusedCurrent) {
       _snack(refusedCurrentText);
     } else if (r.stayedName != null) {
@@ -183,41 +228,86 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
           appBar: AppBar(
             title: const Text('Collections'),
             backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.create_new_folder_outlined),
-                tooltip: 'New folder',
-                onPressed: () => _newFolder(state.folderId),
-              ),
-              IconButton(
-                icon: const Icon(Icons.library_add_outlined),
-                tooltip: 'New collection',
-                onPressed: () => _newCollection(state.folderId),
-              ),
-            ],
+          ),
+          // Settings bottom-left like the main screen's, the recycle bin in
+          // the middle, the plus button bottom-right.
+          floatingActionButtonLocation:
+              FloatingActionButtonLocation.centerFloat,
+          floatingActionButton: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                FloatingActionButton(
+                  heroTag: null,
+                  onPressed: () => const SettingsRoute().push(context),
+                  tooltip: 'Settings',
+                  elevation: 8.0,
+                  shape: const CircleBorder(),
+                  backgroundColor: const Color(0xff954ef3),
+                  foregroundColor: Colors.white,
+                  child: const Icon(Icons.settings),
+                ),
+                BinDropTarget(
+                  level: level(),
+                  onDecision: _decide,
+                  // A short bounce when a flown picture lands in it.
+                  builder: (context, highlighted) => AnimatedScale(
+                    scale: _binBounce ? 1.18 : 1,
+                    duration: const Duration(milliseconds: 120),
+                    onEnd: () {
+                      if (_binBounce && mounted) {
+                        setState(() => _binBounce = false);
+                      }
+                    },
+                    child: FloatingActionButton(
+                      key: _binKey,
+                      heroTag: null,
+                      onPressed: _binMenu,
+                      tooltip: 'Recycle bin',
+                      elevation: 8.0,
+                      shape: const CircleBorder(),
+                      backgroundColor:
+                          highlighted ? Colors.red[700] : binButtonColor,
+                      foregroundColor: Colors.white,
+                      // Filled while delete mode is on.
+                      child: Icon(
+                          _deleteMode ? Icons.delete : Icons.delete_outline),
+                    ),
+                  ),
+                ),
+                CollectionsSpeedDial(
+                  onNewFolder: () => _newFolder(state.folderId),
+                  onNewCollection: () => _newCollection(state.folderId),
+                ),
+              ],
+            ),
           ),
           body: Column(
             children: [
-              CollectionsPathBar(
-                parts: state.path,
-                upEnabled: !state.isTopLevel,
-                onUp: notifier.up,
-                onPart: notifier.open,
-                upWrapper: (context, up) => UpDropTarget(
-                    level: level(), onDecision: _decide, child: up),
-                partWrapper: (context, part, child) => PathPartDropTarget(
-                  part: part,
-                  level: level(),
-                  onDecision: _decide,
-                  onHoverOpen: notifier.open,
-                  child: child,
+              if (!state.isTopLevel)
+                CollectionsPathBar(
+                  parts: state.path,
+                  upEnabled: true,
+                  onUp: notifier.up,
+                  onPart: notifier.open,
+                  upWrapper: (context, up) => UpDropTarget(
+                      level: level(), onDecision: _decide, child: up),
+                  partWrapper: (context, part, child) => PathPartDropTarget(
+                    part: part,
+                    level: level(),
+                    onDecision: _decide,
+                    onHoverOpen: notifier.open,
+                    child: child,
+                  ),
                 ),
-              ),
               Expanded(
                 child: CollectionsGrid(
                   items: state.items,
-                  showBin: state.isTopLevel,
-                  onBinTap: () => const RecycleBinRoute().push(context),
+                  // Room below the last row for the round buttons.
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
+                  onBin: _deleteMode ? _binByButton : null,
+                  hidden: _flying,
                   onTap: (item) {
                     if (item.isFolder) {
                       notifier.open(item.id);
@@ -225,9 +315,6 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                       _openCollection(item.id);
                     }
                   },
-                  onMenu: openItemMenu,
-                  binWrapper: (context, bin) => BinDropTarget(
-                      level: level(), onDecision: _decide, child: bin),
                   itemWrapper: (context, item, icon) {
                     final ids = [for (final i in state.items ?? const []) i.id];
                     final index = ids.indexOf(item.id);
@@ -242,11 +329,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                           onHoverOpen: notifier.open,
                           onDragStarted: () => _dragStarted(item),
                           onDragEnded: _dragStopped,
-                          onLongPressNoMove: () => openItemMenu(item),
-                          child: Builder(builder: (context) {
-                            _anchors[item.id] = context;
-                            return icon;
-                          }),
+                          child: icon,
                         ),
                         Positioned(
                           left: 0,
@@ -274,15 +357,12 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                   },
                 ),
               ),
-              if (_dragging && !state.isTopLevel)
-                BinDropTarget(
-                  level: level(),
-                  onDecision: _decide,
-                  builder: (context, highlighted) =>
-                      BinDropZone(highlighted: highlighted),
-                ),
             ],
           ),
         ));
   }
 }
+
+const goToBinText = 'Go to recycle bin';
+const enableDeleteModeText = 'Enable delete mode';
+const disableDeleteModeText = 'Disable delete mode';
