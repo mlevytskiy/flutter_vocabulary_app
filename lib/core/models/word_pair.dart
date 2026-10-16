@@ -6,7 +6,7 @@ import 'translation_result.dart';
 
 part 'word_pair.g.dart';
 
-/// One row of the word list. Embedded inside [Session] — Isar has no separate
+/// One row of the word list. Embedded inside [WordCollection] — Isar has no separate
 /// collection for it, so a row only ever exists as part of the session it was
 /// collected in.
 @embedded
@@ -45,7 +45,7 @@ class WordPair {
   /// A UUID that stays with this row for good, so a word group can name its
   /// rows and follow them through edits and deletions (mnemonic-story AC-17,
   /// ADR-0003). Empty only on a row not stored yet and on rows saved before
-  /// mnemonic-story; `SessionStore` fills it in once.
+  /// mnemonic-story; `CollectionStore` fills it in once.
   String rowId;
 
   WordPair({

@@ -6,15 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+
+import 'seed_collections.dart';
 
 /// good-looking-web T17: the app keeps each source photo and links the rows
 /// recognised from it (spec AC-25, AC-26).
@@ -69,9 +71,9 @@ void main() {
         () async {
       SharedPreferences.setMockInitialValues({});
       final dir = Directory.systemTemp.createTempSync('session_source_kind');
-      final store = await SessionStore.open(directory: dir.path);
+      final store = await CollectionStore.open(directory: dir.path);
       try {
-        final session = Session.create()
+        final collection = WordCollection.create()
           ..sources = [
             photo('p1'),
             SessionSource()
@@ -80,8 +82,8 @@ void main() {
               ..name = 'Biology'
               ..url = 'https://quizlet.com/123/biology/',
           ];
-        await store.put(session);
-        final back = (await store.byId(session.sessionId))!;
+        await seedCollection(store, collection);
+        final back = (await store.byId(collection.collectionId))!;
         expect(back.sources.map((s) => s.kind).toList(),
             [SourceKind.photo, SourceKind.set]);
         expect(back.sources[0].name, isNull);
@@ -98,7 +100,7 @@ void main() {
     // AC-26
     test('a session saved before this change loads with no sources and null '
         'sourceIds', () {
-      final legacy = Session.fromJson({
+      final legacy = WordCollection.fromJson({
         'sessionId': 'old-1',
         'updatedAt': '2026-05-01T10:00:00.000',
         'lastLocalModifiedAt': '2026-05-01T10:00:00.000',
@@ -126,7 +128,7 @@ void main() {
     });
 
     test('round trip keeps sources, sourceId, publishedId, editToken', () {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..sources = [
           photo('a1b2', takenAt: DateTime.utc(2026, 9, 28, 10)),
           photo('c3d4', takenAt: DateTime.utc(2026, 9, 28, 11)),
@@ -139,7 +141,7 @@ void main() {
           WordPair(word: 'plum', translation: 'слива', sourceId: 'c3d4'),
         ];
 
-      final back = Session.fromJson(session.toJson());
+      final back = WordCollection.fromJson(collection.toJson());
 
       expect(back.sources.map((s) => s.id).toList(), ['a1b2', 'c3d4']);
       expect(back.sources.map((s) => s.fileName).toList(),
@@ -166,12 +168,12 @@ void main() {
 
   group('SessionStore', () {
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       dir = Directory.systemTemp.createTempSync('source_photo_session_test');
-      store = await SessionStore.open(directory: dir.path);
+      store = await CollectionStore.open(directory: dir.path);
     });
 
     tearDown(() async {
@@ -180,7 +182,7 @@ void main() {
     });
 
     test('keeps sources, sourceIds, publishedId and editToken', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..sources = [photo('a1b2')]
         ..publishedId = 'pub-42'
         ..editToken = 'tok'
@@ -189,8 +191,8 @@ void main() {
           WordPair(word: 'typed', translation: 'набраний'),
         ];
 
-      await store.put(session);
-      final back = (await store.byId(session.sessionId))!;
+      await seedCollection(store, collection);
+      final back = (await store.byId(collection.collectionId))!;
 
       expect(back.sources.single.id, 'a1b2');
       expect(back.sources.single.fileName, 'a1b2.jpg');
@@ -206,10 +208,10 @@ void main() {
 
     // AC-26
     test('a session without photos stores and loads with none', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(session);
-      final back = (await store.byId(session.sessionId))!;
+      await seedCollection(store, collection);
+      final back = (await store.byId(collection.collectionId))!;
       expect(back.sources, isEmpty);
       expect(back.publishedId, isNull);
       expect(back.editToken, isNull);
@@ -267,15 +269,15 @@ void main() {
 
   group('WordInputNotifier', () {
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
     late ProviderContainer container;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       dir = Directory.systemTemp.createTempSync('source_photo_notifier_test');
-      store = await SessionStore.open(directory: dir.path);
+      store = await CollectionStore.open(directory: dir.path);
       container = ProviderContainer(overrides: [
-        sessionStoreProvider.overrideWith((ref) async => store),
+        collectionStoreProvider.overrideWith((ref) async => store),
       ]);
     });
 
@@ -285,7 +287,7 @@ void main() {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
 
-    Session session() => container.read(wordInputNotifierProvider).value!;
+    WordCollection collection() => container.read(wordInputNotifierProvider).value!;
 
     // AC-25
     test('a photo and its rows are saved; a typed row has no photo', () async {
@@ -303,7 +305,7 @@ void main() {
       ]);
       await notifier.flush();
 
-      final back = (await store.byId(session().sessionId))!;
+      final back = (await store.byId(collection().collectionId))!;
       expect(back.sources.map((s) => s.id).toList(), ['p1', 'p2']);
       expect(back.words.map((w) => w.sourceId).toList(), [null, 'p1', 'p2']);
     });
@@ -315,26 +317,26 @@ void main() {
       notifier.setPairs([WordPair(word: 'apple', sourceId: 'p1'), WordPair()]);
 
       notifier.updateAt(0, translation: 'яблуко');
-      expect(session().words[0].sourceId, 'p1');
+      expect(collection().words[0].sourceId, 'p1');
 
       notifier.updateAt(1, word: 'plum', sourceId: 'p2');
-      expect(session().words[1].sourceId, 'p2');
+      expect(collection().words[1].sourceId, 'p2');
 
       notifier.updateAt(0, word: '', translation: '', clearSourceId: true);
-      expect(session().words[0].sourceId, isNull);
+      expect(collection().words[0].sourceId, isNull);
     });
 
     test('a stored session with sources can take another photo', () async {
-      final prev = Session.create()
+      final prev = WordCollection.create()
         ..sources = [photo('p1')]
         ..words = [WordPair(word: 'apple', sourceId: 'p1')];
-      await store.put(prev);
-      await store.setCurrentSessionId(prev.sessionId);
+      await seedCollection(store, prev);
+      await store.setCurrentCollectionId(prev.collectionId);
 
       await container.read(wordInputNotifierProvider.future);
       container.read(wordInputNotifierProvider.notifier).addSource(photo('p2'));
 
-      expect(session().sources.map((s) => s.id).toList(), ['p1', 'p2']);
+      expect(collection().sources.map((s) => s.id).toList(), ['p1', 'p2']);
     });
   });
 }

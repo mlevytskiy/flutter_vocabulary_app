@@ -1,7 +1,8 @@
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../models/session.dart';
+import '../models/collection_folder.dart';
+import '../models/word_collection.dart';
 import '../models/story_run.dart';
 
 /// Persists story runs (mnemonic-story, ADR-0003) in the same Isar database
@@ -9,7 +10,7 @@ import '../models/story_run.dart';
 ///
 /// A story run is a record for comparing AIs: this store has no delete, so a
 /// newer story or a changed group never removes one (AC-15). Like
-/// `SessionStore`, nothing here throws: a bad read gives null or an empty
+/// `CollectionStore`, nothing here throws: a bad read gives null or an empty
 /// list, a bad write is dropped.
 class StoryRunStore {
   final Isar _isar;
@@ -19,7 +20,8 @@ class StoryRunStore {
   static Future<StoryRunStore> open({String? directory}) async {
     final dir = directory ?? (await getApplicationDocumentsDirectory()).path;
     final isar = Isar.getInstance('vocab') ??
-        await Isar.open([SessionSchema, StoryRunSchema],
+        await Isar.open(
+            [WordCollectionSchema, StoryRunSchema, CollectionFolderSchema],
             directory: dir, name: 'vocab');
     return StoryRunStore._(isar);
   }

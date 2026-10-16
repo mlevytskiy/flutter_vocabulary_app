@@ -72,7 +72,7 @@ Future<List<VocabWord>?> showSubtitleResultDialog(
 
 /// The skipped-cards line of a Quizlet import (AC-09, AC-10).
 String quizletSkippedLine(int skipped) =>
-    '$skipped ${skipped == 1 ? 'card' : 'cards'} skipped: already in the session, repeated or without text';
+    '$skipped ${skipped == 1 ? 'card' : 'cards'} skipped: already in the collection, repeated or without text';
 
 /// The same dialog after a Quizlet import: the set's [setName] on top, then
 /// the "Read X of Y cards" line only when fewer cards were found than the set

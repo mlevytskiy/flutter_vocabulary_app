@@ -2,12 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/story_run.dart';
+import '../../core/providers.dart';
 import 'words_settings_screen.dart';
 
 const _months = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
+
+/// The ids of the collections that still exist, binned ones too. A run whose
+/// collection is not among them was erased (collections-screen T20); worked out
+/// here, so `StoryRun` does not change. Null while it loads: nothing is marked.
+final existingCollectionIdsProvider = FutureProvider.autoDispose<Set<String>>((ref) async {
+  final store = await ref.watch(collectionStoreProvider.future);
+  return store.allIds();
+});
+
+const deletedCollectionText = 'From a deleted collection';
 
 /// "7 Oct 2026".
 String formatRunDate(DateTime d) => '${d.day} ${_months[d.month - 1]} ${d.year}';
@@ -88,6 +99,7 @@ class StoryRunsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final runsAsync = ref.watch(storyRunsProvider);
+    final existing = ref.watch(existingCollectionIdsProvider).valueOrNull;
     final theme = Theme.of(context);
     final small = theme.textTheme.bodySmall?.copyWith(color: theme.hintColor);
 
@@ -110,6 +122,8 @@ class StoryRunsScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(formatRunDate(run.startedAt), style: small),
+                  if (existing != null && !existing.contains(run.collectionId))
+                    Text(deletedCollectionText, style: small),
                   if (runAisLine(run).isNotEmpty) Text(runAisLine(run)),
                   if (stepsTotals(run.steps).isNotEmpty) Text(stepsTotals(run.steps)),
                   Text(runStatusLine(run),

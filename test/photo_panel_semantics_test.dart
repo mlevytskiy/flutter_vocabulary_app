@@ -19,19 +19,19 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the tab is one node, "Session photos, N"; a double-tap opens half-open',
+  testWidgets('the tab is one node, "Collection photos, N"; a double-tap opens half-open',
       (tester) async {
     final handle = tester.ensureSemantics();
     final host = PanelHost(photos: fakePhotos(4));
     await host.pump(tester);
 
-    expect(find.bySemanticsLabel('Session photos, 4'), findsOneWidget);
+    expect(find.bySemanticsLabel('Collection photos, 4'), findsOneWidget);
     // One node: the previews and the count are not read one by one.
     expect(find.bySemanticsLabel('4'), findsNothing);
-    final data = tester.getSemantics(find.bySemanticsLabel('Session photos, 4')).getSemanticsData();
+    final data = tester.getSemantics(find.bySemanticsLabel('Collection photos, 4')).getSemanticsData();
     expect(data.flagsCollection.isButton, isTrue);
 
-    await semanticTap(tester, 'Session photos, 4');
+    await semanticTap(tester, 'Collection photos, 4');
     expect(host.controller.stop, PanelStop.halfOpen);
     handle.dispose();
   });
@@ -40,7 +40,7 @@ void main() {
     final handle = tester.ensureSemantics();
     final host = PanelHost(busy: true);
     await host.pump(tester);
-    final data = tester.getSemantics(find.bySemanticsLabel('Session photos, 3')).getSemanticsData();
+    final data = tester.getSemantics(find.bySemanticsLabel('Collection photos, 3')).getSemanticsData();
     expect(data.hasAction(SemanticsAction.tap), isFalse);
     expect(host.controller.stop, PanelStop.closed);
     handle.dispose();
@@ -51,7 +51,7 @@ void main() {
     final handle = tester.ensureSemantics();
     final host = PanelHost(photos: fakePhotos(3));
     await host.pump(tester);
-    await semanticTap(tester, 'Session photos, 3');
+    await semanticTap(tester, 'Collection photos, 3');
 
     final photo = tester.getSemantics(find.bySemanticsLabel('Photo 2 of 3')).getSemanticsData();
     expect(photo.flagsCollection.isButton, isTrue);

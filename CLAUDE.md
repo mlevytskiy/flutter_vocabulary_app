@@ -20,14 +20,31 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    formats: Anki, CSV, PDF, Quizlet, Word list; side-panel-sources (owner, 2026-10-14) shows Quizlet sets and film subtitles as tiles in the half-open photo panel; learn-exercises (owner, 2026-10-14) changes the Learn list (H-10) and adds the exercise screens of learn-kit and each exercise spec; side-panel-previews (owner, 2026-10-15) makes the photo tab's third preview a mosaic of the third to sixth sources when there are more than three, and shows a film's poster on its tile; notes-page (owner, 2026-10-15) makes the half-open panel's expand control, and a drag to full-open, open the Notes page: one pager per panel source, picture in the middle as a hero from the panel, words to the right, a description/link/tags note (UI only) to the left; a drag widens the panel into that page, which then fades in; selecting a source scrolls its first row to the top; a film or set tile shows CC or the Quizlet logo with "N words" over its name, a poster instead when there is one; notes-editing (owner, 2026-10-15) keeps that note — a title above the description,
    any number of links, tags with suggestions from tags used before — puts the session's own tags above the list, opens a
    tapped photo full screen with zoom and lets a pinch zoom it in the pager, and opens a tapped words page as a dialog of
-   the main screen's rows with the shared page's dashed "+ Add a word"). Keep `popup_menu_2`, `flutter_speed_dial`,
+   the main screen's rows with the shared page's dashed "+ Add a word"; collections-screen (owner, 2026-10-16) adds
+   the Collections screen, the recycle bin, the edit button beside the main screen's title, the collection's name as the
+   main screen's title, the side menu always being there with its new Collections item, the ⋮ menu button on every icon,
+   the recycle-bin drop zone shown during a drag, the name in History rows, on the shared page and in shared files' names
+   and titles, the share sheet's warning that the name is public, "collection" replacing "session" in every text, and (owner,
+   2026-10-16, T23) on phone widths the shared page's title row wraps and its h1 breaks long names, with the tab title
+   "<name> — N words"; collections-restyle (owner, 2026-10-16) gives the Collections screen the Stitch
+   folder and document icons with a corner badge per kind of source (Quizlet, film, photo), removes the ⋮ buttons,
+   the long-press Rename/Delete menu, the top bar's New folder / New collection icons, the recycle-bin tile, the
+   drop zone shown during a drag and, at the top level, the "↑ Up  Collections" line, and adds three round buttons
+   like the main screen's: Settings, the recycle bin (also the drop target to delete) and a plus with New folder
+   and New collection; a tap on the recycle bin opens a dialog with "Go to recycle bin" and "Enable/Disable
+   delete mode", where every icon but the current collection shows a small round bin button whose tap flies the
+   picture into the recycle-bin button (it bounces) and bins the item without asking; every top bar takes the main screen's word-row colour (`topBarColor` in `lib/app.dart`);
+   the session → collection rename of classes, fields, files and providers, with stored names pinned, is an approved
+   exception to "move code, do not rewrite it" (collections-screen ADR-0002)). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models (approved: `Exercise` by learn-part-step-1; `WordGroup`, `StoryRun`, `StoryStep` and `WordPair.rowId` by mnemonic-story, ADR-0003; `FilmDialogue`, `WordGroup.dialogueId`,
    `StoryRun.kind` and `StoryRun.sceneText` by get-words-from-subtitles-improvment, ADR-0003; the package `liquid_glass_renderer`,
    pinned, by the owner for photo-panel-glass; the package `pdf`, pinned, and the Noto Sans font asset, by the owner
    for share-formats; `SourceKind.subtitles` by side-panel-sources (owner, 2026-10-14); `WordResult` on Session by learn-kit (owner, 2026-10-14, H-05); `SessionSource.title`, `.description`, `.links`,
-   `.tags` and `Session.tags` by notes-editing (owner, 2026-10-15)), no `packages/` folder — ask first.
+   `.tags` and `Session.tags` by notes-editing (owner, 2026-10-15); `Session` renamed `WordCollection` with `name`,
+   `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep`, and the new Isar collection `CollectionFolder` by
+   collections-screen (owner, 2026-10-16, ADR-0003/0004/0005), no packages), no `packages/` folder — ask first.
 6. If a step cannot be done as written, stop and write what you found under that step in
    `docs/refactoring-plan.md`. Do not improvise a different structure.
 7. Tests (`docs/testing.md`): while developing run `tool/test.sh smoke`; write tests for what you

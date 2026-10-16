@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/dialogues/dialogue_rules.dart';
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 
 /// get-words-from-subtitles-improvment T14: which rows a dialogue holds at
@@ -85,13 +85,13 @@ void main() {
   });
 
   group('afterEdit (AC-11, AC-26)', () {
-    Session session(List<WordPair> words, List<FilmDialogue> dialogues) =>
-        Session.create()
+    WordCollection collection(List<WordPair> words, List<FilmDialogue> dialogues) =>
+        WordCollection.create()
           ..words = words
           ..dialogues = dialogues;
 
     test('a deleted row leaves the dialogue', () {
-      final s = session([
+      final s = collection([
         row('r1', 'attic')
       ], [
         dialogue('d1', ['The attic and the stairs.'], ['r1', 'r2']),
@@ -100,7 +100,7 @@ void main() {
     });
 
     test('an edited word stays only where its new form still appears', () {
-      final s = session([
+      final s = collection([
         row('r1', 'stair'),
         row('r2', 'cellar')
       ], [
@@ -111,7 +111,7 @@ void main() {
     });
 
     test('an edited translation keeps the link', () {
-      final s = session([
+      final s = collection([
         row('r1', 'attic', 'мансарда')
       ], [
         dialogue('d1', ['The attic.'], ['r1']),
@@ -120,7 +120,7 @@ void main() {
     });
 
     test('a dialogue with no words left disappears', () {
-      final s = session([
+      final s = collection([
         row('r1', 'cellar')
       ], [
         dialogue('d1', ['The attic.'], ['r1']),
@@ -130,7 +130,7 @@ void main() {
     });
 
     test('a pending dialogue with no words left is hidden, not removed', () {
-      final s = session([], [
+      final s = collection([], [
         dialogue('d1', ['The attic.'], ['r1'])..pushState = PushState.pending,
       ]);
       final out = afterEdit(s).single;
@@ -140,7 +140,7 @@ void main() {
 
     test('links only shrink: a re-typed or new row never joins', () {
       // r1 was deleted and "attic" typed in again as r9.
-      final s = session([
+      final s = collection([
         row('r9', 'attic'),
         row('r2', 'stairs')
       ], [
@@ -150,7 +150,7 @@ void main() {
     });
 
     test('a blank row does not keep a link', () {
-      final s = session([
+      final s = collection([
         WordPair(word: '', translation: '', rowId: 'r1')
       ], [
         dialogue('d1', ['The attic.'], ['r1']),
@@ -160,7 +160,7 @@ void main() {
 
     test('does not change the session it reads', () {
       final d = dialogue('d1', ['The attic.'], ['r1', 'r2']);
-      afterEdit(session([row('r1', 'attic')], [d]));
+      afterEdit(collection([row('r1', 'attic')], [d]));
       expect(d.wordRowIds, ['r1', 'r2']);
     });
   });

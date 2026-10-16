@@ -144,7 +144,7 @@ int _storyRunEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
-  bytesCount += 3 + object.sessionId.length * 3;
+  bytesCount += 3 + object.collectionId.length * 3;
   bytesCount += 3 + object.steps.length * 3;
   {
     final offsets = allOffsets[StoryStep]!;
@@ -177,7 +177,7 @@ void _storyRunSerialize(
   writer.writeString(offsets[5], object.outcome);
   writer.writeString(offsets[6], object.runId);
   writer.writeString(offsets[7], object.sceneText);
-  writer.writeString(offsets[8], object.sessionId);
+  writer.writeString(offsets[8], object.collectionId);
   writer.writeDateTime(offsets[9], object.startedAt);
   writer.writeObjectList<StoryStep>(
     offsets[10],
@@ -205,7 +205,7 @@ StoryRun _storyRunDeserialize(
   object.outcome = reader.readString(offsets[5]);
   object.runId = reader.readString(offsets[6]);
   object.sceneText = reader.readStringOrNull(offsets[7]);
-  object.sessionId = reader.readString(offsets[8]);
+  object.collectionId = reader.readString(offsets[8]);
   object.startedAt = reader.readDateTime(offsets[9]);
   object.steps = reader.readObjectList<StoryStep>(
         offsets[10],
@@ -1558,7 +1558,7 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdEqualTo(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> collectionIdEqualTo(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1571,7 +1571,8 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdGreaterThan(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition>
+      collectionIdGreaterThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1586,7 +1587,7 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdLessThan(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> collectionIdLessThan(
     String value, {
     bool include = false,
     bool caseSensitive = true,
@@ -1601,7 +1602,7 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdBetween(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> collectionIdBetween(
     String lower,
     String upper, {
     bool includeLower = true,
@@ -1620,7 +1621,8 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdStartsWith(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition>
+      collectionIdStartsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1633,7 +1635,7 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdEndsWith(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> collectionIdEndsWith(
     String value, {
     bool caseSensitive = true,
   }) {
@@ -1646,7 +1648,7 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdContains(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> collectionIdContains(
       String value,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1658,7 +1660,7 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdMatches(
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> collectionIdMatches(
       String pattern,
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -1670,7 +1672,8 @@ extension StoryRunQueryFilter
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition> sessionIdIsEmpty() {
+  QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition>
+      collectionIdIsEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
         property: r'sessionId',
@@ -1680,7 +1683,7 @@ extension StoryRunQueryFilter
   }
 
   QueryBuilder<StoryRun, StoryRun, QAfterFilterCondition>
-      sessionIdIsNotEmpty() {
+      collectionIdIsNotEmpty() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'sessionId',
@@ -2145,13 +2148,13 @@ extension StoryRunQuerySortBy on QueryBuilder<StoryRun, StoryRun, QSortBy> {
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortBySessionId() {
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortByCollectionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortBySessionIdDesc() {
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> sortByCollectionIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.desc);
     });
@@ -2268,13 +2271,13 @@ extension StoryRunQuerySortThenBy
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenBySessionId() {
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenByCollectionId() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.asc);
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenBySessionIdDesc() {
+  QueryBuilder<StoryRun, StoryRun, QAfterSortBy> thenByCollectionIdDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'sessionId', Sort.desc);
     });
@@ -2348,7 +2351,7 @@ extension StoryRunQueryWhereDistinct
     });
   }
 
-  QueryBuilder<StoryRun, StoryRun, QDistinct> distinctBySessionId(
+  QueryBuilder<StoryRun, StoryRun, QDistinct> distinctByCollectionId(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'sessionId', caseSensitive: caseSensitive);
@@ -2424,7 +2427,7 @@ extension StoryRunQueryProperty
     });
   }
 
-  QueryBuilder<StoryRun, String, QQueryOperations> sessionIdProperty() {
+  QueryBuilder<StoryRun, String, QQueryOperations> collectionIdProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'sessionId');
     });

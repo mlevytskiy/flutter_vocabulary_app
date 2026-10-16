@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/dialogues/dialogue_match.dart';
 import '../../core/models/film_dialogue.dart';
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/models/story_run.dart';
 import '../../core/models/word_group.dart';
 import '../../core/models/word_pair.dart';
@@ -21,12 +21,12 @@ import '../word_input/word_input_notifier.dart';
 /// improvment SCR-07): the scene picture over the dialogue, its words in bold.
 /// A picture already drawn is shown from the phone and nothing is paid; else
 /// opening the screen draws one, with its progress and failures as on the
-/// story screen (AC-13, AC-14, AC-18, AC-19). [sessionId] is as on the learn
+/// story screen (AC-13, AC-14, AC-18, AC-19). [collectionId] is as on the learn
 /// page: none is the current session.
 class DialogueScreen extends ConsumerStatefulWidget {
-  const DialogueScreen({super.key, this.sessionId, required this.groupId});
+  const DialogueScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -52,19 +52,19 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
 
   StoryRunTracker get _tracker => ref.read(storyRunTrackerProvider.notifier);
 
-  Session? get _session => widget.sessionId == null
+  WordCollection? get _collection => widget.collectionId == null
       ? ref.watch(wordInputNotifierProvider).valueOrNull
-      : ref.watch(sessionByIdProvider(widget.sessionId!)).valueOrNull;
+      : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
 
   @override
   Widget build(BuildContext context) {
-    final session = _session;
+    final collection = _collection;
     final group = ref
-        .watch(wordGroupsNotifierProvider(widget.sessionId))
+        .watch(wordGroupsNotifierProvider(widget.collectionId))
         .groups
         .where((g) => g.id == widget.groupId)
         .firstOrNull;
-    final dialogue = session?.dialogues
+    final dialogue = collection?.dialogues
         .where((d) => d.id == group?.dialogueId)
         .firstOrNull;
     final runs = ref.watch(groupStoryRunsProvider(widget.groupId));
@@ -72,7 +72,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
         storyRunTrackerProvider.select((s) => s.refusals[widget.groupId]));
 
     Widget body;
-    if (session == null ||
+    if (collection == null ||
         group == null ||
         dialogue == null ||
         runs.valueOrNull == null) {
@@ -89,10 +89,10 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
         // Start was pressed: draw once; the tracker never doubles a run.
         _startAsked = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _tracker.startScene(session.sessionId, group);
+          if (mounted) _tracker.startScene(collection.collectionId, group);
         });
       }
-      body = _body(session, group, dialogue, scenes, refusal);
+      body = _body(collection, group, dialogue, scenes, refusal);
     }
     return Scaffold(
       appBar: AppBar(
@@ -103,7 +103,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
     );
   }
 
-  Widget _body(Session session, WordGroup group, FilmDialogue dialogue,
+  Widget _body(WordCollection collection, WordGroup group, FilmDialogue dialogue,
       List<StoryRun> scenes, StoryStartRefusal? refusal) {
     final saved =
         scenes.where((r) => r.runId == dialogue.scenePictureRunId).firstOrNull;
@@ -120,20 +120,20 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
       top = [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(children: _status(session, group, latest, refusal)),
+          child: Column(children: _status(collection, group, latest, refusal)),
         ),
       ];
     }
     return Column(
       children: [
         ...top,
-        Expanded(child: _Lines(dialogue: dialogue, words: session.words)),
+        Expanded(child: _Lines(dialogue: dialogue, words: collection.words)),
       ],
     );
   }
 
   /// No picture yet: the running step, or why the run stopped.
-  List<Widget> _status(Session session, WordGroup group, StoryRun? run,
+  List<Widget> _status(WordCollection collection, WordGroup group, StoryRun? run,
       StoryStartRefusal? refusal) {
     if (run == null) {
       if (refusal?.reason == StoryRefusal.dayLimit) {
@@ -156,7 +156,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
         StoryMessage(_refusalText(refusal)),
         if (refusal?.reason != StoryRefusal.dayLimit)
           StoryAction('Try again', () {
-            _tracker.startScene(session.sessionId, group);
+            _tracker.startScene(collection.collectionId, group);
           }),
       ];
     }

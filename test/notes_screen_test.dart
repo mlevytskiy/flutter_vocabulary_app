@@ -5,11 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_controller.dart';
@@ -25,17 +25,17 @@ import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 /// notes_editing_test.dart).
 
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 /// Five photos, one word each.
-Session _photos() {
+WordCollection _photos() {
   final ids = ['p1', 'p2', 'p3', 'p4', 'p5'];
-  return Session.create()
+  return WordCollection.create()
     ..sources = [
       for (final (i, id) in ids.indexed)
         SessionSource()
@@ -49,7 +49,7 @@ Session _photos() {
     ];
 }
 
-Session _session() => Session.create()
+WordCollection _collection() => WordCollection.create()
   ..sources = [
     SessionSource()
       ..id = 'p1'
@@ -74,17 +74,17 @@ void main() {
   late MapSourcePhotoStore store;
 
   Future<void> pumpMain(WidgetTester tester,
-      {MapSourcePhotoStore? photoStore, Session? session}) async {
+      {MapSourcePhotoStore? photoStore, WordCollection? collection}) async {
     final photos = photoStore ?? MapSourcePhotoStore({});
     SharedPreferences.setMockInitialValues({});
     controller = PhotoPanelController();
     final container = ProviderContainer(overrides: [
       wordInputNotifierProvider
-          .overrideWith(() => _FakeInput(session ?? _session())),
+          .overrideWith(() => _FakeInput(collection ?? _collection())),
       sourcePhotoStoreProvider.overrideWithValue(photos),
       // A note's debounced write waits for a store that never opens.
-      sessionStoreProvider
-          .overrideWith((ref) => Completer<SessionStore>().future),
+      collectionStoreProvider
+          .overrideWith((ref) => Completer<CollectionStore>().future),
     ]);
     addTearDown(container.dispose);
     await tester
@@ -254,7 +254,7 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await pumpMain(tester,
-        session: _photos(),
+        collection: _photos(),
         photoStore: MapSourcePhotoStore(
             {for (final id in ['p1', 'p2', 'p3', 'p4', 'p5']) id: kPng}));
     await tester.tap(find.byKey(PhotoPanel.tabKey));
@@ -301,7 +301,7 @@ void main() {
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     await pumpMain(tester,
-        session: _photos(),
+        collection: _photos(),
         photoStore: MapSourcePhotoStore(
             {for (final id in ['p1', 'p2', 'p3', 'p4', 'p5']) id: kPng}));
     await tester.tap(find.byKey(PhotoPanel.tabKey));

@@ -1,0 +1,662 @@
+{
+  "sessions": [
+    {
+      "id": 1,
+      "sessionId": "mf1abc-1xyz",
+      "updatedAt": "2026-09-01T10:15:30.123456Z",
+      "lastLocalModifiedAt": "2026-09-01T12:15:30.123456Z",
+      "isShared": true,
+      "words": [
+        {
+          "word": "apple1",
+          "translation": "яблуко1",
+          "hasTranslationOptions": true,
+          "translationOptionsJson": "{\"text\":\"яблуко\"}",
+          "wordMarkedFilled": true,
+          "translationMarkedFilled": false,
+          "definition": "a fruit 1",
+          "definitionOptionsJson": "[\"a fruit\"]",
+          "definitionMarkedFilled": true,
+          "sourceId": "src1-1",
+          "rowId": "r1-1"
+        },
+        {
+          "word": "pear1",
+          "translation": "груша",
+          "hasTranslationOptions": false,
+          "translationOptionsJson": null,
+          "wordMarkedFilled": false,
+          "translationMarkedFilled": false,
+          "definition": "",
+          "definitionOptionsJson": null,
+          "definitionMarkedFilled": false,
+          "sourceId": null,
+          "rowId": "r1-2"
+        },
+        {
+          "word": "plum1",
+          "translation": "слива",
+          "hasTranslationOptions": false,
+          "translationOptionsJson": null,
+          "wordMarkedFilled": false,
+          "translationMarkedFilled": false,
+          "definition": "",
+          "definitionOptionsJson": null,
+          "definitionMarkedFilled": false,
+          "sourceId": "src1-2",
+          "rowId": "r1-3"
+        }
+      ],
+      "sources": [
+        {
+          "id": "src1-1",
+          "fileName": "src1-1.jpg",
+          "takenAt": "2026-09-01T09:15:30.123456Z",
+          "kind": "photo",
+          "title": "Kitchen 1",
+          "description": "fruit bowl",
+          "links": [
+            "https://example.com/1",
+            "https://example.org/1"
+          ],
+          "tags": [
+            "food",
+            "home"
+          ]
+        },
+        {
+          "id": "src1-2",
+          "fileName": "",
+          "takenAt": "2026-09-01T08:15:30.123456Z",
+          "kind": "set",
+          "name": "Quizlet set 1",
+          "url": "https://quizlet.com/1/set"
+        },
+        {
+          "id": "src1-3",
+          "fileName": "poster1.jpg",
+          "takenAt": "2026-09-01T07:15:30.123456Z",
+          "kind": "subtitles",
+          "name": "Film 1"
+        }
+      ],
+      "publishedId": "pub1",
+      "editToken": "tok1",
+      "groups": [
+        {
+          "id": "g1-1",
+          "name": "Fruit",
+          "rowIds": [
+            "r1-1",
+            "r1-2"
+          ],
+          "storyRunId": "run1",
+          "storyWords": [
+            "apple1",
+            "pear1"
+          ],
+          "dialogueId": null
+        },
+        {
+          "id": "g1-2",
+          "name": "Scene",
+          "rowIds": [
+            "r1-3"
+          ],
+          "storyRunId": null,
+          "storyWords": [],
+          "dialogueId": "d1-1"
+        }
+      ],
+      "selectedGroupId": "g1-1",
+      "groupedWordsKey": "key1",
+      "dialogues": [
+        {
+          "id": "d1-1",
+          "lines": [
+            "- Hi.",
+            "- Hello there."
+          ],
+          "wordRowIds": [
+            "r1-3"
+          ],
+          "scenePictureRunId": "scene1",
+          "importId": "imp1",
+          "importRowIds": [
+            "r1-3"
+          ],
+          "pushState": "pending",
+          "picturePushState": "delivered",
+          "hidden": false
+        },
+        {
+          "id": "d1-2",
+          "lines": [
+            "Bye."
+          ],
+          "wordRowIds": [],
+          "scenePictureRunId": null,
+          "importId": null,
+          "importRowIds": [],
+          "pushState": "none",
+          "picturePushState": "none",
+          "hidden": true
+        }
+      ],
+      "results": [
+        {
+          "rowId": "r1-1",
+          "exerciseId": "flashcards",
+          "label": "known",
+          "at": "2026-09-01T13:15:30.123456Z"
+        },
+        {
+          "rowId": "r1-2",
+          "exerciseId": "spelling",
+          "label": "repeat",
+          "at": "2026-09-01T14:15:30.123456Z"
+        }
+      ],
+      "tags": [
+        "travel",
+        "film 1"
+      ]
+    },
+    {
+      "id": 2,
+      "sessionId": "mf2abc-2xyz",
+      "updatedAt": "2026-09-02T10:15:30.123456Z",
+      "lastLocalModifiedAt": "2026-09-02T12:15:30.123456Z",
+      "isShared": false,
+      "words": [
+        {
+          "word": "apple2",
+          "translation": "яблуко2",
+          "hasTranslationOptions": true,
+          "translationOptionsJson": "{\"text\":\"яблуко\"}",
+          "wordMarkedFilled": true,
+          "translationMarkedFilled": false,
+          "definition": "a fruit 2",
+          "definitionOptionsJson": "[\"a fruit\"]",
+          "definitionMarkedFilled": true,
+          "sourceId": "src2-1",
+          "rowId": "r2-1"
+        },
+        {
+          "word": "pear2",
+          "translation": "груша",
+          "hasTranslationOptions": false,
+          "translationOptionsJson": null,
+          "wordMarkedFilled": false,
+          "translationMarkedFilled": false,
+          "definition": "",
+          "definitionOptionsJson": null,
+          "definitionMarkedFilled": false,
+          "sourceId": null,
+          "rowId": "r2-2"
+        },
+        {
+          "word": "plum2",
+          "translation": "слива",
+          "hasTranslationOptions": false,
+          "translationOptionsJson": null,
+          "wordMarkedFilled": false,
+          "translationMarkedFilled": false,
+          "definition": "",
+          "definitionOptionsJson": null,
+          "definitionMarkedFilled": false,
+          "sourceId": "src2-2",
+          "rowId": "r2-3"
+        }
+      ],
+      "sources": [
+        {
+          "id": "src2-1",
+          "fileName": "src2-1.jpg",
+          "takenAt": "2026-09-02T09:15:30.123456Z",
+          "kind": "photo",
+          "title": "Kitchen 2",
+          "description": "fruit bowl",
+          "links": [
+            "https://example.com/2",
+            "https://example.org/2"
+          ],
+          "tags": [
+            "food",
+            "home"
+          ]
+        },
+        {
+          "id": "src2-2",
+          "fileName": "",
+          "takenAt": "2026-09-02T08:15:30.123456Z",
+          "kind": "set",
+          "name": "Quizlet set 2",
+          "url": "https://quizlet.com/2/set"
+        },
+        {
+          "id": "src2-3",
+          "fileName": "poster2.jpg",
+          "takenAt": "2026-09-02T07:15:30.123456Z",
+          "kind": "subtitles",
+          "name": "Film 2"
+        }
+      ],
+      "publishedId": null,
+      "editToken": null,
+      "groups": [
+        {
+          "id": "g2-1",
+          "name": "Fruit",
+          "rowIds": [
+            "r2-1",
+            "r2-2"
+          ],
+          "storyRunId": "run2",
+          "storyWords": [
+            "apple2",
+            "pear2"
+          ],
+          "dialogueId": null
+        },
+        {
+          "id": "g2-2",
+          "name": "Scene",
+          "rowIds": [
+            "r2-3"
+          ],
+          "storyRunId": null,
+          "storyWords": [],
+          "dialogueId": "d2-1"
+        }
+      ],
+      "selectedGroupId": "g2-1",
+      "groupedWordsKey": "key2",
+      "dialogues": [
+        {
+          "id": "d2-1",
+          "lines": [
+            "- Hi.",
+            "- Hello there."
+          ],
+          "wordRowIds": [
+            "r2-3"
+          ],
+          "scenePictureRunId": "scene2",
+          "importId": "imp2",
+          "importRowIds": [
+            "r2-3"
+          ],
+          "pushState": "pending",
+          "picturePushState": "delivered",
+          "hidden": false
+        },
+        {
+          "id": "d2-2",
+          "lines": [
+            "Bye."
+          ],
+          "wordRowIds": [],
+          "scenePictureRunId": null,
+          "importId": null,
+          "importRowIds": [],
+          "pushState": "none",
+          "picturePushState": "none",
+          "hidden": true
+        }
+      ],
+      "results": [
+        {
+          "rowId": "r2-1",
+          "exerciseId": "flashcards",
+          "label": "known",
+          "at": "2026-09-02T13:15:30.123456Z"
+        },
+        {
+          "rowId": "r2-2",
+          "exerciseId": "spelling",
+          "label": "repeat",
+          "at": "2026-09-02T14:15:30.123456Z"
+        }
+      ],
+      "tags": [
+        "travel",
+        "film 2"
+      ]
+    },
+    {
+      "id": 3,
+      "sessionId": "mf3abc-3xyz",
+      "updatedAt": "2026-09-03T10:15:30.123456Z",
+      "lastLocalModifiedAt": "2026-09-03T12:15:30.123456Z",
+      "isShared": true,
+      "words": [
+        {
+          "word": "apple3",
+          "translation": "яблуко3",
+          "hasTranslationOptions": true,
+          "translationOptionsJson": "{\"text\":\"яблуко\"}",
+          "wordMarkedFilled": true,
+          "translationMarkedFilled": false,
+          "definition": "a fruit 3",
+          "definitionOptionsJson": "[\"a fruit\"]",
+          "definitionMarkedFilled": true,
+          "sourceId": "src3-1",
+          "rowId": "r3-1"
+        },
+        {
+          "word": "pear3",
+          "translation": "груша",
+          "hasTranslationOptions": false,
+          "translationOptionsJson": null,
+          "wordMarkedFilled": false,
+          "translationMarkedFilled": false,
+          "definition": "",
+          "definitionOptionsJson": null,
+          "definitionMarkedFilled": false,
+          "sourceId": null,
+          "rowId": "r3-2"
+        },
+        {
+          "word": "plum3",
+          "translation": "слива",
+          "hasTranslationOptions": false,
+          "translationOptionsJson": null,
+          "wordMarkedFilled": false,
+          "translationMarkedFilled": false,
+          "definition": "",
+          "definitionOptionsJson": null,
+          "definitionMarkedFilled": false,
+          "sourceId": "src3-2",
+          "rowId": "r3-3"
+        }
+      ],
+      "sources": [
+        {
+          "id": "src3-1",
+          "fileName": "src3-1.jpg",
+          "takenAt": "2026-09-03T09:15:30.123456Z",
+          "kind": "photo",
+          "title": "Kitchen 3",
+          "description": "fruit bowl",
+          "links": [
+            "https://example.com/3",
+            "https://example.org/3"
+          ],
+          "tags": [
+            "food",
+            "home"
+          ]
+        },
+        {
+          "id": "src3-2",
+          "fileName": "",
+          "takenAt": "2026-09-03T08:15:30.123456Z",
+          "kind": "set",
+          "name": "Quizlet set 3",
+          "url": "https://quizlet.com/3/set"
+        },
+        {
+          "id": "src3-3",
+          "fileName": "poster3.jpg",
+          "takenAt": "2026-09-03T07:15:30.123456Z",
+          "kind": "subtitles",
+          "name": "Film 3"
+        }
+      ],
+      "publishedId": "pub3",
+      "editToken": "tok3",
+      "groups": [
+        {
+          "id": "g3-1",
+          "name": "Fruit",
+          "rowIds": [
+            "r3-1",
+            "r3-2"
+          ],
+          "storyRunId": "run3",
+          "storyWords": [
+            "apple3",
+            "pear3"
+          ],
+          "dialogueId": null
+        },
+        {
+          "id": "g3-2",
+          "name": "Scene",
+          "rowIds": [
+            "r3-3"
+          ],
+          "storyRunId": null,
+          "storyWords": [],
+          "dialogueId": "d3-1"
+        }
+      ],
+      "selectedGroupId": "g3-1",
+      "groupedWordsKey": "key3",
+      "dialogues": [
+        {
+          "id": "d3-1",
+          "lines": [
+            "- Hi.",
+            "- Hello there."
+          ],
+          "wordRowIds": [
+            "r3-3"
+          ],
+          "scenePictureRunId": "scene3",
+          "importId": "imp3",
+          "importRowIds": [
+            "r3-3"
+          ],
+          "pushState": "pending",
+          "picturePushState": "delivered",
+          "hidden": false
+        },
+        {
+          "id": "d3-2",
+          "lines": [
+            "Bye."
+          ],
+          "wordRowIds": [],
+          "scenePictureRunId": null,
+          "importId": null,
+          "importRowIds": [],
+          "pushState": "none",
+          "picturePushState": "none",
+          "hidden": true
+        }
+      ],
+      "results": [
+        {
+          "rowId": "r3-1",
+          "exerciseId": "flashcards",
+          "label": "known",
+          "at": "2026-09-03T13:15:30.123456Z"
+        },
+        {
+          "rowId": "r3-2",
+          "exerciseId": "spelling",
+          "label": "repeat",
+          "at": "2026-09-03T14:15:30.123456Z"
+        }
+      ],
+      "tags": [
+        "travel",
+        "film 3"
+      ]
+    },
+    {
+      "id": 4,
+      "sessionId": "mf0empty-0",
+      "updatedAt": "2026-09-01T10:15:30.123456Z",
+      "lastLocalModifiedAt": "2026-09-01T10:15:30.123456Z",
+      "isShared": false,
+      "words": [],
+      "sources": [],
+      "publishedId": null,
+      "editToken": null,
+      "groups": [],
+      "selectedGroupId": null,
+      "groupedWordsKey": null,
+      "dialogues": [],
+      "results": [],
+      "tags": []
+    }
+  ],
+  "storyRuns": [
+    {
+      "id": 1,
+      "runId": "run1",
+      "sessionId": "mf1abc-1xyz",
+      "groupId": "g1-1",
+      "groupName": "Fruit",
+      "words": [
+        "apple1",
+        "pear1"
+      ],
+      "startedAt": "2026-09-20T10:15:30.123456Z",
+      "models": [
+        "m-story",
+        "m-prompt",
+        "m-pic"
+      ],
+      "steps": [
+        {
+          "role": "story",
+          "attempt": 1,
+          "modelId": "m-story",
+          "modelName": "Story AI",
+          "outcome": "done",
+          "text": "Once upon an apple",
+          "picturePath": null,
+          "missedWords": [
+            "pear1"
+          ],
+          "priceUsd": 0.0125,
+          "priceEstimated": true,
+          "ms": 1234
+        },
+        {
+          "role": "picture",
+          "attempt": 2,
+          "modelId": "m-pic",
+          "modelName": "Pic AI",
+          "outcome": "failed",
+          "text": null,
+          "picturePath": "mnemonic_pictures/run1.png",
+          "missedWords": [],
+          "priceUsd": null,
+          "priceEstimated": false,
+          "ms": null
+        }
+      ],
+      "outcome": "done",
+      "collected": true,
+      "kind": "story",
+      "sceneText": null
+    },
+    {
+      "id": 2,
+      "runId": "scene1",
+      "sessionId": "mf1abc-1xyz",
+      "groupId": "g1-1",
+      "groupName": "Fruit",
+      "words": [
+        "apple1",
+        "pear1"
+      ],
+      "startedAt": "2026-09-20T10:15:30.123456Z",
+      "models": [
+        "m-story",
+        "m-prompt",
+        "m-pic"
+      ],
+      "steps": [
+        {
+          "role": "story",
+          "attempt": 1,
+          "modelId": "m-story",
+          "modelName": "Story AI",
+          "outcome": "done",
+          "text": "Once upon an apple",
+          "picturePath": null,
+          "missedWords": [
+            "pear1"
+          ],
+          "priceUsd": 0.0125,
+          "priceEstimated": true,
+          "ms": 1234
+        },
+        {
+          "role": "picture",
+          "attempt": 2,
+          "modelId": "m-pic",
+          "modelName": "Pic AI",
+          "outcome": "failed",
+          "text": null,
+          "picturePath": "mnemonic_pictures/scene1.png",
+          "missedWords": [],
+          "priceUsd": null,
+          "priceEstimated": false,
+          "ms": null
+        }
+      ],
+      "outcome": "done",
+      "collected": true,
+      "kind": "scene",
+      "sceneText": "- Hi.\n- Hello there."
+    },
+    {
+      "id": 3,
+      "runId": "runGone",
+      "sessionId": "gone-session",
+      "groupId": "g1-1",
+      "groupName": "Fruit",
+      "words": [
+        "apple1",
+        "pear1"
+      ],
+      "startedAt": "2026-09-20T10:15:30.123456Z",
+      "models": [
+        "m-story",
+        "m-prompt",
+        "m-pic"
+      ],
+      "steps": [
+        {
+          "role": "story",
+          "attempt": 1,
+          "modelId": "m-story",
+          "modelName": "Story AI",
+          "outcome": "done",
+          "text": "Once upon an apple",
+          "picturePath": null,
+          "missedWords": [
+            "pear1"
+          ],
+          "priceUsd": 0.0125,
+          "priceEstimated": true,
+          "ms": 1234
+        },
+        {
+          "role": "picture",
+          "attempt": 2,
+          "modelId": "m-pic",
+          "modelName": "Pic AI",
+          "outcome": "failed",
+          "text": null,
+          "picturePath": "mnemonic_pictures/runGone.png",
+          "missedWords": [],
+          "priceUsd": null,
+          "priceEstimated": false,
+          "ms": null
+        }
+      ],
+      "outcome": "done",
+      "collected": true,
+      "kind": "story",
+      "sceneText": null
+    }
+  ]
+}

@@ -119,10 +119,10 @@ class RememberState {
 @riverpod
 class RememberOrNot extends _$RememberOrNot {
   @override
-  Future<RememberState> build(String? sessionId, String groupId) async {
+  Future<RememberState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
-    final dialogues = await ref.watch(exerciseDialoguesProvider(sessionId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
+    final dialogues = await ref.watch(exerciseDialoguesProvider(collectionId).future);
     final usable = <FlashCard>[
       for (final w in words.group)
         if (frontFor(w) case final front?)
@@ -143,8 +143,8 @@ class RememberOrNot extends _$RememberOrNot {
   List<int> _all(List<FlashCard> cards) => [for (var i = 0; i < cards.length; i++) i];
 
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
-    ref.invalidate(exerciseDialoguesProvider(sessionId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
+    ref.invalidate(exerciseDialoguesProvider(collectionId));
     ref.invalidateSelf();
   }
 

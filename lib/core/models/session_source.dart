@@ -14,7 +14,7 @@ enum SourceKind { photo, set, subtitles }
 /// (good-looking-web, sad §5), or a Quizlet set the learner imported
 /// (import-from-quizlet, ADR-0005), or a film's subtitles the learner
 /// imported (side-panel-sources, spec AC-22).
-/// Embedded inside [Session]: a source lives exactly as long as its session.
+/// Embedded inside [WordCollection]: a source lives exactly as long as its session.
 /// A photo's bytes are a file in the app documents dir (`SourcePhotoStore`);
 /// this is only the reference.
 /// The stored name stays `SourcePhoto` so sessions saved before keep reading.

@@ -6,9 +6,9 @@ part of 'word_input_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$wordInputNotifierHash() => r'f498e38a512411dfbf6cbf424de96f1057d86329';
+String _$wordInputNotifierHash() => r'2bb9e5ddeaf0c7eae8e3b8db025b94c0e4e41e5d';
 
-/// Owns the current [Session]. `WordInputScreen` keeps mirroring the words into
+/// Owns the current [WordCollection]. `WordInputScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
 /// mutation here right after making it.
@@ -16,7 +16,7 @@ String _$wordInputNotifierHash() => r'f498e38a512411dfbf6cbf424de96f1057d86329';
 /// Copied from [WordInputNotifier].
 @ProviderFor(WordInputNotifier)
 final wordInputNotifierProvider =
-    AsyncNotifierProvider<WordInputNotifier, Session>.internal(
+    AsyncNotifierProvider<WordInputNotifier, WordCollection>.internal(
   WordInputNotifier.new,
   name: r'wordInputNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -26,6 +26,6 @@ final wordInputNotifierProvider =
   allTransitiveDependencies: null,
 );
 
-typedef _$WordInputNotifier = AsyncNotifier<Session>;
+typedef _$WordInputNotifier = AsyncNotifier<WordCollection>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

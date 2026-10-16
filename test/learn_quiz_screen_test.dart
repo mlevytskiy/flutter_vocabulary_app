@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
@@ -23,11 +23,11 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 /// learn-quiz: the screen (AC-01, AC-03, AC-04, AC-08 – AC-18, AC-21,
 /// AC-23 – AC-26; §6 tap-to-Next and feedback leak).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 class _Api implements LearnApiService {
@@ -50,30 +50,30 @@ class _Api implements LearnApiService {
 
 /// Records every call; [record] never completes (nothing may wait for it, §6).
 class _Sink implements ExamResultSink {
-  final records = <({String? sessionId, String rowId, WordResultLabel label})>[];
+  final records = <({String? collectionId, String rowId, WordResultLabel label})>[];
 
   @override
   Future<void> record({
-    required String? sessionId,
+    required String? collectionId,
     required String rowId,
     required String exerciseId,
     required WordResultLabel label,
   }) {
     expect(exerciseId, 'quiz');
-    records.add((sessionId: sessionId, rowId: rowId, label: label));
+    records.add((collectionId: collectionId, rowId: rowId, label: label));
     return Completer<void>().future;
   }
 
   @override
-  Map<String, WordResult> latest(Session session) => const {};
+  Map<String, WordResult> latest(WordCollection collection) => const {};
 }
 
-Session _session(int count, {List<String>? names}) {
+WordCollection _collection(int count, {List<String>? names}) {
   final words = [
     for (var i = 0; i < count; i++)
       WordPair(word: names != null ? names[i] : 'word$i', translation: 'слово$i', rowId: 'r$i'),
   ];
-  return Session.create()
+  return WordCollection.create()
     ..words = [...words, for (var i = 0; i < 3; i++) WordPair(word: 'other$i', translation: 'інше$i', rowId: 'o$i')]
     ..groups = [
       WordGroup()
@@ -99,17 +99,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> pump(WidgetTester tester, Session session, {String? sessionId}) async {
+  Future<void> pump(WidgetTester tester, WordCollection collection, {String? collectionId}) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    openedFor = sessionId;
+    openedFor = collectionId;
     container = ProviderContainer(overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
-      sessionByIdProvider('hist').overrideWith((ref) async => session),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -119,7 +119,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => exerciseScreen('quiz', sessionId, 'g'),
+                builder: (_) => exerciseScreen('quiz', collectionId, 'g'),
               )),
               child: const Text('learn page'),
             ),
@@ -176,7 +176,7 @@ void main() {
 
   testWidgets('AC-01, AC-11: title, counter, kind A question with four options and Skip; no keyboard, no speaker',
       (tester) async {
-    await pump(tester, _session(9));
+    await pump(tester, _collection(9));
     final q = state().question!;
     expect(find.widgetWithText(AppBar, 'Quiz'), findsOneWidget);
     expect(find.text('Question 1 of 7'), findsOneWidget);
@@ -194,7 +194,7 @@ void main() {
   });
 
   testWidgets('AC-12: a tap marks only the picked option, never the right one; Skip goes, Next shows', (tester) async {
-    await pump(tester, _session(9));
+    await pump(tester, _collection(9));
     final q = state().question!.choice!;
     final wrong = (q.rightIndex + 1) % 4;
     await tester.tap(find.byKey(ValueKey('option-$wrong')));
@@ -215,7 +215,7 @@ void main() {
   });
 
   testWidgets('AC-11: kind B shows "Pick the word" and the masked meaning', (tester) async {
-    await pump(tester, _session(9));
+    await pump(tester, _collection(9));
     await answer(tester);
     await answer(tester);
     expect(find.text('Question 3 of 7'), findsOneWidget);
@@ -226,8 +226,8 @@ void main() {
 
   group('gap questions', () {
     // One shared meaning: no kind B question, so every question is a gap (S-54).
-    Session receive() {
-      final s = _session(5, names: ['receive', 'tide', 'bay', 'cloud', 'stone']);
+    WordCollection receive() {
+      final s = _collection(5, names: ['receive', 'tide', 'bay', 'cloud', 'stone']);
       for (final w in s.words) {
         w.definition = 'the same thing';
       }
@@ -308,7 +308,7 @@ void main() {
   });
 
   testWidgets('AC-17: Skip on a choice question is final; options do nothing after it', (tester) async {
-    await pump(tester, _session(9));
+    await pump(tester, _collection(9));
     await tapText(tester, 'Skip');
     expect(find.text('Next'), findsOneWidget);
     expect(find.text('Skip'), findsNothing);
@@ -319,7 +319,7 @@ void main() {
   });
 
   testWidgets('AC-18, AC-23: Next moves on with no way back; the summary lists results and details', (tester) async {
-    await pump(tester, _session(7));
+    await pump(tester, _collection(7));
     final asked = state().questions;
     await tapText(tester, 'Skip'); // 1: choice, skipped
     await tapText(tester, 'Next');
@@ -347,7 +347,7 @@ void main() {
   });
 
   testWidgets('AC-24: all known: only Done, which returns to the learn page', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     for (var i = 0; i < 3; i++) {
       await answer(tester);
     }
@@ -360,7 +360,7 @@ void main() {
   });
 
   testWidgets('AC-25, AC-26: Repeat asks only the repeat words at once, no call, no loading', (tester) async {
-    await pump(tester, _session(7));
+    await pump(tester, _collection(7));
     for (var i = 0; i < 7; i++) {
       await answer(tester, right: i != 2 && i != 5);
     }
@@ -381,7 +381,7 @@ void main() {
 
   testWidgets('AC-08, AC-26: gaps unavailable: choice only, the line on every question, no Retry', (tester) async {
     api.error = LearnApiException(LearnApiError.dayLimit, '');
-    await pump(tester, _session(4));
+    await pump(tester, _collection(4));
     for (var i = 0; i < 4; i++) {
       expect(find.text('Gap questions are unavailable'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
@@ -395,7 +395,7 @@ void main() {
   });
 
   testWidgets('AC-03: under 3 words: the not-enough line and Back, no Worker call', (tester) async {
-    await pump(tester, _session(2));
+    await pump(tester, _collection(2));
     expect(find.text(notEnoughWordsMessage), findsOneWidget);
     expect(find.text('Back'), findsOneWidget);
     expect(api.calls, isEmpty);
@@ -406,13 +406,13 @@ void main() {
 
   testWidgets('AC-08: gaps unavailable and under 3 choice words: not enough', (tester) async {
     api.error = LearnApiException(LearnApiError.network, '');
-    final s = _session(3)..words.removeWhere((w) => w.rowId.startsWith('o'));
+    final s = _collection(3)..words.removeWhere((w) => w.rowId.startsWith('o'));
     await pump(tester, s);
     expect(find.text(notEnoughWordsMessage), findsOneWidget);
   });
 
   testWidgets('AC-10, AC-21: a History quiz records for that session; Back keeps what was answered', (tester) async {
-    await pump(tester, _session(9), sessionId: 'hist');
+    await pump(tester, _collection(9), collectionId: 'hist');
     for (var i = 0; i < 3; i++) {
       await answer(tester);
     }
@@ -421,7 +421,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('learn page'), findsOneWidget);
     expect(sink.records, hasLength(3));
-    expect(sink.records.every((r) => r.sessionId == 'hist'), isTrue);
+    expect(sink.records.every((r) => r.collectionId == 'hist'), isTrue);
     await openQuiz(tester);
     expect(find.text('Question 1 of 7'), findsOneWidget);
     expect(sink.records, hasLength(3));

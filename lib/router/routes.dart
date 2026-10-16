@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/collections/collections_screen.dart';
+import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
@@ -46,8 +48,10 @@ part 'routes.g.dart';
     ),
     TypedGoRoute<NotesRoute>(path: 'notes'),
     TypedGoRoute<PhotoViewerRoute>(path: 'photo/:sourceId'),
+    TypedGoRoute<CollectionsRoute>(path: 'collections'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
+    TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
   ],
 )
 class WordInputRoute extends GoRouteData with _$WordInputRoute {
@@ -57,30 +61,30 @@ class WordInputRoute extends GoRouteData with _$WordInputRoute {
   Widget build(BuildContext context, GoRouterState state) => const WordInputScreen();
 }
 
-/// [sessionId] is optional and travels as a query param: with no id the table
+/// [collectionId] is optional and travels as a query param: with no id the table
 /// shows the current session (the AppBar "Next" button), with one it shows that
 /// stored session, read-only (a History row). An id, never the object — rule 1.
 class WordsTableRoute extends GoRouteData with _$WordsTableRoute {
-  const WordsTableRoute({this.sessionId});
+  const WordsTableRoute({this.collectionId});
 
-  final String? sessionId;
+  final String? collectionId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      WordsTableScreen(sessionId: sessionId);
+      WordsTableScreen(collectionId: collectionId);
 }
 
 /// The learn page (learn-part-step-1), opened from the Words screen. Carries
-/// the same optional [sessionId] as [WordsTableRoute]: none for the current
+/// the same optional [collectionId] as [WordsTableRoute]: none for the current
 /// session, an id for a History row, read-only either way (AC-13).
 class LearnRoute extends GoRouteData with _$LearnRoute {
-  const LearnRoute({this.sessionId});
+  const LearnRoute({this.collectionId});
 
-  final String? sessionId;
+  final String? collectionId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      LearnScreen(sessionId: sessionId);
+      LearnScreen(collectionId: collectionId);
 }
 
 /// The app's placeholder for an exercise that is not built yet (learn-part-step-1),
@@ -96,45 +100,45 @@ class ComingSoonRoute extends GoRouteData with _$ComingSoonRoute {
 }
 
 /// The mnemonic story of one group (mnemonic-story, SCR-04), pushed from Start
-/// with Mnemonic story ticked. Ids only, never objects (rule 1): [sessionId] is
+/// with Mnemonic story ticked. Ids only, never objects (rule 1): [collectionId] is
 /// as on [LearnRoute] (none is the current session), [groupId] the group.
 class StoryRoute extends GoRouteData with _$StoryRoute {
-  const StoryRoute({this.sessionId, required this.groupId});
+  const StoryRoute({this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      StoryScreen(sessionId: sessionId, groupId: groupId);
+      StoryScreen(collectionId: collectionId, groupId: groupId);
 }
 
 /// One exercise for one word group (learn-kit S-03), pushed from Start like
-/// [StoryRoute]. Ids only (rule 1): [sessionId] as on [LearnRoute], the
+/// [StoryRoute]. Ids only (rule 1): [collectionId] as on [LearnRoute], the
 /// frozen [exercise] id and the [groupId]. `exerciseScreen` picks the screen.
 class ExerciseRoute extends GoRouteData with _$ExerciseRoute {
-  const ExerciseRoute({this.sessionId, required this.exercise, required this.groupId});
+  const ExerciseRoute({this.collectionId, required this.exercise, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String exercise;
   final String groupId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      exerciseScreen(exercise, sessionId, groupId);
+      exerciseScreen(exercise, collectionId, groupId);
 }
 
 /// "Dialogs from movie" for one dialogue group (get-words-from-subtitles-
 /// improvment, SCR-07), pushed from Start like [StoryRoute]. Ids only (rule 1).
 class DialogueRoute extends GoRouteData with _$DialogueRoute {
-  const DialogueRoute({this.sessionId, required this.groupId});
+  const DialogueRoute({this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      DialogueScreen(sessionId: sessionId, groupId: groupId);
+      DialogueScreen(collectionId: collectionId, groupId: groupId);
 }
 
 /// Words settings (mnemonic-story, SCR-05): the AI for each step of a story
@@ -222,4 +226,21 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
   Widget build(BuildContext context, GoRouterState state) => const SettingsScreen();
 }
 
+/// The recycle bin (collections-screen SCR-08); opened from the top-level bin
+/// icon on the Collections screen.
+class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
+  const RecycleBinRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const RecycleBinScreen();
+}
+
 final appRouter = GoRouter(routes: $appRoutes);
+
+/// The Collections screen (collections-screen): folders and collections as icons.
+class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
+  const CollectionsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const CollectionsScreen();
+}

@@ -187,6 +187,8 @@ Committed approach: a new "Import from Quizlet" item takes the Screenshot item's
 **When** the current session is no longer the one the import started in by the time the results dialog would open
 **Then** the words are dropped and neither session changes (the late-result rule of the photo and subtitle imports)
 
+> **Superseded (collections-screen ADR-0006, 2026-10-16):** the words now go into the collection the import started in, through `CollectionStore.update`, and are dropped only when that collection was erased for good.
+
 ### AC-17 (US-06) — cross-context
 **Given** words from a Quizlet set were added to the current session
 **When** the learner opens the words table, opens the session from History, or exports it to AnkiDroid

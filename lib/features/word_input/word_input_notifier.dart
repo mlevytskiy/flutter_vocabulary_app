@@ -6,22 +6,18 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/dialogues/dialogue_rules.dart';
 import '../../core/models/film_dialogue.dart';
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
-import '../../core/services/session_store.dart';
+import '../../core/services/collection_store.dart';
+import '../../core/services/filing.dart';
 import '../../core/services/source_photo_store.dart' show uuidV4;
 
 part 'word_input_notifier.g.dart';
 
-/// How long a session stays "the current one" after this device last touched
-/// it. Past this, a launch starts a fresh session and offers the previous one
-/// back through the snackbar (see `docs/tasks/task-03-words-survive-restart.md`).
-const kSessionIdleWindow = Duration(minutes: 5);
-
-/// Owns the current [Session]. `WordInputScreen` keeps mirroring the words into
+/// Owns the current [WordCollection]. `WordInputScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
 /// mutation here right after making it.
@@ -35,163 +31,130 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// nobody edited.
   bool _dirty = false;
 
-  /// Set by [build] only when the launch rule started a new session and an
-  /// older one is still worth offering back (case 4). The screen reads it once
-  /// to decide whether to show the RESTORE snackbar. Cleared by
-  /// [restorePrevious] and by the first mutation, so RESTORE can never discard
-  /// typed words.
-  String? restorableSessionId;
-
   @override
-  Future<Session> build() async {
+  Future<WordCollection> build() async {
     ref.onDispose(() => _saveTimer?.cancel());
-    final store = await ref.read(sessionStoreProvider.future);
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.sweepBin(DateTime.now());
+    return _openCurrent(store);
+  }
 
-    // `prev` is the session recorded as current; if the pointer is missing or
-    // dangling, the newest session this device touched.
-    Session? prev;
-    final pointer = await store.currentSessionId();
-    if (pointer != null) prev = await store.byId(pointer);
-    // A History pick (edit-session-from-history, ADR-0002) only counts for the
-    // session the pointer names, never for the newest-session fallback.
-    final pickedAt =
-        prev == null ? null : await store.switchedAt(prev.sessionId);
-    // So does having it open with words (owner, 2026-10-16), see [markSeen].
-    final seenAt = prev == null ? null : await store.seenAt(prev.sessionId);
-    prev ??= await store.newest();
+  /// The launch and resume rule (collections-screen ADR-0007): the pointer's
+  /// collection reopens after any pause. A missing or binned pointer (directly
+  /// or through a folder) falls back to the newest collection outside the bin,
+  /// or a new one when there is none.
+  Future<WordCollection> _openCurrent(CollectionStore store) async {
+    WordCollection? target;
+    final pointer = await store.currentCollectionId();
+    if (pointer != null) {
+      target = await store.byId(pointer);
+      if (target != null && await store.isBinned(target)) target = null;
+    }
+    target ??= await store.newestOutsideBin();
+    if (target == null) {
+      debugPrint('VOCAB: launch: nothing usable stored, new collection');
+      return _startNewCollection(store);
+    }
     // Isar hands back embedded lists as fixed-length; the screen grows this one
     // (its trailing blank row), so give it a growable copy.
-    if (prev != null) {
-      prev.words = prev.words.toList();
-      prev.sources = prev.sources.toList();
-    }
-
-    // Case 1 — nothing stored: a new session, one empty row, no snackbar.
-    if (prev == null) {
-      debugPrint('VOCAB: launch case 1, nothing stored: new session');
-      return _startNewSession(store);
-    }
-
-    // Case 2 — the previous session never got a word: reuse it whatever its
-    // age, otherwise every launch-and-do-nothing leaves an empty session behind.
-    if (prev.isEmpty) {
-      debugPrint('VOCAB: launch case 2, previous session ${prev.sessionId} '
-          'has no word: reused, no snackbar');
-      await store.setCurrentSessionId(prev.sessionId);
-      if (prev.words.isEmpty) prev.words = [WordPair()];
-      return prev;
-    }
-
-    // Case 3 — still warm: carry on in it, extras and all. No snackbar. A
-    // recent pick from History, or having it open, keeps it warm too.
-    var touched = prev.lastLocalModifiedAt;
-    if (pickedAt != null && pickedAt.isAfter(touched)) touched = pickedAt;
-    if (seenAt != null && seenAt.isAfter(touched)) touched = seenAt;
-    if (DateTime.now().difference(touched) < kSessionIdleWindow) {
-      debugPrint('VOCAB: launch case 3, previous session ${prev.sessionId} '
-          'edited, picked or seen ${DateTime.now().difference(touched).inSeconds} s ago: '
-          'carried on, no snackbar');
-      await store.setCurrentSessionId(prev.sessionId);
-      return prev;
-    }
-
-    // Case 4 — gone cold: a new session is current immediately, and the screen
-    // offers `prev` back for the next 7 seconds.
-    debugPrint('VOCAB: launch case 4, previous session ${prev.sessionId} '
-        'edited ${DateTime.now().difference(prev.lastLocalModifiedAt).inMinutes} min ago: '
-        'new session, RESTORE offered');
-    final fresh = await _startNewSession(store);
-    restorableSessionId = prev.sessionId;
-    return fresh;
+    target.words = target.words.toList();
+    target.sources = target.sources.toList();
+    if (target.words.isEmpty) target.words = [WordPair()];
+    debugPrint('VOCAB: launch: collection ${target.collectionId} reopened');
+    await store.setCurrentCollectionId(target.collectionId);
+    return target;
   }
 
-  Future<Session> _startNewSession(SessionStore store) async {
-    final session = Session.create();
-    session.words.add(WordPair());
-    await store.put(session);
-    await store.setCurrentSessionId(session.sessionId);
-    return session;
+  Future<WordCollection> _startNewCollection(CollectionStore store) async {
+    final collection = await store.create();
+    collection.words = [WordPair()];
+    await store.setCurrentCollectionId(collection.collectionId);
+    return collection;
   }
 
-  /// Drops the (still empty) session the launch rule just created and makes the
-  /// previous one current again. Called from the snackbar's RESTORE action.
-  Future<void> restorePrevious() async {
-    final id = restorableSessionId;
-    restorableSessionId = null;
-    if (id == null) return;
-
-    final store = await ref.read(sessionStoreProvider.future);
-    final prev = await store.byId(id);
-    if (prev == null) return;
-    prev.words = prev.words.toList(); // growable, see build()
-    prev.sources = prev.sources.toList();
-
+  /// The app came back to the front: sweep the bin and re-check the pointer.
+  /// The collection on screen stays unless it was erased or binned meanwhile.
+  Future<void> resume() async {
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.sweepBin(DateTime.now());
     final current = state.valueOrNull;
-    if (current != null && current.sessionId != id && current.isEmpty) {
-      await store.delete(current.sessionId);
-    }
-
+    if (current == null) return;
+    final stored = await store.byId(current.collectionId);
+    if (stored != null && !await store.isBinned(stored)) return;
     _saveTimer?.cancel();
     _saveTimer = null;
     _dirty = false;
-    prev.lastLocalModifiedAt = DateTime.now();
-    await store.setCurrentSessionId(prev.sessionId);
-    await store.put(prev);
-    state = AsyncData(prev);
-  }
-
-  /// How often the main screen calls [markSeen] while the app is open.
-  static const seenEvery = Duration(seconds: 15);
-
-  /// Records that the current session is open, so the launch rule counts it
-  /// as touched now (owner, 2026-10-16). A session with no word is not
-  /// recorded: case 2 reuses it anyway. Not an edit: the session's own times
-  /// are left alone, so History's order and the RESTORE offer are not moved.
-  Future<void> markSeen() async {
-    final session = state.valueOrNull;
-    if (session == null || session.isEmpty) return;
-    final store = await ref.read(sessionStoreProvider.future);
-    await store.setSeen(session.sessionId, DateTime.now());
+    state = AsyncData(await _openCurrent(store));
   }
 
   /// Makes a session picked on the History words screen the current one
   /// (edit-session-from-history, ADR-0001). The left session is saved first so
   /// a word typed within the save delay is kept, and dropped if it never got a
-  /// word. The pick is recorded beside the pointer; the picked session's edit
-  /// times are left alone (ADR-0002). Returns false, touching nothing, when
+  /// word. The picked session's edit times are left alone. Returns false, touching nothing, when
   /// the picked session is not in the store.
-  Future<bool> switchTo(String sessionId) async {
-    final store = await ref.read(sessionStoreProvider.future);
-    final picked = await store.byId(sessionId);
+  Future<bool> switchTo(String collectionId) => open(collectionId);
+
+  /// Opens collection [id] on the main screen with no question (AC-09,
+  /// AC-18): the autosave is flushed, the left collection is erased at once
+  /// when it is empty and untouched (AC-19), the pointer moves and the opened
+  /// collection is shown. Opening the current one changes nothing. Returns
+  /// false, touching nothing, when [id] is not in the store.
+  Future<bool> open(String id) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    if (state.valueOrNull?.collectionId == id) return true;
+    final picked = await store.byId(id);
     if (picked == null) return false;
     picked.words = picked.words.toList(); // growable, see build()
     picked.sources = picked.sources.toList();
+    await _leaveAndShow(store, picked);
+    return true;
+  }
 
+  /// New collection (AC-10): a kept, empty, date-named collection at the end
+  /// of [folderId]'s level (null: the top level) becomes the current one.
+  Future<void> newCollection(String? folderId) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    final made = await store.create(folderId: folderId, keep: true);
+    made.words = [WordPair()];
+    await _leaveAndShow(store, made);
+  }
+
+  Future<void> _leaveAndShow(
+      CollectionStore store, WordCollection next) async {
     await flush();
     final current = state.valueOrNull;
-    if (current != null &&
-        current.sessionId != sessionId &&
-        current.isEmpty) {
-      await store.delete(current.sessionId);
+    if (current != null && current.collectionId != next.collectionId) {
+      final stored = await store.byId(current.collectionId);
+      if (stored != null &&
+          isEmptyAndUntouched(
+            hasWords: !stored.isEmpty,
+            hasSources: stored.sources.isNotEmpty,
+            hasNotesOrTags: stored.tags.isNotEmpty ||
+                stored.sources.any((s) =>
+                    (s.title ?? '').isNotEmpty ||
+                    (s.description ?? '').isNotEmpty ||
+                    s.links.isNotEmpty ||
+                    s.tags.isNotEmpty),
+            keep: stored.keep,
+          )) {
+        await store.delete(current.collectionId);
+      }
     }
 
     _saveTimer?.cancel();
     _saveTimer = null;
     _dirty = false;
-    await store.setCurrentSessionId(picked.sessionId);
-    await store.setSwitched(picked.sessionId, DateTime.now());
-    restorableSessionId = null;
-    state = AsyncData(picked);
-    return true;
+    await store.setCurrentCollectionId(next.collectionId);
+    state = AsyncData(next);
   }
 
   void setPairs(List<WordPair> pairs) {
     if (!state.hasValue) return;
-    final session = state.value!;
-    session.words
+    final collection = state.value!;
+    collection.words
       ..clear()
       ..addAll(pairs);
-    state = AsyncData(session);
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
@@ -219,9 +182,9 @@ class WordInputNotifier extends _$WordInputNotifier {
     bool clearSourceId = false,
   }) {
     if (!state.hasValue) return;
-    final session = state.value!;
-    if (i < 0 || i >= session.words.length) return;
-    final current = session.words[i];
+    final collection = state.value!;
+    if (i < 0 || i >= collection.words.length) return;
+    final current = collection.words[i];
     final next = WordPair(
       word: word ?? current.word,
       translation: translation ?? current.translation,
@@ -245,35 +208,35 @@ class WordInputNotifier extends _$WordInputNotifier {
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
     }
-    session.words[i] = next;
-    state = AsyncData(session);
+    collection.words[i] = next;
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
   void removeAt(int i) {
     if (!state.hasValue) return;
-    final session = state.value!;
-    if (i < 0 || i >= session.words.length) return;
-    session.words.removeAt(i);
-    state = AsyncData(session);
+    final collection = state.value!;
+    if (i < 0 || i >= collection.words.length) return;
+    collection.words.removeAt(i);
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
   void reorder(int oldIndex, int newIndex) {
     if (!state.hasValue) return;
-    final session = state.value!;
-    if (oldIndex < 0 || oldIndex >= session.words.length) return;
-    final pair = session.words.removeAt(oldIndex);
-    session.words.insert(newIndex.clamp(0, session.words.length), pair);
-    state = AsyncData(session);
+    final collection = state.value!;
+    if (oldIndex < 0 || oldIndex >= collection.words.length) return;
+    final pair = collection.words.removeAt(oldIndex);
+    collection.words.insert(newIndex.clamp(0, collection.words.length), pair);
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
   void addAll(List<WordPair> newPairs) {
     if (!state.hasValue || newPairs.isEmpty) return;
-    final session = state.value!;
-    session.words.addAll(newPairs);
-    state = AsyncData(session);
+    final collection = state.value!;
+    collection.words.addAll(newPairs);
+    state = AsyncData(collection);
     // The screen keeps exactly one blank row at the end and `put` strips it, so
     // growing that row is not a content change. Stamping it would restart the
     // session clock on a launch where the user did nothing at all.
@@ -290,15 +253,15 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// added, so the same debounced write saves both.
   void addImportDialogues(List<ImportedDialogue> dialogues, int keptCount) {
     if (!state.hasValue || keptCount <= 0) return;
-    final session = state.value!;
-    final filled = [for (final w in session.words) if (!w.isEmpty) w];
+    final collection = state.value!;
+    final filled = [for (final w in collection.words) if (!w.isEmpty) w];
     final rows = filled.sublist(max(0, filled.length - keptCount));
     for (final w in rows) {
       if (w.rowId.isEmpty) w.rowId = uuidV4();
     }
     final kept = atDone(dialogues, rows);
     if (kept.isEmpty) return;
-    if (session.publishedId != null && session.editToken != null) {
+    if (collection.publishedId != null && collection.editToken != null) {
       final importId = uuidV4();
       for (final d in kept) {
         d
@@ -307,8 +270,8 @@ class WordInputNotifier extends _$WordInputNotifier {
           ..pushState = PushState.pending;
       }
     }
-    session.dialogues = [...session.dialogues, ...kept];
-    state = AsyncData(session);
+    collection.dialogues = [...collection.dialogues, ...kept];
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
@@ -317,18 +280,18 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// the timestamps stay and the write goes straight to the store, as in
   /// [markShared].
   Future<void> setScenePicture(String dialogueId, String runId) async {
-    final session = state.valueOrNull;
-    if (session == null) return;
-    final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+    final collection = state.valueOrNull;
+    if (collection == null) return;
+    final dialogue = collection.dialogues.where((d) => d.id == dialogueId).firstOrNull;
     if (dialogue == null || dialogue.scenePictureRunId == runId) return;
     dialogue.scenePictureRunId = runId;
     // A shared session's page gets the picture too (ADR-0005).
-    if (session.publishedId != null && session.editToken != null) {
+    if (collection.publishedId != null && collection.editToken != null) {
       dialogue.picturePushState = PushState.pending;
     }
-    state = AsyncData(session);
-    final store = await ref.read(sessionStoreProvider.future);
-    await store.put(session);
+    state = AsyncData(collection);
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.put(collection);
   }
 
   /// Records a photo just kept for this session (good-looking-web T17). The
@@ -336,9 +299,9 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// never point at a photo the session does not list.
   void addSource(SessionSource photo) {
     if (!state.hasValue) return;
-    final session = state.value!;
-    session.sources.add(photo);
-    state = AsyncData(session);
+    final collection = state.value!;
+    collection.sources.add(photo);
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
@@ -351,22 +314,29 @@ class WordInputNotifier extends _$WordInputNotifier {
   String upsertSetSource(String setId, String name, String url) {
     final id = 'quizlet-$setId';
     if (!state.hasValue) return id;
-    final session = state.value!;
-    final existing = session.sources.where((s) => s.id == id).firstOrNull;
+    final collection = state.value!;
+    _putSetSource(collection, setId, name, url);
+    state = AsyncData(collection);
+    _scheduleSave();
+    return id;
+  }
+
+  static String _putSetSource(
+      WordCollection collection, String setId, String name, String url) {
+    final id = 'quizlet-$setId';
+    final existing = collection.sources.where((s) => s.id == id).firstOrNull;
     if (existing != null) {
       existing
         ..name = name
         ..url = url;
     } else {
-      session.sources.add(SessionSource()
+      collection.sources.add(SessionSource()
         ..id = id
         ..takenAt = DateTime.now()
         ..kind = SourceKind.set
         ..name = name
         ..url = url);
     }
-    state = AsyncData(session);
-    _scheduleSave();
     return id;
   }
 
@@ -380,29 +350,119 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// the photo panel's tile; a film listed without one gets it on a later
   /// import (owner, 2026-10-15).
   String upsertSubtitlesSource(String title, {String? poster}) {
-    final session = state.valueOrNull;
-    final existing = session?.sources
-        .where((s) => s.kind == SourceKind.subtitles && s.name == title)
-        .firstOrNull;
+    final collection = state.valueOrNull;
+    if (collection == null) return 'subtitles-${uuidV4()}';
+    final before = collection.sources.length;
+    final urlBefore = _subtitlesSource(collection, title)?.url;
+    final id = _putSubtitlesSource(collection, title, poster);
+    if (collection.sources.length != before ||
+        _subtitlesSource(collection, title)?.url != urlBefore) {
+      state = AsyncData(collection);
+      _scheduleSave();
+    }
+    return id;
+  }
+
+  static SessionSource? _subtitlesSource(WordCollection c, String title) => c
+      .sources
+      .where((s) => s.kind == SourceKind.subtitles && s.name == title)
+      .firstOrNull;
+
+  static String _putSubtitlesSource(
+      WordCollection collection, String title, String? poster) {
+    final existing = _subtitlesSource(collection, title);
     if (existing != null) {
-      if (existing.url == null && poster != null) {
-        existing.url = poster;
-        state = AsyncData(session!);
-        _scheduleSave();
-      }
+      if (existing.url == null && poster != null) existing.url = poster;
       return existing.id;
     }
     final id = 'subtitles-${uuidV4()}';
-    if (session == null) return id;
-    session.sources.add(SessionSource()
+    collection.sources.add(SessionSource()
       ..id = id
       ..takenAt = DateTime.now()
       ..kind = SourceKind.subtitles
       ..name = title
       ..url = poster);
-    state = AsyncData(session);
-    _scheduleSave();
     return id;
+  }
+
+  // ---- Late results (collections-screen ADR-0006, AC-11, AC-27) ----
+
+  /// A lookup that started in [collectionId] and finished after another
+  /// collection was opened: [change] is applied to the row with [rowId] in
+  /// that collection, in one atomic store update, also while it is in the
+  /// bin. A row the learner removed meanwhile is skipped. A row not stored
+  /// yet when the lookup started has no id: it is found by its [word] and
+  /// [translation] as they were then. False when the
+  /// collection was erased for good (the result is dropped and logged by the
+  /// store); the open collection is never touched.
+  Future<bool> updateRowIn(
+      String collectionId, String rowId, void Function(WordPair row) change,
+      {String word = '', String translation = ''}) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    return store.update(collectionId, (c) {
+      final row = c.words
+          .where((w) => rowId.isNotEmpty
+              ? w.rowId == rowId
+              : w.word == word && w.translation == translation)
+          .firstOrNull;
+      if (row != null) change(row);
+    });
+  }
+
+  /// Rows from a photo reading, a Quizlet import or a subtitle import that
+  /// started in [collectionId] and finished after another collection was
+  /// opened (ADR-0006). They are shaped as the screen shapes them in the open
+  /// collection: the [photo], [set] or [film] source joins that collection's
+  /// sources first and the rows point at it, they go after its last word,
+  /// each with a row id, and the subtitle [dialogues] follow the rows. False
+  /// when the collection was erased for good.
+  Future<bool> addWordsTo(
+    String collectionId,
+    List<WordPair> pairs, {
+    SessionSource? photo,
+    ({String id, String name, String url})? set,
+    String? film,
+    String? poster,
+    List<ImportedDialogue> dialogues = const [],
+  }) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    return store.update(collectionId, (c) {
+      String? sourceId;
+      if (photo != null) {
+        c.sources = [...c.sources, photo];
+        sourceId = photo.id;
+      } else if (set != null) {
+        c.sources = c.sources.toList();
+        sourceId = _putSetSource(c, set.id, set.name, set.url);
+      } else if (film != null) {
+        c.sources = c.sources.toList();
+        sourceId = _putSubtitlesSource(c, film, poster);
+      }
+      for (final p in pairs) {
+        if (sourceId != null) p.sourceId = sourceId;
+        if (p.rowId.isEmpty) p.rowId = uuidV4();
+      }
+      final words = c.words.toList();
+      while (words.isNotEmpty && words.last.isEmpty) {
+        words.removeLast();
+      }
+      c.words = [...words, ...pairs];
+      if (dialogues.isNotEmpty) {
+        final kept = atDone(dialogues, pairs);
+        if (kept.isNotEmpty) {
+          if (c.publishedId != null && c.editToken != null) {
+            final importId = uuidV4();
+            for (final d in kept) {
+              d
+                ..importId = importId
+                ..importRowIds = [for (final w in pairs) w.rowId]
+                ..pushState = PushState.pending;
+            }
+          }
+          c.dialogues = [...c.dialogues, ...kept];
+        }
+      }
+    });
   }
 
   /// Changes the note of the source [id] (notes-editing, owner 2026-10-15).
@@ -415,8 +475,8 @@ class WordInputNotifier extends _$WordInputNotifier {
     List<String>? links,
     List<String>? tags,
   }) {
-    final session = state.valueOrNull;
-    final source = session?.sources.where((s) => s.id == id).firstOrNull;
+    final collection = state.valueOrNull;
+    final source = collection?.sources.where((s) => s.id == id).firstOrNull;
     if (source == null) return;
     if (title != null) source.title = title.trim().isEmpty ? null : title;
     if (description != null) {
@@ -424,16 +484,16 @@ class WordInputNotifier extends _$WordInputNotifier {
     }
     if (links != null) source.links = [...links];
     if (tags != null) source.tags = [...tags];
-    state = AsyncData(session!);
+    state = AsyncData(collection!);
     _scheduleSave();
   }
 
   /// Sets the current session's own tags (notes-editing).
-  void setSessionTags(List<String> tags) {
-    final session = state.valueOrNull;
-    if (session == null) return;
-    session.tags = [...tags];
-    state = AsyncData(session);
+  void setCollectionTags(List<String> tags) {
+    final collection = state.valueOrNull;
+    if (collection == null) return;
+    collection.tags = [...tags];
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
@@ -441,10 +501,10 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// right after its source's rows). The main screen does not see this until
   /// it takes [takeEditedElsewhere].
   void insertAt(int index, WordPair pair) {
-    final session = state.valueOrNull;
-    if (session == null) return;
-    session.words.insert(index.clamp(0, session.words.length), pair);
-    state = AsyncData(session);
+    final collection = state.valueOrNull;
+    if (collection == null) return;
+    collection.words.insert(index.clamp(0, collection.words.length), pair);
+    state = AsyncData(collection);
     _scheduleSave();
   }
 
@@ -468,20 +528,20 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// not restart the 5-minute launch clock, and the write goes straight to the
   /// store rather than through the debounce.
   Future<void> markShared({String? publishedId, String? editToken}) async {
-    final session = state.valueOrNull;
-    if (session == null) return;
-    if (session.isShared &&
-        session.publishedId == publishedId &&
-        session.editToken == editToken) {
+    final collection = state.valueOrNull;
+    if (collection == null) return;
+    if (collection.isShared &&
+        collection.publishedId == publishedId &&
+        collection.editToken == editToken) {
       return;
     }
-    session
+    collection
       ..isShared = true
       ..publishedId = publishedId
       ..editToken = editToken;
-    state = AsyncData(session);
-    final store = await ref.read(sessionStoreProvider.future);
-    await store.put(session);
+    state = AsyncData(collection);
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.put(collection);
   }
 
   /// Records how far the dialogues' delivery to the shared link got
@@ -490,24 +550,24 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// [markShared].
   Future<void> updateDialogues(
       List<FilmDialogue> Function(List<FilmDialogue>) change) async {
-    final session = state.valueOrNull;
-    if (session == null) return;
-    session.dialogues = change(session.dialogues);
-    state = AsyncData(session);
-    final store = await ref.read(sessionStoreProvider.future);
-    await store.put(session);
+    final collection = state.valueOrNull;
+    if (collection == null) return;
+    collection.dialogues = change(collection.dialogues);
+    state = AsyncData(collection);
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.put(collection);
   }
 
   /// Records that a publish carried the dialogues in [sent]
   /// (get-words-from-subtitles-improvment ADR-0005): see [afterPublish]. Not
   /// a content change, so written like [markShared].
   Future<void> markDialoguesPublished(Set<String> sent) async {
-    final session = state.valueOrNull;
-    if (session == null || session.dialogues.isEmpty) return;
-    session.dialogues = afterPublish(session.dialogues, sent: sent);
-    state = AsyncData(session);
-    final store = await ref.read(sessionStoreProvider.future);
-    await store.put(session);
+    final collection = state.valueOrNull;
+    if (collection == null || collection.dialogues.isEmpty) return;
+    collection.dialogues = afterPublish(collection.dialogues, sent: sent);
+    state = AsyncData(collection);
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.put(collection);
   }
 
   /// Cancels any pending debounced save and writes immediately. A no-op when
@@ -518,7 +578,7 @@ class WordInputNotifier extends _$WordInputNotifier {
     _saveTimer = null;
     if (!_dirty || !state.hasValue) return;
     _dirty = false;
-    final store = await ref.read(sessionStoreProvider.future);
+    final store = await ref.read(collectionStoreProvider.future);
     await store.put(state.value!);
   }
 
@@ -526,20 +586,17 @@ class WordInputNotifier extends _$WordInputNotifier {
   ///
   /// The timestamps are stamped **here**, at the mutation, not in [flush]. They
   /// have to be: `flush()` also runs on `paused`, so stamping there made every
-  /// background or force-quit look like an edit, the session never aged past
-  /// the 5-minute window, and the RESTORE snackbar could never fire.
+  /// background or force-quit look like an edit, a session
+  /// looked edited when nobody had touched it.
   void _scheduleSave() {
-    final session = state.value;
-    if (session == null) return;
+    final collection = state.value;
+    if (collection == null) return;
     // Dialogues follow their words in the same save (get-words-from-
     // subtitles-improvment AC-11, AC-26); links only shrink.
-    if (session.dialogues.isNotEmpty) session.dialogues = afterEdit(session);
+    if (collection.dialogues.isNotEmpty) collection.dialogues = afterEdit(collection);
     final now = DateTime.now();
-    session.updatedAt = now;
-    session.lastLocalModifiedAt = now;
-    // The user has started working in the new session, so the previous one is
-    // history now — RESTORE must not be able to throw these words away.
-    restorableSessionId = null;
+    collection.updatedAt = now;
+    collection.lastLocalModifiedAt = now;
     _dirty = true;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(milliseconds: 500), flush);

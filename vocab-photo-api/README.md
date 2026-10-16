@@ -221,9 +221,18 @@ Body as JSON:
   "entries": [ { "word": "…", "translation": "…", "definition": "…", "sourceId": "<photo id>" } ],
   "sources": [ { "id": "<photo id>", "order": 0 } ],
   "publishedId": "<id of an earlier publish>",
-  "editToken": "<the token that publish returned>"
+  "editToken": "<the token that publish returned>",
+  "title": "<the collection's name>"
 }
 ```
+
+**Title (collections-screen, ADR-0008).** `title` is optional: the collection's name, 1–60
+characters (Unicode code points), not only spaces, no line breaks, stored exactly as typed. A
+create stores it, a republish with the edit token replaces it (no `title` stores `NULL`), and
+dialogue and picture deliveries never change it. Anything else is a `400` with
+`"code": "title_invalid"`. The shared page shows it as its heading and in its tab title
+(`<name> — N words`); `NULL` keeps "Vocabulary". Stored by migration `0007_session_title`
+(nullable `sessions.title`).
 
 Only `entries` is required — older apps send nothing else and publish exactly as before.
 `detail` (the app's word detail mode when publishing) and `definition` are optional, and a
@@ -724,6 +733,20 @@ an old Worker refuses the `kind` field. Needs the owner's Cloudflare login; run 
 
 Revert the migration by hand with `migrations/down/0003_set_sources.sql` (newest first, before
 `0002`).
+
+### Deploying collections-screen (checklist, owner)
+
+1. **D1 migration first.** Applies `0007_session_title` (adds the nullable `sessions.title`;
+   existing pages keep showing "Vocabulary"):
+   ```bash
+   npx wrangler d1 migrations apply DB --remote
+   npx wrangler d1 migrations list DB --remote      # → "No migrations to apply!"
+   ```
+2. **Worker.** `npm run test:full && npm run typecheck && npm run deploy`. An app that sends no
+   `title` publishes exactly as before, so the Worker can go out before the app.
+3. **Then** release the app build that sends the collection's name.
+
+Revert by hand with `migrations/down/0007_session_title.sql`.
 
 ### Deploying words-from-subtitles (checklist)
 

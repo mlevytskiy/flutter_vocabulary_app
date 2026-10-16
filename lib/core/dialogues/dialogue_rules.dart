@@ -4,7 +4,7 @@
 library;
 
 import '../models/film_dialogue.dart';
-import '../models/session.dart';
+import '../models/word_collection.dart';
 import '../models/word_pair.dart';
 import '../services/source_photo_store.dart' show uuidV4;
 import 'dialogue_match.dart';
@@ -48,14 +48,14 @@ List<FilmDialogue> atDone(List<ImportedDialogue> dialogues, List<WordPair> kept,
 /// a deleted row leaves; an edited word stays only where it still appears; a
 /// dialogue with no words left disappears, or is hidden while its delivery is
 /// pending (ADR-0005). Links only shrink: no row ever joins here. Returns
-/// copies; [session] is not changed.
-List<FilmDialogue> afterEdit(Session session) {
+/// copies; [collection] is not changed.
+List<FilmDialogue> afterEdit(WordCollection collection) {
   final rows = {
-    for (final w in session.words)
+    for (final w in collection.words)
       if (!w.isEmpty) w.rowId: w,
   };
   final out = <FilmDialogue>[];
-  for (final dialogue in session.dialogues) {
+  for (final dialogue in collection.dialogues) {
     final d = dialogue.copy()
       ..wordRowIds = [
         for (final id in dialogue.wordRowIds)

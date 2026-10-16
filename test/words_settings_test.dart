@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/offered_ai.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -87,18 +87,18 @@ StoryStep _step(String role, String modelId, double? price,
 
 StoryRun _run(String id, List<StoryStep> steps) => StoryRun()
   ..runId = id
-  ..sessionId = 's'
+  ..collectionId = 's'
   ..groupId = 'g'
   ..groupName = 'All words'
   ..startedAt = DateTime(2026, 10, 7)
   ..steps = steps;
 
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 void main() {
@@ -347,10 +347,10 @@ void main() {
     testWidgets('looks like the main screen\'s settings button and opens Words settings',
         (tester) async {
       SharedPreferences.setMockInitialValues({});
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [WordPair(word: 'coffee', translation: 'кава')];
       final container = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
+        wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
         offeredAisProvider.overrideWith((ref) async => _offered),
         storyRunsProvider.overrideWith((ref) => Stream.value(const [])),
       ]);

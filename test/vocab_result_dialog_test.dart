@@ -147,7 +147,7 @@ void main() {
     expect(find.textContaining('Read 90 of 120 cards'), findsOneWidget);
     expect(
         find.textContaining(
-            '3 cards skipped: already in the session, repeated or without text'),
+            '3 cards skipped: already in the collection, repeated or without text'),
         findsOneWidget);
     expect(find.text('reluctant'), findsOneWidget);
     expect(find.textContaining('photo'), findsNothing);

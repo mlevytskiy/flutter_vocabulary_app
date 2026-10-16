@@ -8,7 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../config/vocab_api_config.dart';
 import '../../features/word_input/word_input_notifier.dart';
 import '../models/film_dialogue.dart';
-import '../models/session.dart';
+import '../models/word_collection.dart';
 import '../providers.dart';
 
 part 'dialogue_push.g.dart';
@@ -89,18 +89,18 @@ class DialoguePushService {
 final dialoguePushPauseProvider =
     Provider<Duration>((ref) => const Duration(seconds: 2));
 
-/// The append body of the import [importId] of [session]: the import's rows
+/// The append body of the import [importId] of [collection]: the import's rows
 /// that still exist, in session order, and its dialogues that still have
 /// words, each naming its rows by position. Null when none of its rows is
 /// left, so there is nothing to send (ADR-0005).
-Map<String, dynamic>? appendBody(Session session, String importId) {
+Map<String, dynamic>? appendBody(WordCollection collection, String importId) {
   final ofImport = [
-    for (final d in session.dialogues)
+    for (final d in collection.dialogues)
       if (d.importId == importId) d,
   ];
   final importRows = {for (final d in ofImport) ...d.importRowIds};
   final rows = [
-    for (final w in session.words)
+    for (final w in collection.words)
       if (!w.isEmpty && importRows.contains(w.rowId)) w,
   ];
   if (rows.isEmpty) return null;
@@ -151,7 +151,7 @@ List<FilmDialogue> pictureDone(List<FilmDialogue> dialogues, String dialogueId) 
         d.id == dialogueId ? (d.copy()..picturePushState = PushState.delivered) : d,
     ];
 
-bool _isPending(Session s) =>
+bool _isPending(WordCollection s) =>
     s.publishedId != null &&
     s.editToken != null &&
     s.dialogues.any((d) =>
@@ -186,9 +186,9 @@ class DialoguePush extends _$DialoguePush {
       _timer?.cancel();
     });
     ref.listen(wordInputNotifierProvider, (_, next) {
-      final session = next.valueOrNull;
+      final collection = next.valueOrNull;
       // A retry already waiting picks this up too.
-      if (session != null && _isPending(session) && _timer == null) {
+      if (collection != null && _isPending(collection) && _timer == null) {
         unawaited(run());
       }
     });
@@ -237,24 +237,24 @@ class DialoguePush extends _$DialoguePush {
 
   /// Returns true when something should be tried again.
   Future<bool> _pass() async {
-    final store = await ref.read(sessionStoreProvider.future);
+    final store = await ref.read(collectionStoreProvider.future);
     final current = await ref.read(wordInputNotifierProvider.future);
     final ids = <String>[
-      current.sessionId,
+      current.collectionId,
       for (final s in await store.nonEmpty())
-        if (s.sessionId != current.sessionId) s.sessionId,
+        if (s.collectionId != current.collectionId) s.collectionId,
     ];
     var retry = false;
     for (final id in ids) {
       if (_disposed) return false;
-      final session = await _read(id);
-      if (session == null || !_isPending(session)) continue;
-      if (await _deliver(session)) retry = true;
+      final collection = await _read(id);
+      if (collection == null || !_isPending(collection)) continue;
+      if (await _deliver(collection)) retry = true;
     }
     return retry;
   }
 
-  Future<bool> _deliver(Session first) async {
+  Future<bool> _deliver(WordCollection first) async {
     final service = ref.read(dialoguePushServiceProvider);
     final publishedId = first.publishedId!;
     final editToken = first.editToken!;
@@ -265,9 +265,9 @@ class DialoguePush extends _$DialoguePush {
         if (d.pushState == PushState.pending && d.importId != null) d.importId!,
     };
     for (final importId in imports) {
-      final session = await _read(first.sessionId);
-      if (session == null || _disposed) return false;
-      final body = appendBody(session, importId);
+      final collection = await _read(first.collectionId);
+      if (collection == null || _disposed) return false;
+      final body = appendBody(collection, importId);
       final outcome = body == null
           ? PushOutcome.delivered
           : await service.append(publishedId, editToken, body);
@@ -275,12 +275,12 @@ class DialoguePush extends _$DialoguePush {
         retry = true;
         continue;
       }
-      await _change(first.sessionId, (ds) => importDone(ds, importId));
+      await _change(first.collectionId, (ds) => importDone(ds, importId));
     }
 
-    final session = await _read(first.sessionId);
-    if (session == null) return retry;
-    for (final d in session.dialogues) {
+    final collection = await _read(first.collectionId);
+    if (collection == null) return retry;
+    for (final d in collection.dialogues) {
       if (_disposed) return false;
       if (d.pushState != PushState.delivered ||
           d.picturePushState != PushState.pending ||
@@ -295,7 +295,7 @@ class DialoguePush extends _$DialoguePush {
         retry = true;
         continue;
       }
-      await _change(first.sessionId, (ds) => pictureDone(ds, d.id));
+      await _change(first.collectionId, (ds) => pictureDone(ds, d.id));
     }
     return retry;
   }
@@ -311,23 +311,20 @@ class DialoguePush extends _$DialoguePush {
   }
 
   /// The current session's live object, or a History session from the store.
-  Future<Session?> _read(String sessionId) async {
+  Future<WordCollection?> _read(String collectionId) async {
     final current = await ref.read(wordInputNotifierProvider.future);
-    if (current.sessionId == sessionId) return current;
-    return (await ref.read(sessionStoreProvider.future)).byId(sessionId);
+    if (current.collectionId == collectionId) return current;
+    return (await ref.read(collectionStoreProvider.future)).byId(collectionId);
   }
 
-  Future<void> _change(String sessionId,
+  Future<void> _change(String collectionId,
       List<FilmDialogue> Function(List<FilmDialogue>) change) async {
     final current = await ref.read(wordInputNotifierProvider.future);
-    if (current.sessionId == sessionId) {
+    if (current.collectionId == collectionId) {
       await ref.read(wordInputNotifierProvider.notifier).updateDialogues(change);
       return;
     }
-    final store = await ref.read(sessionStoreProvider.future);
-    final session = await store.byId(sessionId);
-    if (session == null) return;
-    session.dialogues = change(session.dialogues);
-    await store.put(session);
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.update(collectionId, (stored) => stored.dialogues = change(stored.dialogues));
   }
 }

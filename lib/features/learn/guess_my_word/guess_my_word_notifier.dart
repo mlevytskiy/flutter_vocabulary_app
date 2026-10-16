@@ -124,10 +124,10 @@ class GuessMyWord extends _$GuessMyWord {
   Timer? _next;
 
   @override
-  Future<GuessState> build(String? sessionId, String groupId) async {
+  Future<GuessState> build(String? collectionId, String groupId) async {
     ref.onDispose(() => _next?.cancel());
     final random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     // S-51: a word to learn with a word, a translation and a row id; the earlier of equal words stays.
     final seen = <String>{};
     final candidates = [
@@ -160,7 +160,7 @@ class GuessMyWord extends _$GuessMyWord {
 
   /// Retry after a failed load: read the words and ask the Worker again.
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
     ref.invalidateSelf();
   }
 

@@ -10,14 +10,14 @@ import 'pick_the_answer_notifier.dart';
 /// question at a time with four options inside the shared frame (S-30). The
 /// phase comes from the notifier; this widget draws only the question body.
 class PickTheAnswerScreen extends ConsumerWidget {
-  const PickTheAnswerScreen({super.key, this.sessionId, required this.groupId});
+  const PickTheAnswerScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = pickTheAnswerProvider(sessionId, groupId);
+    final provider = pickTheAnswerProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

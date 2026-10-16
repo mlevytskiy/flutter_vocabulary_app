@@ -14,14 +14,14 @@ import 'quiz_notifier.dart';
 /// hint, no speaker, no right or wrong until the summary. The phase comes
 /// from the notifier; this widget draws only the question body.
 class QuizScreen extends ConsumerWidget {
-  const QuizScreen({super.key, this.sessionId, required this.groupId});
+  const QuizScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = quizProvider(sessionId, groupId);
+    final provider = quizProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -16,11 +16,11 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 
 /// learn-match-synonyms: the screen (AC-01, AC-03 – AC-08, AC-13 – AC-22).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 /// Counts every call; answers "like <rowId>" unless told otherwise.
@@ -47,11 +47,11 @@ class _Api implements LearnApiService {
   dynamic noSuchMethod(Invocation i) => throw StateError('unexpected call: ${i.memberName}');
 }
 
-Session _session(int count, {String prefix = 'word'}) {
+WordCollection _collection(int count, {String prefix = 'word'}) {
   final words = [
     for (var i = 0; i < count; i++) WordPair(word: '$prefix$i', translation: 'слово$i', rowId: 'r$i'),
   ];
-  return Session.create()
+  return WordCollection.create()
     ..words = words
     ..groups = [
       WordGroup()
@@ -64,16 +64,16 @@ Session _session(int count, {String prefix = 'word'}) {
 void main() {
   late _Api api;
 
-  Future<ProviderContainer> pump(WidgetTester tester, Session session,
-      {String? sessionId, Size size = const Size(800, 1600), bool settle = true}) async {
+  Future<ProviderContainer> pump(WidgetTester tester, WordCollection collection,
+      {String? collectionId, Size size = const Size(800, 1600), bool settle = true}) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final container = ProviderContainer(overrides: [
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(api),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
-      sessionByIdProvider('hist').overrideWith((ref) async => session),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -83,7 +83,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => exerciseScreen('match-synonyms', sessionId, 'g'),
+                builder: (_) => exerciseScreen('match-synonyms', collectionId, 'g'),
               )),
               child: const Text('learn page'),
             ),
@@ -117,7 +117,7 @@ void main() {
 
   testWidgets('AC-01: title, loading, then the line, 6 words in group order and 6 synonyms, no counter', (tester) async {
     api.gate = Completer<void>();
-    await pump(tester, _session(6), settle: false);
+    await pump(tester, _collection(6), settle: false);
     expect(find.text('Match synonyms'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     api.gate!.complete();
@@ -133,7 +133,7 @@ void main() {
   });
 
   testWidgets('AC-04 – AC-08, AC-20: pairs lock, misses count, the summary opens by itself; Done returns', (tester) async {
-    await pump(tester, _session(4));
+    await pump(tester, _collection(4));
     await link(tester, 'r0', 'r1'); // wrong
     await tester.pumpAndSettle();
     await link(tester, 'r0', 'r2'); // wrong again
@@ -169,7 +169,7 @@ void main() {
   });
 
   testWidgets('AC-15, AC-20: 8 words show "Round 1 of 2"; Next round opens a fresh board', (tester) async {
-    await pump(tester, _session(8));
+    await pump(tester, _collection(8));
     expect(find.text('Round 1 of 2'), findsOneWidget);
     for (var i = 0; i < 4; i++) {
       await link(tester, 'r$i', 'r$i');
@@ -185,7 +185,7 @@ void main() {
   });
 
   testWidgets('AC-14: a long press on a word shows its translation and counts nothing', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await tester.longPress(left('r1'));
     await tester.pump();
     expect(find.text('слово1'), findsOneWidget);
@@ -204,7 +204,7 @@ void main() {
   testWidgets('AC-13: long synonyms wrap on a phone and the board scrolls without overflow', (tester) async {
     const long = 'a rather long phrase that keeps going for a while';
     api.overrides = {for (var i = 0; i < 6; i++) 'word$i': '$long $i'};
-    await pump(tester, _session(6), size: const Size(360, 640));
+    await pump(tester, _collection(6), size: const Size(360, 640));
     expect(tester.takeException(), isNull);
     await link(tester, 'r5', 'r5');
     expect(find.descendant(of: left('r5'), matching: find.text('1')), findsOneWidget);
@@ -212,7 +212,7 @@ void main() {
 
   testWidgets('AC-16: too few usable after the answers shows the synonym line and Back', (tester) async {
     api.overrides = {'word0': null, 'word1': null};
-    await pump(tester, _session(4));
+    await pump(tester, _collection(4));
     expect(find.text('Not enough words with synonyms for this group'), findsOneWidget);
     expect(find.text('Tap a word, then its synonym'), findsNothing);
     await tester.tap(find.text('Back'));
@@ -221,7 +221,7 @@ void main() {
   });
 
   testWidgets('AC-17: fewer than 3 words to learn shows the default line and asks no one', (tester) async {
-    await pump(tester, _session(2));
+    await pump(tester, _collection(2));
     expect(find.text('Not enough words for this exercise'), findsOneWidget);
     expect(find.text('Back'), findsOneWidget);
     expect(api.calls, isEmpty);
@@ -229,7 +229,7 @@ void main() {
 
   testWidgets('AC-18: offline shows the failed line and Retry; Retry asks again and starts round 1', (tester) async {
     api.error = LearnApiException(LearnApiError.network, 'offline');
-    await pump(tester, _session(4));
+    await pump(tester, _collection(4));
     expect(find.text('Could not load the exercise. Check the connection and try again.'), findsOneWidget);
     expect(find.text('Tap a word, then its synonym'), findsNothing);
     api.error = null;
@@ -241,14 +241,14 @@ void main() {
 
   testWidgets('AC-18: no exercise storage on the Worker shows the same line', (tester) async {
     api.error = LearnApiException(LearnApiError.unavailable, 'no storage');
-    await pump(tester, _session(4));
+    await pump(tester, _collection(4));
     expect(find.text('Could not load the exercise. Check the connection and try again.'), findsOneWidget);
     expect(find.text('Retry'), findsOneWidget);
   });
 
   testWidgets('AC-19: the day limit shows its line and Back; too many requests shows its line and Retry', (tester) async {
     api.error = LearnApiException(LearnApiError.dayLimit, 'cap');
-    await pump(tester, _session(4));
+    await pump(tester, _collection(4));
     expect(find.text("Today's exercise limit is reached. Try again tomorrow."), findsOneWidget);
     expect(find.text('Back'), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
@@ -262,11 +262,11 @@ void main() {
   });
 
   testWidgets('AC-21, AC-22: a History session is used and unchanged; Back keeps nothing', (tester) async {
-    final hist = _session(4, prefix: 'old');
+    final hist = _collection(4, prefix: 'old');
     final before = hist.words.map((w) => '${w.word}|${w.translation}|${w.definition}|${w.rowId}').toList();
     final groups = hist.groups.map((g) => '${g.id}|${g.rowIds}').toList();
     final updated = hist.updatedAt;
-    await pump(tester, hist, sessionId: 'hist');
+    await pump(tester, hist, collectionId: 'hist');
     expect(api.calls.single.map((w) => (w.word, w.translation)), [
       for (var i = 0; i < 4; i++) ('old$i', 'слово$i'),
     ]);

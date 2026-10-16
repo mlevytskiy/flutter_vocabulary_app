@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Superseded
 owner: "Maksym"
 reviewers: ["Maksym (Tech Lead)"]
 updated_at: "2026-09-29"
@@ -9,7 +9,7 @@ ticket: "spec AC-07b"
 
 # 0003 — Ignore lookup results that return after a switch
 
-- **Status:** Accepted
+- **Status:** Superseded by collections-screen [ADR-0006](../../collections-screen/adr/0006-deliver-late-results-into-their-own-collection-through-an-atomic-store-update.md) (2026-10-16): a late result is written into the collection it started in through `CollectionStore.update`
 - **Date:** 2026-09-29
 - **Deciders:** Claude (easy-depth assumption, open to the owner's veto)
 

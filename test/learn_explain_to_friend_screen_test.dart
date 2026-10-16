@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
@@ -22,11 +22,11 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 /// learn-explain-to-friend: the screen in both modes (AC-01, AC-02, AC-04 –
 /// AC-30, AC-33, AC-34, AC-36 – AC-38; §6 call counts, countdown, timing).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 class _Api implements LearnApiService {
@@ -48,34 +48,34 @@ class _Api implements LearnApiService {
 }
 
 class _Sink implements ExamResultSink {
-  final records = <({String? sessionId, String rowId, WordResultLabel label})>[];
+  final records = <({String? collectionId, String rowId, WordResultLabel label})>[];
 
   @override
   Future<void> record({
-    required String? sessionId,
+    required String? collectionId,
     required String rowId,
     required String exerciseId,
     required WordResultLabel label,
   }) {
     expect(exerciseId, 'explain-to-friend');
-    records.add((sessionId: sessionId, rowId: rowId, label: label));
+    records.add((collectionId: collectionId, rowId: rowId, label: label));
     return Completer<void>().future; // never completes: the screen never waits for it
   }
 
   @override
-  Map<String, WordResult> latest(Session session) => const {};
+  Map<String, WordResult> latest(WordCollection collection) => const {};
 }
 
 const _typeText = 'Type it in English in 90 seconds. The AI checks it.';
 const _friendText = 'Say it aloud in 30 seconds. The person next to you decides. Results are not saved.';
 const _checkFailed = 'Could not check the sentence. Check the connection and try again.';
 
-Session _session(int count, {List<String>? names}) {
+WordCollection _collection(int count, {List<String>? names}) {
   final words = [
     for (var i = 0; i < count; i++)
       WordPair(word: names?[i] ?? 'word$i', translation: 'берег$i', rowId: 'r$i')..definition = 'def$i',
   ];
-  return Session.create()
+  return WordCollection.create()
     ..words = words
     ..groups = [
       WordGroup()
@@ -96,19 +96,19 @@ void main() {
     sink = _Sink();
   });
 
-  Future<void> pump(WidgetTester tester, Session session, {String? sessionId, Future<List<WordPair>> Function()? read}) async {
+  Future<void> pump(WidgetTester tester, WordCollection collection, {String? collectionId, Future<List<WordPair>> Function()? read}) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    openedFor = sessionId;
+    openedFor = collectionId;
     container = ProviderContainer(overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
-      sessionByIdProvider('hist').overrideWith((ref) async => session),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      collectionByIdProvider('hist').overrideWith((ref) async => collection),
       if (read != null)
-        exerciseWordsProvider(sessionId, 'g').overrideWith((ref) async => (group: await read(), others: const <WordPair>[])),
+        exerciseWordsProvider(collectionId, 'g').overrideWith((ref) async => (group: await read(), others: const <WordPair>[])),
     ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -118,7 +118,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => exerciseScreen('explain-to-friend', sessionId, 'g'),
+                builder: (_) => exerciseScreen('explain-to-friend', collectionId, 'g'),
               )),
               child: const Text('learn page'),
             ),
@@ -154,7 +154,7 @@ void main() {
 
   group('opening and mode', () {
     testWidgets('AC-01: the title and the mode question, Type first; no word yet; no Worker call', (tester) async {
-      await pump(tester, _session(8));
+      await pump(tester, _collection(8));
       expect(find.widgetWithText(AppBar, 'Explain it to a friend'), findsOneWidget);
       expect(find.text('How will you explain the words?'), findsOneWidget);
       expect(find.text(_typeText), findsOneWidget);
@@ -169,7 +169,7 @@ void main() {
 
     for (final mode in ['Type', 'With a friend']) {
       testWidgets('AC-02: $mode starts "Word 1 of 4"; round 2 is the same mode without the question', (tester) async {
-        await pump(tester, _session(8));
+        await pump(tester, _collection(8));
         await tapText(tester, mode);
         expect(find.text('Word 1 of 4'), findsOneWidget);
         expect(find.text('How will you explain the words?'), findsNothing);
@@ -186,7 +186,7 @@ void main() {
     }
 
     testWidgets('AC-04: under 3 usable words shows only Not enough and Back, no mode question', (tester) async {
-      await pump(tester, _session(2));
+      await pump(tester, _collection(2));
       expect(find.text('Not enough words for this exercise'), findsOneWidget);
       expect(find.text('How will you explain the words?'), findsNothing);
       await tapText(tester, 'Back');
@@ -196,7 +196,7 @@ void main() {
     });
 
     testWidgets('AC-05: a word without a translation is never asked', (tester) async {
-      final s = _session(4);
+      final s = _collection(4);
       s.words[1].translation = '';
       await pump(tester, s);
       await tapText(tester, 'With a friend');
@@ -206,7 +206,7 @@ void main() {
 
     testWidgets('AC-06: a failed read shows the load line and Retry; Retry then shows the mode question', (tester) async {
       var fail = true;
-      final s = _session(3);
+      final s = _collection(3);
       await pump(tester, s, read: () async {
         if (fail) throw StateError('read failed');
         return s.words;
@@ -222,7 +222,7 @@ void main() {
 
   group('Type', () {
     testWidgets('AC-07, §6: counter, word, prompt, 1:30, field with Send, Skip; no hint of any kind', (tester) async {
-      await pump(tester, _session(8));
+      await pump(tester, _collection(8));
       await tapText(tester, 'Type');
       final card = state().card!;
       expect(find.text('Word 1 of 4'), findsOneWidget);
@@ -242,7 +242,7 @@ void main() {
     });
 
     testWidgets('AC-08, AC-09: the countdown counts on while typing and after a refused Send', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await tester.pump(const Duration(seconds: 1));
       expect(find.text('1:29'), findsOneWidget);
@@ -257,7 +257,7 @@ void main() {
     });
 
     testWidgets('AC-10: over 300 characters is refused and the countdown runs', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'word ' * 70);
       expect(find.text('Keep it under three hundred characters'), findsOneWidget);
@@ -269,7 +269,7 @@ void main() {
     testWidgets('AC-11, AC-14, §6: Send at 0:40 stops the countdown; Checking…, then Good and Next; task explain, no extra; known',
         (tester) async {
       api.checkGate = Completer();
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       final card = state().card!;
       await tester.pump(const Duration(seconds: 50));
@@ -294,7 +294,7 @@ void main() {
     });
 
     testWidgets('AC-12: at zero the typed text is sent once and the keyboard closes', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await tester.enterText(find.byType(TextField), 'the land at the edge of the sea');
       await tester.pump(const Duration(seconds: 90));
@@ -309,7 +309,7 @@ void main() {
 
     for (final (name, text) in [('empty', ''), ('one word', 'land'), ('over 300', 'word ' * 70)]) {
       testWidgets('AC-13: at zero with $name text: nothing sent, read-only, no Skip, Time is up, Next, repeat', (tester) async {
-        await pump(tester, _session(3));
+        await pump(tester, _collection(3));
         await tapText(tester, 'Type');
         await tester.enterText(find.byType(TextField), text);
         await tester.pump(const Duration(seconds: 90));
@@ -324,7 +324,7 @@ void main() {
 
     testWidgets('AC-15: grammar errors are Good with no corrected text', (tester) async {
       api.replies.add((usesWord: false, usesTask: true, ok: false, fixed: 'The land which is near the sea.', note: 'Spelling.'));
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'the land wich is near see');
       expect(find.text('Good'), findsOneWidget);
@@ -333,7 +333,7 @@ void main() {
     });
 
     testWidgets('AC-16: the word in any case is refused with its note, even when the check calls it fine', (tester) async {
-      await pump(tester, _session(3, names: ['shore', 'borrow', 'allow']));
+      await pump(tester, _collection(3, names: ['shore', 'borrow', 'allow']));
       await tapText(tester, 'Type');
       final word = state().card!.word;
       await send(tester, '${word.toUpperCase()}S are things.');
@@ -343,7 +343,7 @@ void main() {
     });
 
     testWidgets('AC-17: Ukrainian letters are refused', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'it is берег, where sea meets land');
       expect(find.text('Explain it in English only.'), findsOneWidget);
@@ -354,7 +354,7 @@ void main() {
       api.replies
         ..add((usesWord: false, usesTask: false, ok: false, fixed: '', note: 'That is a money bank; explain the side of a river.'))
         ..add((usesWord: false, usesTask: false, ok: false, fixed: '', note: ''));
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'A place where you keep your money.');
       expect(find.text('That is a money bank; explain the side of a river.'), findsOneWidget);
@@ -366,7 +366,7 @@ void main() {
     });
 
     testWidgets('AC-19: a checked word cannot be sent again; only Next moves on', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'The land by the sea.');
       await tester.testTextInput.receiveAction(TextInputAction.send);
@@ -378,7 +378,7 @@ void main() {
     });
 
     testWidgets('AC-20: Skip sends nothing, hides the countdown, Skipped and Next; repeat', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await tapText(tester, 'Skip');
       expect(api.checks, isEmpty);
@@ -391,7 +391,7 @@ void main() {
 
     testWidgets('AC-21, AC-22: a failed check: error, Retry, Skip, no countdown; Retry later resends exactly it', (tester) async {
       api.replies.add(LearnApiException(LearnApiError.network, 'x'));
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'The land by the sea.');
       expect(find.text(_checkFailed), findsOneWidget);
@@ -410,7 +410,7 @@ void main() {
 
     testWidgets('AC-23: too many requests at zero shows its line and Retry resends', (tester) async {
       api.replies.add(LearnApiException(LearnApiError.rateLimited, 'x'));
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await tester.enterText(find.byType(TextField), 'The land by the sea.');
       await tester.pump(const Duration(seconds: 90));
@@ -427,7 +427,7 @@ void main() {
       api.replies
         ..add(LearnApiException(LearnApiError.dayLimit, 'x'))
         ..add(LearnApiException(LearnApiError.dayLimit, 'x'));
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'Type');
       await send(tester, 'The land by the sea.');
       expect(find.text("Today's exercise limit is reached. Try again tomorrow."), findsOneWidget);
@@ -443,7 +443,7 @@ void main() {
 
     testWidgets('AC-33: leaving with text typed and a check running records nothing more; nothing at zero; reopening asks again',
         (tester) async {
-      await pump(tester, _session(4));
+      await pump(tester, _collection(4));
       await tapText(tester, 'Type');
       await tapText(tester, 'Skip');
       await tapText(tester, 'Next');
@@ -473,13 +473,13 @@ void main() {
     });
 
     testWidgets('AC-34: a History session is used; results go to it; the session is unchanged', (tester) async {
-      final s = _session(3);
+      final s = _collection(3);
       final before = s.words.map((w) => w.word).toList();
-      await pump(tester, s, sessionId: 'hist');
+      await pump(tester, s, collectionId: 'hist');
       await tapText(tester, 'Type');
       await send(tester, 'The land by the sea.');
       expect(api.checks.single.word, state().card!.word);
-      expect(sink.records.single.sessionId, 'hist');
+      expect(sink.records.single.collectionId, 'hist');
       expect(s.words.map((w) => w.word).toList(), before);
       expect(s.groups.single.rowIds, ['r0', 'r1', 'r2']);
     });
@@ -489,7 +489,7 @@ void main() {
         ..add((usesWord: false, usesTask: true, ok: true, fixed: '', note: ''))
         ..add((usesWord: false, usesTask: false, ok: false, fixed: '', note: 'Not it.'))
         ..add(LearnApiException(LearnApiError.network, 'x'));
-      await pump(tester, _session(5));
+      await pump(tester, _collection(5));
       await tapText(tester, 'Type');
       await send(tester, 'Land by the sea.');
       await tapText(tester, 'Next');
@@ -521,7 +521,7 @@ void main() {
 
   group('With a friend', () {
     testWidgets('AC-26: counter, word, aloud prompt, 0:30, Done and Skip; no field, translation or definition', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'With a friend');
       final card = state().card!;
       expect(find.text('Word 1 of 3'), findsOneWidget);
@@ -537,7 +537,7 @@ void main() {
 
     testWidgets('AC-27, AC-28: at zero the question shows; Understood is final and known; a second tap changes nothing',
         (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'With a friend');
       await tester.pump(const Duration(seconds: 30));
       expect(find.byType(ExamCountdown), findsNothing);
@@ -557,7 +557,7 @@ void main() {
     });
 
     testWidgets('AC-27, AC-28: Done early asks; Not yet is repeat', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'With a friend');
       await tester.pump(const Duration(seconds: 5));
       await tapText(tester, 'Done');
@@ -570,7 +570,7 @@ void main() {
     });
 
     testWidgets('AC-29: Skip before the tap shows Skipped and Next', (tester) async {
-      await pump(tester, _session(3));
+      await pump(tester, _collection(3));
       await tapText(tester, 'With a friend');
       await tapText(tester, 'Skip');
       expect(find.text('Skipped'), findsOneWidget);
@@ -581,7 +581,7 @@ void main() {
     });
 
     testWidgets('AC-30, AC-37, AC-38: a full friend exam: summary, no Worker call, no result saved', (tester) async {
-      await pump(tester, _session(6));
+      await pump(tester, _collection(6));
       await tapText(tester, 'With a friend');
       await tapText(tester, 'Done');
       await tapText(tester, 'Understood');

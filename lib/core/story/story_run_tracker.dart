@@ -6,7 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../features/word_input/word_input_notifier.dart';
 import '../models/film_dialogue.dart';
 import '../models/offered_ai.dart';
-import '../models/session.dart';
+import '../models/word_collection.dart';
 import '../models/story_run.dart';
 import '../models/word_group.dart';
 import '../providers.dart';
@@ -99,26 +99,26 @@ class StoryRunTracker extends _$StoryRunTracker {
 
   // --- starting -----------------------------------------------------------
 
-  /// Starts a run for [group] of [sessionId] with the AI choice as it stands,
+  /// Starts a run for [group] of [collectionId] with the AI choice as it stands,
   /// and returns its id; null when none started. Without [replacing] (the
   /// automatic start, AC-06) nothing starts for a group that has a story, a run
   /// going, or a failed run waiting for the learner's "Try again" (AC-07, AC-08).
   /// [replacing] is "Try again" and "Make a new story" (AC-16): it starts
   /// unless a run for the group is going.
-  Future<String?> startFor(String sessionId, WordGroup group, {bool replacing = false}) async {
+  Future<String?> startFor(String collectionId, WordGroup group, {bool replacing = false}) async {
     try {
-      return await _startFor(sessionId, group, replacing);
+      return await _startFor(collectionId, group, replacing);
     } catch (e) {
       debugPrint('VOCAB: starting a story run failed: $e');
       return null;
     }
   }
 
-  Future<String?> _startFor(String sessionId, WordGroup group, bool replacing) async {
+  Future<String?> _startFor(String collectionId, WordGroup group, bool replacing) async {
     final runStore = await ref.read(storyRunStoreProvider.future);
     final ofGroup = [
       for (final r in await runStore.newestFirst())
-        if (r.sessionId == sessionId && r.groupId == group.id) r,
+        if (r.collectionId == collectionId && r.groupId == group.id) r,
     ];
     if (ofGroup.any((r) => r.outcome == 'running')) return null;
     if (!replacing) {
@@ -127,10 +127,10 @@ class StoryRunTracker extends _$StoryRunTracker {
       if (latest != null && latest.outcome == 'failed' && latest.steps.isNotEmpty) return null;
     }
 
-    final session = await _session(sessionId);
-    if (session == null || _disposed) return null;
+    final collection = await _collection(collectionId);
+    if (collection == null || _disposed) return null;
     final words = [
-      for (final w in groupWords(session, group))
+      for (final w in groupWords(collection, group))
         if (w.word.trim().isNotEmpty) w.word.trim(),
     ];
     if (words.isEmpty) return null;
@@ -139,7 +139,7 @@ class StoryRunTracker extends _$StoryRunTracker {
     final choice = await _resolvedChoice(offered);
     final run = StoryRun()
       ..runId = uuidV4()
-      ..sessionId = sessionId
+      ..collectionId = collectionId
       ..groupId = group.id
       ..groupName = group.name
       ..words = words
@@ -170,27 +170,27 @@ class StoryRunTracker extends _$StoryRunTracker {
   }
 
   /// Starts a scene run for the film dialogue of [group], a dialogue group of
-  /// [sessionId] (get-words-from-subtitles-improvment ADR-0004): the picture
+  /// [collectionId] (get-words-from-subtitles-improvment ADR-0004): the picture
   /// prompt writer and the picture maker of the AI choice, drawing the
   /// dialogue. Returns its id; null when none started: the dialogue already
   /// has its picture (AC-14), a scene run for it is going, or it has no lines.
-  Future<String?> startScene(String sessionId, WordGroup group) async {
+  Future<String?> startScene(String collectionId, WordGroup group) async {
     try {
-      return await _startScene(sessionId, group);
+      return await _startScene(collectionId, group);
     } catch (e) {
       debugPrint('VOCAB: starting a scene run failed: $e');
       return null;
     }
   }
 
-  Future<String?> _startScene(String sessionId, WordGroup group) async {
-    final session = await _session(sessionId);
-    if (session == null || _disposed) return null;
-    final dialogue = session.dialogues.where((d) => d.id == group.dialogueId).firstOrNull;
+  Future<String?> _startScene(String collectionId, WordGroup group) async {
+    final collection = await _collection(collectionId);
+    if (collection == null || _disposed) return null;
+    final dialogue = collection.dialogues.where((d) => d.id == group.dialogueId).firstOrNull;
     if (dialogue == null || dialogue.lines.isEmpty || dialogue.scenePictureRunId != null) return null;
     final runStore = await ref.read(storyRunStoreProvider.future);
     for (final r in await runStore.newestFirst()) {
-      if (r.sessionId == sessionId && r.groupId == group.id && r.kind == StoryRunKind.scene && r.outcome == 'running') {
+      if (r.collectionId == collectionId && r.groupId == group.id && r.kind == StoryRunKind.scene && r.outcome == 'running') {
         return null;
       }
     }
@@ -199,7 +199,7 @@ class StoryRunTracker extends _$StoryRunTracker {
     final choice = await _resolvedChoice(offered);
     final run = StoryRun()
       ..runId = uuidV4()
-      ..sessionId = sessionId
+      ..collectionId = collectionId
       ..groupId = group.id
       ..groupName = group.name
       ..startedAt = DateTime.now()
@@ -455,38 +455,45 @@ class StoryRunTracker extends _$StoryRunTracker {
 
   Future<void> _makeGroupStory(StoryRun run) async {
     if (run.kind == StoryRunKind.scene) return _makeScenePicture(run);
-    final session = await _session(run.sessionId);
-    if (session == null) return;
-    final group = session.groups.where((g) => g.id == run.groupId).firstOrNull;
+    final collection = await _collection(run.collectionId);
+    if (collection == null) return;
+    final group = collection.groups.where((g) => g.id == run.groupId).firstOrNull;
     if (group == null) return;
     group
       ..storyRunId = run.runId
       ..storyWords = [...run.words];
-    await (await ref.read(sessionStoreProvider.future)).put(session);
-    final current = ref.read(wordInputNotifierProvider).valueOrNull?.sessionId == run.sessionId;
-    final groups = wordGroupsNotifierProvider(current ? null : run.sessionId);
+    await (await ref.read(collectionStoreProvider.future)).update(run.collectionId, (stored) {
+      final g = stored.groups.where((g) => g.id == run.groupId).firstOrNull;
+      if (g == null) return;
+      g
+        ..storyRunId = run.runId
+        ..storyWords = [...run.words];
+    });
+    final current = ref.read(wordInputNotifierProvider).valueOrNull?.collectionId == run.collectionId;
+    final groups = wordGroupsNotifierProvider(current ? null : run.collectionId);
     if (ref.exists(groups)) await ref.read(groups.notifier).reload();
   }
 
   /// A drawn scene becomes its dialogue's picture, shown from then on and
   /// never drawn again (AC-14). The dialogue is found through its group.
   Future<void> _makeScenePicture(StoryRun run) async {
-    final session = await _session(run.sessionId);
-    if (session == null) return;
-    final dialogueId = session.groups.where((g) => g.id == run.groupId).firstOrNull?.dialogueId;
+    final collection = await _collection(run.collectionId);
+    if (collection == null) return;
+    final dialogueId = collection.groups.where((g) => g.id == run.groupId).firstOrNull?.dialogueId;
     if (dialogueId == null) return;
-    final current = ref.read(wordInputNotifierProvider).valueOrNull?.sessionId == run.sessionId;
+    final current = ref.read(wordInputNotifierProvider).valueOrNull?.collectionId == run.collectionId;
     if (current) {
       await ref.read(wordInputNotifierProvider.notifier).setScenePicture(dialogueId, run.runId);
       return;
     }
-    final dialogue = session.dialogues.where((d) => d.id == dialogueId).firstOrNull;
-    if (dialogue == null) return;
-    dialogue.scenePictureRunId = run.runId;
-    if (session.publishedId != null && session.editToken != null) {
-      dialogue.picturePushState = PushState.pending;
-    }
-    await (await ref.read(sessionStoreProvider.future)).put(session);
+    await (await ref.read(collectionStoreProvider.future)).update(run.collectionId, (stored) {
+      final dialogue = stored.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+      if (dialogue == null) return;
+      dialogue.scenePictureRunId = run.runId;
+      if (stored.publishedId != null && stored.editToken != null) {
+        dialogue.picturePushState = PushState.pending;
+      }
+    });
   }
 
   // --- helpers ------------------------------------------------------------
@@ -532,10 +539,10 @@ class StoryRunTracker extends _$StoryRunTracker {
   }
 
   /// The current session's live object, or a History session from the store.
-  Future<Session?> _session(String sessionId) async {
+  Future<WordCollection?> _collection(String collectionId) async {
     final current = await ref.read(wordInputNotifierProvider.future);
-    if (current.sessionId == sessionId) return current;
-    return (await ref.read(sessionStoreProvider.future)).byId(sessionId);
+    if (current.collectionId == collectionId) return current;
+    return (await ref.read(collectionStoreProvider.future)).byId(collectionId);
   }
 
   static String _key(String role, int attempt) => '$role:$attempt';

@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -18,11 +18,11 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/pronunciation
 
 /// learn-remember-or-not: the screen (AC-01, AC-05 – AC-09, AC-11, AC-14 – AC-19, AC-21).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 class _NoNetwork implements LearnApiService {
@@ -48,13 +48,13 @@ class _FakeSpeech implements PronunciationService {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
-Session _session(int count, {List<WordPair>? words, List<FilmDialogue> dialogues = const []}) {
+WordCollection _collection(int count, {List<WordPair>? words, List<FilmDialogue> dialogues = const []}) {
   final w = words ??
       [
         for (var i = 0; i < count; i++)
           WordPair(word: 'word$i', translation: 'слово$i', definition: 'Meaning of word$i here', rowId: 'r$i'),
       ];
-  return Session.create()
+  return WordCollection.create()
     ..words = w
     ..dialogues = dialogues
     ..groups = [
@@ -68,7 +68,7 @@ Session _session(int count, {List<WordPair>? words, List<FilmDialogue> dialogues
 void main() {
   late _FakeSpeech speech;
 
-  Future<ProviderContainer> pump(WidgetTester tester, Session session, {String? sessionId, bool popHost = true}) async {
+  Future<ProviderContainer> pump(WidgetTester tester, WordCollection collection, {String? collectionId, bool popHost = true}) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -77,8 +77,8 @@ void main() {
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(_NoNetwork()),
       pronunciationServiceProvider.overrideWithValue(speech),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
-      sessionByIdProvider('hist').overrideWith((ref) async => session),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -88,7 +88,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => exerciseScreen('remember-or-not', sessionId, 'g'),
+                builder: (_) => exerciseScreen('remember-or-not', collectionId, 'g'),
               )),
               child: const Text('learn page'),
             ),
@@ -107,7 +107,7 @@ void main() {
   }
 
   testWidgets('AC-01: title, counter, a meaning and Flip; nothing of the back', (tester) async {
-    await pump(tester, _session(5));
+    await pump(tester, _collection(5));
     expect(find.text('Remember or not'), findsOneWidget);
     expect(find.text('Card 1 of 5'), findsOneWidget);
     expect(find.textContaining('Meaning of'), findsOneWidget);
@@ -120,7 +120,7 @@ void main() {
   });
 
   testWidgets('AC-05: Flip shows the back; a tap on the card flips too; a further tap changes nothing', (tester) async {
-    await pump(tester, _session(5));
+    await pump(tester, _collection(5));
     await tapText(tester, 'Flip');
     expect(find.text('Flip'), findsNothing);
     expect(find.byType(PronunciationButtons), findsOneWidget);
@@ -131,7 +131,7 @@ void main() {
   });
 
   testWidgets('AC-05: tapping the front card flips it', (tester) async {
-    await pump(tester, _session(5));
+    await pump(tester, _collection(5));
     await tester.tap(find.byKey(const ValueKey('card-front')));
     await tester.pump();
     expect(find.text('Remembered'), findsOneWidget);
@@ -140,7 +140,7 @@ void main() {
   testWidgets('AC-05: a word with no translation shows no translation line', (tester) async {
     await pump(
         tester,
-        _session(0, words: [
+        _collection(0, words: [
           for (var i = 0; i < 3; i++) WordPair(word: 'w$i', translation: '', definition: 'About w$i it', rowId: 'r$i'),
         ]));
     await tapText(tester, 'Flip');
@@ -157,7 +157,7 @@ void main() {
       ..id = 'd'
       ..lines = ['We walked along the river.', 'Meet me at the bank, the bank by the bridge.', 'The bank opens at nine.']
       ..wordRowIds = ['b'];
-    await pump(tester, _session(0, words: [bank, ...others], dialogues: [d]));
+    await pump(tester, _collection(0, words: [bank, ...others], dialogues: [d]));
     // Reach the bank card, whatever the shuffle.
     while (find.text('Where money is kept').evaluate().isEmpty) {
       await tapText(tester, 'Flip');
@@ -171,7 +171,7 @@ void main() {
   });
 
   testWidgets('AC-07, AC-08: sound only on a tap of a flag; a second tap speaks again in that accent', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await tapText(tester, 'Flip');
     expect(speech.spoken, isEmpty);
     await tester.tap(find.byTooltip('UK pronunciation'));
@@ -188,7 +188,7 @@ void main() {
   });
 
   testWidgets('AC-08: leaving the screen stops the speaker', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     final before = speech.stops;
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -196,7 +196,7 @@ void main() {
   });
 
   testWidgets('AC-09: a speech failure shows its message and the card stays usable', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     speech.failWith = PronunciationException('Could not play pronunciation: no voice');
     await tapText(tester, 'Flip');
     await tester.tap(find.byTooltip('US pronunciation'));
@@ -208,7 +208,7 @@ void main() {
   });
 
   testWidgets('AC-11, AC-12: Not yet comes back last with Got it / Still not', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await tapText(tester, 'Flip');
     await tapText(tester, 'Not yet');
     expect(find.text('Card 2 of 4'), findsOneWidget);
@@ -224,7 +224,7 @@ void main() {
   });
 
   testWidgets('AC-14: summary heading and rows, Done returns to the learn page', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await tapText(tester, 'Flip');
     await tapText(tester, 'Not yet');
     for (var i = 0; i < 2; i++) {
@@ -242,7 +242,7 @@ void main() {
   });
 
   testWidgets('AC-14: with two rounds the summary offers Next round', (tester) async {
-    await pump(tester, _session(10));
+    await pump(tester, _collection(10));
     for (var i = 0; i < 5; i++) {
       await tapText(tester, 'Flip');
       await tapText(tester, 'Remembered');
@@ -253,8 +253,8 @@ void main() {
   });
 
   testWidgets('AC-15: leaving mid-round keeps nothing; opening again starts at card 1', (tester) async {
-    final session = _session(5);
-    final c = await pump(tester, session);
+    final collection = _collection(5);
+    final c = await pump(tester, collection);
     await tapText(tester, 'Flip');
     await tapText(tester, 'Remembered');
     expect(find.text('Card 2 of 5'), findsOneWidget);
@@ -267,7 +267,7 @@ void main() {
   });
 
   testWidgets('AC-16: fewer than 3 usable words: only the message and Back', (tester) async {
-    await pump(tester, _session(2));
+    await pump(tester, _collection(2));
     expect(find.text('Not enough words for this exercise'), findsOneWidget);
     expect(find.text('Flip'), findsNothing);
     await tapText(tester, 'Back');
@@ -276,30 +276,30 @@ void main() {
   });
 
   testWidgets('AC-18: a History session is used and left unchanged', (tester) async {
-    final session = _session(3, dialogues: [
+    final collection = _collection(3, dialogues: [
       FilmDialogue()
         ..id = 'd'
         ..lines = ['Say word0 now.']
         ..wordRowIds = ['r0'],
     ]);
-    final before = session.updatedAt;
-    await pump(tester, session, sessionId: 'hist');
+    final before = collection.updatedAt;
+    await pump(tester, collection, collectionId: 'hist');
     expect(find.text('Card 1 of 3'), findsOneWidget);
     for (var i = 0; i < 3; i++) {
       await tapText(tester, 'Flip');
       await tapText(tester, 'Remembered');
     }
     expect(find.text('3 remembered, 0 after repeat, 0 not yet'), findsOneWidget);
-    expect(session.updatedAt, before);
-    expect(session.words.length, 3);
-    expect(session.dialogues.length, 1);
+    expect(collection.updatedAt, before);
+    expect(collection.words.length, 3);
+    expect(collection.dialogues.length, 1);
   });
 
   testWidgets('AC-19, AC-21: long text wraps and nothing asks the server', (tester) async {
     final long = List.filled(30, 'extraordinarily').join(' ');
     await pump(
         tester,
-        _session(0, words: [
+        _collection(0, words: [
           WordPair(word: 'give up', translation: long, definition: 'To $long and to give up', rowId: 'a'),
           for (var i = 0; i < 2; i++) WordPair(word: 'w$i', translation: 't', definition: 'D$i', rowId: 'r$i'),
         ]));

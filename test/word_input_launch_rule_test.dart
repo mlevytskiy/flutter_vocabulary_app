@@ -5,13 +5,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
-/// The four launch cases from `docs/tasks/task-03-words-survive-restart.md`.
+import 'seed_collections.dart';
+
+/// The launch rule of collections-screen ADR-0007 (F4): after any pause the
+/// pointer's collection reopens; a missing or binned pointer falls back to
+/// the newest collection outside the bin; the bin is swept on open and resume.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -26,15 +30,15 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
   late ProviderContainer container;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('launch_rule_test');
-    store = await SessionStore.open(directory: dir.path);
+    store = await CollectionStore.open(directory: dir.path);
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
     ]);
   });
 
@@ -44,339 +48,269 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  Future<Session> launch() =>
+  Future<WordCollection> launch() =>
       container.read(wordInputNotifierProvider.future);
 
-  String? restorableId() => container
-      .read(wordInputNotifierProvider.notifier)
-      .restorableSessionId;
-
-  Future<Session> seed({
+  Future<WordCollection> seed({
     required Duration ago,
     List<WordPair>? words,
     bool makeCurrent = true,
+    DateTime? binnedAt,
+    String? folderId,
   }) async {
     final at = DateTime.now().subtract(ago);
-    final s = Session.create()
+    final s = WordCollection.create()
       ..updatedAt = at
       ..lastLocalModifiedAt = at
+      ..binnedAt = binnedAt
+      ..folderId = folderId
       ..words = words ?? [WordPair(word: 'apple', translation: 'яблуко')];
-    await store.put(s);
-    if (makeCurrent) await store.setCurrentSessionId(s.sessionId);
+    await seedCollection(store, s);
+    if (makeCurrent) await store.setCurrentCollectionId(s.collectionId);
     return s;
   }
 
-  test('case 1 — nothing stored: new session, one blank row, no snackbar',
-      () async {
-    final session = await launch();
+  Future<int> count() async => (await store.allIds()).length;
 
-    expect(session.words.length, 1);
-    expect(session.words.single.isEmpty, isTrue);
-    expect(restorableId(), isNull);
-    expect(await store.currentSessionId(), session.sessionId);
-  });
+  group('F4 launch', () {
+    test('empty store: a first collection is created, one blank row', () async {
+      final collection = await launch();
 
-  test('case 2 — the previous session never got a word: reuse it, any age',
-      () async {
-    final prev = await seed(ago: const Duration(days: 3), words: [WordPair()]);
+      expect(collection.words.length, 1);
+      expect(collection.words.single.isEmpty, isTrue);
+      expect(await store.currentCollectionId(), collection.collectionId);
+      expect(await count(), 1);
+    });
 
-    final session = await launch();
+    for (final ago in [
+      const Duration(seconds: 5),
+      const Duration(minutes: 6),
+      const Duration(days: 40),
+    ]) {
+      test('pointer set, last edit $ago ago: it reopens, nothing new', () async {
+        final prev = await seed(ago: ago);
 
-    expect(session.sessionId, prev.sessionId,
-        reason: 'launch-and-do-nothing must not leave empty sessions behind');
-    expect(session.words.length, 1);
-    expect(restorableId(), isNull);
-  });
+        final collection = await launch();
 
-  test('case 3 — touched under 5 minutes ago: carry on in it, no snackbar',
-      () async {
-    final prev = await seed(ago: const Duration(minutes: 4, seconds: 30));
-
-    final session = await launch();
-
-    expect(session.sessionId, prev.sessionId);
-    expect(session.words.map((w) => w.word), ['apple']);
-    expect(restorableId(), isNull);
-  });
-
-  test('case 3 — the per-row extras come back with the words', () async {
-    final prev = await seed(
-      ago: const Duration(seconds: 5),
-      words: [
-        WordPair(
-          word: 'apple',
-          translation: 'яблуко',
-          hasTranslationOptions: true,
-          wordMarkedFilled: true,
-          translationMarkedFilled: true,
-          translationOptionsJson: '{"text":"яблуко"}',
-        ),
-      ],
-    );
-
-    final session = await launch();
-
-    expect(session.sessionId, prev.sessionId);
-    final row = session.words.single;
-    expect(row.hasTranslationOptions, isTrue);
-    expect(row.wordMarkedFilled, isTrue);
-    expect(row.translationMarkedFilled, isTrue);
-    expect(row.translationOptions?.text, 'яблуко');
-  });
-
-  test('case 4 — gone cold: a new session is current, the old one is offered',
-      () async {
-    final prev = await seed(ago: const Duration(minutes: 6));
-
-    final session = await launch();
-
-    expect(session.sessionId, isNot(prev.sessionId));
-    expect(session.words.single.isEmpty, isTrue);
-    expect(restorableId(), prev.sessionId);
-    expect(await store.currentSessionId(), session.sessionId);
-    expect((await store.byId(prev.sessionId))!.words.length, 1,
-        reason: 'the old session stays in the store either way');
-  });
-
-  test('case 4 — RESTORE brings the old session back and leaves no empty one',
-      () async {
-    final prev = await seed(ago: const Duration(minutes: 6));
-    final fresh = await launch();
-
-    await container.read(wordInputNotifierProvider.notifier).restorePrevious();
-
-    final now = container.read(wordInputNotifierProvider).value!;
-    expect(now.sessionId, prev.sessionId);
-    expect(now.words.map((w) => w.word), ['apple']);
-    expect(await store.currentSessionId(), prev.sessionId);
-    expect(await store.byId(fresh.sessionId), isNull,
-        reason: 'the empty session created at launch is deleted');
-    expect(
-      now.lastLocalModifiedAt.isAfter(DateTime.now().subtract(
-        const Duration(minutes: 1),
-      )),
-      isTrue,
-      reason: 'restoring counts as this device touching the session',
-    );
-    expect(restorableId(), isNull);
-  });
-
-  test('the first edit takes RESTORE off the table', () async {
-    await seed(ago: const Duration(minutes: 6));
-    await launch();
-    expect(restorableId(), isNotNull);
-
-    container.read(wordInputNotifierProvider.notifier).updateAt(0, word: 'a');
-    expect(restorableId(), isNull);
-
-    // ...and RESTORE after that is a no-op rather than a data loss.
-    await container.read(wordInputNotifierProvider.notifier).restorePrevious();
-    expect(container.read(wordInputNotifierProvider).value!.words.single.word,
-        'a');
-  });
-
-  test('a dangling current_session_id falls back to the newest session',
-      () async {
-    final prev = await seed(
-        ago: const Duration(seconds: 5), makeCurrent: false);
-    await store.setCurrentSessionId('gone');
-
-    final session = await launch();
-
-    expect(session.sessionId, prev.sessionId);
-  });
-
-  // The regression that hid the snackbar on a real device: the screen calls
-  // flush() on every AppLifecycleState.paused, so backgrounding or force-quitting
-  // the app must not count as "this device touched the session".
-  test('flush() without an edit does not restart the session clock', () async {
-    final prev = await seed(ago: const Duration(minutes: 3));
-    final session = await launch();
-    expect(session.sessionId, prev.sessionId, reason: 'case 3 sanity');
-
-    await container.read(wordInputNotifierProvider.notifier).flush();
-
-    final stored = await store.byId(prev.sessionId);
-    expect(
-      DateTime.now().difference(stored!.lastLocalModifiedAt),
-      greaterThan(const Duration(minutes: 2)),
-      reason: 'a save with nothing to save must not look like an edit',
-    );
-  });
-
-  test('backgrounding a cold session still leaves it restorable next launch',
-      () async {
-    // Type something, then leave it alone for longer than the idle window and
-    // background the app on the way out — exactly the device walkthrough.
-    await launch();
-    final first = container.read(wordInputNotifierProvider.notifier);
-    first.updateAt(0, word: 'apple', translation: 'яблуко');
-    await first.flush();
-    final id = container.read(wordInputNotifierProvider).value!.sessionId;
-
-    // Age it the way wall-clock time would.
-    final stale = await store.byId(id);
-    stale!.lastLocalModifiedAt =
-        DateTime.now().subtract(const Duration(minutes: 6));
-    stale.updatedAt = stale.lastLocalModifiedAt;
-    await store.put(stale);
-
-    // The force-quit: paused -> flush() with no pending edit.
-    await first.flush();
-
-    // Relaunch.
-    container.dispose();
-    container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
-    ]);
-    final fresh = await launch();
-
-    expect(fresh.sessionId, isNot(id));
-    expect(restorableId(), id, reason: 'the snackbar has something to offer');
-  });
-
-  test('updateAt carries the extras through to the store', () async {
-    await launch();
-    final notifier = container.read(wordInputNotifierProvider.notifier);
-    notifier.updateAt(0,
-        word: 'apple',
-        translation: 'яблуко',
-        hasTranslationOptions: true,
-        wordMarkedFilled: true,
-        translationMarkedFilled: true);
-    await notifier.flush();
-
-    final stored = await store
-        .byId(container.read(wordInputNotifierProvider).value!.sessionId);
-    final row = stored!.words.single;
-    expect(row.word, 'apple');
-    expect(row.hasTranslationOptions, isTrue);
-    expect(row.wordMarkedFilled, isTrue);
-    expect(row.translationMarkedFilled, isTrue);
-  });
-
-  // edit-session-from-history T3 (ADR-0002, AC-09): a session picked from
-  // History counts as warm for the idle window after the pick.
-  group('a recent pick', () {
-    Future<void> relaunch() async {
-      container.dispose();
-      container = ProviderContainer(overrides: [
-        sessionStoreProvider.overrideWith((ref) async => store),
-      ]);
+        expect(collection.collectionId, prev.collectionId);
+        expect(collection.words.map((w) => w.word), ['apple']);
+        expect(await count(), 1);
+        expect(await store.currentCollectionId(), prev.collectionId);
+      });
     }
 
-    test('picked 2 minutes ago reopens with no RESTORE, twice in a row',
-        () async {
-      final prev = await seed(ago: const Duration(days: 7));
-      await store.setSwitched(
-          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 2)));
+    test('the per-row extras come back with the words', () async {
+      final prev = await seed(
+        ago: const Duration(hours: 3),
+        words: [
+          WordPair(
+            word: 'apple',
+            translation: 'яблуко',
+            hasTranslationOptions: true,
+            wordMarkedFilled: true,
+            translationMarkedFilled: true,
+            translationOptionsJson: '{"text":"яблуко"}',
+          ),
+        ],
+      );
 
-      var session = await launch();
-      expect(session.sessionId, prev.sessionId);
-      expect(restorableId(), isNull);
+      final collection = await launch();
 
-      await relaunch();
-      session = await launch();
-      expect(session.sessionId, prev.sessionId);
-      expect(restorableId(), isNull);
-      expect(await store.switchedAt(prev.sessionId), isNotNull,
-          reason: 'the pointer re-save leaves the pick record alone');
+      expect(collection.collectionId, prev.collectionId);
+      final row = collection.words.single;
+      expect(row.hasTranslationOptions, isTrue);
+      expect(row.wordMarkedFilled, isTrue);
+      expect(row.translationMarkedFilled, isTrue);
+      expect(row.translationOptions?.text, 'яблуко');
     });
 
-    test('picked 6 minutes ago: a new session and the RESTORE offer',
-        () async {
-      final prev = await seed(ago: const Duration(days: 7));
-      await store.setSwitched(
-          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 6)));
-
-      final session = await launch();
-
-      expect(session.sessionId, isNot(prev.sessionId));
-      expect(restorableId(), prev.sessionId);
-    });
-
-    test('a pick record for another session is ignored', () async {
-      final prev = await seed(ago: const Duration(days: 7));
-      await store.setSwitched('other', DateTime.now());
-
-      final session = await launch();
-
-      expect(session.sessionId, isNot(prev.sessionId));
-      expect(restorableId(), prev.sessionId);
-    });
-
-    test('a dangling pointer falling back to the newest ignores the record',
-        () async {
+    test('pointer names a collection without words: it is reused', () async {
       final prev =
-          await seed(ago: const Duration(days: 7), makeCurrent: false);
-      await store.setCurrentSessionId('gone');
-      await store.setSwitched(prev.sessionId, DateTime.now());
+          await seed(ago: const Duration(days: 3), words: [WordPair()]);
 
-      final session = await launch();
+      final collection = await launch();
 
-      expect(session.sessionId, isNot(prev.sessionId));
-      expect(restorableId(), prev.sessionId);
+      expect(collection.collectionId, prev.collectionId);
+      expect(collection.words.length, 1);
+      expect(await count(), 1);
+    });
+
+    test('no pointer: the newest collection outside the bin', () async {
+      await seed(ago: const Duration(days: 2), makeCurrent: false);
+      final newer = await seed(
+          ago: const Duration(hours: 1),
+          makeCurrent: false,
+          words: [WordPair(word: 'pear', translation: 'груша')]);
+      await seed(
+          ago: const Duration(minutes: 1),
+          makeCurrent: false,
+          binnedAt: DateTime.now());
+
+      final collection = await launch();
+
+      expect(collection.collectionId, newer.collectionId);
+      expect(await store.currentCollectionId(), newer.collectionId);
+      expect(await count(), 3);
+    });
+
+    test('dangling pointer: the newest collection outside the bin', () async {
+      final only = await seed(ago: const Duration(hours: 1), makeCurrent: false);
+      await store.setCurrentCollectionId('gone');
+
+      final collection = await launch();
+
+      expect(collection.collectionId, only.collectionId);
+      expect(await store.currentCollectionId(), only.collectionId);
+    });
+
+    test('pointer binned directly: falls back, the binned one stays binned',
+        () async {
+      final ok = await seed(ago: const Duration(days: 1), makeCurrent: false);
+      final binned = await seed(
+          ago: const Duration(minutes: 1), binnedAt: DateTime.now());
+
+      final collection = await launch();
+
+      expect(collection.collectionId, ok.collectionId);
+      expect(await store.currentCollectionId(), ok.collectionId);
+      expect((await store.byId(binned.collectionId))!.binnedAt, isNotNull);
+    });
+
+    test('pointer inside a binned folder: falls back', () async {
+      final ok = await seed(ago: const Duration(days: 1), makeCurrent: false);
+      final folder = (await store.createFolder(name: 'F')).folder!;
+      final inside = await seed(
+          ago: const Duration(minutes: 1),
+          makeCurrent: false,
+          folderId: folder.folderId);
+      await store.bin(folder.folderId);
+      await store.setCurrentCollectionId(inside.collectionId);
+
+      final collection = await launch();
+
+      expect(collection.collectionId, ok.collectionId);
+    });
+
+    test('pointer gone and everything else binned: a new collection',
+        () async {
+      final binned = await seed(
+          ago: const Duration(minutes: 1), binnedAt: DateTime.now());
+
+      final collection = await launch();
+
+      expect(collection.collectionId, isNot(binned.collectionId));
+      expect(collection.words.single.isEmpty, isTrue);
+      expect(await store.currentCollectionId(), collection.collectionId);
+      expect(await count(), 2);
+    });
+
+    test('the bin is swept on open: a 31-day-old item goes, a fresh one stays',
+        () async {
+      await seed(ago: const Duration(hours: 1));
+      final old = await seed(
+          ago: const Duration(days: 40),
+          makeCurrent: false,
+          binnedAt: DateTime.now().subtract(const Duration(days: 31)));
+      final fresh = await seed(
+          ago: const Duration(days: 40),
+          makeCurrent: false,
+          binnedAt: DateTime.now().subtract(const Duration(days: 5)));
+
+      await launch();
+
+      expect(await store.byId(old.collectionId), isNull);
+      expect(await store.byId(fresh.collectionId), isNotNull);
     });
   });
 
-  // Owner, 2026-10-16: having a session with words open counts as touching
-  // it; the main screen records it every 15 s (markSeen).
-  group('seen open', () {
-    test('seen 2 minutes ago, edited a week ago: carry on, no RESTORE',
+  group('F4 resume', () {
+    test('resume sweeps the bin', () async {
+      await seed(ago: const Duration(hours: 1));
+      final old = await seed(
+          ago: const Duration(days: 40),
+          makeCurrent: false,
+          binnedAt: DateTime.now().subtract(const Duration(days: 29)));
+      await launch();
+      // Becomes 31 days old while the app sleeps.
+      final isar = Isar.getInstance('vocab')!;
+      await isar.writeTxn(() async {
+        final c = await isar.wordCollections
+            .filter()
+            .collectionIdEqualTo(old.collectionId)
+            .findFirst();
+        await isar.wordCollections.put(
+            c!..binnedAt = DateTime.now().subtract(const Duration(days: 31)));
+      });
+
+      await container.read(wordInputNotifierProvider.notifier).resume();
+
+      expect(await store.byId(old.collectionId), isNull);
+    });
+
+    test('resume keeps the current collection and makes no new one', () async {
+      final prev = await seed(ago: const Duration(days: 2));
+      await launch();
+
+      await container.read(wordInputNotifierProvider.notifier).resume();
+
+      expect(container.read(wordInputNotifierProvider).value!.collectionId,
+          prev.collectionId);
+      expect(await count(), 1);
+    });
+
+    test('resume re-checks the pointer: a collection binned meanwhile falls back',
         () async {
-      final prev = await seed(ago: const Duration(days: 7));
-      await store.setSeen(
-          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 2)));
+      final ok = await seed(ago: const Duration(days: 1), makeCurrent: false);
+      final cur = await seed(ago: const Duration(minutes: 1));
+      await launch();
+      // Another path moved it to the bin while the app was paused.
+      final isar = Isar.getInstance('vocab')!;
+      await isar.writeTxn(() async {
+        final c = await isar.wordCollections
+            .filter()
+            .collectionIdEqualTo(cur.collectionId)
+            .findFirst();
+        await isar.wordCollections.put(c!..binnedAt = DateTime.now());
+      });
 
-      final session = await launch();
+      await container.read(wordInputNotifierProvider.notifier).resume();
 
-      expect(session.sessionId, prev.sessionId);
-      expect(restorableId(), isNull);
+      expect(container.read(wordInputNotifierProvider).value!.collectionId,
+          ok.collectionId);
+      expect(await store.currentCollectionId(), ok.collectionId);
     });
+  });
 
-    test('seen 6 minutes ago: a new session and the RESTORE offer', () async {
-      final prev = await seed(ago: const Duration(days: 7));
-      await store.setSeen(
-          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 6)));
+  group('legacy keys', () {
+    const legacy = [
+      'switched_session_id',
+      'switched_at',
+      'seen_session_id',
+      'seen_at',
+    ];
 
-      final session = await launch();
-
-      expect(session.sessionId, isNot(prev.sessionId));
-      expect(restorableId(), prev.sessionId);
-    });
-
-    test('a seen record for another session is ignored', () async {
-      final prev = await seed(ago: const Duration(days: 7));
-      await store.setSeen('other', DateTime.now());
-
-      final session = await launch();
-
-      expect(session.sessionId, isNot(prev.sessionId));
-      expect(restorableId(), prev.sessionId);
-    });
-
-    test('markSeen records a session with words, and leaves its times alone',
+    test('switched_* and seen_* are removed at startup and never written',
         () async {
-      final prev = await seed(ago: const Duration(minutes: 1));
-      final session = await launch();
-      expect(session.sessionId, prev.sessionId);
+      SharedPreferences.setMockInitialValues({
+        for (final k in legacy) k: 'x',
+        'current_session_id': 'keep',
+      });
+      final again = await CollectionStore.open(directory: dir.path);
+      final prefs = await SharedPreferences.getInstance();
+      for (final k in legacy) {
+        expect(prefs.containsKey(k), isFalse, reason: k);
+      }
+      expect(prefs.getString('current_session_id'), 'keep');
 
-      await container.read(wordInputNotifierProvider.notifier).markSeen();
-
-      final seen = await store.seenAt(prev.sessionId);
-      expect(seen, isNotNull);
-      expect(DateTime.now().difference(seen!), lessThan(const Duration(seconds: 5)));
-      final stored = await store.byId(prev.sessionId);
-      expect(stored!.lastLocalModifiedAt, prev.lastLocalModifiedAt,
-          reason: 'being open is not an edit');
-    });
-
-    test('markSeen does not record a session with no word', () async {
-      final session = await launch(); // case 1: a new, empty session
-
-      await container.read(wordInputNotifierProvider.notifier).markSeen();
-
-      expect(await store.seenAt(session.sessionId), isNull);
+      final c = container.read(wordInputNotifierProvider.notifier);
+      await seed(ago: const Duration(minutes: 1));
+      await c.future;
+      await c.resume();
+      await prefs.reload();
+      for (final k in legacy) {
+        expect(prefs.containsKey(k), isFalse, reason: k);
+      }
+      expect(again, isNotNull);
     });
   });
 }

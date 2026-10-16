@@ -18,21 +18,25 @@ typedef QuizletImportedSet = ({String id, String name, String url});
 /// the field it fits, translation or definition, nothing machine-translated —
 /// then the results dialog. Only
 /// Done with at least one kept word changes the session, through [addWords];
-/// a read failure shows one message (AC-07), a cancel shows none (AC-07b). A
-/// result for a session other than the one current at Start is dropped, both
-/// before the results dialog and at Done (AC-16).
+/// a read failure shows one message (AC-07), a cancel shows none (AC-07b). If
+/// another collection was opened since Start, the kept words go to the one the
+/// import started in, through [addWordsTo] (collections-screen ADR-0006,
+/// AC-11); they never appear in the open one.
 Future<void> runQuizletImport({
   required BuildContext context,
-  required String? Function() currentSessionId,
-  required List<String> Function() sessionWords,
+  required String? Function() currentCollectionId,
+  required List<String> Function() collectionWords,
   required void Function(List<VocabWord> words, QuizletImportedSet set)
       addWords,
+  Future<void> Function(
+          String collectionId, List<VocabWord> words, QuizletImportedSet set)?
+      addWordsTo,
   QuizletPageDriverFactory? driverFactory,
 }) async {
   final link = await showQuizletLinkDialog(context);
   if (link == null || !context.mounted) return;
 
-  final startedIn = currentSessionId();
+  final startedIn = currentCollectionId();
   QuizletProposal? proposal;
 
   final outcome = await showQuizletProgressDialog(
@@ -40,7 +44,7 @@ Future<void> runQuizletImport({
     link,
     driverFactory: driverFactory,
     afterRead: (set) async {
-      proposal = proposeWords(set.cards, sessionWords(), set.statedCount);
+      proposal = proposeWords(set.cards, collectionWords(), set.statedCount);
     },
   );
 
@@ -59,17 +63,13 @@ Future<void> runQuizletImport({
   }
   final proposed = proposal;
   if (proposed == null || !context.mounted) return;
-  if (currentSessionId() != startedIn) {
-    debugPrint('QUIZLET: the session changed during the import; words dropped');
-    return;
-  }
-
   final kept =
       await showQuizletResultDialog(context, proposed, setName: set.name);
   if (kept == null || kept.isEmpty || !context.mounted) return;
-  if (currentSessionId() != startedIn) {
-    debugPrint('QUIZLET: the session changed during the import; words dropped');
+  final imported = (id: set.setId, name: set.name, url: link.plainUrl);
+  if (startedIn != null && currentCollectionId() != startedIn) {
+    await addWordsTo?.call(startedIn, kept, imported);
     return;
   }
-  addWords(kept, (id: set.setId, name: set.name, url: link.plainUrl));
+  addWords(kept, imported);
 }

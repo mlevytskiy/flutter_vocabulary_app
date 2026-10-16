@@ -10,13 +10,13 @@ import 'package:http/testing.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photos_with_words.dart';
@@ -26,6 +26,8 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_impo
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
 import 'photo_panel_test_host.dart';
+
+import 'seed_collections.dart';
 
 /// side-panel-sources AC-22: words from film subtitles are a source of their
 /// own, listed in the half-open panel like a Quizlet set, and never declared
@@ -72,9 +74,9 @@ void main() {
     test('Isar: photos and sets read back unchanged next to a film', () async {
       SharedPreferences.setMockInitialValues({});
       final dir = Directory.systemTemp.createTempSync('subtitle_sources_isar');
-      final store = await SessionStore.open(directory: dir.path);
+      final store = await CollectionStore.open(directory: dir.path);
       try {
-        final session = Session.create()
+        final collection = WordCollection.create()
           ..sources = [
             SessionSource()
               ..id = 'p1'
@@ -89,8 +91,8 @@ void main() {
               ..kind = SourceKind.subtitles
               ..name = 'Harbour Lights',
           ];
-        await store.put(session);
-        final back = (await store.byId(session.sessionId))!;
+        await seedCollection(store, collection);
+        final back = (await store.byId(collection.collectionId))!;
         expect([for (final s in back.sources) '${s.id}|${s.kind.name}|${s.fileName}|${s.name}|${s.url}'], [
           'p1|photo|p1.jpg|null|null',
           'quizlet-1|set||Biology|https://quizlet.com/1/biology/',
@@ -105,14 +107,14 @@ void main() {
 
   group('recording the film on import', () {
     late Directory dir;
-    late SessionStore store;
+    late CollectionStore store;
     late ProviderContainer container;
 
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       dir = Directory.systemTemp.createTempSync('subtitle_sources_notifier');
-      store = await SessionStore.open(directory: dir.path);
-      container = ProviderContainer(overrides: [sessionStoreProvider.overrideWith((ref) async => store)]);
+      store = await CollectionStore.open(directory: dir.path);
+      container = ProviderContainer(overrides: [collectionStoreProvider.overrideWith((ref) async => store)]);
       await container.read(wordInputNotifierProvider.future);
     });
 
@@ -187,7 +189,7 @@ void main() {
   group('publishing', () {
     test('a film is not declared and its rows go without a sourceId', () async {
       final requests = <http.Request>[];
-      final service = SessionPublishService(
+      final service = CollectionPublishService(
           client: MockClient((r) async {
         requests.add(r);
         return http.Response(jsonEncode({'id': 'x', 'url': 'https://e/s/x'}), 200);
@@ -220,7 +222,7 @@ void main() {
 
     test('a film-only session sends no sources at all', () async {
       final requests = <http.Request>[];
-      final service = SessionPublishService(
+      final service = CollectionPublishService(
           client: MockClient((r) async {
         requests.add(r);
         return http.Response(jsonEncode({'id': 'x', 'url': 'https://e/s/x'}), 200);

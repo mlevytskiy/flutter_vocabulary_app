@@ -8,7 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'models/offered_ai.dart';
-import 'models/session.dart';
+import 'models/collection_folder.dart';
+import 'models/word_collection.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
 import 'services/exam_result_sink.dart';
@@ -17,8 +18,9 @@ import 'services/learn_api_service.dart';
 import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
-import 'services/session_publish_service.dart';
-import 'services/session_store.dart';
+import 'services/collection_publish_service.dart';
+import 'services/collection_level.dart';
+import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
 import 'services/story_picture_store.dart';
@@ -43,7 +45,7 @@ PhotoScaler photoScaler(Ref ref) => PhotoScaler.instance; // singleton stays for
 ImagePicker imagePicker(Ref ref) => ImagePicker();
 
 @Riverpod(keepAlive: true)
-Future<SessionStore> sessionStore(Ref ref) => SessionStore.open();
+Future<CollectionStore> collectionStore(Ref ref) => CollectionStore.open();
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
 @Riverpod(keepAlive: true)
@@ -57,7 +59,7 @@ SystemGestureExclusion systemGestureExclusion(Ref ref) => SystemGestureExclusion
 /// The story runs, kept in the same database as the sessions (ADR-0003).
 @Riverpod(keepAlive: true)
 Future<StoryRunStore> storyRunStore(Ref ref) async {
-  await ref.watch(sessionStoreProvider.future); // opens the shared database
+  await ref.watch(collectionStoreProvider.future); // opens the shared database
   return StoryRunStore.open();
 }
 
@@ -88,7 +90,7 @@ LearnApiService learnApiService(Ref ref) => LearnApiService();
 /// S-23), on the session in the session store.
 @Riverpod(keepAlive: true)
 ExamResultSink examResultSink(Ref ref) =>
-    StoreExamResultSink(() => ref.read(sessionStoreProvider.future));
+    StoreExamResultSink(() => ref.read(collectionStoreProvider.future));
 
 /// The AIs on the Worker's offered list. Fetched on first use and cached in
 /// preferences; when the fetch fails, the cached list is used, and when there is
@@ -162,7 +164,7 @@ class AiChoiceNotifier extends _$AiChoiceNotifier {
 }
 
 @Riverpod(keepAlive: true)
-SessionPublishService sessionPublishService(Ref ref) => SessionPublishService();
+CollectionPublishService collectionPublishService(Ref ref) => CollectionPublishService();
 
 /// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
 @Riverpod(keepAlive: true)
@@ -183,22 +185,47 @@ PhotoUploadService photoUploadService(Ref ref) =>
     PhotoUploadService(store: ref.watch(sourcePhotoStoreProvider));
 
 @riverpod
-Future<Session?> sessionById(Ref ref, String sessionId) async {
-  final store = await ref.watch(sessionStoreProvider.future);
-  return store.byId(sessionId);
+Future<WordCollection?> collectionById(Ref ref, String collectionId) async {
+  final store = await ref.watch(collectionStoreProvider.future);
+  return store.byId(collectionId);
 }
 
-/// Every session that has at least one non-blank word, newest first, re-emitted
-/// after every write. The drawer rule on the input screen and the History
-/// screen (task-10) both read this one stream.
+/// History (collections-screen F11): every collection that has at least one
+/// non-blank word and is not in the recycle bin, directly or through a folder
+/// above it, newest first, re-emitted after every write. The drawer rule on
+/// the input screen, the History screen and the tag suggestions read this.
 @riverpod
-Stream<List<Session>> nonEmptySessions(Ref ref) async* {
-  final store = await ref.watch(sessionStoreProvider.future);
-  yield* store.watchNonEmpty();
+Stream<List<WordCollection>> nonEmptyCollections(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchHistory();
+}
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+@riverpod
+Stream<List<LevelItem>> collectionLevel(Ref ref, String? folderId) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchLevel(folderId);
+}
+
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+@riverpod
+Stream<String?> collectionName(Ref ref, String collectionId) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchName(collectionId);
+}
+
+/// Every folder, binned ones too, for the Collections path and the tree.
+@riverpod
+Stream<List<CollectionFolder>> collectionFolders(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchFolders();
 }
 
 /// Whether the word list is in drag-and-drop (reorder) mode. A pure display
-/// preference: it lives here rather than on `Session` because it is not
+/// preference: it lives here rather than on `WordCollection` because it is not
 /// session data and must never reach Isar (task-13), and `keepAlive` because
 /// the Settings screen is the only writer while the input screen is the only
 /// reader -- autoDispose would drop the value when Settings is popped.
@@ -221,7 +248,7 @@ final wordDetailModeProvider = wordDetailModeNotifierProvider;
 
 /// The learner's word detail mode. Unlike drag mode it survives a restart, so
 /// it is persisted under one preferences key; it is still a display preference
-/// and never goes on `Session`. Starts as [WordDetailMode.translation] and
+/// and never goes on `WordCollection`. Starts as [WordDetailMode.translation] and
 /// switches once the stored value is read ([loaded]).
 @Riverpod(keepAlive: true)
 class WordDetailModeNotifier extends _$WordDetailModeNotifier {
@@ -413,7 +440,7 @@ final photoTabTopProvider = photoTabTopNotifierProvider;
 /// The photo tab's top, in logical pixels from the top of the main screen's
 /// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
 /// up or down and the height is kept across restarts (spec AC-14). A display
-/// preference: never on `Session`. Clamped on use by the tab ([clamp]).
+/// preference: never on `WordCollection`. Clamped on use by the tab ([clamp]).
 @Riverpod(keepAlive: true)
 class PhotoTabTopNotifier extends _$PhotoTabTopNotifier {
   static const prefsKey = 'photo_tab_top';

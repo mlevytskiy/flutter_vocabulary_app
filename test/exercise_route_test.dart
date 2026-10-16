@@ -22,14 +22,14 @@ void main() {
 
   test('ExerciseRoute sits under learn at exercise and carries ids only, as query parameters', () {
     expect(const ExerciseRoute(exercise: 'quiz', groupId: 'g1').location, '/table/learn/exercise?exercise=quiz&group-id=g1');
-    expect(const ExerciseRoute(sessionId: 's1', exercise: 'quiz', groupId: 'g1').location,
-        '/table/learn/exercise?session-id=s1&exercise=quiz&group-id=g1');
+    expect(const ExerciseRoute(collectionId: 's1', exercise: 'quiz', groupId: 'g1').location,
+        '/table/learn/exercise?collection-id=s1&exercise=quiz&group-id=g1');
   });
 
   group('startRouteFor (S-04)', () {
     test('the two built exercises keep their screens', () {
-      expect(startRouteFor('mnemonic-story', sessionId: 's', groupId: 'g', group: wordGroup('g')).location,
-          const StoryRoute(sessionId: 's', groupId: 'g').location);
+      expect(startRouteFor('mnemonic-story', collectionId: 's', groupId: 'g', group: wordGroup('g')).location,
+          const StoryRoute(collectionId: 's', groupId: 'g').location);
       expect(startRouteFor('dialogs-from-movie', groupId: 'd', group: wordGroup('d', dialogueId: 'x')).location,
           const DialogueRoute(groupId: 'd').location);
       expect(startRouteFor('dialogs-from-movie', groupId: 'g', group: wordGroup('g')).location,
@@ -38,8 +38,8 @@ void main() {
 
     test('AC-03, AC-05: every other exercise opens for the selected group of the session shown', () {
       for (final id in ['pick-the-answer', 'remember-or-not', 'quiz', 'match-synonyms', 'match-definitions', 'fill-the-gaps', 'sentence-patterns', 'guess-my-word', 'explain-to-friend']) {
-        expect(startRouteFor(id, sessionId: 'history', groupId: 'g', group: wordGroup('g')).location,
-            ExerciseRoute(sessionId: 'history', exercise: id, groupId: 'g').location);
+        expect(startRouteFor(id, collectionId: 'history', groupId: 'g', group: wordGroup('g')).location,
+            ExerciseRoute(collectionId: 'history', exercise: id, groupId: 'g').location);
       }
     });
 

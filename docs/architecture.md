@@ -24,9 +24,9 @@ lib/
     azure_config.dart           pre-existing, untouched by this plan
   core/
     providers.dart (+.g)        providers for services: photoScaler, imagePicker (camera/gallery
-                                picks, photo-from-gallery), vocabPhotoService, sessionStore,
-                                googleTranslateService, pronunciationService, sessionPublishService,
-                                sessionById, dictionaryService (definition-mode),
+                                picks, photo-from-gallery), vocabPhotoService, collectionStore,
+                                googleTranslateService, pronunciationService, collectionPublishService,
+                                collectionById, dictionaryService (definition-mode),
                                 sourcePhotoStore, photoUploadService (keepAlive, so uploads outlive
                                 the words table; good-looking-web); plus the
                                 dragMode display preference (task-13) and the persisted
@@ -35,7 +35,7 @@ lib/
                                 word_pair.dart (+.g) — Isar @embedded row: the two strings plus the
                                 dots/lightning extras that make a restored row look untouched;
                                 sourceId links a recognised row to its photo (good-looking-web)
-                                session.dart (+.g) — Isar @collection: a set of words with an
+                                word_collection.dart (+.g) — Isar @collection: a set of words with an
                                 identity and timestamps (task-03); its sources (photos taken, in
                                 order) and the publishedId + editToken a republish overwrites
                                 (good-looking-web, ADR-0008)
@@ -48,19 +48,19 @@ lib/
                                 name stays SourcePhoto (good-looking-web; import-from-quizlet,
                                 ADR-0005; side-panel-sources AC-22)
                                 word_result.dart (+.g) — Isar @embedded WordResult {rowId, exerciseId,
-                                label known/repeat, at}: Session.results, append-only, at most 2000;
+                                label known/repeat, at}: WordCollection.results, append-only, at most 2000;
                                 never in a row, a publish or an export (learn-kit S-22)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
     services/                   photo_scaler.dart, vocab_photo_service.dart,
-                                session_store.dart (persistence: Isar + the current-session pointer,
+                                collection_store.dart (persistence: Isar + the current-session pointer,
                                 and beside it the History pick record — session id + time,
                                 edit-session-from-history ADR-0002)
                                 google_translate_service.dart + translate_response_parser.dart
                                 (translate_a/single with dt=t,bd,at + the part-of-speech rule)
                                 pronunciation_service.dart (task-04)
-                                session_publish_service.dart (task-05: POST /sessions → public link;
+                                collection_publish_service.dart (task-05: POST /sessions → public link;
                                 sends the word detail mode + definitions, definition-mode; with
                                 every set and, with "Include photos" on, every photo that has a
                                 linked row (no cap; each with its kind, a set with name +
@@ -130,7 +130,7 @@ lib/
       quizlet_import_flow.dart        runQuizletImport: link dialog → progress dialog (reads, shows
                                       the cards, Cancel still works; no machine translation) → results
                                       dialog → addWords on Done; a result for another session is dropped
-      word_input_notifier.dart (+.g)  AsyncNotifier<Session> + the launch rule + debounced save()
+      word_input_notifier.dart (+.g)  AsyncNotifier<WordCollection> + the launch rule + debounced save()
                                       + switchTo(id): makes a History session current without
                                       stamping it (edit-session-from-history); every save runs the
                                       dialogue edit rule; addImportDialogues keeps an import's
@@ -344,16 +344,16 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
 
 ```mermaid
 flowchart LR
-  S[WordInputScreen] -->|ref.watch| N[WordInputNotifier<br/>Session]
+  S[WordInputScreen] -->|ref.watch| N[WordInputNotifier<br/>WordCollection]
   S -->|ref.read| P[vocabPhotoServiceProvider<br/>photoScalerProvider]
-  N -->|put/byId/newest| W[sessionStoreProvider<br/>SessionStore: Isar 'vocab'<br/>+ current_session_id pointer]
+  N -->|put/byId/newest| W[sessionStoreProvider<br/>CollectionStore: Isar 'vocab'<br/>+ current_session_id pointer]
   S -->|WordsTableRoute().go| T[WordsTableScreen]
   T -->|ref.watch| N
   T -->|LearnRoute push| L[LearnScreen]
   L -->|Start: ComingSoonRoute push| C[ComingSoonScreen]
   L -->|Start with a group: ExerciseRoute push| EX[exerciseScreen<br/>kit: ExerciseScaffold]
   EX -->|fetchData / check| LA[learnApiServiceProvider<br/>Worker /learn/data, /learn/check]
-  EX -->|record| ER[examResultSinkProvider<br/>Session.results]
+  EX -->|record| ER[examResultSinkProvider<br/>WordCollection.results]
   L -->|Start with Mnemonic story: StoryRoute push| Y[StoryScreen]
   L -->|ensureGrouped| GN[wordGroupsNotifierProvider<br/>core/story]
   GN -->|POST /story/grouping| SA[storyApiServiceProvider<br/>Worker /story/*]
@@ -384,13 +384,23 @@ flowchart LR
 - The shared page itself (editing, photos, autofill) is served by the Worker, not the app: see
   `vocab-photo-api/README.md` and `docs/features/good-looking-web/sad.md`.
 
-- `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced
-  save. Its `build()` runs the **launch rule**: reuse the current session if this device touched
-  it under 5 minutes ago — counting a pick from History as a touch, and having it open with words (`markSeen`, every 15 s
-  from the main screen and on pause, kept beside the pointer as `seen_session_id`/`seen_at`; owner, 2026-10-16)
-  (or if it never got a word), otherwise start a fresh one and hand the
-  screen a `restorableSessionId` so it can offer the previous session back through a 7-second
-  RESTORE snackbar. `SessionStore` never throws: a bad read answers `null`/`[]`.
+- `WordInputNotifier` owns the current `WordCollection` — add/remove/reorder/update plus a
+  debounced save. Its `build()` runs the **launch rule** (collections-screen ADR-0007): after any
+  pause it reopens the collection the current-collection pointer names; a missing or binned
+  pointer falls back to the newest collection outside the recycle bin, and only an empty store
+  creates a first collection. The app never starts a collection by itself and there is no
+  RESTORE offer; a new one comes only from "New collection". `sweepBin` runs on open and on
+  resume. `CollectionStore` never throws: a bad read answers `null`/`[]`.
+- **Who may write a collection** (collections-screen ADR-0003, ADR-0006). Filing — `name`,
+  `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep` — is written only by the
+  store's own one-transaction actions (rename, createFolder, move, reorder, bin, restore, erase,
+  emptyBin, sweepBin). `put(collection)` is for the main screen's autosave only: it copies the
+  stored filing over the copy, never lowers `keep`, and writes nothing when the record is gone
+  (it never inserts; `create()` does). Every other writer — story runs, word groups, dialogue
+  push, exam results, and a late translation, photo reading, Quizlet or subtitle result — uses
+  `update(collectionId, change)`, which reads, changes and writes one record in one transaction
+  and drops the write (logged) when the collection was erased. **A new background writer must use
+  `update`, never a whole-copy `put`.**
 - The screen keeps its controllers and per-row flags; on every change it calls the notifier
   (`updatePair(index, word, translation)`, `removeAt`, `reorder`, `addAll`). The parallel lists in
   the screen are allowed to remain for now — they are a later, optional cleanup.
@@ -473,7 +483,7 @@ The Worker side is in `vocab-photo-api/README.md`; the design is in
 With "Get dialogues from subtitles" on, a subtitle import asks the Worker for words and up to 10
 film dialogues in one request. The results dialog is unchanged; at Done the words are added and
 `addImportDialogues` links each dialogue to the import's kept rows by `WordPair.rowId`
-(`atDone`), all in one debounced save. Dialogues live in `Session.dialogues` (`FilmDialogue`,
+(`atDone`), all in one debounced save. Dialogues live in `WordCollection.dialogues` (`FilmDialogue`,
 embedded, pager order). Every later save runs `afterEdit`: links only shrink, and a dialogue left
 with no words goes (or stays hidden while its delivery is pending). The AC-05 matching rule exists
 twice, in `src/story/word-check.ts` and `lib/core/dialogues/dialogue_match.dart`, pinned by one case

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/story_api_service.dart';
@@ -20,11 +20,11 @@ import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.d
 /// Words screen.
 
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 const dayLimit = "Today's story limit is reached. Try again tomorrow.";
@@ -40,7 +40,7 @@ WordGroup makeGroup(String id, String name, List<int> rows) => WordGroup()
   ..rowIds = [for (final i in rows) 'r$i'];
 
 void main() {
-  final session = Session.create()
+  final collection = WordCollection.create()
     ..words = [for (var i = 1; i <= 25; i++) row(i)];
   final food = makeGroup('g1', 'Food', [1, 2, 3, 4, 5, 6, 7]);
   final travel = makeGroup('g2', 'Travel', [8, 9, 10, 11, 12, 13, 14]);
@@ -63,7 +63,7 @@ void main() {
     addTearDown(tester.view.reset);
     groups = FakeGroups(state);
     container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(() => groups),
       storyRunTrackerProvider.overrideWith(
           () => FakeTracker(StoryTrackerState(refusals: refusals))),

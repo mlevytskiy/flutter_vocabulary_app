@@ -4,14 +4,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
+
+import 'seed_collections.dart';
 
 /// mnemonic-story T10: the stable row id, word groups in the session, and the
-/// story run collection (ADR-0003). Hermetic, like session_store_test.dart.
+/// story run collection (ADR-0003). Hermetic, like collection_store_test.dart.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -26,12 +28,12 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('story_models_test');
-    store = await SessionStore.open(directory: dir.path);
+    store = await CollectionStore.open(directory: dir.path);
   });
 
   tearDown(() async {
@@ -48,36 +50,36 @@ void main() {
 
     test('a session saved without row ids gets stable ones on first read',
         () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [
           WordPair(word: 'a', translation: 'а'),
           WordPair(word: 'b', translation: 'б'),
         ];
-      expect(session.words.every((w) => w.rowId.isEmpty), isTrue);
+      expect(collection.words.every((w) => w.rowId.isEmpty), isTrue);
 
-      await store.put(session);
-      final first = (await store.byId(session.sessionId))!;
+      await seedCollection(store, collection);
+      final first = (await store.byId(collection.collectionId))!;
       final ids = first.words.map((w) => w.rowId).toList();
 
       expect(ids.every((id) => id.isNotEmpty), isTrue);
       expect(ids.toSet().length, 2, reason: 'one distinct id per row');
 
-      final second = (await store.byId(session.sessionId))!;
+      final second = (await store.byId(collection.collectionId))!;
       expect(second.words.map((w) => w.rowId).toList(), ids);
       final listed = (await store.nonEmpty()).single;
       expect(listed.words.map((w) => w.rowId).toList(), ids);
     });
 
     test('saving again keeps the ids a row already has', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а', rowId: 'keep-me')];
-      await store.put(session);
-      final back = (await store.byId(session.sessionId))!;
+      await seedCollection(store, collection);
+      final back = (await store.byId(collection.collectionId))!;
       expect(back.words.single.rowId, 'keep-me');
 
       back.words = [...back.words, WordPair(word: 'b', translation: 'б')];
       await store.put(back);
-      final again = (await store.byId(session.sessionId))!;
+      final again = (await store.byId(collection.collectionId))!;
       expect(again.words[0].rowId, 'keep-me');
       expect(again.words[1].rowId, isNotEmpty);
     });
@@ -85,7 +87,7 @@ void main() {
 
   group('Session groups', () {
     test('groups, the selected group and the key round-trip', () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [
           WordPair(word: 'a', translation: 'а', rowId: 'r1'),
           WordPair(word: 'b', translation: 'б', rowId: 'r2'),
@@ -104,8 +106,8 @@ void main() {
         ..selectedGroupId = 'g1'
         ..groupedWordsKey = 'a|b';
 
-      await store.put(session);
-      final back = (await store.byId(session.sessionId))!;
+      await seedCollection(store, collection);
+      final back = (await store.byId(collection.collectionId))!;
 
       expect(back.groups.map((g) => g.id).toList(), ['g1', 'g2']);
       expect(back.groups[0].name, 'Animals');
@@ -120,10 +122,10 @@ void main() {
 
     test('a session saved before groups existed reads back with none',
         () async {
-      final session = Session.create()
+      final collection = WordCollection.create()
         ..words = [WordPair(word: 'a', translation: 'а')];
-      await store.put(session);
-      final back = (await store.byId(session.sessionId))!;
+      await seedCollection(store, collection);
+      final back = (await store.byId(collection.collectionId))!;
       expect(back.groups, isEmpty);
       expect(back.selectedGroupId, isNull);
       expect(back.groupedWordsKey, isNull);
@@ -133,7 +135,7 @@ void main() {
   group('StoryRun collection', () {
     StoryRun run(String runId, DateTime startedAt) => StoryRun()
       ..runId = runId
-      ..sessionId = 's1'
+      ..collectionId = 's1'
       ..groupId = 'g1'
       ..groupName = 'Animals'
       ..words = ['cat', 'dog']
@@ -170,7 +172,7 @@ void main() {
           await isar.storyRuns.filter().runIdEqualTo('run-1').findFirst();
 
       expect(back, isNotNull);
-      expect(back!.sessionId, 's1');
+      expect(back!.collectionId, 's1');
       expect(back.groupId, 'g1');
       expect(back.groupName, 'Animals');
       expect(back.words, ['cat', 'dog']);

@@ -16,17 +16,19 @@ import 'package:image_picker/image_picker.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/photo_scaler.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/core/services/vocab_photo_service.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+
+import 'seed_collections.dart';
 
 /// Records every pick; answers with [next] (a file, null for "closed", or an
 /// error to throw).
@@ -126,9 +128,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory dir;
-  late SessionStore store;
+  late CollectionStore store;
 
-  // One Isar store for the whole file (SessionStore.open reuses the 'vocab'
+  // One Isar store for the whole file (CollectionStore.open reuses the 'vocab'
   // instance anyway), opened outside fake async because Isar needs real I/O.
   // The tests never write to it.
   setUpAll(() async {
@@ -141,10 +143,10 @@ void main() {
     }
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('photo_import_flow_test');
-    store = await SessionStore.open(directory: dir.path);
-    final session = Session.create()..words = [WordPair(word: 'harbour')];
-    await store.put(session);
-    await store.setCurrentSessionId(session.sessionId);
+    store = await CollectionStore.open(directory: dir.path);
+    final collection = WordCollection.create()..words = [WordPair(word: 'harbour')];
+    await seedCollection(store, collection);
+    await store.setCurrentCollectionId(collection.collectionId);
   });
 
   tearDownAll(() {
@@ -169,7 +171,7 @@ void main() {
     worker = FakeVocabPhotoService();
     photos = FakeSourcePhotoStore();
     container = ProviderContainer(overrides: [
-      sessionStoreProvider.overrideWith((ref) async => store),
+      collectionStoreProvider.overrideWith((ref) async => store),
       imagePickerProvider.overrideWithValue(picker),
       photoScalerProvider.overrideWithValue(scaler),
       vocabPhotoServiceProvider.overrideWithValue(worker),
@@ -191,7 +193,7 @@ void main() {
     container.dispose();
   }
 
-  List<String> sessionWords() => [
+  List<String> collectionWords() => [
         for (final p in container.read(wordInputNotifierProvider).value!.words)
           p.word
       ];
@@ -217,9 +219,9 @@ void main() {
   final sourceChoice = find.byType(SimpleDialog);
   final resultsDialog = find.byType(AlertDialog);
 
-  SessionSnapshot snapshot() {
+  CollectionSnapshot snapshot() {
     final s = container.read(wordInputNotifierProvider).value!;
-    return SessionSnapshot(
+    return CollectionSnapshot(
       [for (final p in s.words) p.word],
       [for (final p in s.words) p.sourceId],
       [for (final p in s.sources) p.id],
@@ -264,7 +266,7 @@ void main() {
       'closing the choice: no message, no picker, session unchanged (AC-05)',
       (tester) async {
     await pumpScreen(tester);
-    final before = sessionWords();
+    final before = collectionWords();
     await tapGetWordsFromPhoto(tester);
     expect(sourceChoice, findsOneWidget);
 
@@ -277,7 +279,7 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
     expect(picker.sources, isEmpty);
     expect(worker.limits, isEmpty);
-    expect(sessionWords(), before);
+    expect(collectionWords(), before);
     await unmount(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -375,7 +377,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await settleDialog(tester);
 
-    expect(sessionWords(), ['harbour', 'candid', 'fog', '']);
+    expect(collectionWords(), ['harbour', 'candid', 'fog', '']);
     await unmount(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -523,15 +525,15 @@ void main() {
 
 /// What a test compares before and after an import: the session's words, the
 /// source each row points at, and the session's source photos.
-class SessionSnapshot {
-  SessionSnapshot(this.words, this.sourceIds, this.sources);
+class CollectionSnapshot {
+  CollectionSnapshot(this.words, this.sourceIds, this.sources);
   final List<String> words;
   final List<String?> sourceIds;
   final List<String> sources;
 
   @override
   bool operator ==(Object other) =>
-      other is SessionSnapshot &&
+      other is CollectionSnapshot &&
       _eq(words, other.words) &&
       _eq(sourceIds, other.sourceIds) &&
       _eq(sources, other.sources);

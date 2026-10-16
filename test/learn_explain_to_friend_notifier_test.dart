@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -24,24 +24,24 @@ class _Api implements LearnApiService {
   dynamic noSuchMethod(Invocation i) => throw StateError('no Worker call expected: ${i.memberName}');
 }
 
-typedef _Record = ({String? sessionId, String rowId, String exerciseId, WordResultLabel label});
+typedef _Record = ({String? collectionId, String rowId, String exerciseId, WordResultLabel label});
 
 class _Sink implements ExamResultSink {
   final records = <_Record>[];
 
   @override
   Future<void> record({
-    required String? sessionId,
+    required String? collectionId,
     required String rowId,
     required String exerciseId,
     required WordResultLabel label,
   }) {
-    records.add((sessionId: sessionId, rowId: rowId, exerciseId: exerciseId, label: label));
+    records.add((collectionId: collectionId, rowId: rowId, exerciseId: exerciseId, label: label));
     return Completer<void>().future;
   }
 
   @override
-  Map<String, WordResult> latest(Session session) => const {};
+  Map<String, WordResult> latest(WordCollection collection) => const {};
 }
 
 SentenceResult _checked(String s, {bool right = true}) =>
@@ -56,21 +56,21 @@ void main() {
       WordPair(word: word ?? 'word$i', translation: translation ?? 'слово$i', rowId: rowId ?? 'r$i');
   List<WordPair> words(int n) => [for (var i = 0; i < n; i++) w(i)];
 
-  ProviderContainer open(List<WordPair> group, {String? sessionId, int seed = 1}) {
+  ProviderContainer open(List<WordPair> group, {String? collectionId, int seed = 1}) {
     sink = _Sink();
     final c = ProviderContainer(overrides: [
       learnApiServiceProvider.overrideWithValue(_Api()),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(seed)),
-      exerciseWordsProvider(sessionId, 'g').overrideWith((ref) async => (group: group, others: const <WordPair>[])),
+      exerciseWordsProvider(collectionId, 'g').overrideWith((ref) async => (group: group, others: const <WordPair>[])),
     ]);
     addTearDown(c.dispose);
     return c;
   }
 
-  Future<ExplainState> load(ProviderContainer c, {String? sessionId}) => c.read(explainToFriendProvider(sessionId, 'g').future);
-  ExplainToFriend notifier(ProviderContainer c, {String? sessionId}) => c.read(explainToFriendProvider(sessionId, 'g').notifier);
-  ExplainState now(ProviderContainer c, {String? sessionId}) => c.read(explainToFriendProvider(sessionId, 'g')).requireValue;
+  Future<ExplainState> load(ProviderContainer c, {String? collectionId}) => c.read(explainToFriendProvider(collectionId, 'g').future);
+  ExplainToFriend notifier(ProviderContainer c, {String? collectionId}) => c.read(explainToFriendProvider(collectionId, 'g').notifier);
+  ExplainState now(ProviderContainer c, {String? collectionId}) => c.read(explainToFriendProvider(collectionId, 'g')).requireValue;
 
   group('rounds and mode (AC-02, AC-03)', () {
     for (final (n, sizes) in [
@@ -162,16 +162,16 @@ void main() {
   group('Type word results (AC-31 – AC-33)', () {
     test('a final word records exactly once with the session id and exercise id; time-out is repeat; none for not checked',
         () async {
-      final c = open(words(4), sessionId: 's1');
-      await load(c, sessionId: 's1');
-      final n = notifier(c, sessionId: 's1');
+      final c = open(words(4), collectionId: 's1');
+      await load(c, collectionId: 's1');
+      final n = notifier(c, collectionId: 's1');
       n.chooseMode(ExplainMode.type);
       n.done(_checked('Land by the sea.'));
       n.done(_checked('Land by the sea.', right: false)); // second call ignored
       expect(sink.records, hasLength(1));
-      expect(sink.records.single.sessionId, 's1');
+      expect(sink.records.single.collectionId, 's1');
       expect(sink.records.single.exerciseId, 'explain-to-friend');
-      expect(sink.records.single.rowId, now(c, sessionId: 's1').card!.rowId);
+      expect(sink.records.single.rowId, now(c, collectionId: 's1').card!.rowId);
       expect(sink.records.single.label, WordResultLabel.known);
       n.next();
       n.done(_timedOut);
@@ -181,7 +181,7 @@ void main() {
       n.done(_checked('c d', right: false));
       expect(sink.records.map((r) => r.label), [WordResultLabel.known, WordResultLabel.repeat, WordResultLabel.repeat]);
       n.next();
-      expect(now(c, sessionId: 's1').inSummary, isTrue);
+      expect(now(c, collectionId: 's1').inSummary, isTrue);
       expect(sink.records, hasLength(3));
     });
 

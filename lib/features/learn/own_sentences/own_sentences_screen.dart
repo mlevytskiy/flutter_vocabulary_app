@@ -11,14 +11,14 @@ import 'own_sentences_notifier.dart';
 /// shared frame (S-30): the word and one prompt, then the kit's exam field.
 /// Nothing else is shown on the card (D-34). The phase comes from the notifier.
 class OwnSentencesScreen extends ConsumerWidget {
-  const OwnSentencesScreen({super.key, this.sessionId, required this.groupId});
+  const OwnSentencesScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = ownSentencesProvider(sessionId, groupId);
+    final provider = ownSentencesProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
@@ -21,11 +21,11 @@ import 'fake_story_groups.dart';
 /// AC-25).
 
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 const dialogueLine = 'Your words are grouped by the dialogues from the film. '
@@ -43,7 +43,7 @@ WordGroup makeGroup(String id, String name, List<int> rows, {String? dialogueId}
       ..dialogueId = dialogueId;
 
 void main() {
-  final withDialogues = Session.create()
+  final withDialogues = WordCollection.create()
     ..words = [for (var i = 1; i <= 12; i++) row(i)]
     ..dialogues = [
       FilmDialogue()
@@ -55,7 +55,7 @@ void main() {
         ..lines = ['Fine, word2.']
         ..wordRowIds = ['r2'],
     ];
-  final noDialogues = Session.create()..words = [for (var i = 1; i <= 5; i++) row(i)];
+  final noDialogues = WordCollection.create()..words = [for (var i = 1; i <= 5; i++) row(i)];
 
   final d1 = makeGroup('dialogue-d1', 'Where is word1?', [1], dialogueId: 'd1');
   final d2 = makeGroup('dialogue-d2', 'Fine, word2.', [2], dialogueId: 'd2');
@@ -64,14 +64,14 @@ void main() {
 
   late FakeGroups groups;
 
-  Future<void> pumpScreen(WidgetTester tester, Session session, WordGroupsState state) async {
+  Future<void> pumpScreen(WidgetTester tester, WordCollection collection, WordGroupsState state) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(800, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     groups = FakeGroups(state);
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(() => groups),
       storyRunTrackerProvider.overrideWith(() => FakeTracker(const StoryTrackerState())),
     ]);

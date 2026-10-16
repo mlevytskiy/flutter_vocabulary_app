@@ -6,7 +6,7 @@ part of 'own_sentences_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$ownSentencesHash() => r'71d77cbfd36be489b69b1804eb466b70a227007b';
+String _$ownSentencesHash() => r'90c598185820b094d4ada958cf699d6cd41672ac';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$OwnSentences
     extends BuildlessAutoDisposeAsyncNotifier<OwnState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<OwnState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -67,11 +67,11 @@ class OwnSentencesFamily extends Family<AsyncValue<OwnState>> {
   ///
   /// Copied from [OwnSentences].
   OwnSentencesProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return OwnSentencesProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -81,7 +81,7 @@ class OwnSentencesFamily extends Family<AsyncValue<OwnState>> {
     covariant OwnSentencesProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -114,11 +114,11 @@ class OwnSentencesProvider
   ///
   /// Copied from [OwnSentences].
   OwnSentencesProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => OwnSentences()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: ownSentencesProvider,
           name: r'ownSentencesProvider',
@@ -129,7 +129,7 @@ class OwnSentencesProvider
           dependencies: OwnSentencesFamily._dependencies,
           allTransitiveDependencies:
               OwnSentencesFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -140,11 +140,11 @@ class OwnSentencesProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -152,7 +152,7 @@ class OwnSentencesProvider
     covariant OwnSentences notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -163,14 +163,14 @@ class OwnSentencesProvider
       origin: this,
       override: OwnSentencesProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -185,14 +185,14 @@ class OwnSentencesProvider
   @override
   bool operator ==(Object other) {
     return other is OwnSentencesProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -202,8 +202,8 @@ class OwnSentencesProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin OwnSentencesRef on AutoDisposeAsyncNotifierProviderRef<OwnState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -215,7 +215,7 @@ class _OwnSentencesProviderElement
   _OwnSentencesProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as OwnSentencesProvider).sessionId;
+  String? get collectionId => (origin as OwnSentencesProvider).collectionId;
   @override
   String get groupId => (origin as OwnSentencesProvider).groupId;
 }

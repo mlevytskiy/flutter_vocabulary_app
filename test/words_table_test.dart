@@ -7,11 +7,11 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/session_publish_service.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
@@ -19,7 +19,7 @@ import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.d
 /// definition-mode T14: the words table lists every filled row and shows the
 /// columns the word detail mode shows (spec AC-12, AC-14).
 void main() {
-  final session = Session.create()
+  final collection = WordCollection.create()
     ..words = [
       WordPair(word: 'claim', translation: 'заява', definition: 'to ask for'),
       WordPair(word: 'gated', definition: 'having a gate'),
@@ -28,28 +28,28 @@ void main() {
     ];
 
   Future<void> pumpTable(WidgetTester tester, WordDetailMode mode,
-      {SessionPublishService? publisher, Session? shown}) async {
-    final table = shown ?? session;
+      {CollectionPublishService? publisher, WordCollection? shown}) async {
+    final table = shown ?? collection;
     SharedPreferences.setMockInitialValues({'word_detail_mode': mode.name});
     // The thumbnails read from a throwaway folder, not the platform's.
     final photoDir = Directory.systemTemp.createTempSync('words_table_test');
     addTearDown(() => photoDir.deleteSync(recursive: true));
     final container = ProviderContainer(overrides: [
-      sessionByIdProvider(table.sessionId).overrideWith((ref) async => table),
+      collectionByIdProvider(table.collectionId).overrideWith((ref) async => table),
       sourcePhotoStoreProvider
           .overrideWithValue(SourcePhotoStore(directory: photoDir.path)),
       if (publisher != null)
-        sessionPublishServiceProvider.overrideWithValue(publisher),
+        collectionPublishServiceProvider.overrideWithValue(publisher),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(sessionByIdProvider(table.sessionId).future);
+      await container.read(collectionByIdProvider(table.collectionId).future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: MaterialApp(home: WordsTableScreen(sessionId: table.sessionId)),
+      child: MaterialApp(home: WordsTableScreen(collectionId: table.collectionId)),
     ));
     await tester.pump();
   }
@@ -108,7 +108,7 @@ void main() {
     ..fileName = '$id.jpg'
     ..takenAt = DateTime(2026, 9, 20, 10, minute);
 
-  Session withPhotos() => Session.create()
+  WordCollection withPhotos() => WordCollection.create()
     ..words = [
       WordPair(word: 'claim', translation: 'заява', sourceId: 'p1'),
       WordPair(word: 'curse', translation: 'прокляття', sourceId: 'p2'),
@@ -142,7 +142,7 @@ void main() {
   const republishNote = 'This list was shared before. Sharing it again '
       'replaces the edits made on the shared page.';
 
-  Session sharedBefore() => withPhotos()
+  WordCollection sharedBefore() => withPhotos()
     ..publishedId = 'old'
     ..editToken = 'token';
 
@@ -174,7 +174,7 @@ void main() {
     ..url = 'https://quizlet.com/$id/set-$id/'
     ..takenAt = DateTime(2026, 9, 20, 11);
 
-  Session withPhotosAndSet() => withPhotos()
+  WordCollection withPhotosAndSet() => withPhotos()
     ..words = [
       ...withPhotos().words,
       WordPair(word: 'tide', translation: 'приплив', sourceId: 'quizlet-1'),
@@ -226,7 +226,7 @@ void main() {
   testWidgets('a set alone: no switch, no note, the set is sent',
       (tester) async {
     final publisher = _FakePublisher();
-    final shown = Session.create()
+    final shown = WordCollection.create()
       ..words = [
         WordPair(word: 'tide', translation: 'приплив', sourceId: 'quizlet-1'),
       ]
@@ -267,7 +267,7 @@ void main() {
 
   testWidgets('photos only on blank rows count as none: no switch',
       (tester) async {
-    final shown = Session.create()
+    final shown = WordCollection.create()
       ..words = [
         WordPair(word: 'claim', translation: 'заява'),
         WordPair(sourceId: 'p1'),
@@ -332,6 +332,44 @@ void main() {
     expect(find.textContaining('30 days'), findsNothing);
   });
 
+  // collections-screen T24: the sheet warns that the name is public, and
+  // Share link sends it as the page's title (AC-29, AC-31).
+  testWidgets('the sheet says the collection\'s name is public', (tester) async {
+    final named = WordCollection.create()
+      ..name = 'Speaking club 12'
+      ..words = [WordPair(word: 'get over', translation: 'подолати')];
+    await pumpTable(tester, WordDetailMode.translation, shown: named);
+    await openSheet(tester);
+    expect(
+        find.text('The collection\'s name, "Speaking club 12", is visible to '
+            'anyone with the link.'),
+        findsOneWidget);
+    expect(find.text('Share file'), findsOneWidget);
+    expect(find.text('Share link'), findsOneWidget);
+  });
+
+  testWidgets('a collection not yet named warns with its default name',
+      (tester) async {
+    final unnamed = WordCollection.create()
+      ..updatedAt = DateTime(2026, 10, 16, 14, 30)
+      ..words = [WordPair(word: 'cup', translation: 'чашка')];
+    await pumpTable(tester, WordDetailMode.translation, shown: unnamed);
+    await openSheet(tester);
+    expect(find.textContaining('"16.10.2026 14:30"'), findsOneWidget);
+  });
+
+  testWidgets('Share link sends the name as the title', (tester) async {
+    final publisher = _FakePublisher();
+    final named = WordCollection.create()
+      ..name = 'Speaking club 12'
+      ..words = [WordPair(word: 'get over', translation: 'подолати')];
+    await pumpTable(tester, WordDetailMode.translation,
+        publisher: publisher, shown: named);
+    await openSheet(tester);
+    await tapShareLink(tester);
+    expect(publisher.sentTitle, 'Speaking club 12');
+  });
+
   testWidgets('tapping the photo stack opens the viewer; swipe and close',
       (tester) async {
     await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
@@ -366,42 +404,42 @@ void main() {
   // edit-session-from-history T4 (AC-01..AC-04, AC-06, AC-08): the red Edit
   // button and its question on a History session's words screen.
   group('Edit button', () {
-    late Session current;
-    late Session past;
+    late WordCollection current;
+    late WordCollection past;
     late _FakeWordInput input;
     late GoRouter router;
 
     Future<void> pumpHistoryTable(WidgetTester tester, String? shownId,
         {bool pastExists = true}) async {
       SharedPreferences.setMockInitialValues({});
-      current = Session.create()
+      current = WordCollection.create()
         ..words = [WordPair(word: 'coffee', translation: 'кава')];
-      past = Session.create()
+      past = WordCollection.create()
         ..words = [
           WordPair(word: 'tea', translation: 'чай'),
           WordPair(word: 'milk', translation: 'молоко'),
         ];
       input = _FakeWordInput(current, {
-        current.sessionId: current,
-        if (pastExists) past.sessionId: past,
+        current.collectionId: current,
+        if (pastExists) past.collectionId: past,
       });
       final container = ProviderContainer(overrides: [
         wordInputNotifierProvider.overrideWith(() => input),
-        sessionByIdProvider(past.sessionId).overrideWith((ref) async => past),
-        sessionByIdProvider(current.sessionId)
+        collectionByIdProvider(past.collectionId).overrideWith((ref) async => past),
+        collectionByIdProvider(current.collectionId)
             .overrideWith((ref) async => current),
       ]);
       addTearDown(container.dispose);
       await tester.runAsync(() async {
         await container.read(wordDetailModeProvider.notifier).loaded;
         await container.read(wordInputNotifierProvider.future);
-        await container.read(sessionByIdProvider(past.sessionId).future);
-        await container.read(sessionByIdProvider(current.sessionId).future);
+        await container.read(collectionByIdProvider(past.collectionId).future);
+        await container.read(collectionByIdProvider(current.collectionId).future);
       });
       router = GoRouter(
         initialLocation: shownId == null
             ? '/table'
-            : '/table?sessionId=${shownId == 'past' ? past.sessionId : current.sessionId}',
+            : '/table?sessionId=${shownId == 'past' ? past.collectionId : current.collectionId}',
         routes: [
           GoRoute(
             path: '/',
@@ -410,7 +448,7 @@ void main() {
               GoRoute(
                 path: 'table',
                 builder: (context, state) => WordsTableScreen(
-                    sessionId: state.uri.queryParameters['sessionId']),
+                    collectionId: state.uri.queryParameters['sessionId']),
               ),
             ],
           ),
@@ -470,7 +508,7 @@ void main() {
       await pumpHistoryTable(tester, 'past');
       await askAndAnswer(tester, 'Yes');
 
-      expect(input.switchedTo, [past.sessionId]);
+      expect(input.switchedTo, [past.collectionId]);
       expect(find.byType(WordsTableScreen), findsNothing);
       expect(find.text('main: tea, milk'), findsOneWidget);
       expect(router.canPop(), isFalse,
@@ -482,7 +520,7 @@ void main() {
       await pumpHistoryTable(tester, 'past', pastExists: false);
       await askAndAnswer(tester, 'Yes');
 
-      expect(find.text("This session can't be opened for editing"),
+      expect(find.text("This collection can't be opened for editing"),
           findsOneWidget);
       expect(find.byType(WordsTableScreen), findsOneWidget);
       expect(find.byType(_MainStub), findsNothing);
@@ -506,42 +544,47 @@ class _MainStub extends ConsumerWidget {
 
 /// The notifier without Isar: a map of sessions, and a log of switches.
 class _FakeWordInput extends WordInputNotifier {
-  _FakeWordInput(this._current, this._sessions);
+  _FakeWordInput(this._current, this._collections);
 
-  final Session _current;
-  final Map<String, Session> _sessions;
+  final WordCollection _current;
+  final Map<String, WordCollection> _collections;
   final List<String> switchedTo = [];
 
   @override
-  Future<Session> build() async => _current;
+  Future<WordCollection> build() async => _current;
 
   @override
-  Future<bool> switchTo(String sessionId) async {
-    final picked = _sessions[sessionId];
+  Future<bool> switchTo(String collectionId) async {
+    final picked = _collections[collectionId];
     if (picked == null) return false;
-    switchedTo.add(sessionId);
+    switchedTo.add(collectionId);
     state = AsyncData(picked);
     return true;
   }
 }
 
 
-class _FakePublisher extends SessionPublishService {
+class _FakePublisher extends CollectionPublishService {
   /// The photos the last publish was asked to include.
   List<SessionSource>? sentSources;
 
   /// The film dialogues the last publish was given.
   List<FilmDialogue>? sentDialogues;
 
+  /// The title the last publish was given (collections-screen T24).
+  String? sentTitle;
+
   @override
-  Future<PublishedSession> publish(List<WordPair> pairs,
+  Future<PublishedCollection> publish(List<WordPair> pairs,
       {WordDetailMode detail = WordDetailMode.translation,
       List<SessionSource> sources = const [],
       String? publishedId,
       String? editToken,
-      List<FilmDialogue> dialogues = const []}) async {
+      List<FilmDialogue> dialogues = const [],
+      String? title}) async {
     sentSources = sources;
+    sentTitle = title;
     sentDialogues = dialogues;
-    return PublishedSession(id: 'id', url: 'https://example.test/s/id');
+    return PublishedCollection(id: 'id', url: 'https://example.test/s/id');
   }
 }

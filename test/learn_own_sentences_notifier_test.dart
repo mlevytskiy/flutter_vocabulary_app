@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -26,24 +26,24 @@ class _Api implements LearnApiService {
   dynamic noSuchMethod(Invocation i) => throw StateError('no Worker call expected: ${i.memberName}');
 }
 
-typedef _Record = ({String? sessionId, String rowId, String exerciseId, WordResultLabel label});
+typedef _Record = ({String? collectionId, String rowId, String exerciseId, WordResultLabel label});
 
 class _Sink implements ExamResultSink {
   final records = <_Record>[];
 
   @override
   Future<void> record({
-    required String? sessionId,
+    required String? collectionId,
     required String rowId,
     required String exerciseId,
     required WordResultLabel label,
   }) {
-    records.add((sessionId: sessionId, rowId: rowId, exerciseId: exerciseId, label: label));
+    records.add((collectionId: collectionId, rowId: rowId, exerciseId: exerciseId, label: label));
     return Completer<void>().future;
   }
 
   @override
-  Map<String, WordResult> latest(Session session) => const {};
+  Map<String, WordResult> latest(WordCollection collection) => const {};
 }
 
 SentenceResult _checked(String s, {bool right = true, String fixed = 'x'}) =>
@@ -56,21 +56,21 @@ void main() {
       WordPair(word: word ?? 'word$i', translation: translation ?? 'слово$i', rowId: rowId ?? 'r$i');
   List<WordPair> words(int n) => [for (var i = 0; i < n; i++) w(i)];
 
-  ProviderContainer open(List<WordPair> group, {String? sessionId, int seed = 1}) {
+  ProviderContainer open(List<WordPair> group, {String? collectionId, int seed = 1}) {
     sink = _Sink();
     final c = ProviderContainer(overrides: [
       learnApiServiceProvider.overrideWithValue(_Api()),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(seed)),
-      exerciseWordsProvider(sessionId, 'g').overrideWith((ref) async => (group: group, others: const <WordPair>[])),
+      exerciseWordsProvider(collectionId, 'g').overrideWith((ref) async => (group: group, others: const <WordPair>[])),
     ]);
     addTearDown(c.dispose);
     return c;
   }
 
-  Future<OwnState> load(ProviderContainer c, {String? sessionId}) => c.read(ownSentencesProvider(sessionId, 'g').future);
-  OwnSentences notifier(ProviderContainer c, {String? sessionId}) => c.read(ownSentencesProvider(sessionId, 'g').notifier);
-  OwnState now(ProviderContainer c, {String? sessionId}) => c.read(ownSentencesProvider(sessionId, 'g')).requireValue;
+  Future<OwnState> load(ProviderContainer c, {String? collectionId}) => c.read(ownSentencesProvider(collectionId, 'g').future);
+  OwnSentences notifier(ProviderContainer c, {String? collectionId}) => c.read(ownSentencesProvider(collectionId, 'g').notifier);
+  OwnState now(ProviderContainer c, {String? collectionId}) => c.read(ownSentencesProvider(collectionId, 'g')).requireValue;
 
   group('rounds (AC-02, AC-03)', () {
     for (final (n, sizes) in [
@@ -139,13 +139,13 @@ void main() {
 
   group('word results (AC-24 – AC-26)', () {
     test('a final word records exactly once with the session id and exercise id; none for not checked', () async {
-      final c = open(words(4), sessionId: 's1');
-      await load(c, sessionId: 's1');
-      final n = notifier(c, sessionId: 's1');
+      final c = open(words(4), collectionId: 's1');
+      await load(c, collectionId: 's1');
+      final n = notifier(c, collectionId: 's1');
       n.done(_checked('A b.'));
       n.done(_checked('A b.', right: false)); // second call ignored
       expect(sink.records, hasLength(1));
-      expect(sink.records.single.sessionId, 's1');
+      expect(sink.records.single.collectionId, 's1');
       expect(sink.records.single.exerciseId, 'own-sentences');
       expect(sink.records.single.label, WordResultLabel.known);
       n.next();
@@ -157,7 +157,7 @@ void main() {
       n.done(_checked('c d', right: false));
       n.next();
       expect(sink.records, hasLength(3));
-      expect(now(c, sessionId: 's1').inSummary, isTrue);
+      expect(now(c, collectionId: 's1').inSummary, isTrue);
     });
 
     test('Next, Next round and the summary record nothing; next needs a final word', () async {

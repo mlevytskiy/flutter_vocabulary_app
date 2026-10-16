@@ -82,9 +82,9 @@ const _kinds = [QuestionKind.wordToTranslation, QuestionKind.meaningToWord];
 @riverpod
 class PickTheAnswer extends _$PickTheAnswer {
   @override
-  Future<PickState> build(String? sessionId, String groupId) async {
+  Future<PickState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final pool = QuestionPool(group: words.group, others: words.others);
     // S-25: usable = a question exists for both kinds. Null never depends on
     // the Random, so a fixed seed finds the same words.
@@ -108,7 +108,7 @@ class PickTheAnswer extends _$PickTheAnswer {
 
   /// Retry after a failed load: read the words again.
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
     ref.invalidateSelf();
   }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/models/word_result.dart';
@@ -21,11 +21,11 @@ import 'dart:math';
 /// learn-translate-sentences: the screen (AC-01, AC-04 – AC-07, AC-09 – AC-20,
 /// AC-22, AC-24, AC-25, AC-27, AC-28; §6 call counts and feedback timing).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 class _Api implements LearnApiService {
@@ -59,29 +59,29 @@ class _Api implements LearnApiService {
 }
 
 class _Sink implements ExamResultSink {
-  final records = <({String? sessionId, String rowId, WordResultLabel label})>[];
+  final records = <({String? collectionId, String rowId, WordResultLabel label})>[];
 
   @override
   Future<void> record({
-    required String? sessionId,
+    required String? collectionId,
     required String rowId,
     required String exerciseId,
     required WordResultLabel label,
   }) {
     expect(exerciseId, 'translate-sentences');
-    records.add((sessionId: sessionId, rowId: rowId, label: label));
+    records.add((collectionId: collectionId, rowId: rowId, label: label));
     return Completer<void>().future;
   }
 
   @override
-  Map<String, WordResult> latest(Session session) => const {};
+  Map<String, WordResult> latest(WordCollection collection) => const {};
 }
 
-Session _session(int count) {
+WordCollection _collection(int count) {
   final words = [
     for (var i = 0; i < count; i++) WordPair(word: 'word$i', translation: 'берег$i', rowId: 'r$i'),
   ];
-  return Session.create()
+  return WordCollection.create()
     ..words = words
     ..groups = [
       WordGroup()
@@ -102,17 +102,17 @@ void main() {
     sink = _Sink();
   });
 
-  Future<void> pump(WidgetTester tester, Session session, {String? sessionId}) async {
+  Future<void> pump(WidgetTester tester, WordCollection collection, {String? collectionId}) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    openedFor = sessionId;
+    openedFor = collectionId;
     container = ProviderContainer(overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
-      sessionByIdProvider('hist').overrideWith((ref) async => session),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -122,7 +122,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => exerciseScreen('translate-sentences', sessionId, 'g'),
+                builder: (_) => exerciseScreen('translate-sentences', collectionId, 'g'),
               )),
               child: const Text('learn page'),
             ),
@@ -161,7 +161,7 @@ void main() {
   }
 
   testWidgets('AC-01, AC-09: title, counter, prompt, source with only the cue bold, field, Skip; nothing else', (tester) async {
-    await pump(tester, _session(8));
+    await pump(tester, _collection(8));
     final card = state().card!;
     expect(find.widgetWithText(AppBar, 'Translate sentences'), findsOneWidget);
     expect(find.text('Word 1 of 4'), findsOneWidget);
@@ -183,7 +183,7 @@ void main() {
   });
 
   testWidgets('AC-10, AC-11: an invalid text sends nothing', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await send(tester, '   ');
     expect(find.text('Write a full sentence'), findsOneWidget);
     await send(tester, 'one');
@@ -197,7 +197,7 @@ void main() {
   testWidgets('AC-12, AC-16, §6: Checking…, then Good, model translation with the word in bold, Next; record at once',
       (tester) async {
     api.checkGate = Completer();
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     final card = state().card!;
     await tester.enterText(find.byType(TextField), 'We sat on the ${card.word} for a long time.');
     await tester.testTextInput.receiveAction(TextInputAction.send);
@@ -218,7 +218,7 @@ void main() {
   });
 
   testWidgets('AC-13: correct English without the word is repeat with the note and the model translation', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     final card = state().card!;
     await send(tester, 'We sat on the beach for a long time.');
     expect(find.text('Use “${card.word}” in your sentence.'), findsOneWidget);
@@ -228,7 +228,7 @@ void main() {
 
   testWidgets('AC-14: a fixed sentence with the word in bold, note, then the model translation', (tester) async {
     api.replies.add((usesWord: true, usesTask: false, ok: false, fixed: 'We sat by the word0.', note: 'Fix the verb.'));
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await send(tester, 'We sitted by the word0.');
     expect(find.text('Fix the verb.'), findsOneWidget);
     expect(find.text('Model translation:'), findsOneWidget);
@@ -236,7 +236,7 @@ void main() {
   });
 
   testWidgets('AC-17: Skip sends no check, shows the model translation and Next; repeat', (tester) async {
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await tapText(tester, 'Skip');
     expect(api.checks, isEmpty);
     expect(find.text('Model translation:'), findsOneWidget);
@@ -248,7 +248,7 @@ void main() {
   testWidgets('AC-18, AC-19: a failed check keeps the text, shows Retry and no model; Retry resends the same text',
       (tester) async {
     api.replies.add(LearnApiException(LearnApiError.network, 'x'));
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await send(tester, 'We sat by the shore long.');
     expect(find.text('Could not check the sentence. Check the connection and try again.'), findsOneWidget);
     expect(find.text('Model translation:'), findsNothing);
@@ -263,7 +263,7 @@ void main() {
 
   testWidgets('AC-20, AC-21: the day limit keeps Skip and no Retry; Skip is not checked, no word result', (tester) async {
     api.replies.add(LearnApiException(LearnApiError.dayLimit, 'x'));
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await send(tester, 'We sat by the shore long.');
     expect(find.text("Today's exercise limit is reached. Try again tomorrow."), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
@@ -282,7 +282,7 @@ void main() {
   });
 
   testWidgets('AC-27, AC-28: the summary of a 6-word group in two rounds; Next round, then Done', (tester) async {
-    await pump(tester, _session(6));
+    await pump(tester, _collection(6));
     expect(find.text('Word 1 of 3'), findsOneWidget);
     for (var i = 0; i < 3; i++) {
       await send(tester, 'We sat by the ${state().card!.word} long.');
@@ -312,7 +312,7 @@ void main() {
 
   testWidgets('AC-24: leaving mid-check ignores the late answer; reopening starts at word 1', (tester) async {
     api.checkGate = Completer();
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     await tapText(tester, 'Skip');
     await tapText(tester, 'Next');
     await tester.enterText(find.byType(TextField), 'We sat by the shore long.');
@@ -330,7 +330,7 @@ void main() {
   });
 
   testWidgets('AC-04, AC-05: under 3 usable words shows Not enough and Back; no call below 3 candidates', (tester) async {
-    await pump(tester, _session(2));
+    await pump(tester, _collection(2));
     expect(find.text('Not enough words for this exercise'), findsOneWidget);
     expect(find.text('Back'), findsOneWidget);
     expect(api.calls, isEmpty);
@@ -341,7 +341,7 @@ void main() {
 
   testWidgets('AC-06, AC-07: a failed load shows the error and Retry; the day limit has Back only', (tester) async {
     api.error = LearnApiException(LearnApiError.network, 'x');
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     expect(find.text('Could not load the exercise. Check the connection and try again.'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
     api.error = null;
@@ -353,7 +353,7 @@ void main() {
 
   testWidgets('AC-07: the day limit while loading: Back, no Retry, no word result', (tester) async {
     api.error = LearnApiException(LearnApiError.dayLimit, 'x');
-    await pump(tester, _session(3));
+    await pump(tester, _collection(3));
     expect(find.text("Today's exercise limit is reached. Try again tomorrow."), findsOneWidget);
     expect(find.text('Retry'), findsNothing);
     expect(find.text('Back'), findsOneWidget);
@@ -361,11 +361,11 @@ void main() {
   });
 
   testWidgets('AC-25: a History session is used; results go to it; the session is unchanged', (tester) async {
-    final s = _session(3);
+    final s = _collection(3);
     final before = s.words.map((w) => w.word).toList();
-    await pump(tester, s, sessionId: 'hist');
+    await pump(tester, s, collectionId: 'hist');
     await tapText(tester, 'Skip');
-    expect(sink.records.single.sessionId, 'hist');
+    expect(sink.records.single.collectionId, 'hist');
     expect(s.words.map((w) => w.word).toList(), before);
     expect(s.groups.single.rowIds, ['r0', 'r1', 'r2']);
   });

@@ -8,14 +8,14 @@ import '../kit/typed_answer_field.dart';
 import 'fill_the_gaps_notifier.dart';
 
 class FillTheGapsScreen extends ConsumerWidget {
-  const FillTheGapsScreen({super.key, this.sessionId, required this.groupId});
+  const FillTheGapsScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final provider = fillTheGapsProvider(sessionId, groupId);
+    final provider = fillTheGapsProvider(collectionId, groupId);
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -24,11 +24,11 @@ import 'fake_story_groups.dart';
 /// "Words changed" mark and "Make a new story".
 
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 /// The tracker as the screen sees it: it records what the screen asks and
@@ -38,7 +38,7 @@ class _Tracker extends StoryRunTracker {
   final StoryTrackerState initial;
   int follows = 0;
   int releases = 0;
-  final List<({String sessionId, String groupId, bool replacing})> starts = [];
+  final List<({String collectionId, String groupId, bool replacing})> starts = [];
   final List<String> prompts = [];
   final List<String> draws = [];
   StoryActionResult drawResult = const StoryStarted(attempt: 2);
@@ -56,9 +56,9 @@ class _Tracker extends StoryRunTracker {
   }
 
   @override
-  Future<String?> startFor(String sessionId, WordGroup group,
+  Future<String?> startFor(String collectionId, WordGroup group,
       {bool replacing = false}) async {
-    starts.add((sessionId: sessionId, groupId: group.id, replacing: replacing));
+    starts.add((collectionId: collectionId, groupId: group.id, replacing: replacing));
     return 'new-run';
   }
 
@@ -112,7 +112,7 @@ StoryRun makeRun(String id, String outcome, List<StoryStep> steps,
         {int minute = 0}) =>
     StoryRun()
       ..runId = id
-      ..sessionId = 's1'
+      ..collectionId = 's1'
       ..groupId = 'g1'
       ..groupName = 'Food'
       ..words = ['apple', 'bread']
@@ -133,7 +133,7 @@ StoryRun doneRun(String id, {int minute = 0, String story = 'An old tale.'}) =>
         minute: minute);
 
 void main() {
-  late Session session;
+  late WordCollection collection;
   late WordGroup theGroup;
   late _Tracker tracker;
   late _Pictures pictures;
@@ -144,17 +144,17 @@ void main() {
     String? storyRunId,
     List<String> storyWords = const ['apple', 'bread'],
     Map<String, StoryStartRefusal> refusals = const {},
-    List<String> sessionWords = const ['apple', 'bread'],
+    List<String> collectionWords = const ['apple', 'bread'],
   }) async {
     SharedPreferences.setMockInitialValues({});
     tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    session = Session.create()
-      ..sessionId = 's1'
+    collection = WordCollection.create()
+      ..collectionId = 's1'
       ..words = [
-        for (var i = 0; i < sessionWords.length; i++)
-          WordPair(word: sessionWords[i], translation: 't', rowId: 'r$i'),
+        for (var i = 0; i < collectionWords.length; i++)
+          WordPair(word: collectionWords[i], translation: 't', rowId: 'r$i'),
       ];
     theGroup = WordGroup()
       ..id = 'g1'
@@ -162,11 +162,11 @@ void main() {
       ..rowIds = ['r0', 'r1']
       ..storyRunId = storyRunId
       ..storyWords = [...storyWords];
-    session.groups = [theGroup];
+    collection.groups = [theGroup];
     tracker = _Tracker(StoryTrackerState(refusals: refusals));
     pictures = _Pictures();
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(() => FakeGroups(
           WordGroupsState(groups: [theGroup], selectedGroupId: 'g1'))),
       storyRunTrackerProvider.overrideWith(() => tracker),
@@ -220,7 +220,7 @@ void main() {
     testWidgets('AC-17: an edited word shows Words changed and Make a new story',
         (tester) async {
       await pumpScreen(tester, [doneRun('r1')],
-          storyRunId: 'r1', sessionWords: const ['apple', 'bred']);
+          storyRunId: 'r1', collectionWords: const ['apple', 'bred']);
       expect(find.text('Words changed'), findsOneWidget);
       expect(find.text('An old tale.'), findsOneWidget);
       expect(makeNew, findsOneWidget);
@@ -284,7 +284,7 @@ void main() {
         (tester) async {
       await pumpScreen(tester, const []);
       expect(tracker.starts.single.groupId, 'g1');
-      expect(tracker.starts.single.sessionId, 's1');
+      expect(tracker.starts.single.collectionId, 's1');
       expect(tracker.starts.single.replacing, isFalse);
     });
   });
@@ -468,7 +468,7 @@ void main() {
   test('StoryRoute sits under learn at story and carries the group', () {
     expect(const StoryRoute(groupId: 'g1').location,
         '/table/learn/story?group-id=g1');
-    expect(const StoryRoute(sessionId: 's9', groupId: 'g1').location,
-        '/table/learn/story?session-id=s9&group-id=g1');
+    expect(const StoryRoute(collectionId: 's9', groupId: 'g1').location,
+        '/table/learn/story?collection-id=s9&group-id=g1');
   });
 }

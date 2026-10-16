@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/mnemonic_story/story_screen.dart';
@@ -17,7 +17,7 @@ import 'fake_story_groups.dart';
 /// mnemonic-story T17 that is the story screen for Mnemonic story (AC-06).
 class _FakeInput extends WordInputNotifier {
   @override
-  Future<Session> build() async => Session.create()
+  Future<WordCollection> build() async => WordCollection.create()
     ..words = [WordPair(word: 'a', translation: 'b')];
 }
 

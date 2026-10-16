@@ -32,10 +32,10 @@ class FakeSubtitleWords extends SubtitleWordsService {
     required List<String> lines,
     required int maximum,
     required SubtitleModel model,
-    required List<String> sessionWords,
+    required List<String> collectionWords,
     bool dialogues = false,
   }) {
-    calls.add({'words': words, 'contexts': contexts, 'lines': lines, 'maximum': maximum, 'model': model, 'sessionWords': sessionWords});
+    calls.add({'words': words, 'contexts': contexts, 'lines': lines, 'maximum': maximum, 'model': model, 'sessionWords': collectionWords});
     pending = Completer();
     return pending!.future;
   }
@@ -99,9 +99,10 @@ void main() {
   late FakeGoogleWords google;
   late FakeSearch search;
   late List<VocabWord> added;
+  late List<(String, List<VocabWord>)> addedLate;
   late List<String> films;
   late List<String?> posters;
-  late String sessionId;
+  late String collectionId;
   late ProviderContainer container;
 
   Future<void> pumpHost(WidgetTester tester, {XFile? pick, Map<String, Object> prefs = const {}}) async {
@@ -113,9 +114,10 @@ void main() {
     google = FakeGoogleWords();
     search = FakeSearch();
     added = [];
+    addedLate = [];
     films = [];
     posters = [];
-    sessionId = 'session-A';
+    collectionId = 'session-A';
     container = ProviderContainer(overrides: [
       subtitleWordsServiceProvider.overrideWithValue(service),
       subtitleGoogleWordsProvider.overrideWithValue(google),
@@ -131,13 +133,14 @@ void main() {
               onPressed: () => runSubtitleImport(
                 context: context,
                 ref: ref,
-                currentSessionId: () => sessionId,
-                sessionWords: () => ['tide'],
+                currentCollectionId: () => collectionId,
+                collectionWords: () => ['tide'],
                 addWords: (words, film, poster) {
                   added.addAll(words);
                   films.add(film);
                   posters.add(poster);
                 },
+                addWordsTo: (id, words, film, poster, dialogues) async => addedLate.add((id, words)),
                 pickFile: () async => pick ?? file(srtText),
               ),
               child: const Text('import'),
@@ -444,15 +447,17 @@ void main() {
     expect(added, isEmpty);
   });
 
-  testWidgets('a result for a session that changed since Start is dropped (AC-16)', (tester) async {
+  testWidgets('a result for a collection that changed since Start goes to the one it started in (AC-11)', (tester) async {
     await pumpHost(tester);
     await startImport(tester);
-    sessionId = 'session-B';
+    collectionId = 'session-B';
     service.pending!.complete(result(['reluctant']));
     await tester.pumpAndSettle();
-    expect(find.text(loading), findsNothing);
-    expect(find.text('Done'), findsNothing);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
     expect(added, isEmpty);
+    expect(addedLate.single.$1, 'session-A');
+    expect(addedLate.single.$2.single.word, 'reluctant');
   });
 
   testWidgets('the speed dial offers From subtitles next to Get words from photo', (tester) async {

@@ -6,7 +6,7 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
-import 'package:flutter_vocabulary_app/core/services/session_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_picture_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 
@@ -26,18 +26,18 @@ void main() {
   });
 
   late Directory dir;
-  late SessionStore sessions;
+  late CollectionStore collections;
   late StoryRunStore runs;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     dir = Directory.systemTemp.createTempSync('story_stores_test');
-    sessions = await SessionStore.open(directory: dir.path);
+    collections = await CollectionStore.open(directory: dir.path);
     runs = await StoryRunStore.open(directory: dir.path);
   });
 
   tearDown(() async {
-    await sessions.close();
+    await collections.close();
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
@@ -45,7 +45,7 @@ void main() {
           {bool collected = false, String outcome = 'running'}) =>
       StoryRun()
         ..runId = id
-        ..sessionId = 's1'
+        ..collectionId = 's1'
         ..groupId = 'g1'
         ..groupName = 'Group $id'
         ..words = ['apple', 'pear']

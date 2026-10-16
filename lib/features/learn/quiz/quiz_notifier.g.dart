@@ -6,7 +6,7 @@ part of 'quiz_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$quizHash() => r'6f8162052e10c2d54e6eb7c75361ea5024c9cdc3';
+String _$quizHash() => r'32d632ffe37c6a3dd43a569b052b338c56a5730a';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -30,11 +30,11 @@ class _SystemHash {
 }
 
 abstract class _$Quiz extends BuildlessAutoDisposeAsyncNotifier<QuizState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<QuizState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -70,11 +70,11 @@ class QuizFamily extends Family<AsyncValue<QuizState>> {
   ///
   /// Copied from [Quiz].
   QuizProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return QuizProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -84,7 +84,7 @@ class QuizFamily extends Family<AsyncValue<QuizState>> {
     covariant QuizProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -119,11 +119,11 @@ class QuizProvider
   ///
   /// Copied from [Quiz].
   QuizProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => Quiz()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: quizProvider,
           name: r'quizProvider',
@@ -131,7 +131,7 @@ class QuizProvider
               const bool.fromEnvironment('dart.vm.product') ? null : _$quizHash,
           dependencies: QuizFamily._dependencies,
           allTransitiveDependencies: QuizFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -142,11 +142,11 @@ class QuizProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -154,7 +154,7 @@ class QuizProvider
     covariant Quiz notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -165,14 +165,14 @@ class QuizProvider
       origin: this,
       override: QuizProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -186,14 +186,14 @@ class QuizProvider
   @override
   bool operator ==(Object other) {
     return other is QuizProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -203,8 +203,8 @@ class QuizProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin QuizRef on AutoDisposeAsyncNotifierProviderRef<QuizState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -216,7 +216,7 @@ class _QuizProviderElement
   _QuizProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as QuizProvider).sessionId;
+  String? get collectionId => (origin as QuizProvider).collectionId;
   @override
   String get groupId => (origin as QuizProvider).groupId;
 }

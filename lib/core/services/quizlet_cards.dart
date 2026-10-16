@@ -38,10 +38,10 @@ class QuizletProposal {
 /// Turns [cards] into proposed words (AC-04b, AC-08, AC-09, AC-10).
 QuizletProposal proposeWords(
   List<QuizletCard> cards,
-  Iterable<String> sessionWords,
+  Iterable<String> collectionWords,
   int? statedCount,
 ) {
-  final seen = <String>{for (final w in sessionWords) _sameKey(w)};
+  final seen = <String>{for (final w in collectionWords) _sameKey(w)};
   final words = <VocabWord>[];
   var skipped = 0;
   for (final card in cards) {

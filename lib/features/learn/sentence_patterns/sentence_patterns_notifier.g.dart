@@ -6,7 +6,7 @@ part of 'sentence_patterns_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sentencePatternsHash() => r'6b6bd20952cd8ee506238874ff40dc9532a01ba8';
+String _$sentencePatternsHash() => r'36531b9461c683e091285291dc79607ade5fe18b';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,11 +31,11 @@ class _SystemHash {
 
 abstract class _$SentencePatterns
     extends BuildlessAutoDisposeAsyncNotifier<PatternsState> {
-  late final String? sessionId;
+  late final String? collectionId;
   late final String groupId;
 
   FutureOr<PatternsState> build(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   );
 }
@@ -51,11 +51,11 @@ class SentencePatternsFamily extends Family<AsyncValue<PatternsState>> {
 
   /// See also [SentencePatterns].
   SentencePatternsProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return SentencePatternsProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -65,7 +65,7 @@ class SentencePatternsFamily extends Family<AsyncValue<PatternsState>> {
     covariant SentencePatternsProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -90,11 +90,11 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     SentencePatterns, PatternsState> {
   /// See also [SentencePatterns].
   SentencePatternsProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           () => SentencePatterns()
-            ..sessionId = sessionId
+            ..collectionId = collectionId
             ..groupId = groupId,
           from: sentencePatternsProvider,
           name: r'sentencePatternsProvider',
@@ -105,7 +105,7 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
           dependencies: SentencePatternsFamily._dependencies,
           allTransitiveDependencies:
               SentencePatternsFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -116,11 +116,11 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -128,7 +128,7 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
     covariant SentencePatterns notifier,
   ) {
     return notifier.build(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -139,14 +139,14 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
       origin: this,
       override: SentencePatternsProvider._internal(
         () => create()
-          ..sessionId = sessionId
+          ..collectionId = collectionId
           ..groupId = groupId,
         from: from,
         name: null,
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -161,14 +161,14 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
   @override
   bool operator ==(Object other) {
     return other is SentencePatternsProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -179,8 +179,8 @@ class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
 // ignore: unused_element
 mixin SentencePatternsRef
     on AutoDisposeAsyncNotifierProviderRef<PatternsState> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -192,7 +192,7 @@ class _SentencePatternsProviderElement
   _SentencePatternsProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as SentencePatternsProvider).sessionId;
+  String? get collectionId => (origin as SentencePatternsProvider).collectionId;
   @override
   String get groupId => (origin as SentencePatternsProvider).groupId;
 }

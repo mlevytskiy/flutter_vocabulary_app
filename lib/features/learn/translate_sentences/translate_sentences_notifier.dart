@@ -110,9 +110,9 @@ class TranslateState {
 @riverpod
 class TranslateSentences extends _$TranslateSentences {
   @override
-  Future<TranslateState> build(String? sessionId, String groupId) async {
+  Future<TranslateState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final candidates = <WordPair>[
       for (final w in words.group)
         if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty) w,
@@ -145,7 +145,7 @@ class TranslateSentences extends _$TranslateSentences {
   List<TranslateCard> _shuffled(List<TranslateCard> round, Random random) => [...round]..shuffle(random);
 
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
     ref.invalidateSelf();
   }
 
@@ -160,7 +160,7 @@ class TranslateSentences extends _$TranslateSentences {
     final label = examLabel(result.outcome);
     if (label == null) return;
     unawaited(ref.read(examResultSinkProvider).record(
-          sessionId: sessionId,
+          collectionId: collectionId,
           rowId: card.rowId,
           exerciseId: translateExerciseId,
           label: label,

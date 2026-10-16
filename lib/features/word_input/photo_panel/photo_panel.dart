@@ -894,15 +894,15 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
             ignoring: hidden || (open && _tabDrag != _TabDrag.open),
             child: AbsorbPointer(
               absorbing: widget.busy,
-              // One node for a screen reader: "Session photos, N" ("Session
+              // One node for a screen reader: "Collection photos, N" ("Collection
               // sources, N" with a set among them), whose double-tap opens
               // half-open, except while busy (spec AC-18, AC-21).
               child: Semantics(
                 container: true,
                 button: true,
                 label: photos.every((p) => p.isPhoto)
-                    ? 'Session photos, ${photos.length}'
-                    : 'Session sources, ${photos.length}',
+                    ? 'Collection photos, ${photos.length}'
+                    : 'Collection sources, ${photos.length}',
                 excludeSemantics: true,
                 onTap: widget.busy || open
                     ? null

@@ -8,26 +8,27 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/dialogues/dialogue_rules.dart' show afterPublish;
-import '../../core/models/session.dart';
+import '../../core/models/collection_name.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
-import '../../core/services/session_publish_service.dart';
+import '../../core/services/collection_publish_service.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
-import 'anki_export.dart';
 import 'photo_viewer.dart';
+import 'safe_file_name.dart';
 import 'share_formats.dart';
 import 'widgets/learn_share_bar.dart';
 
 class WordsTableScreen extends ConsumerStatefulWidget {
-  const WordsTableScreen({super.key, this.sessionId});
+  const WordsTableScreen({super.key, this.collectionId});
 
   /// Null for the current session (the words the input screen is editing);
   /// set when the screen was opened from a History row, in which case the
   /// words are read from the store instead of the notifier (task-10).
-  final String? sessionId;
+  final String? collectionId;
 
   @override
   ConsumerState<WordsTableScreen> createState() => _WordsTableScreenState();
@@ -56,16 +57,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       // Group the words quietly when they changed (mnemonic-story AC-03).
       if (!mounted) return;
       ref
-          .read(wordGroupsNotifierProvider(widget.sessionId).notifier)
+          .read(wordGroupsNotifierProvider(widget.collectionId).notifier)
           .ensureGrouped()
           .catchError((_) {});
     });
   }
-
-  // The format itself moved to anki_export.dart so the shared page's download
-  // (task-07) and this file can be kept byte-identical against one spec.
-  String _generateCloseUpB2Format(List<WordPair> wordPairs) =>
-      generateAnkiFile(wordPairs, detail: ref.read(wordDetailModeProvider));
 
   Future<void> _shareWords(List<WordPair> wordPairs) async {
     if (wordPairs.isEmpty) {
@@ -103,40 +99,19 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     final origin = _shareOrigin(context);
     final detail = ref.read(wordDetailModeProvider);
     try {
-      // Get current date for filename
-      final now = DateTime.now();
-      final dateStr =
-          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      // Named after the collection, the name the subject (AC-32).
+      final made = await makeShareFile(format, wordPairs,
+          name: _collectionName(_collection()), detail: detail);
 
       // Get temporary directory
       final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/${format.fileName(dateStr)}';
-
-      // Create file
-      final file = File(filePath);
-      switch (format) {
-        case ShareFormat.anki:
-          await file.writeAsString(_generateCloseUpB2Format(wordPairs));
-        case ShareFormat.csv:
-          await file
-              .writeAsString(generateCsvFile(wordPairs, detail: detail));
-        case ShareFormat.quizlet:
-          await file
-              .writeAsString(generateQuizletFile(wordPairs, detail: detail));
-        case ShareFormat.wordList:
-          await file
-              .writeAsString(generateWordListFile(wordPairs, detail: detail));
-        case ShareFormat.pdf:
-          await file.writeAsBytes(await generatePdfFile(wordPairs,
-              font: await loadPdfFont(), detail: detail));
-      }
+      final filePath = '${directory.path}/${made.fileName}';
+      await File(filePath).writeAsBytes(made.bytes);
 
       // Share file
       await Share.shareXFiles(
-        [XFile(filePath, mimeType: format.mimeType)],
-        subject: format == ShareFormat.anki
-            ? 'English Vocabulary - Close-up B2 Format'
-            : 'English Vocabulary',
+        [XFile(filePath, mimeType: made.mimeType)],
+        subject: made.subject,
         sharePositionOrigin: origin,
       );
     } catch (e) {
@@ -164,7 +139,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       );
       return;
     }
-    LearnRoute(sessionId: widget.sessionId).push(context);
+    LearnRoute(collectionId: widget.collectionId).push(context);
   }
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)
@@ -181,10 +156,10 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     // keyboard up only the barrier is visible and the sheet sits behind it.
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
-    final session = _session();
+    final collection = _collection();
     final includePhotos = _includePhotos &&
-        _linkedPhotos(_linkedSources(session, wordPairs)).isNotEmpty;
-    final publishedBefore = session?.publishedId != null;
+        _linkedPhotos(_linkedSources(collection, wordPairs)).isNotEmpty;
+    final publishedBefore = collection?.publishedId != null;
     // The warning names what sharing again does: replacing the partner's
     // edits (ADR-0008) and, with photos, putting them on a public page.
     const photosNote =
@@ -204,30 +179,39 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
         ),
         child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.insert_drive_file_outlined),
-                title: const Text('Share file'),
-                subtitle: const Text('Anki, CSV, PDF, Quizlet or word list'),
-                onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
-              ),
-              ListTile(
-                leading: const Icon(Icons.link),
-                title: const Text('Share link'),
-                subtitle:
-                    const Text('A web page anyone with the link can read'),
-                onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
-              ),
-              if (warning != null)
+          // Scrolls only when the warnings do not fit a short screen.
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 ListTile(
-                  leading: Icon(publishedBefore
-                      ? Icons.warning_amber_outlined
-                      : Icons.photo_library_outlined),
-                  subtitle: Text(warning),
+                  leading: const Icon(Icons.insert_drive_file_outlined),
+                  title: const Text('Share file'),
+                  subtitle: const Text('Anki, CSV, PDF, Quizlet or word list'),
+                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.file),
                 ),
-            ],
+                ListTile(
+                  leading: const Icon(Icons.link),
+                  title: const Text('Share link'),
+                  subtitle:
+                      const Text('A web page anyone with the link can read'),
+                  onTap: () => Navigator.pop(sheetContext, _ShareChoice.link),
+                ),
+                if (warning != null)
+                  ListTile(
+                    leading: Icon(publishedBefore
+                        ? Icons.warning_amber_outlined
+                        : Icons.photo_library_outlined),
+                    subtitle: Text(warning),
+                  ),
+                // The name goes on the public page (AC-31).
+                ListTile(
+                  leading: const Icon(Icons.label_outline),
+                  subtitle:
+                      Text(publicNameWarning(_collectionName(collection))),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -245,9 +229,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   /// The sources a link may carry: photos and sets with a linked row that
   /// will be published (AC-15, AC-23).
   List<SessionSource> _linkedSources(
-      Session? session, List<WordPair> wordPairs) {
+      WordCollection? collection, List<WordPair> wordPairs) {
     final linkedIds = {for (final pair in wordPairs) pair.sourceId};
-    return (session?.sources ?? const <SessionSource>[])
+    return (collection?.sources ?? const <SessionSource>[])
         .where((source) => linkedIds.contains(source.id))
         .toList();
   }
@@ -264,19 +248,21 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     if (_isPublishing) return;
     setState(() => _isPublishing = true);
     try {
-      final session = _session();
+      final collection = _collection();
       final published =
-          await ref.read(sessionPublishServiceProvider).publish(wordPairs,
+          await ref.read(collectionPublishServiceProvider).publish(wordPairs,
               detail: ref.read(wordDetailModeProvider),
               // Switched off, no photo reaches the page (AC-24); a set
               // always does (AC-15).
               sources: [
-                for (final source in session?.sources ?? const <SessionSource>[])
+                for (final source
+                    in collection?.sources ?? const <SessionSource>[])
                   if (includePhotos || source.kind == SourceKind.set) source,
               ],
-              publishedId: session?.publishedId,
-              editToken: session?.editToken,
-              dialogues: session?.dialogues ?? const []);
+              publishedId: collection?.publishedId,
+              editToken: collection?.editToken,
+              dialogues: collection?.dialogues ?? const [],
+              title: collection == null ? null : _collectionName(collection));
       // Never awaited: the link dialog does not wait for photos (AC-37).
       ref
           .read(photoUploadServiceProvider)
@@ -292,7 +278,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         const SnackBar(content: Text('Link copied to clipboard')),
       );
       await _showPublishedLinkDialog(published);
-    } on SessionPublishException catch (e) {
+    } on CollectionPublishException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not publish the link: $e')),
@@ -311,17 +297,23 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   /// The session this screen shows: the notifier's for the current one, the
   /// stored one for a History row.
-  Session? _session() {
-    final sessionId = widget.sessionId;
-    return sessionId == null
+  /// The collection's name; one not yet backfilled shows its default name
+  /// (AC-03), and with no collection the file falls back to "collection".
+  String _collectionName(WordCollection? collection) => collection == null
+      ? ''
+      : collection.name ?? defaultCollectionName(collection.updatedAt);
+
+  WordCollection? _collection() {
+    final collectionId = widget.collectionId;
+    return collectionId == null
         ? ref.read(wordInputNotifierProvider).valueOrNull
-        : ref.read(sessionByIdProvider(sessionId)).valueOrNull;
+        : ref.read(collectionByIdProvider(collectionId)).valueOrNull;
   }
 
   /// Asks before making this History session the current one
   /// (edit-session-from-history, AC-02..AC-04, AC-08). Yes replaces the whole
   /// stack with the main screen, so Back leaves the app.
-  Future<void> _confirmEdit(String sessionId) async {
+  Future<void> _confirmEdit(String collectionId) async {
     final yes = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -339,15 +331,16 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       ),
     );
     if (yes != true || !mounted) return;
-    final switched =
-        await ref.read(wordInputNotifierProvider.notifier).switchTo(sessionId);
+    final switched = await ref
+        .read(wordInputNotifierProvider.notifier)
+        .switchTo(collectionId);
     if (!mounted) return;
     if (switched) {
       const WordInputRoute().go(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("This session can't be opened for editing")),
+            content: Text("This collection can't be opened for editing")),
       );
     }
   }
@@ -355,14 +348,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   /// Keeps the published id and edit token so the next publish overwrites the
   /// same link (ADR-0008). `markShared` also flags the current session; a
   /// History row is written to the store without restamping anything.
-  Future<void> _rememberPublished(PublishedSession published) async {
-    final sessionId = widget.sessionId;
+  Future<void> _rememberPublished(PublishedCollection published) async {
+    final collectionId = widget.collectionId;
     // A History row may be the session the notifier holds: update it there,
     // or its next save would write the old id and token back.
     final current = ref.exists(wordInputNotifierProvider)
         ? ref.read(wordInputNotifierProvider).valueOrNull
         : null;
-    if (sessionId == null || current?.sessionId == sessionId) {
+    if (collectionId == null || current?.collectionId == collectionId) {
       final notifier = ref.read(wordInputNotifierProvider.notifier);
       await notifier.markShared(
           publishedId: published.id, editToken: published.editToken);
@@ -371,14 +364,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
       return;
     }
     // The link dialog does not wait for opening the store.
-    unawaited(_rememberForHistoryRow(sessionId, published));
+    unawaited(_rememberForHistoryRow(collectionId, published));
   }
 
   Future<void> _rememberForHistoryRow(
-      String sessionId, PublishedSession published) async {
+      String collectionId, PublishedCollection published) async {
     try {
-      final store = await ref.read(sessionStoreProvider.future);
-      final stored = await store.byId(sessionId);
+      final store = await ref.read(collectionStoreProvider.future);
+      final stored = await store.byId(collectionId);
       if (stored == null) return;
       stored
         ..publishedId = published.id
@@ -386,14 +379,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         ..dialogues = afterPublish(stored.dialogues,
             sent: {for (final d in published.declaredDialogues) d.id});
       await store.put(stored);
-      ref.invalidate(sessionByIdProvider(sessionId));
+      ref.invalidate(collectionByIdProvider(collectionId));
     } catch (_) {
       // The link is out already; missing the token only means the next
       // publish makes a new link instead of overwriting this one.
     }
   }
 
-  Future<void> _showPublishedLinkDialog(PublishedSession published) {
+  Future<void> _showPublishedLinkDialog(PublishedCollection published) {
     final expiresAt = published.expiresAt;
     final expiry = expiresAt == null
         ? 'The page stays up for 30 days.'
@@ -458,8 +451,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
   Future<void> _openLink(String url) async {
     bool opened;
     try {
-      opened = await launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication);
+      opened =
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     } catch (_) {
       opened = false;
     }
@@ -472,25 +465,25 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sessionId = widget.sessionId;
-    final session = sessionId == null
+    final collectionId = widget.collectionId;
+    final collection = collectionId == null
         ? ref.watch(wordInputNotifierProvider).valueOrNull
-        : ref.watch(sessionByIdProvider(sessionId)).valueOrNull;
+        : ref.watch(collectionByIdProvider(collectionId)).valueOrNull;
     // definition-mode: every filled row -- a word plus a translation or a
     // definition -- whatever the mode (spec AC-12); the mode picks columns.
-    final wordPairs = (session?.words ?? const <WordPair>[])
+    final wordPairs = (collection?.words ?? const <WordPair>[])
         .where((pair) => pair.isFilled)
         .toList();
-    final photos = _linkedPhotos(_linkedSources(session, wordPairs));
+    final photos = _linkedPhotos(_linkedSources(collection, wordPairs));
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
     // edit-session-from-history AC-06: no Edit button for the session the main
     // screen is already editing.
     final currentId = ref.exists(wordInputNotifierProvider)
-        ? ref.watch(wordInputNotifierProvider).valueOrNull?.sessionId
+        ? ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId
         : null;
-    final canEdit = sessionId != null && sessionId != currentId;
+    final canEdit = collectionId != null && collectionId != currentId;
     return Scaffold(
       // Settings bottom-left, like the main screen's settings button (same
       // size, elevation and colours); Edit, when there is one, stays bottom-right.
@@ -513,7 +506,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
             if (canEdit)
               FloatingActionButton(
                 heroTag: null,
-                onPressed: () => _confirmEdit(sessionId),
+                onPressed: () => _confirmEdit(collectionId),
                 tooltip: 'Edit',
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,

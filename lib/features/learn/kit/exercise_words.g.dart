@@ -6,7 +6,7 @@ part of 'exercise_words.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$exerciseWordsHash() => r'fd8217e051ba179e0c938922738ebb2eec976670';
+String _$exerciseWordsHash() => r'02f5249336c3cf54cb68d5a2a6ce2ba4a25661d9';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -31,7 +31,7 @@ class _SystemHash {
 
 /// The words of one exercise (learn-kit S-08): the selected group's words to
 /// learn in group order, and the same session's other words to learn (for
-/// wrong options, D-15). A null [sessionId] is the current session, an id a
+/// wrong options, D-15). A null [collectionId] is the current session, an id a
 /// History session (AC-05). No other session is read. Which words are usable
 /// is each exercise's own rule. Read-only: nothing here writes the session.
 ///
@@ -41,7 +41,7 @@ const exerciseWordsProvider = ExerciseWordsFamily();
 
 /// The words of one exercise (learn-kit S-08): the selected group's words to
 /// learn in group order, and the same session's other words to learn (for
-/// wrong options, D-15). A null [sessionId] is the current session, an id a
+/// wrong options, D-15). A null [collectionId] is the current session, an id a
 /// History session (AC-05). No other session is read. Which words are usable
 /// is each exercise's own rule. Read-only: nothing here writes the session.
 ///
@@ -50,7 +50,7 @@ class ExerciseWordsFamily extends Family<
     AsyncValue<({List<WordPair> group, List<WordPair> others})>> {
   /// The words of one exercise (learn-kit S-08): the selected group's words to
   /// learn in group order, and the same session's other words to learn (for
-  /// wrong options, D-15). A null [sessionId] is the current session, an id a
+  /// wrong options, D-15). A null [collectionId] is the current session, an id a
   /// History session (AC-05). No other session is read. Which words are usable
   /// is each exercise's own rule. Read-only: nothing here writes the session.
   ///
@@ -59,17 +59,17 @@ class ExerciseWordsFamily extends Family<
 
   /// The words of one exercise (learn-kit S-08): the selected group's words to
   /// learn in group order, and the same session's other words to learn (for
-  /// wrong options, D-15). A null [sessionId] is the current session, an id a
+  /// wrong options, D-15). A null [collectionId] is the current session, an id a
   /// History session (AC-05). No other session is read. Which words are usable
   /// is each exercise's own rule. Read-only: nothing here writes the session.
   ///
   /// Copied from [exerciseWords].
   ExerciseWordsProvider call(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) {
     return ExerciseWordsProvider(
-      sessionId,
+      collectionId,
       groupId,
     );
   }
@@ -79,7 +79,7 @@ class ExerciseWordsFamily extends Family<
     covariant ExerciseWordsProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
       provider.groupId,
     );
   }
@@ -101,7 +101,7 @@ class ExerciseWordsFamily extends Family<
 
 /// The words of one exercise (learn-kit S-08): the selected group's words to
 /// learn in group order, and the same session's other words to learn (for
-/// wrong options, D-15). A null [sessionId] is the current session, an id a
+/// wrong options, D-15). A null [collectionId] is the current session, an id a
 /// History session (AC-05). No other session is read. Which words are usable
 /// is each exercise's own rule. Read-only: nothing here writes the session.
 ///
@@ -110,18 +110,18 @@ class ExerciseWordsProvider extends AutoDisposeFutureProvider<
     ({List<WordPair> group, List<WordPair> others})> {
   /// The words of one exercise (learn-kit S-08): the selected group's words to
   /// learn in group order, and the same session's other words to learn (for
-  /// wrong options, D-15). A null [sessionId] is the current session, an id a
+  /// wrong options, D-15). A null [collectionId] is the current session, an id a
   /// History session (AC-05). No other session is read. Which words are usable
   /// is each exercise's own rule. Read-only: nothing here writes the session.
   ///
   /// Copied from [exerciseWords].
   ExerciseWordsProvider(
-    String? sessionId,
+    String? collectionId,
     String groupId,
   ) : this._internal(
           (ref) => exerciseWords(
             ref as ExerciseWordsRef,
-            sessionId,
+            collectionId,
             groupId,
           ),
           from: exerciseWordsProvider,
@@ -133,7 +133,7 @@ class ExerciseWordsProvider extends AutoDisposeFutureProvider<
           dependencies: ExerciseWordsFamily._dependencies,
           allTransitiveDependencies:
               ExerciseWordsFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
           groupId: groupId,
         );
 
@@ -144,11 +144,11 @@ class ExerciseWordsProvider extends AutoDisposeFutureProvider<
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
     required this.groupId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -166,7 +166,7 @@ class ExerciseWordsProvider extends AutoDisposeFutureProvider<
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
         groupId: groupId,
       ),
     );
@@ -181,14 +181,14 @@ class ExerciseWordsProvider extends AutoDisposeFutureProvider<
   @override
   bool operator ==(Object other) {
     return other is ExerciseWordsProvider &&
-        other.sessionId == sessionId &&
+        other.collectionId == collectionId &&
         other.groupId == groupId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
     hash = _SystemHash.combine(hash, groupId.hashCode);
 
     return _SystemHash.finish(hash);
@@ -199,8 +199,8 @@ class ExerciseWordsProvider extends AutoDisposeFutureProvider<
 // ignore: unused_element
 mixin ExerciseWordsRef on AutoDisposeFutureProviderRef<
     ({List<WordPair> group, List<WordPair> others})> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 
   /// The parameter `groupId` of this provider.
   String get groupId;
@@ -211,12 +211,12 @@ class _ExerciseWordsProviderElement extends AutoDisposeFutureProviderElement<
   _ExerciseWordsProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as ExerciseWordsProvider).sessionId;
+  String? get collectionId => (origin as ExerciseWordsProvider).collectionId;
   @override
   String get groupId => (origin as ExerciseWordsProvider).groupId;
 }
 
-String _$exerciseDialoguesHash() => r'316d8994d1fe927cdf8deee3fcc21e1f1a1bb4c6';
+String _$exerciseDialoguesHash() => r'2a3c7f7820f9eed8a907315c53ae9a9499bbe436';
 
 /// The film dialogues of the session an exercise reads, same session choice as
 /// [exerciseWords] (null = current, id = History). S-31.
@@ -241,10 +241,10 @@ class ExerciseDialoguesFamily extends Family<AsyncValue<List<FilmDialogue>>> {
   ///
   /// Copied from [exerciseDialogues].
   ExerciseDialoguesProvider call(
-    String? sessionId,
+    String? collectionId,
   ) {
     return ExerciseDialoguesProvider(
-      sessionId,
+      collectionId,
     );
   }
 
@@ -253,7 +253,7 @@ class ExerciseDialoguesFamily extends Family<AsyncValue<List<FilmDialogue>>> {
     covariant ExerciseDialoguesProvider provider,
   ) {
     return call(
-      provider.sessionId,
+      provider.collectionId,
     );
   }
 
@@ -283,11 +283,11 @@ class ExerciseDialoguesProvider
   ///
   /// Copied from [exerciseDialogues].
   ExerciseDialoguesProvider(
-    String? sessionId,
+    String? collectionId,
   ) : this._internal(
           (ref) => exerciseDialogues(
             ref as ExerciseDialoguesRef,
-            sessionId,
+            collectionId,
           ),
           from: exerciseDialoguesProvider,
           name: r'exerciseDialoguesProvider',
@@ -298,7 +298,7 @@ class ExerciseDialoguesProvider
           dependencies: ExerciseDialoguesFamily._dependencies,
           allTransitiveDependencies:
               ExerciseDialoguesFamily._allTransitiveDependencies,
-          sessionId: sessionId,
+          collectionId: collectionId,
         );
 
   ExerciseDialoguesProvider._internal(
@@ -308,10 +308,10 @@ class ExerciseDialoguesProvider
     required super.allTransitiveDependencies,
     required super.debugGetCreateSourceHash,
     required super.from,
-    required this.sessionId,
+    required this.collectionId,
   }) : super.internal();
 
-  final String? sessionId;
+  final String? collectionId;
 
   @override
   Override overrideWith(
@@ -326,7 +326,7 @@ class ExerciseDialoguesProvider
         dependencies: null,
         allTransitiveDependencies: null,
         debugGetCreateSourceHash: null,
-        sessionId: sessionId,
+        collectionId: collectionId,
       ),
     );
   }
@@ -338,13 +338,14 @@ class ExerciseDialoguesProvider
 
   @override
   bool operator ==(Object other) {
-    return other is ExerciseDialoguesProvider && other.sessionId == sessionId;
+    return other is ExerciseDialoguesProvider &&
+        other.collectionId == collectionId;
   }
 
   @override
   int get hashCode {
     var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, sessionId.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
 
     return _SystemHash.finish(hash);
   }
@@ -353,8 +354,8 @@ class ExerciseDialoguesProvider
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 mixin ExerciseDialoguesRef on AutoDisposeFutureProviderRef<List<FilmDialogue>> {
-  /// The parameter `sessionId` of this provider.
-  String? get sessionId;
+  /// The parameter `collectionId` of this provider.
+  String? get collectionId;
 }
 
 class _ExerciseDialoguesProviderElement
@@ -363,7 +364,8 @@ class _ExerciseDialoguesProviderElement
   _ExerciseDialoguesProviderElement(super.provider);
 
   @override
-  String? get sessionId => (origin as ExerciseDialoguesProvider).sessionId;
+  String? get collectionId =>
+      (origin as ExerciseDialoguesProvider).collectionId;
 }
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

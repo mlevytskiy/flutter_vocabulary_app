@@ -77,7 +77,7 @@ abstract final class SubtitleWordCounter {
     List<String> lines, {
     required int maximum,
     required EnglishLevel level,
-    List<String> sessionWords = const [],
+    List<String> collectionWords = const [],
     bool boostCloseRepeats = true,
     bool removeNames = true,
   }) {
@@ -113,7 +113,7 @@ abstract final class SubtitleWordCounter {
 
     _joinPlurals(uses, places, lowerSeen);
 
-    final skip = {...subtitleIgnoredWordsFor(level), ...numberWords, for (final w in sessionWords) w.trim().toLowerCase()};
+    final skip = {...subtitleIgnoredWordsFor(level), ...numberWords, for (final w in collectionWords) w.trim().toLowerCase()};
     final scores = {for (final entry in uses.entries) entry.key: score(entry.value, boostCloseRepeats: boostCloseRepeats)};
     final ranked = uses.keys
         .where((w) => !skip.contains(w))

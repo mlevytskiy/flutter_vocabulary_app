@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -17,11 +17,11 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.d
 
 /// learn-pick-the-answer: the screen (AC-01, AC-04 – AC-07, AC-12, AC-14 – AC-20).
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 class _NoNetwork implements LearnApiService {
@@ -29,7 +29,7 @@ class _NoNetwork implements LearnApiService {
   dynamic noSuchMethod(Invocation i) => throw StateError('the exercise asked the server: ${i.memberName}');
 }
 
-Session _session(int count, {int extra = 0, Map<String, String> definitions = const {}}) {
+WordCollection _collection(int count, {int extra = 0, Map<String, String> definitions = const {}}) {
   final words = [
     for (var i = 0; i < count + extra; i++)
       WordPair(
@@ -39,7 +39,7 @@ Session _session(int count, {int extra = 0, Map<String, String> definitions = co
         rowId: 'r$i',
       ),
   ];
-  return Session.create()
+  return WordCollection.create()
     ..words = words
     ..groups = [
       WordGroup()
@@ -50,16 +50,16 @@ Session _session(int count, {int extra = 0, Map<String, String> definitions = co
 }
 
 void main() {
-  Future<ProviderContainer> pump(WidgetTester tester, Session session,
-      {String? sessionId, List<Override> extra = const []}) async {
+  Future<ProviderContainer> pump(WidgetTester tester, WordCollection collection,
+      {String? collectionId, List<Override> extra = const []}) async {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     final container = ProviderContainer(overrides: [
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(session)),
-      sessionByIdProvider('hist').overrideWith((ref) async => session),
+      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      collectionByIdProvider('hist').overrideWith((ref) async => collection),
       ...extra,
     ]);
     addTearDown(container.dispose);
@@ -70,7 +70,7 @@ void main() {
           builder: (context) => Scaffold(
             body: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => exerciseScreen('pick-the-answer', sessionId, 'g'),
+                builder: (_) => exerciseScreen('pick-the-answer', collectionId, 'g'),
               )),
               child: const Text('learn page'),
             ),
@@ -86,14 +86,14 @@ void main() {
   Color? colorOf(WidgetTester tester, int i) =>
       tester.widget<ElevatedButton>(find.byKey(ValueKey('option-$i'))).style?.backgroundColor?.resolve({});
 
-  Future<void> tapRight(WidgetTester tester, ProviderContainer c, {String? sessionId}) async {
-    final s = c.read(pickTheAnswerProvider(sessionId, 'g')).requireValue;
+  Future<void> tapRight(WidgetTester tester, ProviderContainer c, {String? collectionId}) async {
+    final s = c.read(pickTheAnswerProvider(collectionId, 'g')).requireValue;
     await tester.tap(find.byKey(ValueKey('option-${s.question!.rightIndex}')));
     await tester.pump();
   }
 
   testWidgets('AC-01, AC-03: title, counter, line, first word and four options', (tester) async {
-    await pump(tester, _session(5));
+    await pump(tester, _collection(5));
     expect(find.text('Pick the right answer'), findsOneWidget);
     expect(find.text('Question 1 of 5'), findsOneWidget);
     expect(find.text('Pick the translation'), findsOneWidget);
@@ -103,7 +103,7 @@ void main() {
   });
 
   testWidgets('AC-05, AC-07: a right tap turns green, locks the options, shows Next; Next shows question 2 as Pick the word (AC-03)', (tester) async {
-    final c = await pump(tester, _session(5));
+    final c = await pump(tester, _collection(5));
     await tapRight(tester, c);
     final s = c.read(pickTheAnswerProvider(null, 'g')).requireValue;
     expect(colorOf(tester, s.question!.rightIndex), Colors.green);
@@ -118,7 +118,7 @@ void main() {
   });
 
   testWidgets('AC-06: a wrong tap is red, the right one green, a later tap changes nothing', (tester) async {
-    final c = await pump(tester, _session(5));
+    final c = await pump(tester, _collection(5));
     final right = c.read(pickTheAnswerProvider(null, 'g')).requireValue.question!.rightIndex;
     final wrong = (right + 1) % 4;
     await tester.tap(find.byKey(ValueKey('option-$wrong')));
@@ -132,7 +132,7 @@ void main() {
   });
 
   testWidgets('AC-04: the definition shows with the word masked', (tester) async {
-    final c = await pump(tester, _session(5, definitions: {'word1': 'A word1 is a thing'}));
+    final c = await pump(tester, _collection(5, definitions: {'word1': 'A word1 is a thing'}));
     await tapRight(tester, c);
     await tester.tap(find.text('Next'));
     await tester.pump();
@@ -140,7 +140,7 @@ void main() {
   });
 
   testWidgets('AC-07, AC-15: the last Next opens the summary with Right/Missed and Done returns to the learn page', (tester) async {
-    final c = await pump(tester, _session(5));
+    final c = await pump(tester, _collection(5));
     for (var i = 0; i < 5; i++) {
       if (i == 1) {
         final right = c.read(pickTheAnswerProvider(null, 'g')).requireValue.question!.rightIndex;
@@ -161,7 +161,7 @@ void main() {
   });
 
   testWidgets('AC-12: fewer than 3 usable words show only the message and Back', (tester) async {
-    await pump(tester, _session(2));
+    await pump(tester, _collection(2));
     expect(find.text('Not enough words for this exercise'), findsOneWidget);
     expect(find.text('Question 1 of 2'), findsNothing);
     await tester.tap(find.text('Back'));
@@ -171,7 +171,7 @@ void main() {
 
   testWidgets('AC-14: a read error shows the failed line and Retry; Retry starts round 1', (tester) async {
     var fail = true;
-    await pump(tester, _session(5), extra: [
+    await pump(tester, _collection(5), extra: [
       exerciseWordsProvider(null, 'g').overrideWith((ref) async {
         if (fail) throw StateError('cannot read');
         return (
@@ -189,12 +189,12 @@ void main() {
   });
 
   testWidgets('AC-16, AC-17: Back mid-round keeps nothing; a History session is used and unchanged', (tester) async {
-    final hist = _session(5);
+    final hist = _collection(5);
     final before = hist.words.map((w) => '${w.word}|${w.translation}|${w.definition}|${w.rowId}').toList();
     final updated = hist.updatedAt;
-    final c = await pump(tester, hist, sessionId: 'hist');
+    final c = await pump(tester, hist, collectionId: 'hist');
     expect(find.text('Question 1 of 5'), findsOneWidget);
-    await tapRight(tester, c, sessionId: 'hist');
+    await tapRight(tester, c, collectionId: 'hist');
     await tester.pageBack();
     await tester.pumpAndSettle();
     await tester.tap(find.text('learn page'));
@@ -206,7 +206,7 @@ void main() {
   });
 
   testWidgets('AC-18: no learnApiService call (the override throws on any)', (tester) async {
-    final c = await pump(tester, _session(13));
+    final c = await pump(tester, _collection(13));
     for (var i = 0; i < 7; i++) {
       await tapRight(tester, c);
       await tester.tap(find.text('Next'));
@@ -222,7 +222,7 @@ void main() {
 
   testWidgets('AC-20: a long definition wraps, the screen scrolls', (tester) async {
     final long = 'This is a very long definition that runs over several lines and more. ' * 4;
-    final c = await pump(tester, _session(5, definitions: {'word1': long.trim()}));
+    final c = await pump(tester, _collection(5, definitions: {'word1': long.trim()}));
     await tapRight(tester, c);
     await tester.tap(find.text('Next'));
     await tester.pump();

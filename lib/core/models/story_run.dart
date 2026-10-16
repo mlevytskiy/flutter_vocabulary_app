@@ -19,7 +19,8 @@ class StoryRun {
   @Index(unique: true, replace: true)
   late String runId;
 
-  late String sessionId;
+  @Name('sessionId')
+  late String collectionId;
   late String groupId;
 
   /// The group's name when the run started: the run outlives the group.

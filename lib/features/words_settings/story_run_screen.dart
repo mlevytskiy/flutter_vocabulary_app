@@ -27,6 +27,7 @@ class StoryRunScreen extends ConsumerWidget {
     final runsAsync = ref.watch(storyRunsProvider);
     final theme = Theme.of(context);
     final small = theme.textTheme.bodySmall?.copyWith(color: theme.hintColor);
+    final existing = ref.watch(existingCollectionIdsProvider).valueOrNull;
     final runs = runsAsync.valueOrNull;
     final run = runs?.where((r) => r.runId == runId).firstOrNull;
 
@@ -49,6 +50,8 @@ class StoryRunScreen extends ConsumerWidget {
                   ? '${formatRunDate(run.startedAt)} · Scene picture'
                   : '${formatRunDate(run.startedAt)} · ${run.words.length} words',
               style: small),
+          if (existing != null && !existing.contains(run.collectionId))
+            Text(deletedCollectionText, style: small),
           const SizedBox(height: 4),
           Text(runStatusLine(run)),
           if (stepsTotals(run.steps).isNotEmpty) Text('Total: ${stepsTotals(run.steps)}'),

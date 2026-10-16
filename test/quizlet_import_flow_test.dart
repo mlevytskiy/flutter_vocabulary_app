@@ -75,8 +75,9 @@ void main() {
   late FakePageDriver driver;
   late FakeTranslate translate;
   late List<(List<VocabWord>, QuizletImportedSet)> added;
-  late String sessionId;
-  late List<String> session;
+  late List<(String, List<VocabWord>, QuizletImportedSet)> addedLate;
+  late String collectionId;
+  late List<String> collection;
 
   Future<void> pumpHost(WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1600);
@@ -85,8 +86,9 @@ void main() {
     driver = FakePageDriver();
     translate = FakeTranslate();
     added = [];
-    sessionId = 'session-A';
-    session = ['tide'];
+    addedLate = [];
+    collectionId = 'session-A';
+    collection = ['tide'];
     await tester.pumpWidget(ProviderScope(
       overrides: [googleTranslateServiceProvider.overrideWithValue(translate)],
       child: MaterialApp(
@@ -95,9 +97,11 @@ void main() {
             builder: (context) => TextButton(
               onPressed: () => runQuizletImport(
                 context: context,
-                currentSessionId: () => sessionId,
-                sessionWords: () => session,
+                currentCollectionId: () => collectionId,
+                collectionWords: () => collection,
                 addWords: (words, set) => added.add((words, set)),
+                addWordsTo: (id, words, set) async =>
+                    addedLate.add((id, words, set)),
                 driverFactory: (_) => driver,
               ),
               child: const Text('import'),
@@ -182,7 +186,7 @@ void main() {
       'the session words are left out; no new words: the dialog says so and '
       'Done adds nothing (AC-04b)', (tester) async {
     await pumpHost(tester);
-    session = ['Cat', 'dog'];
+    collection = ['Cat', 'dog'];
     await startImport(tester, cards: [
       ['cat.', 'x'],
       ['dog', 'y'],
@@ -223,31 +227,37 @@ void main() {
   });
 
   testWidgets(
-      'the session changed before the results dialog: words dropped, no '
-      'dialog (AC-16)', (tester) async {
-    await pumpHost(tester);
-    await startImport(tester, cards: [
-      ['cat', 'x'],
-    ]);
-    sessionId = 'session-B';
-    await settle(tester);
-    expect(find.text(reading), findsNothing);
-    expect(find.text('Done'), findsNothing);
-    expect(added, isEmpty);
-    expect(find.byType(SnackBar), findsNothing);
-  });
-
-  testWidgets('the session changed while the results dialog was open (AC-16)',
+      'the collection changed before the results dialog: the dialog still '
+      'shows, Done delivers into the collection it started in (AC-11)',
       (tester) async {
     await pumpHost(tester);
     await startImport(tester, cards: [
       ['cat', 'x'],
     ]);
+    collectionId = 'session-B';
     await settle(tester);
-    sessionId = 'session-B';
+    expect(find.text('Done'), findsOneWidget);
     await tester.tap(find.text('Done'));
     await settle(tester);
     expect(added, isEmpty);
+    expect(addedLate.single.$1, 'session-A');
+    expect(addedLate.single.$2.single.word, 'cat');
+  });
+
+  testWidgets(
+      'the collection changed while the results dialog was open: delivered '
+      'into the collection it started in (AC-11)', (tester) async {
+    await pumpHost(tester);
+    await startImport(tester, cards: [
+      ['cat', 'x'],
+    ]);
+    await settle(tester);
+    collectionId = 'session-B';
+    await tester.tap(find.text('Done'));
+    await settle(tester);
+    expect(added, isEmpty);
+    expect(addedLate.single.$1, 'session-A');
+    expect(addedLate.single.$3.id, '123456');
   });
 
   testWidgets(

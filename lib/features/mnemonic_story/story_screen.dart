@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/models/session.dart';
+import '../../core/models/word_collection.dart';
 import '../../core/models/story_run.dart';
 import '../../core/models/word_group.dart';
 import '../../core/providers.dart';
@@ -32,12 +32,12 @@ final groupStoryRunsProvider = StreamProvider.autoDispose
 /// The mnemonic story of one group (mnemonic-story, SCR-04): the step that is
 /// running, then the picture over the story text, with the failures and their
 /// buttons, "Words changed" and "Make a new story" (AC-06 – AC-09, AC-16,
-/// AC-17, AC-19). [sessionId] is as on the learn page: none is the current
+/// AC-17, AC-19). [collectionId] is as on the learn page: none is the current
 /// session.
 class StoryScreen extends ConsumerStatefulWidget {
-  const StoryScreen({super.key, this.sessionId, required this.groupId});
+  const StoryScreen({super.key, this.collectionId, required this.groupId});
 
-  final String? sessionId;
+  final String? collectionId;
   final String groupId;
 
   @override
@@ -63,24 +63,24 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
   StoryRunTracker get _tracker => ref.read(storyRunTrackerProvider.notifier);
 
-  Session? get _session => widget.sessionId == null
+  WordCollection? get _collection => widget.collectionId == null
       ? ref.watch(wordInputNotifierProvider).valueOrNull
-      : ref.watch(sessionByIdProvider(widget.sessionId!)).valueOrNull;
+      : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
 
   /// A new run for [group], replacing what it shows only once it has a picture
   /// (AC-16); also "Try again" after a story failed.
-  void _startNew(Session session, WordGroup group) =>
-      _tracker.startFor(session.sessionId, group, replacing: true);
+  void _startNew(WordCollection collection, WordGroup group) =>
+      _tracker.startFor(collection.collectionId, group, replacing: true);
 
-  Future<void> _makeNew(Session session, WordGroup group) async {
-    if (await confirmNewStory(context)) _startNew(session, group);
+  Future<void> _makeNew(WordCollection collection, WordGroup group) async {
+    if (await confirmNewStory(context)) _startNew(collection, group);
   }
 
   @override
   Widget build(BuildContext context) {
-    final session = _session;
+    final collection = _collection;
     final group = ref
-        .watch(wordGroupsNotifierProvider(widget.sessionId))
+        .watch(wordGroupsNotifierProvider(widget.collectionId))
         .groups
         .where((g) => g.id == widget.groupId)
         .firstOrNull;
@@ -89,7 +89,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         storyRunTrackerProvider.select((s) => s.refusals[widget.groupId]));
 
     Widget body;
-    if (session == null || group == null || runs.valueOrNull == null) {
+    if (collection == null || group == null || runs.valueOrNull == null) {
       body = const Center(child: CircularProgressIndicator());
     } else {
       final list = runs.value!;
@@ -101,10 +101,10 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         // made or going is never doubled by the tracker.
         _startAsked = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _tracker.startFor(session.sessionId, group);
+          if (mounted) _tracker.startFor(collection.collectionId, group);
         });
       }
-      body = _body(session, group, list, refusal);
+      body = _body(collection, group, list, refusal);
     }
     return Scaffold(
       appBar: AppBar(
@@ -117,7 +117,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
 
   // --- what to show -------------------------------------------------------
 
-  Widget _body(Session session, WordGroup group, List<StoryRun> runs,
+  Widget _body(WordCollection collection, WordGroup group, List<StoryRun> runs,
       StoryStartRefusal? refusal) {
     final latest = runs.firstOrNull;
     // The story on show: the group's own, else a run that just finished with
@@ -128,7 +128,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final other =
         latest != null && latest.runId != shown?.runId ? latest : null;
 
-    if (shown == null) return _withoutStory(session, group, latest, refusal);
+    if (shown == null) return _withoutStory(collection, group, latest, refusal);
 
     final notes = <Widget>[];
     var canMakeNew = true;
@@ -140,20 +140,20 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         notes.add(const StoryMessage(storyDayLimitMessage));
       } else {
         notes.add(const StoryMessage('The new story could not be made'));
-        notes.add(StoryAction('Try again', () => _startNew(session, group)));
+        notes.add(StoryAction('Try again', () => _startNew(collection, group)));
       }
     } else if (refusal?.reason == StoryRefusal.dayLimit) {
       notes.add(const StoryMessage(storyDayLimitMessage));
     }
-    if (isOutdated(session, group)) notes.add(const StoryMessage('Words changed'));
+    if (isOutdated(collection, group)) notes.add(const StoryMessage('Words changed'));
     if (canMakeNew) {
-      notes.add(StoryAction('Make a new story', () => _makeNew(session, group)));
+      notes.add(StoryAction('Make a new story', () => _makeNew(collection, group)));
     }
     return _StoryView(run: shown, notes: notes);
   }
 
   /// A group with no story yet: the running step, or why the run stopped.
-  Widget _withoutStory(Session session, WordGroup group, StoryRun? run,
+  Widget _withoutStory(WordCollection collection, WordGroup group, StoryRun? run,
       StoryStartRefusal? refusal) {
     if (run == null) {
       if (refusal?.reason == StoryRefusal.dayLimit) {
@@ -169,7 +169,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
     final story = _last(run, 'story');
     final prompt = _last(run, 'prompt');
     final picture = _last(run, 'picture');
-    final startNew = StoryAction('Try again', () => _startNew(session, group));
+    final startNew = StoryAction('Try again', () => _startNew(collection, group));
     if (story == null && run.steps.isEmpty) {
       // The run never started: the Worker refused, or could not be reached.
       return StoryPlain([

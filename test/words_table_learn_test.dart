@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/session.dart';
+import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
@@ -14,23 +14,23 @@ import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.d
 
 /// learn-part-step-1 T9 (AC-01, AC-02, AC-03, AC-13): Learn on the Words screen.
 class _FakeInput extends WordInputNotifier {
-  _FakeInput(this.session);
-  final Session session;
+  _FakeInput(this.collection);
+  final WordCollection collection;
 
   @override
-  Future<Session> build() async => session;
+  Future<WordCollection> build() async => collection;
 }
 
 void main() {
-  late Session current;
-  late Session past;
+  late WordCollection current;
+  late WordCollection past;
   late ProviderContainer container;
 
-  Future<void> pump(WidgetTester tester, {String? shownId, Session? cur}) async {
+  Future<void> pump(WidgetTester tester, {String? shownId, WordCollection? cur}) async {
     SharedPreferences.setMockInitialValues({});
     current = cur ??
-        (Session.create()..words = [WordPair(word: 'coffee', translation: 'кава')]);
-    past = Session.create()
+        (WordCollection.create()..words = [WordPair(word: 'coffee', translation: 'кава')]);
+    past = WordCollection.create()
       ..words = [
         WordPair(word: 'tea', translation: 'чай'),
         WordPair(word: 'milk', translation: 'молоко'),
@@ -38,27 +38,27 @@ void main() {
       ];
     container = ProviderContainer(overrides: [
       wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
-      sessionByIdProvider(past.sessionId).overrideWith((ref) async => past),
+      collectionByIdProvider(past.collectionId).overrideWith((ref) async => past),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
       await container.read(wordInputNotifierProvider.future);
-      await container.read(sessionByIdProvider(past.sessionId).future);
+      await container.read(collectionByIdProvider(past.collectionId).future);
     });
     final router = GoRouter(
       initialLocation:
-          shownId == null ? '/table' : '/table?session-id=${past.sessionId}',
+          shownId == null ? '/table' : '/table?collection-id=${past.collectionId}',
       routes: [
         GoRoute(
           path: '/table',
           builder: (context, state) => WordsTableScreen(
-              sessionId: state.uri.queryParameters['session-id']),
+              collectionId: state.uri.queryParameters['collection-id']),
           routes: [
             GoRoute(
               path: 'learn',
               builder: (context, state) => LearnScreen(
-                  sessionId: state.uri.queryParameters['session-id']),
+                  collectionId: state.uri.queryParameters['collection-id']),
             ),
           ],
         ),
@@ -82,7 +82,7 @@ void main() {
 
   testWidgets('AC-03: empty session shows the SnackBar and stays',
       (tester) async {
-    await pump(tester, cur: Session.create());
+    await pump(tester, cur: WordCollection.create());
     await tester.tap(learn);
     await tester.pump();
     expect(find.text('No words to learn'), findsOneWidget);
@@ -92,7 +92,7 @@ void main() {
 
   testWidgets('Share still says "No words to share" when empty',
       (tester) async {
-    await pump(tester, cur: Session.create());
+    await pump(tester, cur: WordCollection.create());
     await tester.tap(find.text('Share'));
     await tester.pump();
     expect(find.text('No words to share'), findsOneWidget);
@@ -105,7 +105,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsOneWidget);
     expect(
-        tester.widget<LearnScreen>(find.byType(LearnScreen)).sessionId, isNull);
+        tester.widget<LearnScreen>(find.byType(LearnScreen)).collectionId, isNull);
     await tester.pageBack();
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsNothing);
@@ -117,15 +117,15 @@ void main() {
       (tester) async {
     await pump(tester, shownId: 'past');
     final before = container.read(wordInputNotifierProvider).value!;
-    final beforeId = before.sessionId;
+    final beforeId = before.collectionId;
     final beforeWords = before.words.length;
     await tester.tap(learn);
     await tester.pumpAndSettle();
     expect(find.byType(LearnScreen), findsOneWidget);
-    expect(tester.widget<LearnScreen>(find.byType(LearnScreen)).sessionId,
-        past.sessionId);
+    expect(tester.widget<LearnScreen>(find.byType(LearnScreen)).collectionId,
+        past.collectionId);
     final after = container.read(wordInputNotifierProvider).value!;
-    expect(after.sessionId, beforeId);
+    expect(after.collectionId, beforeId);
     expect(after.words.length, beforeWords);
     await tester.pageBack();
     await tester.pumpAndSettle();

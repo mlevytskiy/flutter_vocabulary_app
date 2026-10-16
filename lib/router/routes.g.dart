@@ -67,12 +67,20 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           factory: _$PhotoViewerRoute._fromState,
         ),
         GoRouteData.$route(
+          path: 'collections',
+          factory: _$CollectionsRoute._fromState,
+        ),
+        GoRouteData.$route(
           path: 'history',
           factory: _$HistoryRoute._fromState,
         ),
         GoRouteData.$route(
           path: 'settings',
           factory: _$SettingsRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: 'recycle-bin',
+          factory: _$RecycleBinRoute._fromState,
         ),
       ],
     );
@@ -102,7 +110,7 @@ mixin _$WordInputRoute on GoRouteData {
 
 mixin _$WordsTableRoute on GoRouteData {
   static WordsTableRoute _fromState(GoRouterState state) => WordsTableRoute(
-        sessionId: state.uri.queryParameters['session-id'],
+        collectionId: state.uri.queryParameters['collection-id'],
       );
 
   WordsTableRoute get _self => this as WordsTableRoute;
@@ -111,7 +119,7 @@ mixin _$WordsTableRoute on GoRouteData {
   String get location => GoRouteData.$location(
         '/table',
         queryParams: {
-          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
         },
       );
 
@@ -131,7 +139,7 @@ mixin _$WordsTableRoute on GoRouteData {
 
 mixin _$LearnRoute on GoRouteData {
   static LearnRoute _fromState(GoRouterState state) => LearnRoute(
-        sessionId: state.uri.queryParameters['session-id'],
+        collectionId: state.uri.queryParameters['collection-id'],
       );
 
   LearnRoute get _self => this as LearnRoute;
@@ -140,7 +148,7 @@ mixin _$LearnRoute on GoRouteData {
   String get location => GoRouteData.$location(
         '/table/learn',
         queryParams: {
-          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
         },
       );
 
@@ -189,7 +197,7 @@ mixin _$ComingSoonRoute on GoRouteData {
 
 mixin _$StoryRoute on GoRouteData {
   static StoryRoute _fromState(GoRouterState state) => StoryRoute(
-        sessionId: state.uri.queryParameters['session-id'],
+        collectionId: state.uri.queryParameters['collection-id'],
         groupId: state.uri.queryParameters['group-id']!,
       );
 
@@ -199,7 +207,7 @@ mixin _$StoryRoute on GoRouteData {
   String get location => GoRouteData.$location(
         '/table/learn/story',
         queryParams: {
-          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
           'group-id': _self.groupId,
         },
       );
@@ -220,7 +228,7 @@ mixin _$StoryRoute on GoRouteData {
 
 mixin _$ExerciseRoute on GoRouteData {
   static ExerciseRoute _fromState(GoRouterState state) => ExerciseRoute(
-        sessionId: state.uri.queryParameters['session-id'],
+        collectionId: state.uri.queryParameters['collection-id'],
         exercise: state.uri.queryParameters['exercise']!,
         groupId: state.uri.queryParameters['group-id']!,
       );
@@ -231,7 +239,7 @@ mixin _$ExerciseRoute on GoRouteData {
   String get location => GoRouteData.$location(
         '/table/learn/exercise',
         queryParams: {
-          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
           'exercise': _self.exercise,
           'group-id': _self.groupId,
         },
@@ -253,7 +261,7 @@ mixin _$ExerciseRoute on GoRouteData {
 
 mixin _$DialogueRoute on GoRouteData {
   static DialogueRoute _fromState(GoRouterState state) => DialogueRoute(
-        sessionId: state.uri.queryParameters['session-id'],
+        collectionId: state.uri.queryParameters['collection-id'],
         groupId: state.uri.queryParameters['group-id']!,
       );
 
@@ -263,7 +271,7 @@ mixin _$DialogueRoute on GoRouteData {
   String get location => GoRouteData.$location(
         '/table/learn/dialogue',
         queryParams: {
-          if (_self.sessionId != null) 'session-id': _self.sessionId,
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
           'group-id': _self.groupId,
         },
       );
@@ -409,6 +417,29 @@ mixin _$PhotoViewerRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
+mixin _$CollectionsRoute on GoRouteData {
+  static CollectionsRoute _fromState(GoRouterState state) =>
+      const CollectionsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/collections',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
 mixin _$HistoryRoute on GoRouteData {
   static HistoryRoute _fromState(GoRouterState state) => const HistoryRoute();
 
@@ -437,6 +468,29 @@ mixin _$SettingsRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/settings',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$RecycleBinRoute on GoRouteData {
+  static RecycleBinRoute _fromState(GoRouterState state) =>
+      const RecycleBinRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/recycle-bin',
       );
 
   @override

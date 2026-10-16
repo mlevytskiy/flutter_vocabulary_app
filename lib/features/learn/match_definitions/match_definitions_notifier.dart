@@ -25,10 +25,10 @@ class MatchDefinitions extends _$MatchDefinitions {
   Timer? _summary;
 
   @override
-  Future<MatchRoundsState> build(String? sessionId, String groupId) async {
+  Future<MatchRoundsState> build(String? collectionId, String groupId) async {
     ref.onDispose(() => _summary?.cancel());
     final random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final group = words.group;
     if (group.length < 3) return const MatchRoundsState(rounds: []);
     // Stored line (S-40) first; a word with no stored line is asked (S-42).
@@ -64,7 +64,7 @@ class MatchDefinitions extends _$MatchDefinitions {
 
   /// Retry after a failed load: read the words and ask the Worker again.
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
     ref.invalidateSelf();
   }
 

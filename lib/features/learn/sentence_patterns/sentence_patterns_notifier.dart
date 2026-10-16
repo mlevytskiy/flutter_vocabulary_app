@@ -77,8 +77,8 @@ class PatternsState {
 @riverpod
 class SentencePatterns extends _$SentencePatterns {
   @override
-  Future<PatternsState> build(String? sessionId, String groupId) async {
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
+  Future<PatternsState> build(String? collectionId, String groupId) async {
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     // S-50: a word to learn with a word and a translation is a candidate.
     final candidates = <WordPair>[
       for (final w in words.group)
@@ -106,7 +106,7 @@ class SentencePatterns extends _$SentencePatterns {
   }
 
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
     ref.invalidateSelf();
   }
 

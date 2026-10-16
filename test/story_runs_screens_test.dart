@@ -32,7 +32,7 @@ StoryRun _run(String id, String group, DateTime at, List<StoryStep> steps,
         {String outcome = 'done'}) =>
     StoryRun()
       ..runId = id
-      ..sessionId = 's'
+      ..collectionId = 's'
       ..groupId = 'g-$id'
       ..groupName = group
       ..startedAt = at
@@ -97,24 +97,31 @@ final _sceneStopped = _run(
 
 void main() {
   Future<void> pumpList(WidgetTester tester, List<StoryRun> runs,
-      {void Function(String)? onOpen}) async {
+      {void Function(String)? onOpen, Set<String> existing = const {'s'}}) async {
     tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
-      overrides: [storyRunsProvider.overrideWith((ref) => Stream.value(runs))],
+      overrides: [
+        storyRunsProvider.overrideWith((ref) => Stream.value(runs)),
+        existingCollectionIdsProvider.overrideWith((ref) async => existing),
+      ],
       child: MaterialApp(home: StoryRunsScreen(onOpenRun: onOpen ?? (_) {})),
     ));
     await tester.pump();
     await tester.pump();
   }
 
-  Future<void> pumpDetails(WidgetTester tester, List<StoryRun> runs, String id) async {
+  Future<void> pumpDetails(WidgetTester tester, List<StoryRun> runs, String id,
+      {Set<String> existing = const {'s'}}) async {
     tester.view.physicalSize = const Size(800, 2400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
-      overrides: [storyRunsProvider.overrideWith((ref) => Stream.value(runs))],
+      overrides: [
+        storyRunsProvider.overrideWith((ref) => Stream.value(runs)),
+        existingCollectionIdsProvider.overrideWith((ref) async => existing),
+      ],
       child: MaterialApp(home: StoryRunScreen(runId: id)),
     ));
     await tester.pump();
@@ -170,6 +177,27 @@ void main() {
         outcome: 'running');
     await pumpList(tester, [running]);
     expect(find.text('Still running'), findsOneWidget);
+  });
+
+  testWidgets('a run of an erased collection says so and keeps its row',
+      (tester) async {
+    await pumpList(tester, [_finished], existing: {'other'});
+    final row = find.byKey(const ValueKey('run-r-new'));
+    expect(find.descendant(of: row, matching: find.text('From a deleted collection')),
+        findsOneWidget);
+    expect(find.text('Kitchen'), findsOneWidget);
+  });
+
+  testWidgets('a run of a kept collection is not marked', (tester) async {
+    await pumpList(tester, [_finished], existing: {'s'});
+    expect(find.text('From a deleted collection'), findsNothing);
+  });
+
+  testWidgets('details of a run of an erased collection say so and keep the steps',
+      (tester) async {
+    await pumpDetails(tester, [_finished], 'r-new', existing: {});
+    expect(find.text('From a deleted collection'), findsOneWidget);
+    expect(find.text('A cat in a kitchen.'), findsOneWidget);
   });
 
   testWidgets('tapping a run opens it', (tester) async {

@@ -85,9 +85,9 @@ class OwnState {
 @riverpod
 class OwnSentences extends _$OwnSentences {
   @override
-  Future<OwnState> build(String? sessionId, String groupId) async {
+  Future<OwnState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
-    final words = await ref.watch(exerciseWordsProvider(sessionId, groupId).future);
+    final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final usable = <OwnCard>[
       for (final WordPair w in words.group)
         if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty)
@@ -100,7 +100,7 @@ class OwnSentences extends _$OwnSentences {
   List<OwnCard> _shuffled(List<OwnCard> round, Random random) => [...round]..shuffle(random);
 
   void retry() {
-    ref.invalidate(exerciseWordsProvider(sessionId, groupId));
+    ref.invalidate(exerciseWordsProvider(collectionId, groupId));
     ref.invalidateSelf();
   }
 
@@ -115,7 +115,7 @@ class OwnSentences extends _$OwnSentences {
     final label = examLabel(result.outcome);
     if (label == null) return;
     unawaited(ref.read(examResultSinkProvider).record(
-          sessionId: sessionId,
+          collectionId: collectionId,
           rowId: card.rowId,
           exerciseId: ownExerciseId,
           label: label,
