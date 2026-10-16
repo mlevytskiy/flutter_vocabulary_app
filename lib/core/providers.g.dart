@@ -723,6 +723,50 @@ class _CollectionLevelProviderElement
   String? get folderId => (origin as CollectionLevelProvider).folderId;
 }
 
+String _$collectionSummariesHash() =>
+    r'e728a8708419084d7a2350ad47bd8d86dc8fb691';
+
+/// Every collection that is not in the bin, empty ones too, for the
+/// Collections search and the tag counts (collection-tags ADR-0006); one
+/// emission per burst of writes.
+///
+/// Copied from [collectionSummaries].
+@ProviderFor(collectionSummaries)
+final collectionSummariesProvider =
+    AutoDisposeStreamProvider<List<CollectionSummary>>.internal(
+  collectionSummaries,
+  name: r'collectionSummariesProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$collectionSummariesHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CollectionSummariesRef
+    = AutoDisposeStreamProviderRef<List<CollectionSummary>>;
+String _$tagLibraryHash() => r'fa2e6b23b96de113752f004b78bf4e3279e69bc7';
+
+/// The whole tag library, forgotten entries included (collection-tags
+/// ADR-0009).
+///
+/// Copied from [tagLibrary].
+@ProviderFor(tagLibrary)
+final tagLibraryProvider =
+    AutoDisposeStreamProvider<List<TagLibraryEntry>>.internal(
+  tagLibrary,
+  name: r'tagLibraryProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$tagLibraryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TagLibraryRef = AutoDisposeStreamProviderRef<List<TagLibraryEntry>>;
 String _$collectionNameHash() => r'8a07f2bd9b41c3855b426acf2b30592f9ccd9978';
 
 /// The stored name of one collection (collections-screen T14): the main

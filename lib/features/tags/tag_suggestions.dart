@@ -1,11 +1,40 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../core/models/tag_kind.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/providers.dart';
+import '../../core/services/collection_search.dart' show useCounts;
+import '../../core/services/tag_rules.dart';
 import '../word_input/word_input_notifier.dart';
 
 part 'tag_suggestions.g.dart';
+
+/// The suggestions for a tag field of [kind] matching [query] (AC-35): the
+/// tag library ranked by use in the live collections, then the presets.
+/// Tags already on the field are not removed here; the widgets filter them.
+@riverpod
+List<TagSuggestion> tagSuggestions(Ref ref, TagKind kind, {String query = ''}) {
+  final library = ref.watch(tagLibraryProvider).valueOrNull ?? const [];
+  final summaries =
+      ref.watch(collectionSummariesProvider).valueOrNull ?? const [];
+  return rankSuggestions(
+    kind: kind,
+    library: [
+      for (final e in library)
+        (
+          kind: e.kind,
+          text: e.text,
+          lastUsedAt: e.lastUsedAt,
+          forgotten: e.forgotten,
+        ),
+    ],
+    counts: useCounts(summaries, kind),
+    presets: presetsFor(kind),
+    added: const [],
+    query: query,
+  );
+}
 
 /// The tags already used on sources (a photo, a set, a film) in every
 /// session, most used first: what the Notes page suggests for a source's
@@ -26,8 +55,8 @@ List<String> collectionTagSuggestions(Ref ref) => _byUse([
 /// stored copy.
 List<WordCollection> _collections(Ref ref) {
   final current = ref.watch(wordInputNotifierProvider).valueOrNull;
-  final stored =
-      ref.watch(nonEmptyCollectionsProvider).valueOrNull ?? const <WordCollection>[];
+  final stored = ref.watch(nonEmptyCollectionsProvider).valueOrNull ??
+      const <WordCollection>[];
   return [
     if (current != null) current,
     for (final s in stored)
@@ -44,6 +73,8 @@ List<String> _byUse(List<String> tags) {
   return counts.keys.toList()
     ..sort((a, b) {
       final byCount = counts[b]!.compareTo(counts[a]!);
-      return byCount != 0 ? byCount : a.toLowerCase().compareTo(b.toLowerCase());
+      return byCount != 0
+          ? byCount
+          : a.toLowerCase().compareTo(b.toLowerCase());
     });
 }
