@@ -7,7 +7,7 @@ acs: ["AC-15", "AC-19", "AC-23", "AC-24", "AC-26"]
 files_hint: ["lib/core/services/filing.dart", "test/filing_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Add the pure filing rules: tree walks, folder into itself, level renumbering, restore target, days left and expiry

@@ -8,7 +8,7 @@
 | T1 | [Record the owner's approvals for collections-screen in CLAUDE.md rules 3 and 5](./T1-docs-claude-md-approvals.md) | docs | Maksym | S | — | done |
 | T2 | [Rename Session to WordCollection across the app with every stored name pinned](./T2-domain-rename-session-to-wordcollection.md) | domain | Maksym | L | T1 | todo |
 | T3 | [Add the pure name rule, the default date name and the creation moment from a collection id](./T3-domain-collection-name-rules.md) | domain | Maksym | S | — | done |
-| T4 | [Add the pure filing rules: tree walks, folder into itself, level renumbering, restore target, days left and expiry](./T4-domain-filing-rules.md) | domain | Maksym | M | — | todo |
+| T4 | [Add the pure filing rules: tree walks, folder into itself, level renumbering, restore target, days left and expiry](./T4-domain-filing-rules.md) | domain | Maksym | M | — | done |
 | T5 | [Add the filing fields and CollectionFolder to Isar, and make put() keep filing and never insert](./T5-infra-isar-filing-schema-and-put-contract.md) | infra | Maksym | M | T2, T3 | todo |
 | T6 | [Backfill names, top-level order and keep for pre-feature collections when the store opens](./T6-infra-filing-backfill.md) | infra | Maksym | M | T3, T5 | todo |
 | T7 | [Add CollectionStore.update(id, change) and move every background writer onto it](./T7-infra-atomic-update-for-background-writers.md) | infra | Maksym | M | T5 | todo |
