@@ -10,6 +10,7 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopup
 import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
+import '../../core/models/collection_name.dart';
 import '../../core/models/definition_result.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
@@ -19,6 +20,7 @@ import '../../core/providers.dart';
 import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
+import '../collections/name_dialog.dart';
 import '../notes/notes_screen.dart';
 import 'lightning_rules.dart';
 import 'photo_panel/looks/look_a.dart';
@@ -692,6 +694,33 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// reusing the still-empty first row if the screen hasn't been touched yet.
   /// With a kept [source], the photo joins the session first and every row
   /// added here points at it.
+  /// collections-screen T14: the current collection's stored name, or its date
+  /// name until the backfill has given it one (AC-01).
+  String _collectionTitle() {
+    final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+    if (collection == null) return '';
+    final stored =
+        ref.watch(collectionNameProvider(collection.collectionId)).valueOrNull;
+    return stored ??
+        defaultCollectionName(
+            creationMomentOf(collection.collectionId) ?? collection.updatedAt);
+  }
+
+  /// The pencil button: asks for a new name and renames through the store; the
+  /// title follows the stored name (AC-02, AC-03).
+  Future<void> _renameCollection() async {
+    final collection = ref.read(wordInputNotifierProvider).valueOrNull;
+    if (collection == null) return;
+    final name = await showNameDialog(
+      context,
+      mode: NameDialogMode.renameCollection,
+      initial: _collectionTitle(),
+    );
+    if (name == null) return;
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.rename(collection.collectionId, name);
+  }
+
   /// words-from-subtitles: the "From subtitles" speed-dial item. Kept words
   /// go through [_addWordsFromPhoto] with no source photo, so they are
   /// ordinary rows (AC-17).
@@ -996,9 +1025,23 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       child: Scaffold(
       appBar: _photoPanelGuardedAppBar(AppBar(
         automaticallyImplyLeading: true,
-        title: const Text('English Vocabulary'),
+        title: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Tooltip(
+              message: 'Rename collection',
+              child: ElevatedButton(
+                onPressed: _renameCollection,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                ),
+                child: const Icon(Icons.edit),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(

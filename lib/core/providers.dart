@@ -209,6 +209,14 @@ Stream<List<LevelItem>> collectionLevel(Ref ref, String? folderId) async* {
   yield* store.watchLevel(folderId);
 }
 
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+@riverpod
+Stream<String?> collectionName(Ref ref, String collectionId) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchName(collectionId);
+}
+
 /// Every folder, binned ones too, for the Collections path and the tree.
 @riverpod
 Stream<List<CollectionFolder>> collectionFolders(Ref ref) async* {
