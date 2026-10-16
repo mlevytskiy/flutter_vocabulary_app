@@ -7,7 +7,7 @@ acs: ["AC-09", "AC-10", "AC-13", "AC-17", "AC-18"]
 files_hint: ["lib/features/collections/collections_screen.dart", "lib/features/collections/collections_notifier.dart", "lib/features/collections/collection_icon.dart", "test/collections_actions_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T16 — Open a collection with a tap, add New folder and New collection, and the item menu with Rename

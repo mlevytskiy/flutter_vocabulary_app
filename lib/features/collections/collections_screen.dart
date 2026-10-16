@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_level.dart';
 import '../../router/routes.dart';
+import '../word_input/word_input_notifier.dart';
 import 'bin_dialogs.dart';
 import 'bin_drop_zone.dart';
 import 'collection_drag.dart';
@@ -149,6 +150,19 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     }
   }
 
+  /// A tap on a collection (AC-09, AC-18): open it with no question and go to
+  /// the main screen; opening the current one changes nothing.
+  Future<void> _openCollection(String id) async {
+    await ref.read(wordInputNotifierProvider.notifier).open(id);
+    if (mounted) const WordInputRoute().go(context);
+  }
+
+  /// New collection (AC-10): made at the end of the open folder, then shown.
+  Future<void> _newCollection(String? folderId) async {
+    await ref.read(wordInputNotifierProvider.notifier).newCollection(folderId);
+    if (mounted) const WordInputRoute().go(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(collectionsNotifierProvider);
@@ -178,7 +192,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
               IconButton(
                 icon: const Icon(Icons.library_add_outlined),
                 tooltip: 'New collection',
-                onPressed: () {},
+                onPressed: () => _newCollection(state.folderId),
               ),
             ],
           ),
@@ -205,7 +219,11 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                   showBin: state.isTopLevel,
                   onBinTap: () => const RecycleBinRoute().push(context),
                   onTap: (item) {
-                    if (item.isFolder) notifier.open(item.id);
+                    if (item.isFolder) {
+                      notifier.open(item.id);
+                    } else {
+                      _openCollection(item.id);
+                    }
                   },
                   onMenu: openItemMenu,
                   binWrapper: (context, bin) => BinDropTarget(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
@@ -15,8 +16,20 @@ class _FakeInput extends WordInputNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
+  final opened = <String>[];
+  final made = <String?>[];
+
   @override
   Future<WordCollection> build() async => collection;
+
+  @override
+  Future<bool> open(String id) async {
+    opened.add(id);
+    return true;
+  }
+
+  @override
+  Future<void> newCollection(String? folderId) async => made.add(folderId);
 }
 
 class _FakeStore implements CollectionStore {
@@ -59,22 +72,30 @@ void main() {
   final phrasal = _coll('Phrasal verbs', 3);
   final other = _coll('Films words', 1);
   late _FakeStore store;
+  late _FakeInput input;
 
   Future<void> pump(WidgetTester t) async {
     store = _FakeStore();
+    input = _FakeInput(phrasal);
     await t.pumpWidget(ProviderScope(
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
+        wordInputNotifierProvider.overrideWith(() => input),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
+        collectionLevelProvider('f1').overrideWith((ref) => Stream.value([])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([
               LevelItem.folder(english),
               LevelItem.collection(phrasal),
               LevelItem.collection(other),
             ])),
       ],
-      child: const MaterialApp(home: CollectionsScreen()),
+      child: MaterialApp.router(
+        routerConfig: GoRouter(initialLocation: '/c', routes: [
+          GoRoute(path: '/', builder: (_, __) => const Text('MAIN SCREEN')),
+          GoRoute(path: '/c', builder: (_, __) => const CollectionsScreen()),
+        ]),
+      ),
     ));
     await t.pump();
     await t.pump();
@@ -168,5 +189,43 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text('Rename'), findsOneWidget);
     expect(find.text('Delete'), findsOneWidget);
+  });
+
+  testWidgets('a tap on a collection opens it and goes to the main screen',
+      (t) async {
+    await pump(t);
+    await t.tap(find.text('Films words'));
+    await t.pumpAndSettle();
+    expect(input.opened, [other.collectionId]);
+    expect(find.text('MAIN SCREEN'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
+
+  testWidgets('a tap on the current collection still goes to the main screen',
+      (t) async {
+    await pump(t);
+    await t.tap(find.text('Phrasal verbs'));
+    await t.pumpAndSettle();
+    expect(find.text('MAIN SCREEN'), findsOneWidget);
+  });
+
+  testWidgets('New collection makes one at the top level and opens main',
+      (t) async {
+    await pump(t);
+    await t.tap(find.byTooltip('New collection'));
+    await t.pumpAndSettle();
+    expect(input.made, [null]);
+    expect(find.text('MAIN SCREEN'), findsOneWidget);
+  });
+
+  testWidgets('New collection inside a folder makes it in that folder',
+      (t) async {
+    await pump(t);
+    await t.tap(find.text('English course'));
+    await t.pumpAndSettle();
+    await t.tap(find.byTooltip('New collection'));
+    await t.pumpAndSettle();
+    expect(input.made, ['f1']);
+    expect(find.text('MAIN SCREEN'), findsOneWidget);
   });
 }
