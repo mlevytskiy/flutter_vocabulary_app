@@ -23,6 +23,31 @@ enum FilingResult {
   failed,
 }
 
+/// What a recycle-bin action of `CollectionStore` did (collections-screen
+/// T9). The actions never throw.
+enum BinResult {
+  done,
+
+  /// The current collection cannot go to the bin (AC-20).
+  refusedCurrent,
+
+  /// No such item, or it is not (or already is) in the bin as required.
+  notFound,
+
+  /// The write failed; nothing changed.
+  failed,
+}
+
+/// What a delete would send to the bin (SCR-07), as plain values.
+typedef BinPreview = ({
+  String name,
+  bool isFolder,
+  int wordCount,
+  int collections,
+  int folders,
+  String? currentStaysName,
+});
+
 /// One item of a Collections level as `CollectionStore.watchLevel` emits
 /// it: exactly one of [collection] and [folder] is set. A read-only view of
 /// the stored record, not a model of its own.
@@ -47,6 +72,9 @@ class LevelItem {
     return c.name ??
         defaultCollectionName(creationMomentOf(c.collectionId) ?? c.updatedAt);
   }
+
+  /// When it went to the bin; null outside the bin.
+  DateTime? get binnedAt => folder?.binnedAt ?? collection?.binnedAt;
 
   int get order => folder?.order ?? collection!.order;
 

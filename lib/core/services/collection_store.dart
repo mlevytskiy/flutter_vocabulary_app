@@ -8,12 +8,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/collection_folder.dart';
 import '../models/collection_name.dart';
 import '../models/word_collection.dart';
+import '../models/session_source.dart';
 import '../models/story_run.dart';
 import '../models/word_result.dart';
 import 'collection_level.dart';
 import 'filing.dart'
-    show canMoveFolderInto, isInBin, ordersOf, placeInLevel;
-import 'source_photo_store.dart' show uuidV4;
+    show
+        canMoveFolderInto,
+        descendantsOf,
+        isExpired,
+        isInBin,
+        ordersOf,
+        placeInLevel,
+        restoreTarget;
+import 'source_photo_store.dart' show SourcePhotoStore, uuidV4;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
 /// `shared_preferences` pointer saying which session is the current one — the
@@ -642,6 +650,292 @@ class CollectionStore {
       });
 
   // ---- end of filing actions and streams (T8) ----
+
+  // ---- Recycle bin (T9) ----
+  //
+  // ADR-0005: deleting marks the one item (`binnedAt`, `binnedFromFolderId`);
+  // what a binned folder holds carries no mark. Erasing deletes an item and
+  // everything inside in one transaction, then its `source_photos/` files;
+  // `mnemonic_pictures/` and story runs are never touched.
+
+  /// Marks [id] as deleted at [now] (the clock when null). Refuses the
+  /// current collection, re-reading the pointer inside the transaction
+  /// (AC-20). A folder holding the current collection, at any depth, first
+  /// sends that collection to the folder's old place and its name comes back
+  /// as `stayedName` (AC-21).
+  Future<({BinResult result, String? stayedName})> bin(String id,
+      {DateTime? now}) async {
+    String? stayedName;
+    try {
+      final result = await _isar.writeTxn(() async {
+        final binnedAt = now ?? DateTime.now();
+        final current = await currentCollectionId();
+        final collection = await _collectionById(id);
+        final folder = collection == null ? await _folderById(id) : null;
+        if (collection == null && folder == null) return BinResult.notFound;
+        if ((collection?.binnedAt ?? folder?.binnedAt) != null) {
+          return BinResult.notFound;
+        }
+        if (collection != null) {
+          if (collection.collectionId == current) {
+            return BinResult.refusedCurrent;
+          }
+          await _isar.wordCollections.put(collection
+            ..binnedAt = binnedAt
+            ..binnedFromFolderId = collection.folderId);
+          await _closeLevel(collection.folderId);
+          return BinResult.done;
+        }
+        final f = folder!;
+        if (current != null) {
+          final folders = await _isar.collectionFolders.where().findAll();
+          final inside = {
+            f.folderId,
+            ...descendantsOf(
+                f.folderId, {for (final x in folders) x.folderId: x.parentId}),
+          };
+          final cur = await _collectionById(current);
+          if (cur != null && inside.contains(cur.folderId)) {
+            await _isar.wordCollections.put(cur..folderId = f.parentId);
+            await _placeInLevel(f.parentId, cur.collectionId, at: f.order);
+            stayedName = LevelItem.collection(cur).name;
+          }
+        }
+        final fresh = (await _folderById(id))!;
+        await _isar.collectionFolders.put(fresh
+          ..binnedAt = binnedAt
+          ..binnedFromFolderId = fresh.parentId);
+        await _closeLevel(fresh.parentId);
+        return BinResult.done;
+      });
+      if (result == BinResult.refusedCurrent) {
+        debugPrint('VOCAB: bin refused, $id is the current collection');
+      }
+      return (result: result, stayedName: stayedName);
+    } catch (_) {
+      return (result: BinResult.failed, stayedName: null);
+    }
+  }
+
+  /// Takes [id] out of the bin (AC-24): into the folder it came from, or the
+  /// top level when that folder is binned or gone, at its old order when it
+  /// still fits, else at the end. `folderName` is null for the top level
+  /// ("Restored to Collections").
+  Future<({BinResult result, String? folderId, String? folderName})> restore(
+      String id) async {
+    const failed = (result: BinResult.failed, folderId: null, folderName: null);
+    try {
+      return await _isar.writeTxn(() async {
+        final collection = await _collectionById(id);
+        final folder = collection == null ? await _folderById(id) : null;
+        final from =
+            collection?.binnedFromFolderId ?? folder?.binnedFromFolderId;
+        if ((collection?.binnedAt ?? folder?.binnedAt) == null) {
+          return (result: BinResult.notFound, folderId: null, folderName: null);
+        }
+        final usable = from != null && await _folderUsable(from);
+        final target = restoreTarget(
+          binnedFromFolderId: from,
+          folderUsable: usable,
+          oldOrder: collection?.order ?? folder!.order,
+          levelLength: (await _readLevel(usable ? from : null)).length,
+        );
+        if (collection != null) {
+          await _isar.wordCollections.put(collection
+            ..binnedAt = null
+            ..binnedFromFolderId = null
+            ..folderId = target.folderId);
+        } else {
+          await _isar.collectionFolders.put(folder!
+            ..binnedAt = null
+            ..binnedFromFolderId = null
+            ..parentId = target.folderId);
+        }
+        await _placeInLevel(target.folderId, id, at: target.order);
+        final name = target.folderId == null
+            ? null
+            : (await _folderById(target.folderId!))?.name;
+        return (
+          result: BinResult.done,
+          folderId: target.folderId,
+          folderName: name
+        );
+      });
+    } catch (_) {
+      return failed;
+    }
+  }
+
+  /// Erases the items [ids] and everything inside them in the transaction
+  /// that is running; returns the source photos of the collections deleted.
+  Future<List<SessionSource>> _eraseInside(Iterable<String> ids) async {
+    final folders = await _isar.collectionFolders.where().findAll();
+    final parentOf = {for (final f in folders) f.folderId: f.parentId};
+    final folderIds = <String>{};
+    final collectionIds = <String>{};
+    for (final id in ids) {
+      if (parentOf.containsKey(id)) {
+        folderIds
+          ..add(id)
+          ..addAll(descendantsOf(id, parentOf));
+      } else {
+        collectionIds.add(id);
+      }
+    }
+    final photos = <SessionSource>[];
+    for (final c in await _isar.wordCollections.where().findAll()) {
+      if (collectionIds.contains(c.collectionId) ||
+          folderIds.contains(c.folderId)) {
+        photos.addAll(c.sources.where((s) => s.fileName.isNotEmpty));
+        await _isar.wordCollections.delete(c.id);
+      }
+    }
+    for (final f in folders) {
+      if (folderIds.contains(f.folderId)) {
+        await _isar.collectionFolders.delete(f.id);
+      }
+    }
+    return photos;
+  }
+
+  /// Deletes the files of [photos] once the erasing transaction committed.
+  Future<void> _deletePhotoFiles(List<SessionSource> photos) async {
+    final store = SourcePhotoStore(directory: _isar.directory);
+    for (final p in photos) {
+      await store.delete(p);
+    }
+  }
+
+  /// Erases the bin items [ids] for good; the files follow the commit.
+  Future<int> _erase(bool Function(DateTime? binnedAt) wanted,
+      {String? only}) async {
+    try {
+      final photos = <SessionSource>[];
+      final count = await _isar.writeTxn(() async {
+        final ids = <String>[
+          for (final c in await _isar.wordCollections
+              .filter()
+              .binnedAtIsNotNull()
+              .findAll())
+            if ((only == null || only == c.collectionId) && wanted(c.binnedAt))
+              c.collectionId,
+          for (final f in await _isar.collectionFolders
+              .filter()
+              .binnedAtIsNotNull()
+              .findAll())
+            if ((only == null || only == f.folderId) && wanted(f.binnedAt))
+              f.folderId,
+        ];
+        photos.addAll(await _eraseInside(ids));
+        return ids.length;
+      });
+      await _deletePhotoFiles(photos);
+      return count;
+    } catch (_) {
+      return -1;
+    }
+  }
+
+  /// Deletes a bin item and everything inside it for good (AC-25).
+  Future<BinResult> erase(String id) async {
+    final n = await _erase((_) => true, only: id);
+    return n < 0
+        ? BinResult.failed
+        : n == 0
+            ? BinResult.notFound
+            : BinResult.done;
+  }
+
+  /// Erases the whole bin in one transaction.
+  Future<BinResult> emptyBin() async =>
+      await _erase((_) => true) < 0 ? BinResult.failed : BinResult.done;
+
+  /// Erases the bin items whose 30 x 24 h are up at [now] (AC-26); a clock
+  /// moved backwards erases nothing early. Returns how many items went, 0 on
+  /// a failed write.
+  Future<int> sweepBin(DateTime now) async {
+    final n = await _erase((at) => at != null && isExpired(at, now));
+    debugPrint('VOCAB: bin sweep erased ${n < 0 ? 0 : n} item(s)');
+    return n < 0 ? 0 : n;
+  }
+
+  /// The items in the bin, newest `binnedAt` first (SCR-08).
+  Stream<List<LevelItem>> watchBin() => _watchFiling(() async {
+        final items = <LevelItem>[
+          for (final f in await _isar.collectionFolders
+              .filter()
+              .binnedAtIsNotNull()
+              .findAll())
+            LevelItem.folder(f),
+          for (final c in await _isar.wordCollections
+              .filter()
+              .binnedAtIsNotNull()
+              .findAll())
+            LevelItem.collection(c),
+        ];
+        return items..sort((a, b) => b.binnedAt!.compareTo(a.binnedAt!));
+      });
+
+  /// What binning [id] would take along (SCR-07); null when there is no such
+  /// item. The current collection inside a folder is not counted: it stays.
+  Future<BinPreview?> binPreview(String id) async {
+    final collection = await _collectionById(id);
+    if (collection != null) {
+      return (
+        name: LevelItem.collection(collection).name,
+        isFolder: false,
+        wordCount: LevelItem.collection(collection).wordCount,
+        collections: 0,
+        folders: 0,
+        currentStaysName: null,
+      );
+    }
+    final folder = await _folderById(id);
+    if (folder == null) return null;
+    final folders = await _isar.collectionFolders.where().findAll();
+    final inner =
+        descendantsOf(id, {for (final f in folders) f.folderId: f.parentId});
+    final current = await currentCollectionId();
+    var collections = 0;
+    String? stays;
+    for (final c in await _isar.wordCollections.where().findAll()) {
+      if (c.folderId != id && !inner.contains(c.folderId)) continue;
+      if (c.collectionId == current) {
+        stays = LevelItem.collection(c).name;
+      } else if (c.binnedAt == null) {
+        collections++;
+      }
+    }
+    return (
+      name: folder.name,
+      isFolder: true,
+      wordCount: 0,
+      collections: collections,
+      folders: folders
+          .where((f) => inner.contains(f.folderId) && f.binnedAt == null)
+          .length,
+      currentStaysName: stays,
+    );
+  }
+
+  /// Whether [id], or anything inside it when it is a folder, has a shared
+  /// link (`publishedId` set), for SCR-10's sentence.
+  Future<bool> hasSharedLink(String id) async {
+    final folders = await _isar.collectionFolders.where().findAll();
+    final inside = {
+      id,
+      ...descendantsOf(id, {for (final f in folders) f.folderId: f.parentId}),
+    };
+    for (final c in await _isar.wordCollections.where().findAll()) {
+      if ((c.collectionId == id || inside.contains(c.folderId)) &&
+          (c.publishedId?.isNotEmpty ?? false)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ---- end of Recycle bin (T9) ----
 
   /// Appends a Step 3 word result to the stored session (learn-kit S-22,
   /// S-23), dropping the oldest past [WordCollection.maxResults]. Neither
