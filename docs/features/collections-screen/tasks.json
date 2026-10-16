@@ -1,0 +1,569 @@
+{
+  "slug": "collections-screen",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record the owner's approvals for collections-screen in CLAUDE.md rules 3 and 5",
+      "layer": "docs",
+      "deps": [],
+      "acs": [],
+      "dod": "CLAUDE.md rule 3 lists every visible change spec §1 approves (last decision) and the rename exception, and rule 5 lists `WordCollection` (renamed `Session`) with `name`, `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep`, and `CollectionFolder`, each tagged collections-screen (owner, 2026-10-16), so later tasks do not stop on rule 3 or 5.",
+      "files_hint": [
+        "CLAUDE.md"
+      ],
+      "slug": "claude-md-approvals"
+    },
+    {
+      "id": "T2",
+      "title": "Rename Session to WordCollection across the app with every stored name pinned",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-04"
+      ],
+      "dod": "With a test Isar database written by the pre-rename build committed as a fixture, the renamed build opens it and reads every collection, word, source, group, dialogue, result, tag and story run unchanged; every existing test passes under its renamed name; `grep -rn \"\\bSession\\b\\|sessionStore\\|SessionStore\" lib` finds only `@Name` pins, Worker JSON fields and shared-preferences keys.",
+      "files_hint": [
+        "lib/",
+        "test/",
+        "lib/core/models/word_collection.dart",
+        "lib/core/services/collection_store.dart",
+        "lib/core/services/collection_publish_service.dart",
+        "lib/core/providers.dart",
+        "test/fixtures/pre_rename_vocab/"
+      ],
+      "slug": "rename-session-to-wordcollection"
+    },
+    {
+      "id": "T3",
+      "title": "Add the pure name rule, the default date name and the creation moment from a collection id",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-04"
+      ],
+      "dod": "Unit tests pass for `collection_name.dart`: the 1–60 code-point, one-line, not-only-spaces rule (empty, spaces, 60 and 61 code points, an emoji, a Cyrillic name, a pasted line break), the default name \"dd.MM.yyyy HH:mm\" in local time, and the creation moment parsed from a `WordCollection.create()` id, with null for an unparsable id.",
+      "files_hint": [
+        "lib/core/models/collection_name.dart",
+        "test/collection_name_test.dart"
+      ],
+      "slug": "collection-name-rules"
+    },
+    {
+      "id": "T4",
+      "title": "Add the pure filing rules: tree walks, folder into itself, level renumbering, restore target, days left and expiry",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-15",
+        "AC-19",
+        "AC-23",
+        "AC-24",
+        "AC-26"
+      ],
+      "dod": "Unit tests pass for `filing.dart`: ancestors and descendants of a folder, in-the-bin through an ancestor, a folder into itself or any descendant refused (AC-15), a level renumbered 0..n-1 after an insert or move, the restore target (old folder, else top level; old order when still within the level, else the end), days left 30 on the deletion day and 1 on the last, expiry at exactly binnedAt + 30 × 24 h with a clock moved backwards never erasing early, and the empty-and-untouched rule (AC-19).",
+      "files_hint": [
+        "lib/core/services/filing.dart",
+        "test/filing_test.dart"
+      ],
+      "slug": "filing-rules"
+    },
+    {
+      "id": "T5",
+      "title": "Add the filing fields and CollectionFolder to Isar, and make put() keep filing and never insert",
+      "layer": "infra",
+      "deps": [
+        "T2",
+        "T3"
+      ],
+      "acs": [
+        "AC-19",
+        "AC-27"
+      ],
+      "dod": "`WordCollection` has `name`, `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep` with the indexes in data-model.md, `CollectionFolder` is registered in the store; store tests show `put()` copies the six fields from the stored record, raises `keep` to true only when the copy has a word, never lowers it, and writes nothing when no record with that id exists, while `create()` inserts a kept or unkept new collection with its default name.",
+      "files_hint": [
+        "lib/core/models/word_collection.dart",
+        "lib/core/models/word_collection.g.dart",
+        "lib/core/models/collection_folder.dart",
+        "lib/core/models/collection_folder.g.dart",
+        "lib/core/services/collection_store.dart",
+        "lib/features/word_input/word_input_notifier.dart",
+        "test/collection_store_test.dart"
+      ],
+      "slug": "isar-filing-schema-and-put-contract"
+    },
+    {
+      "id": "T6",
+      "title": "Backfill names, top-level order and keep for pre-feature collections when the store opens",
+      "layer": "infra",
+      "deps": [
+        "T3",
+        "T5"
+      ],
+      "acs": [
+        "AC-04"
+      ],
+      "dod": "A store test opens records with `name == null` and gets every one named from its id's creation moment (or the earliest of `updatedAt`, `lastLocalModifiedAt` and the sources' `takenAt` when the id cannot be parsed), at the top level, ordered oldest first, `keep = !isEmpty`, with words, sources, groups, dialogues, results and tags unchanged in count and content; a second open changes nothing.",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "test/collection_backfill_test.dart"
+      ],
+      "slug": "filing-backfill"
+    },
+    {
+      "id": "T7",
+      "title": "Add CollectionStore.update(id, change) and move every background writer onto it",
+      "layer": "infra",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-27"
+      ],
+      "dod": "`update(id, change)` reads, changes and writes one record in one transaction and does nothing when the record is gone; `story_run_tracker`, `word_groups_notifier`, `dialogue_push` and `appendResult` use it instead of a whole-copy `put()`; tests show each writer leaves a concurrent rename, move and bin mark intact and writes nothing for an erased collection.",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "lib/core/story/story_run_tracker.dart",
+        "lib/core/story/word_groups_notifier.dart",
+        "lib/core/dialogues/dialogue_push.dart",
+        "lib/core/services/exam_result_sink.dart",
+        "test/collection_store_update_test.dart"
+      ],
+      "slug": "atomic-update-for-background-writers"
+    },
+    {
+      "id": "T8",
+      "title": "Add rename, new folder, move and reorder transactions and the level, path and History streams",
+      "layer": "infra",
+      "deps": [
+        "T4",
+        "T5"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-13",
+        "AC-14",
+        "AC-15",
+        "AC-17",
+        "AC-28"
+      ],
+      "dod": "Store tests over a temp Isar show: `rename` writes only `name` (and raises `keep` for a collection) and refuses an invalid name; `createFolder` appends at the end of its level; `move` changes `folderId`/`parentId`, renumbers both levels and refuses a folder into itself or a descendant; `reorder` renumbers one level with folders and collections sharing the order; `watchLevel(folderId)` emits that level's unbinned items by order, `watchFolders()` gives the tree for the path, and `watchHistory()` emits non-empty collections outside the bin (directly or through an ancestor), newest first.",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "test/collection_filing_test.dart"
+      ],
+      "slug": "filing-transactions"
+    },
+    {
+      "id": "T9",
+      "title": "Add bin, restore, erase, empty-bin and the 30-day sweep to CollectionStore",
+      "layer": "infra",
+      "deps": [
+        "T4",
+        "T8"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-21",
+        "AC-22",
+        "AC-24",
+        "AC-25",
+        "AC-26"
+      ],
+      "dod": "Store tests show: `bin` marks one item with `binnedAt` and `binnedFromFolderId`, refuses the current collection by re-reading the pointer inside the transaction, and for a folder holding the current collection first moves it to the folder's old place; `restore` returns to the old folder (or top level) at the old order when it fits, else the end; `erase`/`emptyBin` delete an item and everything inside in one transaction and its `source_photos/` files after the commit; `sweepBin(now)` erases only items whose 30 × 24 h are up; `watchBin()` lists bin items newest first; story runs are never deleted.",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "lib/core/services/source_photo_store.dart",
+        "test/collection_bin_test.dart"
+      ],
+      "slug": "bin-restore-erase-sweep"
+    },
+    {
+      "id": "T10",
+      "title": "Run the QG-1 stability suite: 100 interleavings of every background writer with every filing change",
+      "layer": "tests",
+      "deps": [
+        "T7",
+        "T9"
+      ],
+      "acs": [
+        "AC-27"
+      ],
+      "dod": "`test/collection_stability_test.dart` runs 100 seeded runs that interleave each writer (autosave `put`, story, word groups, dialogue push, exam result, late lookup/import `update`) with rename, move, reorder, bin and erase on a real temp Isar, and asserts after each run and after reopening the store: 0 reverted names, places or orders, 0 collections back from the bin, 0 re-created erased collections.",
+      "files_hint": [
+        "test/collection_stability_test.dart"
+      ],
+      "slug": "name-and-place-stability-suite"
+    },
+    {
+      "id": "T11",
+      "title": "Make launch and resume reopen the current collection, sweep the bin, and drop the RESTORE offer",
+      "layer": "app",
+      "deps": [
+        "T9"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-26"
+      ],
+      "dod": "Launch-rule tests show: after any pause the pointer's collection reopens with no new collection and no RESTORE snackbar; a missing or binned pointer falls back to the newest collection outside the bin, or a new one when none; only an empty store creates a first collection; `sweepBin` runs on open and on resume; the `switched_*` and `seen_*` keys are removed once at startup and never written.",
+      "files_hint": [
+        "lib/features/word_input/word_input_notifier.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/core/services/collection_store.dart",
+        "test/word_input_launch_rule_test.dart",
+        "test/session_seen_timer_test.dart"
+      ],
+      "slug": "launch-rule-reopens-current"
+    },
+    {
+      "id": "T12",
+      "title": "Add open(id) and newCollection(folderId) to the main screen's notifier with the AC-19 leave rule",
+      "layer": "app",
+      "deps": [
+        "T8",
+        "T11"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10",
+        "AC-12",
+        "AC-18",
+        "AC-19"
+      ],
+      "dod": "Notifier tests show: `open` of another collection flushes the autosave, erases the left collection at once only when it is empty and untouched (not kept, no words, sources, notes or tags), sets the pointer and shows the opened collection with no question; `open` of the current one changes nothing; `newCollection(folderId)` makes a kept, empty, date-named collection at the end of that folder and makes it current; History's switch still works.",
+      "files_hint": [
+        "lib/features/word_input/word_input_notifier.dart",
+        "test/open_collection_test.dart",
+        "test/switch_session_test.dart"
+      ],
+      "slug": "open-and-new-collection"
+    },
+    {
+      "id": "T13",
+      "title": "Deliver late translation, photo reading, Quizlet and subtitle results into the collection they started in",
+      "layer": "app",
+      "deps": [
+        "T7",
+        "T12"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-27"
+      ],
+      "dod": "Tests show that a translation lookup, a photo reading, a Quizlet import and a subtitle import started in collection A and finishing after the learner opened B are written into A through `CollectionStore.update` (also when A is in the bin), never appear in B, and are dropped and logged when A was erased for good.",
+      "files_hint": [
+        "lib/features/word_input/word_input_notifier.dart",
+        "lib/features/word_input/quizlet_import_flow.dart",
+        "lib/features/word_input/subtitle_import_flow.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/late_results_test.dart"
+      ],
+      "slug": "late-results-land-in-their-own-collection"
+    },
+    {
+      "id": "T14",
+      "title": "Show the collection's name as the main screen's title with a white edit button and the shared NameDialog",
+      "layer": "ui",
+      "deps": [
+        "T3",
+        "T8"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-05"
+      ],
+      "dod": "Widget tests cover SCR-01 default, long name and default name, and SCR-02 rename, validation, success and cancel: the title shows the name with one-line ellipsis while the edit button and Next keep full size; the edit button opens NameDialog with the name selected; an invalid name keeps the dialog open with \"A name must be 1 to 60 characters on one line\"; Save renames through the store and the title follows.",
+      "files_hint": [
+        "lib/features/collections/name_dialog.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/name_dialog_test.dart",
+        "test/main_title_test.dart"
+      ],
+      "slug": "name-dialog-and-main-title"
+    },
+    {
+      "id": "T15",
+      "title": "Add the Collections route and screen with path, Up and the icon grid, and keep the side menu always on",
+      "layer": "ui",
+      "deps": [
+        "T8"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "Widget tests cover SCR-03 default and SCR-04 default·top level, default·inside a folder, empty folder and loading: the side menu always holds Main, Collections, History; Collections opens the top level with path \"Collections\" and Up unavailable, icons in the learner's order with name, word count and a current badge, the recycle bin last with no ⋮; tapping folders grows the path, each part tappable, and Up returns one level.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/features/collections/collections_screen.dart",
+        "lib/features/collections/collections_notifier.dart",
+        "lib/features/collections/collection_icon.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/collections_screen_test.dart"
+      ],
+      "slug": "collections-screen-browse"
+    },
+    {
+      "id": "T16",
+      "title": "Open a collection with a tap, add New folder and New collection, and the item menu with Rename",
+      "layer": "ui",
+      "deps": [
+        "T12",
+        "T14",
+        "T15"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10",
+        "AC-13",
+        "AC-17",
+        "AC-18"
+      ],
+      "dod": "Widget tests show: a tap on a collection opens the main screen on it with no question (and changes nothing when it is already current); New folder asks for a name and appends the folder; New collection makes a current, empty, date-named collection at the end of the open folder and opens the main screen; the ⋮ button and a long press released without moving open SCR-05 with Rename and Delete, and Rename updates the icon and, for the current collection, the title.",
+      "files_hint": [
+        "lib/features/collections/collections_screen.dart",
+        "lib/features/collections/collections_notifier.dart",
+        "lib/features/collections/collection_icon.dart",
+        "test/collections_actions_test.dart"
+      ],
+      "slug": "collections-actions-menu-new-open"
+    },
+    {
+      "id": "T17",
+      "title": "Drag icons into folders, up a level, onto the path and into a new order, with hover-to-open",
+      "layer": "ui",
+      "deps": [
+        "T16"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-15",
+        "AC-16"
+      ],
+      "dod": "Widget tests cover SCR-04 dragging, hover-open, refused·into itself and no-op drop: a long press that moves starts a drag; drops on a folder icon, Up, a path part, a gap or another collection's icon move or reorder through the store; a folder dropped into itself or a descendant springs back with \"A folder cannot go inside itself\"; empty-spot, own-level and top-level-Up drops do nothing; holding over a folder for about 1 s opens it mid-drag; 50 scripted drags of every kind change the current-collection pointer 0 times (QG-6).",
+      "files_hint": [
+        "lib/features/collections/collection_drag.dart",
+        "lib/features/collections/collection_icon.dart",
+        "lib/features/collections/collections_screen.dart",
+        "test/collections_drag_test.dart"
+      ],
+      "slug": "collections-drag-and-drop"
+    },
+    {
+      "id": "T18",
+      "title": "Delete from the menu or the bin drop zone with the confirmation, the current-collection refusal and the stayed message",
+      "layer": "ui",
+      "deps": [
+        "T9",
+        "T17"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-20",
+        "AC-21",
+        "AC-22"
+      ],
+      "dod": "Widget tests cover SCR-07 (collection, folder, folder with current, cancel) and SCR-04 refused·current and current stayed: Delete or a drop on `BinDropZone` (inside folders) or the bin icon (top level) shows the confirmation with the name and word count or the folder's counts; confirming bins through the store; the current collection is refused with \"The current collection cannot be deleted. Open another collection first.\"; a folder holding it leaves the current collection in the folder's place with \"<name> stayed here because it is the current collection.\"",
+      "files_hint": [
+        "lib/features/collections/collections_screen.dart",
+        "lib/features/collections/collection_drag.dart",
+        "lib/features/collections/bin_drop_zone.dart",
+        "test/collections_delete_test.dart"
+      ],
+      "slug": "delete-to-bin-flow"
+    },
+    {
+      "id": "T19",
+      "title": "Add the recycle bin screen with days left, Restore, Delete forever and Empty recycle bin",
+      "layer": "ui",
+      "deps": [
+        "T9",
+        "T15"
+      ],
+      "acs": [
+        "AC-23",
+        "AC-24",
+        "AC-25"
+      ],
+      "dod": "Widget tests cover SCR-08 default, empty, loading, restored and erased, SCR-09 and SCR-10 (one item, with a shared link, empty the bin, cancel): the bin opens only from the top-level bin icon, lists items newest deleted first with name, \"N words\" for collections and \"N days left\"; a collection here never opens; Restore shows \"Restored to <folder or Collections>\"; Delete forever and Empty confirm with \"cannot be undone\" and the shared-page sentence when any item was published.",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/features/collections/recycle_bin_screen.dart",
+        "lib/features/collections/collections_screen.dart",
+        "test/recycle_bin_screen_test.dart"
+      ],
+      "slug": "recycle-bin-screen"
+    },
+    {
+      "id": "T20",
+      "title": "Show name and word count in History rows, and mark story runs of an erased collection",
+      "layer": "ui",
+      "deps": [
+        "T8"
+      ],
+      "acs": [
+        "AC-28"
+      ],
+      "dod": "Widget tests cover SCR-11 default and empty: rows show the name with \"N words\" beside it and the date below, the current one still marked, binned and empty collections not listed, empty text \"No collections yet\"; a story run whose collection no longer exists shows \"From a deleted collection\" and keeps its picture.",
+      "files_hint": [
+        "lib/features/history/history_screen.dart",
+        "lib/features/words_settings/",
+        "test/history_screen_test.dart",
+        "test/story_runs_screens_test.dart"
+      ],
+      "slug": "history-names-and-story-runs-mark"
+    },
+    {
+      "id": "T21",
+      "title": "Promote the staged D1 title migration into the Worker as 0007",
+      "layer": "migration",
+      "deps": [],
+      "acs": [
+        "AC-29"
+      ],
+      "dod": "The staged pair is promoted as `vocab-photo-api/migrations/0007_session_title.sql` (+ `down/0007_session_title.sql` with `<next>` filled in), applies with `wrangler d1 migrations apply DB --local`, reverts with the down file, re-applies, and `npm test` still passes on the fresh database.",
+      "files_hint": [
+        "docs/features/collections-screen/migrations/01_add_session_title.up.sql",
+        "docs/features/collections-screen/migrations/01_add_session_title.down.sql",
+        "vocab-photo-api/migrations/",
+        "vocab-photo-api/migrations/down/"
+      ],
+      "slug": "promote-d1-title-migration"
+    },
+    {
+      "id": "T22",
+      "title": "Accept, validate and store the optional title on POST /sessions create and republish",
+      "layer": "ports",
+      "deps": [
+        "T21"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-29",
+        "AC-30"
+      ],
+      "dod": "Worker tests show: a create with `title: \"Speaking club 12\"` stores it; a republish with the edit token replaces it on the same page and link; no `title` stores NULL; an empty, only-spaces, 61-code-point or two-line title gets 400 `{error, code: \"title_invalid\"}` per the contract with the same cases as T3; dialogue and picture deliveries never change `title`.",
+      "files_hint": [
+        "vocab-photo-api/src/session/handlers.ts",
+        "vocab-photo-api/src/session/store.ts",
+        "vocab-photo-api/src/session/types.ts",
+        "vocab-photo-api/src/log.ts",
+        "vocab-photo-api/test/publish.test.mjs"
+      ],
+      "slug": "worker-accepts-title"
+    },
+    {
+      "id": "T23",
+      "title": "Show the stored title as the shared page's heading and document title, escaped, with Vocabulary as the fallback",
+      "layer": "ui",
+      "deps": [
+        "T22"
+      ],
+      "acs": [
+        "AC-29",
+        "AC-30",
+        "AC-33"
+      ],
+      "dod": "Page tests cover SCR-14 default·named, before this feature, markup in the name and long name: `<h1>` and `<title>` show the title through `escapeHtml`, NULL shows \"Vocabulary\", `<b>x</b>` renders as text, a 60-character name wraps without sideways scroll, nothing about folders or other collections is in the page, and no visible \"session\" text remains.",
+      "files_hint": [
+        "vocab-photo-api/src/session/page.ts",
+        "vocab-photo-api/test/page.test.mjs"
+      ],
+      "slug": "shared-page-title"
+    },
+    {
+      "id": "T24",
+      "title": "Send the name with Share link, warn that it is public, and name shared files after it",
+      "layer": "ui",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-29",
+        "AC-31",
+        "AC-32"
+      ],
+      "dod": "Tests show: the publish body carries `title` = the collection's name on create and republish, and dialogue or picture deliveries never send it; SCR-12 default shows \"The collection's name, \\\"<name>\\\", is visible to anyone with the link.\"; `safeFileName` turns `Unit 3: phrasal verbs?` into `Unit 3- phrasal verbs-` and `16.10.2026 14:30` into `16.10.2026 14-30`, falls back to `collection`, and every one of the five formats uses it for the file name and the subject, with only the PDF also showing the name as its heading.",
+      "files_hint": [
+        "lib/core/services/collection_publish_service.dart",
+        "lib/features/words_table/share_formats.dart",
+        "lib/features/words_table/",
+        "test/collection_publish_service_test.dart",
+        "test/share_formats_test.dart"
+      ],
+      "slug": "share-with-name"
+    },
+    {
+      "id": "T25",
+      "title": "Replace \"session\" with \"collection\" in every text the learner reads",
+      "layer": "ui",
+      "deps": [
+        "T2",
+        "T20"
+      ],
+      "acs": [
+        "AC-33"
+      ],
+      "dod": "`grep -rni \"session\" lib --include='*.dart'` finds no user-visible string (only identifiers pinned by `@Name`, prefs keys and Worker field names), and widget tests check the reworded History empty text, photo panel heading, Notes tag field and import results.",
+      "files_hint": [
+        "lib/features/",
+        "test/"
+      ],
+      "slug": "collection-wording-pass"
+    },
+    {
+      "id": "T26",
+      "title": "Update architecture.md, CONTEXT.md, the superseded ADRs and the Worker README",
+      "layer": "docs",
+      "deps": [
+        "T11",
+        "T13",
+        "T23"
+      ],
+      "acs": [],
+      "dod": "`docs/architecture.md` states the put()/update() rule for writers and the new launch rule; CONTEXT.md has \"filing\" and \"kept collection\"; edit-session-from-history ADR-0002/ADR-0003 and the import-from-quizlet drop rule are marked superseded by ADR-0006/ADR-0007; the Worker README documents `title` and migration 0007.",
+      "files_hint": [
+        "docs/architecture.md",
+        "CONTEXT.md",
+        "docs/features/edit-session-from-history/adr/",
+        "docs/features/import-from-quizlet/",
+        "vocab-photo-api/README.md"
+      ],
+      "slug": "architecture-context-supersedes"
+    },
+    {
+      "id": "T27",
+      "title": "Run the device pass: the update over a copy of the owner's data, open time, force-close durability, and deploy the Worker",
+      "layer": "tests",
+      "deps": [
+        "T6",
+        "T10",
+        "T18",
+        "T19",
+        "T24",
+        "T25",
+        "T26"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-05",
+        "AC-14",
+        "AC-26",
+        "AC-27"
+      ],
+      "dod": "A written device-pass record shows: QG-2 counts before = after on a copy of the owner's real data (words, sources, dialogues, groups, results, tags, story runs, photo files) with every collection at the top level named from its creation moment; QG-3 Collections ready ≤ 500 ms with 300 collections and 50 folders in a release profile run; QG-4 a drop, rename, delete and restore each survive a force-close 1 s later; long names and drags checked by hand; migration 0007 applied remotely and the Worker deployed.",
+      "files_hint": [
+        "docs/features/collections-screen/device-pass.md"
+      ],
+      "slug": "device-pass-and-measurements"
+    }
+  ]
+}
