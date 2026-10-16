@@ -7,7 +7,7 @@ acs: ["AC-04"]
 files_hint: ["lib/core/services/collection_store.dart", "test/collection_backfill_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Backfill names, top-level order and keep for pre-feature collections when the store opens
