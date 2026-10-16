@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kReleaseMode;
@@ -172,13 +171,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   bool _isRecoveringLostPhoto = false;
 
   /// Which session the rows on screen were built from. Tracked as an id rather
-  /// than a bool because RESTORE swaps one session for another and the screen
+  /// than a bool because a resume can swap one session for another and the screen
   /// has to rebuild its rows for the second one too.
   String? _restoredCollectionId;
-
-  /// True only while the "words from your last session are saved" snackbar is
-  /// up, so the first edit dismisses that one and never someone else's.
-  bool _restoreSnackBarVisible = false;
 
   /// Read once in initState: dispose() may not touch `ref` (Riverpod forbids
   /// it once the element is torn down), yet it still has to stop speech.
@@ -197,18 +192,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       _wordFocusNodes[0].requestFocus();
     });
     _pollForLostPhoto();
-    _startSeenTimer();
-  }
-
-  /// While the app is open, the current session is recorded as seen every
-  /// [WordInputNotifier.seenEvery], so a launch soon after counts it as
-  /// touched (owner, 2026-10-16).
-  Timer? _seenTimer;
-
-  void _startSeenTimer() {
-    _seenTimer?.cancel();
-    _seenTimer = Timer.periodic(WordInputNotifier.seenEvery,
-        (_) => ref.read(wordInputNotifierProvider.notifier).markSeen());
   }
 
   @override
@@ -221,17 +204,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // before onResume, so resuming is the race-free point to claim it.
     if (state == AppLifecycleState.resumed) {
       _pollForLostPhoto();
-      ref.read(wordInputNotifierProvider.notifier).markSeen();
-      _startSeenTimer();
+      ref.read(wordInputNotifierProvider.notifier).resume();
     }
     // The OS can kill the process while the camera is open; `paused` is the
     // last guaranteed callback before that happens, so flush immediately
     // instead of waiting on the debounce timer.
     if (state == AppLifecycleState.paused) {
-      _seenTimer?.cancel();
-      ref.read(wordInputNotifierProvider.notifier)
-        ..markSeen()
-        ..flush();
+      ref.read(wordInputNotifierProvider.notifier).flush();
       ref.read(pronunciationServiceProvider).stop();
     }
   }
@@ -295,45 +274,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     } finally {
       _isRecoveringLostPhoto = false;
     }
-  }
-
-  /// The launch rule started a new session because the previous one had gone
-  /// cold (> 5 minutes). Offer it back for 7 seconds; ignoring it or typing
-  /// leaves the new session current and the old one in history.
-  void _showRestoreSnackBar() {
-    log("_showRestoreSnackBar called");
-    if (!mounted) return;
-    // Shown straight from the `ref.listen` callback rather than from a
-    // post-frame callback: that callback only ever runs if something else
-    // schedules a frame, which is not guaranteed here.
-    _restoreSnackBarVisible = true;
-    log("_showRestoreSnackBar context is mounted");
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-          SnackBar(
-            content: const Text('We kept the words you typed before'),
-            duration: const Duration(seconds: 7),
-            action: SnackBarAction(
-              label: 'RESTORE',
-              onPressed: () {
-                _restoreSnackBarVisible = false;
-                ref.read(wordInputNotifierProvider.notifier).restorePrevious();
-              },
-            ),
-          ),
-        )
-        .closed
-        .then((_) => _restoreSnackBarVisible = false);
-  }
-
-  /// Takes the RESTORE snackbar down on the first edit, so tapping RESTORE can
-  /// never discard words the user has already typed. Guarded by a flag so it
-  /// only ever hides that snackbar, not a translation error.
-  @override
-  void _dismissRestoreSnackBar() {
-    if (!_restoreSnackBarVisible) return;
-    _restoreSnackBarVisible = false;
-    if (mounted) ScaffoldMessenger.of(context).hideCurrentSnackBar();
   }
 
   /// Replaces the placeholder row from initState() with the persisted list,
@@ -865,7 +805,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
 
   @override
   void dispose() {
-    _seenTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _pronunciation.stop();
     for (var controller in _wordControllers) {
@@ -950,7 +889,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // initState() with that session's words. Keyed on the session id, so the
     // ordinary notifier updates below (all driven by this screen's own
     // mutations, via updateAt/removeAt/reorder/addAll) never re-trigger it,
-    // while RESTORE swapping in the previous session does.
+    // while another session being swapped in does.
     ref.listen(wordInputNotifierProvider, (previous, next) {
       next.whenData((collection) {
         if (_restoredCollectionId == collection.collectionId) return;
@@ -958,15 +897,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         // Another session: the photo panel closes and nothing stays
         // selected (side-bar-for-main-screen, spec AC-15b).
         _photoPanel.close();
-        // Read before restoring: rebuilding the rows can itself mutate the
-        // notifier, which clears this.
-        final restorable = ref.read(wordInputNotifierProvider.notifier).restorableCollectionId;
-        // A switch from History cancels the offer (edit-session-from-history).
-        if (restorable == null) _dismissRestoreSnackBar();
         if (collection.words.isNotEmpty) _restoreFromStore(collection.words);
-        debugPrint('VOCAB: session ${collection.collectionId} on screen, '
-            'RESTORE ${restorable == null ? 'not offered' : 'offered for $restorable'}');
-        if (restorable != null) _showRestoreSnackBar();
+        debugPrint('VOCAB: session ${collection.collectionId} on screen');
       });
     });
 
@@ -1119,9 +1051,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               controller: _photoPanel,
               busy: _isAnalyzingPhoto,
               hidden: _drawerOpen,
-              // Kept free for the floating-button row, and the RESTORE
-              // SnackBar while it is up (spec AC-01).
-              bottomReserve: 80 + (_restoreSnackBarVisible ? 56 : 0),
+              // Kept free for the floating-button row (spec AC-01).
+              bottomReserve: 80,
               scrollController: _listScroll,
               onSelected: _onPhotoSelected,
               onOpenNotes: _openNotes,

@@ -16,9 +16,6 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// Keeps one blank row at the end (main screen) or nothing (Notes dialog).
   void _checkAndAddNewPair();
 
-  /// Takes the main screen's RESTORE snackbar down on the first edit.
-  void _dismissRestoreSnackBar() {}
-
   /// Row [index] was just taken out of the session's words at [storeIndex].
   void _onRowRemoved(int index, int storeIndex) {}
 
@@ -96,11 +93,9 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     });
 
     wordController.addListener(() {
-      // Only a real edit dismisses the RESTORE snackbar: focus/selection changes
-      // also notify the controller (e.g. the post-restore requestFocus), and
-      // those must not take it down.
+      // Only a real edit counts: focus/selection changes also notify the
+      // controller (e.g. the post-restore requestFocus).
       final wordChanged = wordController.text != _wordPairs[index].word;
-      if (wordChanged) _dismissRestoreSnackBar();
       _wordPairs[index].word = wordController.text;
       _checkAndAddNewPair();
 
@@ -121,13 +116,12 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // offers the update icon whenever the block is hidden.
       }); // Оновити для показу іконки при >= 2 літерах
       // Same guard for persistence: a no-op push still marks the session
-      // dirty and clears the notifier's restorableCollectionId, which broke RESTORE.
+      // dirty.
       if (wordChanged) _pushRow(index, word: wordController.text);
     });
 
     translationController.addListener(() {
       final translationChanged = translationController.text != _wordPairs[index].translation;
-      if (translationChanged) _dismissRestoreSnackBar();
       _wordPairs[index].translation = translationController.text;
       _checkAndAddNewPair();
 
@@ -149,7 +143,6 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 
     definitionController.addListener(() {
       final definitionChanged = definitionController.text != _wordPairs[index].definition;
-      if (definitionChanged) _dismissRestoreSnackBar();
       _wordPairs[index].definition = definitionController.text;
       _checkAndAddNewPair();
 

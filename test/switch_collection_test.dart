@@ -21,8 +21,7 @@ import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dar
 import 'seed_collections.dart';
 
 /// edit-session-from-history T5 (ADR-0003, AC-07b, AC-09): a lookup that comes
-/// back after a switch never lands in the picked session, and a RESTORE offer
-/// from the last launch goes away with the switch.
+/// back after a switch never lands in the picked session.
 ///
 /// The photo path is not covered here: it runs through `PhotoScaler.instance`
 /// and the image_picker / flutter_image_compress platform channels, which this
@@ -130,7 +129,7 @@ void main() {
     ));
     // The session resolved before the screen mounted, so nudge the notifier
     // once for the screen's listener to fill the rows. A blank row is not a
-    // content change: it keeps the RESTORE offer and stamps nothing.
+    // content change: it stamps nothing.
     container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
@@ -221,20 +220,6 @@ void main() {
     await tester.pump();
 
     await expectPickedUntouched(tester);
-    await tearDownMain(tester);
-  }, timeout: const Timeout(Duration(seconds: 60)));
-
-  testWidgets('a RESTORE offer on screen goes away with the switch',
-      (tester) async {
-    await pumpMain(tester, leftAgo: const Duration(days: 7));
-    expect(find.text('RESTORE'), findsOneWidget);
-
-    await switchToPicked(tester);
-    await tester.pumpAndSettle();
-
-    expect(find.text('RESTORE'), findsNothing);
-    expect(words().where((w) => !w.isEmpty).map((w) => w.word),
-        ['tea', 'milk']);
     await tearDownMain(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

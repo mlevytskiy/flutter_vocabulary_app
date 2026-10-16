@@ -171,13 +171,18 @@ void main() {
       return s;
     }
 
+    /// A fresh current collection to leave, as a launch on an empty store makes.
+    Future<void> leftCurrent() async {
+      final left = await store.create();
+      await store.setCurrentCollectionId(left.collectionId);
+    }
+
     test('makes the picked session current without stamping its edit times',
         () async {
       final picked = await past('tea');
       await container.read(wordInputNotifierProvider.future);
       final notifier = container.read(wordInputNotifierProvider.notifier);
 
-      final before = DateTime.now();
       expect(await notifier.switchTo(picked.collectionId), isTrue);
 
       final now = container.read(wordInputNotifierProvider).value!;
@@ -188,9 +193,6 @@ void main() {
       expect(await store.currentCollectionId(), picked.collectionId);
       final stored = await store.byId(picked.collectionId);
       expect(stored!.lastLocalModifiedAt, DateTime(2026, 9, 1, 12));
-      final pickedAt = await store.switchedAt(picked.collectionId);
-      expect(pickedAt, isNotNull);
-      expect(pickedAt!.isBefore(before), isFalse);
 
       // The picked session can grow like any other.
       notifier.addAll([WordPair()]);
@@ -200,6 +202,7 @@ void main() {
     test('a word typed just before the switch is saved in the left session',
         () async {
       final picked = await past('tea');
+      await leftCurrent();
       final notifier = await seeded([WordPair(word: 'coffee')]);
       final leftId =
           container.read(wordInputNotifierProvider).value!.collectionId;
@@ -218,6 +221,7 @@ void main() {
 
     test('an empty left session is deleted', () async {
       final picked = await past('tea');
+      await leftCurrent();
       final left = await container.read(wordInputNotifierProvider.future);
       expect(left.isEmpty, isTrue);
 
@@ -226,19 +230,6 @@ void main() {
           .switchTo(picked.collectionId);
 
       expect(await store.byId(left.collectionId), isNull);
-    });
-
-    test('clears the RESTORE offer', () async {
-      final cold = await past('old');
-      await store.setCurrentCollectionId(cold.collectionId);
-      await container.read(wordInputNotifierProvider.future);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
-      expect(notifier.restorableCollectionId, cold.collectionId);
-
-      final picked = await past('tea');
-      await notifier.switchTo(picked.collectionId);
-
-      expect(notifier.restorableCollectionId, isNull);
     });
 
     test('an unknown id returns false and changes nothing', () async {
@@ -254,7 +245,6 @@ void main() {
       expect(after.words.single.word, 'coffee');
       expect(await store.currentCollectionId(), current.collectionId);
       expect((await store.nonEmpty()).length, collectionsBefore);
-      expect(await store.switchedAt('gone'), isNull);
     });
   });
 }

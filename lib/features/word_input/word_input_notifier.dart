@@ -16,11 +16,6 @@ import '../../core/services/source_photo_store.dart' show uuidV4;
 
 part 'word_input_notifier.g.dart';
 
-/// How long a session stays "the current one" after this device last touched
-/// it. Past this, a launch starts a fresh session and offers the previous one
-/// back through the snackbar (see `docs/tasks/task-03-words-survive-restart.md`).
-const kCollectionIdleWindow = Duration(minutes: 5);
-
 /// Owns the current [WordCollection]. `WordInputScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
@@ -35,74 +30,38 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// nobody edited.
   bool _dirty = false;
 
-  /// Set by [build] only when the launch rule started a new session and an
-  /// older one is still worth offering back (case 4). The screen reads it once
-  /// to decide whether to show the RESTORE snackbar. Cleared by
-  /// [restorePrevious] and by the first mutation, so RESTORE can never discard
-  /// typed words.
-  String? restorableCollectionId;
-
   @override
   Future<WordCollection> build() async {
     ref.onDispose(() => _saveTimer?.cancel());
     final store = await ref.read(collectionStoreProvider.future);
+    await store.sweepBin(DateTime.now());
+    return _openCurrent(store);
+  }
 
-    // `prev` is the session recorded as current; if the pointer is missing or
-    // dangling, the newest session this device touched.
-    WordCollection? prev;
+  /// The launch and resume rule (collections-screen ADR-0007): the pointer's
+  /// collection reopens after any pause. A missing or binned pointer (directly
+  /// or through a folder) falls back to the newest collection outside the bin,
+  /// or a new one when there is none.
+  Future<WordCollection> _openCurrent(CollectionStore store) async {
+    WordCollection? target;
     final pointer = await store.currentCollectionId();
-    if (pointer != null) prev = await store.byId(pointer);
-    // A History pick (edit-session-from-history, ADR-0002) only counts for the
-    // session the pointer names, never for the newest-session fallback.
-    final pickedAt =
-        prev == null ? null : await store.switchedAt(prev.collectionId);
-    // So does having it open with words (owner, 2026-10-16), see [markSeen].
-    final seenAt = prev == null ? null : await store.seenAt(prev.collectionId);
-    prev ??= await store.newest();
-    // Isar hands back embedded lists as fixed-length; the screen grows this one
-    // (its trailing blank row), so give it a growable copy.
-    if (prev != null) {
-      prev.words = prev.words.toList();
-      prev.sources = prev.sources.toList();
+    if (pointer != null) {
+      target = await store.byId(pointer);
+      if (target != null && await store.isBinned(target)) target = null;
     }
-
-    // Case 1 — nothing stored: a new session, one empty row, no snackbar.
-    if (prev == null) {
-      debugPrint('VOCAB: launch case 1, nothing stored: new session');
+    target ??= await store.newestOutsideBin();
+    if (target == null) {
+      debugPrint('VOCAB: launch: nothing usable stored, new collection');
       return _startNewCollection(store);
     }
-
-    // Case 2 — the previous session never got a word: reuse it whatever its
-    // age, otherwise every launch-and-do-nothing leaves an empty session behind.
-    if (prev.isEmpty) {
-      debugPrint('VOCAB: launch case 2, previous session ${prev.collectionId} '
-          'has no word: reused, no snackbar');
-      await store.setCurrentCollectionId(prev.collectionId);
-      if (prev.words.isEmpty) prev.words = [WordPair()];
-      return prev;
-    }
-
-    // Case 3 — still warm: carry on in it, extras and all. No snackbar. A
-    // recent pick from History, or having it open, keeps it warm too.
-    var touched = prev.lastLocalModifiedAt;
-    if (pickedAt != null && pickedAt.isAfter(touched)) touched = pickedAt;
-    if (seenAt != null && seenAt.isAfter(touched)) touched = seenAt;
-    if (DateTime.now().difference(touched) < kCollectionIdleWindow) {
-      debugPrint('VOCAB: launch case 3, previous session ${prev.collectionId} '
-          'edited, picked or seen ${DateTime.now().difference(touched).inSeconds} s ago: '
-          'carried on, no snackbar');
-      await store.setCurrentCollectionId(prev.collectionId);
-      return prev;
-    }
-
-    // Case 4 — gone cold: a new session is current immediately, and the screen
-    // offers `prev` back for the next 7 seconds.
-    debugPrint('VOCAB: launch case 4, previous session ${prev.collectionId} '
-        'edited ${DateTime.now().difference(prev.lastLocalModifiedAt).inMinutes} min ago: '
-        'new session, RESTORE offered');
-    final fresh = await _startNewCollection(store);
-    restorableCollectionId = prev.collectionId;
-    return fresh;
+    // Isar hands back embedded lists as fixed-length; the screen grows this one
+    // (its trailing blank row), so give it a growable copy.
+    target.words = target.words.toList();
+    target.sources = target.sources.toList();
+    if (target.words.isEmpty) target.words = [WordPair()];
+    debugPrint('VOCAB: launch: collection ${target.collectionId} reopened');
+    await store.setCurrentCollectionId(target.collectionId);
+    return target;
   }
 
   Future<WordCollection> _startNewCollection(CollectionStore store) async {
@@ -112,52 +71,25 @@ class WordInputNotifier extends _$WordInputNotifier {
     return collection;
   }
 
-  /// Drops the (still empty) session the launch rule just created and makes the
-  /// previous one current again. Called from the snackbar's RESTORE action.
-  Future<void> restorePrevious() async {
-    final id = restorableCollectionId;
-    restorableCollectionId = null;
-    if (id == null) return;
-
+  /// The app came back to the front: sweep the bin and re-check the pointer.
+  /// The collection on screen stays unless it was erased or binned meanwhile.
+  Future<void> resume() async {
     final store = await ref.read(collectionStoreProvider.future);
-    final prev = await store.byId(id);
-    if (prev == null) return;
-    prev.words = prev.words.toList(); // growable, see build()
-    prev.sources = prev.sources.toList();
-
+    await store.sweepBin(DateTime.now());
     final current = state.valueOrNull;
-    if (current != null && current.collectionId != id && current.isEmpty) {
-      await store.delete(current.collectionId);
-    }
-
+    if (current == null) return;
+    final stored = await store.byId(current.collectionId);
+    if (stored != null && !await store.isBinned(stored)) return;
     _saveTimer?.cancel();
     _saveTimer = null;
     _dirty = false;
-    prev.lastLocalModifiedAt = DateTime.now();
-    await store.setCurrentCollectionId(prev.collectionId);
-    await store.put(prev);
-    state = AsyncData(prev);
-  }
-
-  /// How often the main screen calls [markSeen] while the app is open.
-  static const seenEvery = Duration(seconds: 15);
-
-  /// Records that the current session is open, so the launch rule counts it
-  /// as touched now (owner, 2026-10-16). A session with no word is not
-  /// recorded: case 2 reuses it anyway. Not an edit: the session's own times
-  /// are left alone, so History's order and the RESTORE offer are not moved.
-  Future<void> markSeen() async {
-    final collection = state.valueOrNull;
-    if (collection == null || collection.isEmpty) return;
-    final store = await ref.read(collectionStoreProvider.future);
-    await store.setSeen(collection.collectionId, DateTime.now());
+    state = AsyncData(await _openCurrent(store));
   }
 
   /// Makes a session picked on the History words screen the current one
   /// (edit-session-from-history, ADR-0001). The left session is saved first so
   /// a word typed within the save delay is kept, and dropped if it never got a
-  /// word. The pick is recorded beside the pointer; the picked session's edit
-  /// times are left alone (ADR-0002). Returns false, touching nothing, when
+  /// word. The picked session's edit times are left alone. Returns false, touching nothing, when
   /// the picked session is not in the store.
   Future<bool> switchTo(String collectionId) async {
     final store = await ref.read(collectionStoreProvider.future);
@@ -178,8 +110,6 @@ class WordInputNotifier extends _$WordInputNotifier {
     _saveTimer = null;
     _dirty = false;
     await store.setCurrentCollectionId(picked.collectionId);
-    await store.setSwitched(picked.collectionId, DateTime.now());
-    restorableCollectionId = null;
     state = AsyncData(picked);
     return true;
   }
@@ -525,8 +455,8 @@ class WordInputNotifier extends _$WordInputNotifier {
   ///
   /// The timestamps are stamped **here**, at the mutation, not in [flush]. They
   /// have to be: `flush()` also runs on `paused`, so stamping there made every
-  /// background or force-quit look like an edit, the session never aged past
-  /// the 5-minute window, and the RESTORE snackbar could never fire.
+  /// background or force-quit look like an edit, a session
+  /// looked edited when nobody had touched it.
   void _scheduleSave() {
     final collection = state.value;
     if (collection == null) return;
@@ -536,9 +466,6 @@ class WordInputNotifier extends _$WordInputNotifier {
     final now = DateTime.now();
     collection.updatedAt = now;
     collection.lastLocalModifiedAt = now;
-    // The user has started working in the new session, so the previous one is
-    // history now — RESTORE must not be able to throw these words away.
-    restorableCollectionId = null;
     _dirty = true;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(milliseconds: 500), flush);
