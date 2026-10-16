@@ -56,6 +56,8 @@ class WordInputNotifier extends _$WordInputNotifier {
     // session the pointer names, never for the newest-session fallback.
     final pickedAt =
         prev == null ? null : await store.switchedAt(prev.sessionId);
+    // So does having it open with words (owner, 2026-10-16), see [markSeen].
+    final seenAt = prev == null ? null : await store.seenAt(prev.sessionId);
     prev ??= await store.newest();
     // Isar hands back embedded lists as fixed-length; the screen grows this one
     // (its trailing blank row), so give it a growable copy.
@@ -81,12 +83,13 @@ class WordInputNotifier extends _$WordInputNotifier {
     }
 
     // Case 3 — still warm: carry on in it, extras and all. No snackbar. A
-    // recent pick from History keeps it warm too.
+    // recent pick from History, or having it open, keeps it warm too.
     var touched = prev.lastLocalModifiedAt;
     if (pickedAt != null && pickedAt.isAfter(touched)) touched = pickedAt;
+    if (seenAt != null && seenAt.isAfter(touched)) touched = seenAt;
     if (DateTime.now().difference(touched) < kSessionIdleWindow) {
       debugPrint('VOCAB: launch case 3, previous session ${prev.sessionId} '
-          'edited or picked ${DateTime.now().difference(touched).inSeconds} s ago: '
+          'edited, picked or seen ${DateTime.now().difference(touched).inSeconds} s ago: '
           'carried on, no snackbar');
       await store.setCurrentSessionId(prev.sessionId);
       return prev;
@@ -135,6 +138,20 @@ class WordInputNotifier extends _$WordInputNotifier {
     await store.setCurrentSessionId(prev.sessionId);
     await store.put(prev);
     state = AsyncData(prev);
+  }
+
+  /// How often the main screen calls [markSeen] while the app is open.
+  static const seenEvery = Duration(seconds: 15);
+
+  /// Records that the current session is open, so the launch rule counts it
+  /// as touched now (owner, 2026-10-16). A session with no word is not
+  /// recorded: case 2 reuses it anyway. Not an edit: the session's own times
+  /// are left alone, so History's order and the RESTORE offer are not moved.
+  Future<void> markSeen() async {
+    final session = state.valueOrNull;
+    if (session == null || session.isEmpty) return;
+    final store = await ref.read(sessionStoreProvider.future);
+    await store.setSeen(session.sessionId, DateTime.now());
   }
 
   /// Makes a session picked on the History words screen the current one

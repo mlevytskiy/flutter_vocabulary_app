@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
 
@@ -196,6 +197,18 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       _wordFocusNodes[0].requestFocus();
     });
     _pollForLostPhoto();
+    _startSeenTimer();
+  }
+
+  /// While the app is open, the current session is recorded as seen every
+  /// [WordInputNotifier.seenEvery], so a launch soon after counts it as
+  /// touched (owner, 2026-10-16).
+  Timer? _seenTimer;
+
+  void _startSeenTimer() {
+    _seenTimer?.cancel();
+    _seenTimer = Timer.periodic(WordInputNotifier.seenEvery,
+        (_) => ref.read(wordInputNotifierProvider.notifier).markSeen());
   }
 
   @override
@@ -208,12 +221,17 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // before onResume, so resuming is the race-free point to claim it.
     if (state == AppLifecycleState.resumed) {
       _pollForLostPhoto();
+      ref.read(wordInputNotifierProvider.notifier).markSeen();
+      _startSeenTimer();
     }
     // The OS can kill the process while the camera is open; `paused` is the
     // last guaranteed callback before that happens, so flush immediately
     // instead of waiting on the debounce timer.
     if (state == AppLifecycleState.paused) {
-      ref.read(wordInputNotifierProvider.notifier).flush();
+      _seenTimer?.cancel();
+      ref.read(wordInputNotifierProvider.notifier)
+        ..markSeen()
+        ..flush();
       ref.read(pronunciationServiceProvider).stop();
     }
   }
@@ -847,6 +865,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
 
   @override
   void dispose() {
+    _seenTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _pronunciation.stop();
     for (var controller in _wordControllers) {

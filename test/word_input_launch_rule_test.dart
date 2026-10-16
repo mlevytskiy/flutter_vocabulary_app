@@ -318,4 +318,65 @@ void main() {
       expect(restorableId(), prev.sessionId);
     });
   });
+
+  // Owner, 2026-10-16: having a session with words open counts as touching
+  // it; the main screen records it every 15 s (markSeen).
+  group('seen open', () {
+    test('seen 2 minutes ago, edited a week ago: carry on, no RESTORE',
+        () async {
+      final prev = await seed(ago: const Duration(days: 7));
+      await store.setSeen(
+          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 2)));
+
+      final session = await launch();
+
+      expect(session.sessionId, prev.sessionId);
+      expect(restorableId(), isNull);
+    });
+
+    test('seen 6 minutes ago: a new session and the RESTORE offer', () async {
+      final prev = await seed(ago: const Duration(days: 7));
+      await store.setSeen(
+          prev.sessionId, DateTime.now().subtract(const Duration(minutes: 6)));
+
+      final session = await launch();
+
+      expect(session.sessionId, isNot(prev.sessionId));
+      expect(restorableId(), prev.sessionId);
+    });
+
+    test('a seen record for another session is ignored', () async {
+      final prev = await seed(ago: const Duration(days: 7));
+      await store.setSeen('other', DateTime.now());
+
+      final session = await launch();
+
+      expect(session.sessionId, isNot(prev.sessionId));
+      expect(restorableId(), prev.sessionId);
+    });
+
+    test('markSeen records a session with words, and leaves its times alone',
+        () async {
+      final prev = await seed(ago: const Duration(minutes: 1));
+      final session = await launch();
+      expect(session.sessionId, prev.sessionId);
+
+      await container.read(wordInputNotifierProvider.notifier).markSeen();
+
+      final seen = await store.seenAt(prev.sessionId);
+      expect(seen, isNotNull);
+      expect(DateTime.now().difference(seen!), lessThan(const Duration(seconds: 5)));
+      final stored = await store.byId(prev.sessionId);
+      expect(stored!.lastLocalModifiedAt, prev.lastLocalModifiedAt,
+          reason: 'being open is not an edit');
+    });
+
+    test('markSeen does not record a session with no word', () async {
+      final session = await launch(); // case 1: a new, empty session
+
+      await container.read(wordInputNotifierProvider.notifier).markSeen();
+
+      expect(await store.seenAt(session.sessionId), isNull);
+    });
+  });
 }

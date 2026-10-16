@@ -6,7 +6,7 @@ part of 'word_input_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$wordInputNotifierHash() => r'887c8ef10611b2376bd677c02162d21375d5d634';
+String _$wordInputNotifierHash() => r'f498e38a512411dfbf6cbf424de96f1057d86329';
 
 /// Owns the current [Session]. `WordInputScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its

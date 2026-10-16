@@ -17,6 +17,8 @@ class SessionStore {
   static const _currentSessionKey = 'current_session_id';
   static const _switchedSessionKey = 'switched_session_id';
   static const _switchedAtKey = 'switched_at';
+  static const _seenSessionKey = 'seen_session_id';
+  static const _seenAtKey = 'seen_at';
 
   final Isar _isar;
   final SharedPreferences _prefs;
@@ -224,6 +226,31 @@ class SessionStore {
     try {
       if (_prefs.getString(_switchedSessionKey) != sessionId) return null;
       final at = _prefs.getString(_switchedAtKey);
+      return at == null ? null : DateTime.tryParse(at);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Records that [sessionId], with words, was on screen with the app open
+  /// at [at] (owner, 2026-10-16). Kept beside the pointer like a pick, so
+  /// being looked at never looks like an edit; [seenAt] only answers for the
+  /// id it names.
+  Future<void> setSeen(String sessionId, DateTime at) async {
+    try {
+      await _prefs.setString(_seenSessionKey, sessionId);
+      await _prefs.setString(_seenAtKey, at.toIso8601String());
+    } catch (_) {
+      // ignored on purpose, see the class doc
+    }
+  }
+
+  /// When [sessionId] was last seen open, or null if the record names
+  /// another session, is missing, or cannot be read.
+  Future<DateTime?> seenAt(String sessionId) async {
+    try {
+      if (_prefs.getString(_seenSessionKey) != sessionId) return null;
+      final at = _prefs.getString(_seenAtKey);
       return at == null ? null : DateTime.tryParse(at);
     } catch (_) {
       return null;

@@ -386,7 +386,9 @@ flowchart LR
 
 - `WordInputNotifier` owns the current `Session` — add/remove/reorder/update plus a debounced
   save. Its `build()` runs the **launch rule**: reuse the current session if this device touched
-  it under 5 minutes ago — counting a pick from History as a touch (or if it never got a word), otherwise start a fresh one and hand the
+  it under 5 minutes ago — counting a pick from History as a touch, and having it open with words (`markSeen`, every 15 s
+  from the main screen and on pause, kept beside the pointer as `seen_session_id`/`seen_at`; owner, 2026-10-16)
+  (or if it never got a word), otherwise start a fresh one and hand the
   screen a `restorableSessionId` so it can offer the previous session back through a 7-second
   RESTORE snackbar. `SessionStore` never throws: a bad read answers `null`/`[]`.
 - The screen keeps its controllers and per-row flags; on every change it calls the notifier
