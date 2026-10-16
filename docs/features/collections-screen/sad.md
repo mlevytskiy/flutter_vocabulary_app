@@ -235,25 +235,15 @@ sequenceDiagram
 
 ## 7. Deployment view
 
-<!-- 🎯 Why: the TOPOLOGY DevOps must know without reading the deploy charts — how many replicas,
-     where the background worker lives, AT WHAT NUMBERS we scale.
-     📋 Write: 2–3 sentences on topology + monitoring + concrete threshold numbers.
-     📌 e.g. «500 authors → partition by quarter» (not «we'll think about scale later»).
-     🎯 N/A allowed for XS/S that reuses an existing deployment unit with no change.
-     Deployment-diagram scaffold → templates/deployment.md. -->
-
-<Topology in 2–3 sentences. Where it runs, replicas, scaling thresholds.>
+The app ships as the same Android build; nothing new runs in the background. The one-time filing backfill and the bin sweep run inside the app when the store opens. The Worker deploys as today with `wrangler deploy` after D1 migration `0007` is applied. Because the column is nullable and the app only adds a field to the publish body, an old app against a new Worker and a new app against an old Worker both keep working (an old Worker ignores the unknown `title`).
 
 **Monitoring:**
-- <Metrics — e.g. `<metric_name>`>
-- <Alerts — e.g. «worker lag > 10 min → page on-call»>
-- <Tracing — e.g. spans on the request boundary>
+- `debugPrint('VOCAB: …')` lines for the backfill (collections named, from collectionId vs fallback), each sweep (items erased), refused bins of the current collection, and dropped late results.
+- Worker: the existing `log.ts` line on create/republish gains whether a title came with it. No new alerts: a single-owner app.
 
 **Scaling thresholds:**
-- <e.g. comfortable in one table up to N rows/year>
-- <e.g. partition by quarter above N rows/year>
-
-<!-- For XS/S with no deployment change: <!-- N/A: reuses existing deployment unit, no infra change --> -->
+- Designed and measured for 300 collections and 50 folders (spec §6). Level renumbering and the ancestor walk are linear in the items of one level and the folder depth, so they stay well under a frame up to thousands of items.
+- If the Collections grid misses 500 ms at that size, the first lever is a word count kept on the record, which needs the owner's approval as new data (§11).
 
 ## 8. Crosscutting concepts
 
