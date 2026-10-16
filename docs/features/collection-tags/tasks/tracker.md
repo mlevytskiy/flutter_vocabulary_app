@@ -18,6 +18,6 @@
 | T11 | [Show the tag line in the main screen's AppBar bottom and push filtered Collections on a tag tap](./T11-ui-show-the-tag-line-in-the-main-screen-s-appbar-bottom-and-pus.md) | ui | agent | S | T9 | done |
 | T12 | [Make the Notes page's collection and source tag fields typed, with focus-only suggestions and the copy-up snackbar](./T12-ui-make-the-notes-page-s-collection-and-source-tag-fields-typed.md) | ui | agent | M | T7, T8, T9 | done |
 | T13 | [Add search mode and the flat results view to the Collections screen, seeded from the route](./T13-ui-add-search-mode-and-the-flat-results-view-to-the-collections.md) | ui | agent | L | T7, T9, T11 | done |
-| T14 | [Add the filter sheet: tag sections with counts, Created and Edited choices with a custom range, sort, Reset and Show N](./T14-ui-add-the-filter-sheet-tag-sections-with-counts-created-and-ed.md) | ui | agent | M | T13 | todo |
+| T14 | [Add the filter sheet: tag sections with counts, Created and Edited choices with a custom range, sort, Reset and Show N](./T14-ui-add-the-filter-sheet-tag-sections-with-counts-created-and-ed.md) | ui | agent | M | T13 | done |
 | T15 | [Pin that description and tags never reach a publish payload or an export file](./T15-tests-pin-that-description-and-tags-never-reach-a-publish-payload.md) | tests | agent | S | T4 | done |
 | T16 | [Update architecture.md and the roadmap for collection-tags](./T16-docs-update-architecture-md-and-the-roadmap-for-collection-tags.md) | docs | agent | S | T10, T11, T12, T13, T14, T15 | todo |
