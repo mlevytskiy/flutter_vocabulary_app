@@ -16,7 +16,7 @@
 | T9 | [Add bin, restore, erase, empty-bin and the 30-day sweep to CollectionStore](./T9-infra-bin-restore-erase-sweep.md) | infra | Maksym | L | T4, T8 | done |
 | T10 | [Run the QG-1 stability suite: 100 interleavings of every background writer with every filing change](./T10-tests-name-and-place-stability-suite.md) | tests | Maksym | M | T7, T9 | done |
 | T11 | [Make launch and resume reopen the current collection, sweep the bin, and drop the RESTORE offer](./T11-app-launch-rule-reopens-current.md) | app | Maksym | M | T9 | done |
-| T12 | [Add open(id) and newCollection(folderId) to the main screen's notifier with the AC-19 leave rule](./T12-app-open-and-new-collection.md) | app | Maksym | M | T8, T11 | todo |
+| T12 | [Add open(id) and newCollection(folderId) to the main screen's notifier with the AC-19 leave rule](./T12-app-open-and-new-collection.md) | app | Maksym | M | T8, T11 | done |
 | T13 | [Deliver late translation, photo reading, Quizlet and subtitle results into the collection they started in](./T13-app-late-results-land-in-their-own-collection.md) | app | Maksym | M | T7, T12 | todo |
 | T14 | [Show the collection's name as the main screen's title with a white edit button and the shared NameDialog](./T14-ui-name-dialog-and-main-title.md) | ui | Maksym | M | T3, T8 | done |
 | T15 | [Add the Collections route and screen with path, Up and the icon grid, and keep the side menu always on](./T15-ui-collections-screen-browse.md) | ui | Maksym | M | T8 | done |

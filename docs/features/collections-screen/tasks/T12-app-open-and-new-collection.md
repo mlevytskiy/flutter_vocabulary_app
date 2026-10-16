@@ -7,7 +7,7 @@ acs: ["AC-09", "AC-10", "AC-12", "AC-18", "AC-19"]
 files_hint: ["lib/features/word_input/word_input_notifier.dart", "test/open_collection_test.dart", "test/switch_session_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T12 — Add open(id) and newCollection(folderId) to the main screen's notifier with the AC-19 leave rule

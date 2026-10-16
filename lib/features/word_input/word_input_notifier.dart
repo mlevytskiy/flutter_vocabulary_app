@@ -12,6 +12,7 @@ import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_store.dart';
+import '../../core/services/filing.dart';
 import '../../core/services/source_photo_store.dart' show uuidV4;
 
 part 'word_input_notifier.g.dart';
@@ -91,27 +92,60 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// a word typed within the save delay is kept, and dropped if it never got a
   /// word. The picked session's edit times are left alone. Returns false, touching nothing, when
   /// the picked session is not in the store.
-  Future<bool> switchTo(String collectionId) async {
+  Future<bool> switchTo(String collectionId) => open(collectionId);
+
+  /// Opens collection [id] on the main screen with no question (AC-09,
+  /// AC-18): the autosave is flushed, the left collection is erased at once
+  /// when it is empty and untouched (AC-19), the pointer moves and the opened
+  /// collection is shown. Opening the current one changes nothing. Returns
+  /// false, touching nothing, when [id] is not in the store.
+  Future<bool> open(String id) async {
     final store = await ref.read(collectionStoreProvider.future);
-    final picked = await store.byId(collectionId);
+    if (state.valueOrNull?.collectionId == id) return true;
+    final picked = await store.byId(id);
     if (picked == null) return false;
     picked.words = picked.words.toList(); // growable, see build()
     picked.sources = picked.sources.toList();
+    await _leaveAndShow(store, picked);
+    return true;
+  }
 
+  /// New collection (AC-10): a kept, empty, date-named collection at the end
+  /// of [folderId]'s level (null: the top level) becomes the current one.
+  Future<void> newCollection(String? folderId) async {
+    final store = await ref.read(collectionStoreProvider.future);
+    final made = await store.create(folderId: folderId, keep: true);
+    made.words = [WordPair()];
+    await _leaveAndShow(store, made);
+  }
+
+  Future<void> _leaveAndShow(
+      CollectionStore store, WordCollection next) async {
     await flush();
     final current = state.valueOrNull;
-    if (current != null &&
-        current.collectionId != collectionId &&
-        current.isEmpty) {
-      await store.delete(current.collectionId);
+    if (current != null && current.collectionId != next.collectionId) {
+      final stored = await store.byId(current.collectionId);
+      if (stored != null &&
+          isEmptyAndUntouched(
+            hasWords: !stored.isEmpty,
+            hasSources: stored.sources.isNotEmpty,
+            hasNotesOrTags: stored.tags.isNotEmpty ||
+                stored.sources.any((s) =>
+                    (s.title ?? '').isNotEmpty ||
+                    (s.description ?? '').isNotEmpty ||
+                    s.links.isNotEmpty ||
+                    s.tags.isNotEmpty),
+            keep: stored.keep,
+          )) {
+        await store.delete(current.collectionId);
+      }
     }
 
     _saveTimer?.cancel();
     _saveTimer = null;
     _dirty = false;
-    await store.setCurrentCollectionId(picked.collectionId);
-    state = AsyncData(picked);
-    return true;
+    await store.setCurrentCollectionId(next.collectionId);
+    state = AsyncData(next);
   }
 
   void setPairs(List<WordPair> pairs) {
