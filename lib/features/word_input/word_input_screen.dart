@@ -11,7 +11,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../core/models/definition_result.dart';
-import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
@@ -970,12 +969,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       });
     });
 
-    // The drawer is only a way to reach *other* sessions, so it exists only
-    // when there is one to reach: with a single session there is no hamburger
-    // and no swipe-in drawer.
-    final currentCollectionId = ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId;
-    final collections = ref.watch(nonEmptyCollectionsProvider).valueOrNull ?? const <WordCollection>[];
-    final hasOtherCollections = collections.any((s) => s.collectionId != currentCollectionId);
     // The one place the reorder preference is read. Written by the Settings
     // screen (task-13); this screen only reads it.
     final isDragMode = ref.watch(dragModeProvider);
@@ -1026,8 +1019,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         setState(() => _drawerOpen = open);
         if (open) _photoPanel.close();
       },
-      drawer: hasOtherCollections
-          ? Drawer(
+      drawer: Drawer(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -1047,6 +1039,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                     onTap: () => Navigator.pop(context),
                   ),
                   ListTile(
+                    leading: const Icon(Icons.folder_outlined),
+                    title: const Text('Collections'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      const CollectionsRoute().go(context);
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.history),
                     title: const Text('History'),
                     onTap: () {
@@ -1056,8 +1056,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                   ),
                 ],
               ),
-            )
-          : null,
+            ),
       body: Stack(
         children: [
       Stack(

@@ -7,7 +7,7 @@ acs: ["AC-06", "AC-07", "AC-08"]
 files_hint: ["lib/router/routes.dart", "lib/features/collections/collections_screen.dart", "lib/features/collections/collections_notifier.dart", "lib/features/collections/collection_icon.dart", "lib/features/word_input/word_input_screen.dart", "test/collections_screen_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T15 — Add the Collections route and screen with path, Up and the icon grid, and keep the side menu always on

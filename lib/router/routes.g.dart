@@ -67,6 +67,10 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           factory: _$PhotoViewerRoute._fromState,
         ),
         GoRouteData.$route(
+          path: 'collections',
+          factory: _$CollectionsRoute._fromState,
+        ),
+        GoRouteData.$route(
           path: 'history',
           factory: _$HistoryRoute._fromState,
         ),
@@ -393,6 +397,29 @@ mixin _$PhotoViewerRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/photo/${Uri.encodeComponent(_self.sourceId)}',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$CollectionsRoute on GoRouteData {
+  static CollectionsRoute _fromState(GoRouterState state) =>
+      const CollectionsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/collections',
       );
 
   @override

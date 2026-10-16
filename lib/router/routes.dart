@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/collections/collections_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
@@ -46,6 +47,7 @@ part 'routes.g.dart';
     ),
     TypedGoRoute<NotesRoute>(path: 'notes'),
     TypedGoRoute<PhotoViewerRoute>(path: 'photo/:sourceId'),
+    TypedGoRoute<CollectionsRoute>(path: 'collections'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
   ],
@@ -223,3 +225,11 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
 }
 
 final appRouter = GoRouter(routes: $appRoutes);
+
+/// The Collections screen (collections-screen): folders and collections as icons.
+class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
+  const CollectionsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const CollectionsScreen();
+}
