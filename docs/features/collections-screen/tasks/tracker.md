@@ -12,7 +12,7 @@
 | T5 | [Add the filing fields and CollectionFolder to Isar, and make put() keep filing and never insert](./T5-infra-isar-filing-schema-and-put-contract.md) | infra | Maksym | M | T2, T3 | done |
 | T6 | [Backfill names, top-level order and keep for pre-feature collections when the store opens](./T6-infra-filing-backfill.md) | infra | Maksym | M | T3, T5 | done |
 | T7 | [Add CollectionStore.update(id, change) and move every background writer onto it](./T7-infra-atomic-update-for-background-writers.md) | infra | Maksym | M | T5 | todo |
-| T8 | [Add rename, new folder, move and reorder transactions and the level, path and History streams](./T8-infra-filing-transactions.md) | infra | Maksym | M | T4, T5 | todo |
+| T8 | [Add rename, new folder, move and reorder transactions and the level, path and History streams](./T8-infra-filing-transactions.md) | infra | Maksym | M | T4, T5 | done |
 | T9 | [Add bin, restore, erase, empty-bin and the 30-day sweep to CollectionStore](./T9-infra-bin-restore-erase-sweep.md) | infra | Maksym | L | T4, T8 | todo |
 | T10 | [Run the QG-1 stability suite: 100 interleavings of every background writer with every filing change](./T10-tests-name-and-place-stability-suite.md) | tests | Maksym | M | T7, T9 | todo |
 | T11 | [Make launch and resume reopen the current collection, sweep the bin, and drop the RESTORE offer](./T11-app-launch-rule-reopens-current.md) | app | Maksym | M | T9 | todo |

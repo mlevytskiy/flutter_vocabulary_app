@@ -162,14 +162,14 @@ void main() {
     });
 
     // AC-5
-    test('nonEmpty() skips all-blank sessions; watchNonEmpty() emits on write',
+    test('nonEmpty() skips all-blank sessions; watchHistory() emits on write',
         () async {
       final blank = WordCollection.create()..words = [WordPair()];
       await seedCollection(store, blank);
       expect(await store.nonEmpty(), isEmpty);
 
       final emissions = <List<WordCollection>>[];
-      final sub = store.watchNonEmpty().listen(emissions.add);
+      final sub = store.watchHistory().listen(emissions.add);
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(emissions.length, 1, reason: 'fireImmediately');
       expect(emissions.first, isEmpty);
