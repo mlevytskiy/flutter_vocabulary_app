@@ -24,12 +24,12 @@
 | T17 | [Drag icons into folders, up a level, onto the path and into a new order, with hover-to-open](./T17-ui-collections-drag-and-drop.md) | ui | Maksym | L | T16 | todo |
 | T18 | [Delete from the menu or the bin drop zone with the confirmation, the current-collection refusal and the stayed message](./T18-ui-delete-to-bin-flow.md) | ui | Maksym | M | T9, T17 | todo |
 | T19 | [Add the recycle bin screen with days left, Restore, Delete forever and Empty recycle bin](./T19-ui-recycle-bin-screen.md) | ui | Maksym | M | T9, T15 | todo |
-| T20 | [Show name and word count in History rows, and mark story runs of an erased collection](./T20-ui-history-names-and-story-runs-mark.md) | ui | Maksym | S | T8 | todo |
+| T20 | [Show name and word count in History rows, and mark story runs of an erased collection](./T20-ui-history-names-and-story-runs-mark.md) | ui | Maksym | S | T8 | done |
 | T21 | [Promote the staged D1 title migration into the Worker as 0007](./T21-migration-promote-d1-title-migration.md) | migration | Maksym | S | — | done |
 | T22 | [Accept, validate and store the optional title on POST /sessions create and republish](./T22-ports-worker-accepts-title.md) | ports | Maksym | S | T21 | done |
 | T23 | [Show the stored title as the shared page's heading and document title, escaped, with Vocabulary as the fallback](./T23-ui-shared-page-title.md) | ui | Maksym | S | T22 | done |
 | T24 | [Send the name with Share link, warn that it is public, and name shared files after it](./T24-ui-share-with-name.md) | ui | Maksym | M | T5 | todo |
-| T25 | [Replace "session" with "collection" in every text the learner reads](./T25-ui-collection-wording-pass.md) | ui | Maksym | S | T2, T20 | todo |
+| T25 | [Replace "session" with "collection" in every text the learner reads](./T25-ui-collection-wording-pass.md) | ui | Maksym | S | T2, T20 | done |
 | T26 | [Update architecture.md, CONTEXT.md, the superseded ADRs and the Worker README](./T26-docs-architecture-context-supersedes.md) | docs | Maksym | S | T11, T13, T23 | todo |
 | T27 | [Run the device pass: the update over a copy of the owner's data, open time, force-close durability, and deploy the Worker](./T27-tests-device-pass-and-measurements.md) | tests | Maksym | M | T6, T10, T18, T19, T24, T25, T26 | todo |
 
