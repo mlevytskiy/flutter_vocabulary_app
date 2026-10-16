@@ -14,6 +14,8 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
+import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
+import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
 import 'package:flutter_vocabulary_app/features/history/history_screen.dart';
 import 'package:flutter_vocabulary_app/features/settings/settings_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
@@ -66,6 +68,10 @@ void main() {
     final container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
       nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value([now, past])),
+      // Isar's watch never completes under the fake clock either.
+      collectionLevelProvider(null).overrideWith(
+          (ref) => Stream.value([LevelItem.collection(now), LevelItem.collection(past)])),
+      collectionFoldersProvider.overrideWith((ref) => Stream.value([])),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
@@ -94,6 +100,18 @@ void main() {
     expect(find.byType(WordsTableScreen), findsOneWidget);
     expect(find.text('apple'), findsOneWidget);
     expect(find.text('яблуко'), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(WordInputScreen), findsOneWidget);
+
+    // The side menu always holds Main, Collections, History; Collections opens.
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    expect(find.text('Main'), findsOneWidget);
+    await tester.tap(find.text('Collections'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CollectionsScreen), findsOneWidget);
+    expect(find.text('Recycle bin'), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(WordInputScreen), findsOneWidget);
