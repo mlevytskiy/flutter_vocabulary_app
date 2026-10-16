@@ -35,7 +35,7 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    delete mode", where every icon but the current collection shows a small round bin button whose tap flies the
    picture into the recycle-bin button (it bounces) and bins the item without asking; every top bar takes the main screen's word-row colour (`topBarColor` in `lib/app.dart`);
    the session → collection rename of classes, fields, files and providers, with stored names pinned, is an approved
-   exception to "move code, do not rewrite it" (collections-screen ADR-0002)). Keep `popup_menu_2`, `flutter_speed_dial`,
+   exception to "move code, do not rewrite it" (collections-screen ADR-0002); collection-tags (owner via Fable 5.1 proxy, 2026-10-16) adds the Collection details sheet (name, description, origin and topic tag fields) for New collection and the main screen's edit button, the tag line under the main screen's top bar, typed tag fields with suggestion rows and Forget on the Notes page, and search, the filter sheet, the flat result list and filter chips on the Collections screen). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models (approved: `Exercise` by learn-part-step-1; `WordGroup`, `StoryRun`, `StoryStep` and `WordPair.rowId` by mnemonic-story, ADR-0003; `FilmDialogue`, `WordGroup.dialogueId`,
@@ -44,7 +44,7 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    for share-formats; `SourceKind.subtitles` by side-panel-sources (owner, 2026-10-14); `WordResult` on Session by learn-kit (owner, 2026-10-14, H-05); `SessionSource.title`, `.description`, `.links`,
    `.tags` and `Session.tags` by notes-editing (owner, 2026-10-15); `Session` renamed `WordCollection` with `name`,
    `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep`, and the new Isar collection `CollectionFolder` by
-   collections-screen (owner, 2026-10-16, ADR-0003/0004/0005), no packages), no `packages/` folder — ask first.
+   collections-screen (owner, 2026-10-16, ADR-0003/0004/0005), no packages; `WordCollection.description`, `WordCollection.originTags`/`.topicTags`, `SessionSource.originTags`/`.topicTags`, the enum `TagKind` and the Isar collection `TagLibraryEntry` by collection-tags (owner via Fable 5.1 proxy, 2026-10-16), no packages), no `packages/` folder — ask first.
 6. If a step cannot be done as written, stop and write what you found under that step in
    `docs/refactoring-plan.md`. Do not improvise a different structure.
 7. Tests (`docs/testing.md`): while developing run `tool/test.sh smoke`; write tests for what you
