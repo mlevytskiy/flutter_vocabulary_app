@@ -24,7 +24,9 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    the Collections screen, the recycle bin, the edit button beside the main screen's title, the collection's name as the
    main screen's title, the side menu always being there with its new Collections item, the ⋮ menu button on every icon,
    the recycle-bin drop zone shown during a drag, the name in History rows, on the shared page and in shared files' names
-   and titles, the share sheet's warning that the name is public, and "collection" replacing "session" in every text;
+   and titles, the share sheet's warning that the name is public, "collection" replacing "session" in every text, and (owner,
+   2026-10-16, T23) on phone widths the shared page's title row wraps and its h1 breaks long names, with the tab title
+   "<name> — N words";
    the session → collection rename of classes, fields, files and providers, with stored names pinned, is an approved
    exception to "move code, do not rewrite it" (collections-screen ADR-0002)). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
