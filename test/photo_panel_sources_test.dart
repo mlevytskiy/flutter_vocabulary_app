@@ -34,14 +34,14 @@ void main() {
     expect(tile, findsOneWidget);
     expect(tester.widget<SourceTile>(tile).mini, isTrue);
     expect(find.descendant(of: tile, matching: find.byType(QuizletLogoIcon)), findsOneWidget);
-    expect(find.bySemanticsLabel('Session sources, 1'), findsOneWidget);
+    expect(find.bySemanticsLabel('Collection sources, 1'), findsOneWidget);
     handle.dispose();
   });
 
-  testWidgets('a photos-only tab keeps its label "Session photos, N"', (tester) async {
+  testWidgets('a photos-only tab keeps its label "Collection photos, N"', (tester) async {
     final handle = tester.ensureSemantics();
     await PanelHost(photos: fakePhotos(2)).pump(tester);
-    expect(find.bySemanticsLabel('Session photos, 2'), findsOneWidget);
+    expect(find.bySemanticsLabel('Collection photos, 2'), findsOneWidget);
     handle.dispose();
   });
 

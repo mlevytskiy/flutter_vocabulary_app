@@ -127,7 +127,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
             ),
             child: TagEditor(
               fieldKey: NotesScreen.collectionTagFieldKey,
-              label: 'Session tags',
+              label: 'Collection tags',
               tags: collectionTags,
               suggestions: ref.watch(collectionTagSuggestionsProvider),
               onChanged: notifier.setCollectionTags,

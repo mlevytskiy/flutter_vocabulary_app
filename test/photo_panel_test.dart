@@ -534,7 +534,7 @@ void main() {
         node.owner!.performAction(node.id, SemanticsAction.tap);
       }
 
-      tap('Session photos, 2');
+      tap('Collection photos, 2');
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.halfOpen);
       // Expand is the Notes page's button now (owner, 2026-10-15).

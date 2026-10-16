@@ -347,7 +347,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text("This session can't be opened for editing")),
+            content: Text("This collection can't be opened for editing")),
       );
     }
   }

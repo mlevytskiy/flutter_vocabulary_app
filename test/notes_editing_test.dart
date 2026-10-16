@@ -286,6 +286,9 @@ void main() {
       final field = find.byKey(NotesScreen.collectionTagFieldKey);
       expect(tester.getTopLeft(field).dy,
           lessThan(tester.getTopLeft(find.byKey(NotesScreen.itemKey('p1'))).dy));
+      expect(find.text('Collection tags'), findsOneWidget,
+          reason: 'AC-33: the learner reads "collection", not "session"');
+      expect(find.text('Session tags'), findsNothing);
 
       await tester.tap(field);
       await tester.pumpAndSettle();
