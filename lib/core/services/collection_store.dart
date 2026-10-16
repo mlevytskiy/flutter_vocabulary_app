@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:isar_community/isar.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,6 +39,7 @@ class CollectionStore {
     final prefs = await SharedPreferences.getInstance();
     final store = CollectionStore._(isar, prefs);
     await store._fillRowIdsEverywhere();
+    await store._backfillFiling();
     return store;
   }
 
@@ -65,6 +67,85 @@ class CollectionStore {
     } catch (_) {
       // ignored on purpose, see the class doc
     }
+  }
+
+  // ---- One-time filing backfill (T6) ----
+
+  /// Files every record from before collections-screen, the ones with no
+  /// name (AC-04, data-model.md "One-time backfill"), in one transaction:
+  /// named after its creation moment, at the top level, numbered oldest
+  /// first after whatever the top level already holds (a store where some
+  /// records are filed keeps their places), and kept when it has a word.
+  /// Only the filing fields change (QG-2). A failed write is logged and
+  /// runs again on the next open; nothing here throws.
+  Future<void> _backfillFiling() async {
+    try {
+      final (fromId, fallback) = await _isar.writeTxn(() async {
+        final unnamed =
+            await _isar.wordCollections.filter().nameIsNull().findAll();
+        if (unnamed.isEmpty) return (0, 0);
+        final topCollections = await _isar.wordCollections
+            .where()
+            .folderIdIsNull()
+            .filter()
+            .nameIsNotNull()
+            .binnedAtIsNull()
+            .findAll();
+        final topFolders = await _isar.collectionFolders
+            .filter()
+            .parentIdIsNull()
+            .binnedAtIsNull()
+            .findAll();
+        var next = 0;
+        for (final o in [
+          for (final c in topCollections) c.order,
+          for (final f in topFolders) f.order,
+        ]) {
+          if (o >= next) next = o + 1;
+        }
+        var fromId = 0;
+        final moments = <int, DateTime>{};
+        for (final c in unnamed) {
+          final fromIdMoment = creationMomentOf(c.collectionId);
+          if (fromIdMoment != null) fromId++;
+          moments[c.id] = fromIdMoment ?? _earliestMomentOf(c);
+        }
+        unnamed.sort((a, b) {
+          final byMoment = moments[a.id]!.compareTo(moments[b.id]!);
+          return byMoment != 0 ? byMoment : a.id.compareTo(b.id);
+        });
+        for (final c in unnamed) {
+          c
+            ..name = defaultCollectionName(moments[c.id]!)
+            ..folderId = null
+            ..order = next++
+            ..keep = !c.isEmpty;
+        }
+        await _isar.wordCollections.putAll(unnamed);
+        return (fromId, unnamed.length - fromId);
+      });
+      if (fromId + fallback > 0) {
+        debugPrint('VOCAB: backfill named ${fromId + fallback} '
+            '(from id: $fromId, fallback: $fallback)');
+      }
+    } catch (e) {
+      debugPrint('VOCAB: backfill failed, retried on the next open: $e');
+    }
+  }
+
+  /// The earliest of [c]'s times, for an id with no readable moment
+  /// (AC-04). A source's `takenAt` left at its 1970 default says nothing
+  /// and is skipped.
+  static DateTime _earliestMomentOf(WordCollection c) {
+    var earliest = c.updatedAt;
+    for (final t in [
+      c.lastLocalModifiedAt,
+      for (final s in c.sources)
+        if (s.takenAt.millisecondsSinceEpoch > 0) s.takenAt,
+    ]) {
+      if (t.isBefore(earliest)) earliest = t;
+    }
+    return earliest;
   }
 
   Future<void> close() => _isar.close();

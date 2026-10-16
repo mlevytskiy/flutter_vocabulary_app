@@ -6,6 +6,7 @@ import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
+import 'package:flutter_vocabulary_app/core/models/collection_name.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
@@ -104,6 +105,38 @@ void main() {
       expect(run!.collectionId, 'mf1abc-1xyz');
       expect(run.kind, StoryRunKind.scene);
       expect((await runs.newestFirst()), hasLength(3));
+    } finally {
+      await store.close();
+    }
+  });
+
+  test('opened by this build, the fixture keeps its counts and gains names '
+      '(T6 backfill)', () async {
+    final store = await CollectionStore.open(directory: dir.path);
+    try {
+      final isar = Isar.getInstance('vocab')!;
+      final collections = await isar.wordCollections.where().findAll();
+      expect(collections, hasLength(4));
+      expect(collections.expand((c) => c.words), hasLength(9));
+      expect(collections.expand((c) => c.sources), hasLength(9));
+      expect(collections.expand((c) => c.groups), hasLength(6));
+      expect(collections.expand((c) => c.dialogues), hasLength(6));
+      expect(collections.expand((c) => c.results), hasLength(6));
+      expect(collections.expand((c) => c.tags), hasLength(6));
+      expect(await isar.storyRuns.count(), 3);
+      expect([for (final c in collections) _utc({'id': c.id, ...c.toJson()})],
+          expected['sessions']);
+      for (final c in collections) {
+        final moment = creationMomentOf(c.collectionId);
+        expect(moment, isNotNull);
+        expect(c.name, defaultCollectionName(moment!));
+        expect(c.folderId, isNull);
+        expect(c.keep, !c.isEmpty);
+      }
+      final byMoment = [...collections]..sort((a, b) =>
+          creationMomentOf(a.collectionId)!
+              .compareTo(creationMomentOf(b.collectionId)!));
+      expect([for (final c in byMoment) c.order], [0, 1, 2, 3]);
     } finally {
       await store.close();
     }
