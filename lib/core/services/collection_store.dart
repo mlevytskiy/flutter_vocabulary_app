@@ -11,6 +11,7 @@ import '../models/tag_library_entry.dart';
 import '../models/word_collection.dart';
 import '../models/session_source.dart';
 import '../models/story_run.dart';
+import '../models/tag_kind.dart';
 import '../models/word_result.dart';
 import 'collection_level.dart';
 import 'filing.dart'
@@ -23,6 +24,7 @@ import 'filing.dart'
         placeInLevel,
         restoreTarget;
 import 'source_photo_store.dart' show SourcePhotoStore, uuidV4;
+import 'tag_rules.dart' show canAddTag, mergeCaseDuplicates, tagKey;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
 /// `shared_preferences` pointer saying which session is the current one — the
@@ -266,16 +268,37 @@ class CollectionStore {
   /// (ADR-0003): first launch and the launch rule pass `keep: false`, New
   /// collection `keep: true` (AC-19). Returns the new collection, with no
   /// words; on a failed write it is returned unsaved, see the class doc.
-  Future<WordCollection> create({String? folderId, bool keep = false}) async {
+  ///
+  /// The Collection details sheet (collection-tags Flow 3, ADR-0004) also
+  /// passes a [name] (used when `collectionNameProblem` accepts it), a
+  /// [description] (blank is stored as null) and typed tags, written in the
+  /// same transaction. A non-empty description or any tag keeps the
+  /// collection (AC-28), and each tag touches the tag library.
+  Future<WordCollection> create({
+    String? folderId,
+    bool keep = false,
+    String? name,
+    String? description,
+    List<String> origin = const [],
+    List<String> topic = const [],
+  }) async {
     final collection = WordCollection.create();
+    final now = collection.updatedAt;
     collection
-      ..name = defaultCollectionName(collection.updatedAt)
+      ..name = name != null && collectionNameProblem(name) == null
+          ? name
+          : defaultCollectionName(collection.updatedAt)
       ..folderId = folderId
-      ..keep = keep;
+      ..description = _blankAsNull(description)
+      ..originTags = _cleanTags(origin)
+      ..topicTags = _cleanTags(topic);
+    collection.keep = keep || _hasDetails(collection);
     try {
       await _isar.writeTxn(() async {
         collection.id = await _isar.wordCollections.put(collection);
         await _renumberLevel(folderId, newCollection: collection);
+        await _touchTags(TagKind.origin, collection.originTags, now);
+        await _touchTags(TagKind.topic, collection.topicTags, now);
       });
     } catch (_) {
       // Losing the write is survivable; crashing the app is not.
@@ -335,7 +358,8 @@ class CollectionStore {
   ///
   /// [change] may not touch filing: name, folderId, order, binnedAt,
   /// binnedFromFolderId and keep are restored from the stored record after
-  /// it runs. Neither edit time moves unless [change] moves it. With no
+  /// it runs, and so are the description and the typed tags
+  /// (collection-tags ADR-0004). Neither edit time moves unless [change] moves it. With no
   /// stored record (erased) nothing runs or is written and the result is
   /// false (AC-27); false too when the write failed. Never throws.
   Future<bool> update(
@@ -353,7 +377,10 @@ class CollectionStore {
             order = stored.order,
             binnedAt = stored.binnedAt,
             binnedFromFolderId = stored.binnedFromFolderId,
-            keep = stored.keep;
+            keep = stored.keep,
+            description = stored.description,
+            originTags = [...stored.originTags],
+            topicTags = [...stored.topicTags];
         change(stored);
         stored
           ..id = id
@@ -363,7 +390,10 @@ class CollectionStore {
           ..order = order
           ..binnedAt = binnedAt
           ..binnedFromFolderId = binnedFromFolderId
-          ..keep = keep;
+          ..keep = keep
+          ..description = description
+          ..originTags = originTags
+          ..topicTags = topicTags;
         await _isar.wordCollections.put(stored);
         return true;
       });
@@ -386,6 +416,12 @@ class CollectionStore {
   /// (name, folderId, order, binnedAt, binnedFromFolderId, keep) come from
   /// the stored record, never from the caller; the one exception is that
   /// `keep` becomes true when the copy has a word, and it is never lowered.
+  ///
+  /// The description and the typed tags come from the stored record too
+  /// (collection-tags ADR-0004): only [setDetails], [addCollectionTags],
+  /// [saveSourceNote], [create] and the migration write them. Neither edit
+  /// time goes back: a copy older than the stored record keeps the stored
+  /// times, so a stale copy cannot undo a details save's edited time (AC-18).
   Future<void> put(WordCollection s) async {
     try {
       // A row keeps its id for good, so a new one gets it now, on the
@@ -402,8 +438,9 @@ class CollectionStore {
         final toWrite = WordCollection()
           ..id = existing.id
           ..collectionId = s.collectionId
-          ..updatedAt = s.updatedAt
-          ..lastLocalModifiedAt = s.lastLocalModifiedAt
+          ..updatedAt = _later(existing.updatedAt, s.updatedAt)
+          ..lastLocalModifiedAt =
+              _later(existing.lastLocalModifiedAt, s.lastLocalModifiedAt)
           ..isShared = s.isShared
           ..words = [
             for (final w in s.words)
@@ -417,6 +454,9 @@ class CollectionStore {
           ..groupedWordsKey = s.groupedWordsKey
           ..dialogues = [for (final d in s.dialogues) d.copy()]
           ..tags = [...s.tags]
+          ..description = existing.description
+          ..originTags = existing.originTags
+          ..topicTags = existing.topicTags
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
           ..results = existing.results
@@ -432,6 +472,284 @@ class CollectionStore {
       // Losing one debounced write is survivable; crashing the app is not.
     }
   }
+
+  static DateTime _later(DateTime a, DateTime b) => b.isAfter(a) ? b : a;
+
+  // ---- Details, typed tags and the tag library (collection-tags T5) ----
+  //
+  // ADR-0004: the description and the typed tags are written only here (and
+  // by create and the migration), each call one write transaction. ADR-0009:
+  // the tag library is written inside those same transactions.
+
+  static String? _blankAsNull(String? text) =>
+      text == null || text.trim().isEmpty ? null : text;
+
+  /// [tags] without blank entries and with case duplicates merged.
+  static List<String> _cleanTags(List<String> tags) =>
+      mergeCaseDuplicates([for (final t in tags) if (t.trim().isNotEmpty) t]);
+
+  static bool _hasDetails(WordCollection c) =>
+      c.description != null || c.originTags.isNotEmpty || c.topicTags.isNotEmpty;
+
+  static List<String> _tagsOf(WordCollection c, TagKind kind) =>
+      kind == TagKind.origin ? c.originTags : c.topicTags;
+
+  static void _setTagsOf(WordCollection c, TagKind kind, List<String> tags) {
+    if (kind == TagKind.origin) {
+      c.originTags = tags;
+    } else {
+      c.topicTags = tags;
+    }
+  }
+
+  static List<String> _sourceTagsOf(SessionSource s, TagKind kind) =>
+      kind == TagKind.origin ? s.originTags : s.topicTags;
+
+  static bool _sameList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// The tags of [now] whose key is not in [before].
+  static List<String> _newlyAdded(List<String> before, List<String> now) {
+    final keys = {for (final t in before) tagKey(t)};
+    return [
+      for (final t in now)
+        if (!keys.contains(tagKey(t))) t,
+    ];
+  }
+
+  /// An explicit add of [tags] (typed, tapped or copied up): each library
+  /// entry of [kind] is marked used at [now] and un-forgotten, and a tag the
+  /// library does not hold yet goes in with this spelling (the first
+  /// spelling wins, AC-09). Inside a write transaction.
+  Future<void> _touchTags(TagKind kind, List<String> tags, DateTime now) async {
+    for (final text in tags) {
+      final key = tagKey(text);
+      if (key.isEmpty) continue;
+      final entry = await _isar.tagLibraryEntrys.getByKindKey(kind, key) ??
+          (TagLibraryEntry()
+            ..kind = kind
+            ..key = key
+            ..text = text.trim());
+      entry
+        ..lastUsedAt = now
+        ..forgotten = false;
+      await _isar.tagLibraryEntrys.put(entry);
+    }
+  }
+
+  /// Adds [tags] of [kind] to [c] (in memory) where its list misses them,
+  /// ignoring case, while it holds fewer than 10 of that kind. Every tag
+  /// touches the library, added or not. Returns whether a tag went in and
+  /// whether the cap refused one. Inside a write transaction.
+  Future<({bool added, bool refused})> _copyUp(
+      WordCollection c, TagKind kind, List<String> tags, DateTime now) async {
+    await _touchTags(kind, tags, now);
+    final list = [..._tagsOf(c, kind)];
+    var added = false, refused = false;
+    for (final tag in tags) {
+      if (list.any((t) => tagKey(t) == tagKey(tag))) continue;
+      if (!canAddTag(list)) {
+        refused = true;
+        continue;
+      }
+      list.add(tag.trim());
+      added = true;
+    }
+    if (added) _setTagsOf(c, kind, list);
+    return (added: added, refused: refused);
+  }
+
+  /// Saves the Collection details sheet (Flow 1) in one transaction: the
+  /// [name] (refused like [rename] when `collectionNameProblem` objects:
+  /// nothing is written and the answer is null), the [description] (blank is
+  /// stored as null) and the typed tags; a null argument keeps that field.
+  /// Both edit times move to [now] only when a value changed (AC-06). A
+  /// non-empty description or any typed tag sets `keep`, never cleared
+  /// (AC-28), and so does a new name, as [rename] does. Tags not in the
+  /// stored list, ignoring case, touch the tag library. Returns the stored
+  /// record, or null when it is gone or the write failed.
+  Future<WordCollection?> setDetails(
+    String collectionId, {
+    String? name,
+    String? description,
+    List<String>? origin,
+    List<String>? topic,
+    DateTime? now,
+  }) async {
+    if (name != null && collectionNameProblem(name) != null) return null;
+    final at = now ?? DateTime.now();
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(collectionId);
+        if (c == null) return null;
+        var changed = false, keep = c.keep;
+        if (name != null && name != c.name) {
+          c.name = name;
+          changed = keep = true;
+        }
+        if (description != null) {
+          final d = _blankAsNull(description);
+          if (d != c.description) {
+            c.description = d;
+            changed = true;
+          }
+        }
+        for (final (kind, given) in [
+          (TagKind.origin, origin),
+          (TagKind.topic, topic),
+        ]) {
+          if (given == null) continue;
+          final stored = _tagsOf(c, kind);
+          final tags = _cleanTags(given);
+          if (_sameList(stored, tags)) continue;
+          await _touchTags(kind, _newlyAdded(stored, tags), at);
+          _setTagsOf(c, kind, tags);
+          changed = true;
+        }
+        keep = keep || _hasDetails(c);
+        if (!changed && keep == c.keep) return c;
+        c.keep = keep;
+        if (changed) {
+          c
+            ..updatedAt = at
+            ..lastLocalModifiedAt = at;
+        }
+        await _isar.wordCollections.put(c);
+        return c;
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Adds [tags] of [kind] to collection [collectionId] in one transaction
+  /// (a tag copied up, sad Flow 7): a tag it already has, ignoring case, is
+  /// skipped; one past the 10 cap is refused (AC-29). Every tag touches the
+  /// library (an explicit add, un-forgetting it). Both edit times move to
+  /// [now] when a tag went in. Returns the kinds refused: `{kind}` or empty.
+  Future<Set<TagKind>> addCollectionTags(
+      String collectionId, TagKind kind, List<String> tags,
+      {DateTime? now}) async {
+    final at = now ?? DateTime.now();
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(collectionId);
+        if (c == null) return const <TagKind>{};
+        final r = await _copyUp(c, kind, _cleanTags(tags), at);
+        if (r.added) {
+          c
+            ..keep = true
+            ..updatedAt = at
+            ..lastLocalModifiedAt = at;
+          await _isar.wordCollections.put(c);
+        }
+        return {if (r.refused) kind};
+      });
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Saves the Notes page note of source [sourceId] in collection
+  /// [collectionId] in one transaction (Flow 7, ADR-0004); a null argument
+  /// keeps that field, a blank title or description is stored as null. Each
+  /// tag newly added to the source (not in the stored source's list, ignoring
+  /// case) touches the library and is copied up to the collection when it is
+  /// missing there and the collection holds fewer than 10 of that kind
+  /// (AC-15, AC-33). Removals touch only the source (AC-16). Both edit times
+  /// move to [now] when anything changed. Returns the kinds the cap refused,
+  /// each once (AC-29); empty also when nothing was found or written.
+  Future<Set<TagKind>> saveSourceNote(
+    String collectionId,
+    String sourceId, {
+    String? title,
+    String? description,
+    List<String>? links,
+    List<String>? origin,
+    List<String>? topic,
+    DateTime? now,
+  }) async {
+    final at = now ?? DateTime.now();
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(collectionId);
+        final source = c?.sources.where((s) => s.id == sourceId).firstOrNull;
+        if (c == null || source == null) return const <TagKind>{};
+        var changed = false;
+        if (title != null && _blankAsNull(title) != source.title) {
+          source.title = _blankAsNull(title);
+          changed = true;
+        }
+        if (description != null &&
+            _blankAsNull(description) != source.description) {
+          source.description = _blankAsNull(description);
+          changed = true;
+        }
+        if (links != null && !_sameList(links, source.links)) {
+          source.links = [...links];
+          changed = true;
+        }
+        final refused = <TagKind>{};
+        for (final (kind, given) in [
+          (TagKind.origin, origin),
+          (TagKind.topic, topic),
+        ]) {
+          if (given == null) continue;
+          final stored = _sourceTagsOf(source, kind);
+          final tags = _cleanTags(given);
+          if (_sameList(stored, tags)) continue;
+          final fresh = _newlyAdded(stored, tags);
+          if (kind == TagKind.origin) {
+            source.originTags = tags;
+          } else {
+            source.topicTags = tags;
+          }
+          changed = true;
+          final r = await _copyUp(c, kind, fresh, at);
+          if (r.added) c.keep = true;
+          if (r.refused) refused.add(kind);
+        }
+        if (!changed) return refused;
+        // The embedded list is written back whole.
+        c
+          ..sources = [...c.sources]
+          ..updatedAt = at
+          ..lastLocalModifiedAt = at;
+        await _isar.wordCollections.put(c);
+        return refused;
+      });
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Forget this tag (AC-12): the library entry of [kind] with [text]'s key
+  /// is no longer suggested. Collections and sources keep the tag. Only an
+  /// explicit add brings it back. Unknown tags are ignored.
+  Future<void> forgetTag(TagKind kind, String text) async {
+    try {
+      await _isar.writeTxn(() async {
+        final entry =
+            await _isar.tagLibraryEntrys.getByKindKey(kind, tagKey(text));
+        if (entry == null || entry.forgotten) return;
+        await _isar.tagLibraryEntrys.put(entry..forgotten = true);
+      });
+    } catch (_) {
+      // ignored on purpose, see the class doc
+    }
+  }
+
+  /// The whole tag library, on listen and after every write to it
+  /// (ADR-0009). Unsorted; forgotten entries included.
+  Stream<List<TagLibraryEntry>> watchLibrary() =>
+      _isar.tagLibraryEntrys.where().watch(fireImmediately: true);
+
+  // ---- end of details, typed tags and the tag library ----
 
   // ---- Filing actions and streams (T8) ----
   //
