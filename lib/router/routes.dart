@@ -145,10 +145,15 @@ class DialogueRoute extends GoRouteData with _$DialogueRoute {
 /// Words settings (mnemonic-story, SCR-05): the AI for each step of a story
 /// run. Global, like the app's settings, so it carries no session id.
 class WordsSettingsRoute extends GoRouteData with _$WordsSettingsRoute {
-  const WordsSettingsRoute();
+  const WordsSettingsRoute({this.collectionId});
+
+  /// The Words screen's collection, as in [WordsTableRoute]: its "Include
+  /// photos (N)" switch is here (words-photo-panel).
+  final String? collectionId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) => WordsSettingsScreen(
+        collectionId: collectionId,
         onOpenStoryRuns: () => const StoryRunsRoute().push(context),
       );
 }

@@ -39,6 +39,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
     this.onSelected,
     this.onOpenNotes,
     this.notesPage,
+    this.collectionId,
     @visibleForTesting this.look,
   });
 
@@ -85,6 +86,10 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// widens, instead of the large photos, and settling at full-open opens
   /// Notes from there with nothing changing on screen (owner, 2026-10-15).
   final Widget Function(String? selectedId)? notesPage;
+
+  /// The stored collection whose sources the panel lists; null for the
+  /// current one (words-photo-panel: the Words screen of a History row).
+  final String? collectionId;
 
   /// Overrides look A; tests only.
   final PhotoPanelLook? look;
@@ -981,8 +986,13 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
 
   @override
   Widget build(BuildContext context) {
-    final sources = ref.watch(sourcesWithWordsProvider);
-    final photos = ref.watch(photosWithWordsProvider);
+    final stored = widget.collectionId;
+    final sources = stored == null
+        ? ref.watch(sourcesWithWordsProvider)
+        : ref.watch(storedSourcesWithWordsProvider(stored));
+    final photos = stored == null
+        ? ref.watch(photosWithWordsProvider)
+        : [for (final item in sources) if (item.isPhoto) item];
     ref.watch(photoPreloaderProvider); // kept alive while the panel lives
     _hasPhotos = photos.isNotEmpty;
     _schedulePreload(sources);

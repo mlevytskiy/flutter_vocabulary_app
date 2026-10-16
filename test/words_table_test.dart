@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
+import 'package:flutter_vocabulary_app/core/models/offered_ai.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words_settings/words_settings_screen.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 /// definition-mode T14: the words table lists every filled row and shows the
@@ -40,6 +42,12 @@ void main() {
           .overrideWithValue(SourcePhotoStore(directory: photoDir.path)),
       if (publisher != null)
         collectionPublishServiceProvider.overrideWithValue(publisher),
+      // The Words settings, where "Include photos (N)" is (words-photo-panel).
+      offeredAisProvider.overrideWith((ref) async => const OfferedAiList(
+          pricesAsOf: '2026-10-16',
+          defaults: AiChoice(story: 's', prompt: 's', picture: 'p'),
+          models: [])),
+      storyRunsProvider.overrideWith((ref) => Stream.value(const [])),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
@@ -47,9 +55,29 @@ void main() {
       await container.read(wordDetailModeProvider.notifier).loaded;
       await container.read(collectionByIdProvider(table.collectionId).future);
     });
+    // The table and its settings, under the app's paths, so the Settings
+    // button opens the Words settings with the collection's id.
+    final router = GoRouter(
+      initialLocation: '/table?collection-id=${table.collectionId}',
+      routes: [
+        GoRoute(
+          path: '/table',
+          builder: (context, state) => WordsTableScreen(
+              collectionId: state.uri.queryParameters['collection-id']),
+          routes: [
+            GoRoute(
+              path: 'settings',
+              builder: (context, state) => WordsSettingsScreen(
+                  collectionId: state.uri.queryParameters['collection-id']),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: MaterialApp(home: WordsTableScreen(collectionId: table.collectionId)),
+      child: MaterialApp.router(routerConfig: router),
     ));
     await tester.pump();
   }
@@ -100,7 +128,8 @@ void main() {
     expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
-  // good-looking-web T19: the "include photos (N)" switch above the table, and
+  // good-looking-web T19: the "include photos (N)" switch (in the Words
+  // settings since words-photo-panel), and
   // the sheet's warning: the 30-day photo note and the republish warning
   // (AC-23, AC-24, ADR-0008).
   SessionSource photo(String id, int minute) => SessionSource()
@@ -146,23 +175,58 @@ void main() {
     ..publishedId = 'old'
     ..editToken = 'token';
 
+  /// Opens the Words settings from the Settings button (words-photo-panel).
+  Future<void> openSettings(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('Words settings'), findsOneWidget);
+  }
+
+  Future<void> back(WidgetTester tester) async {
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Words settings'), findsNothing);
+  }
+
+  /// "Include photos (N)" is in the Words settings now: switched off there,
+  /// and back on the Words screen.
   Future<void> switchPhotosOff(WidgetTester tester) async {
+    await openSettings(tester);
     await tester.tap(find.byType(Switch));
     await tester.pump();
     expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+    await back(tester);
   }
 
-  testWidgets('photos with a linked row: the page has the switch on, with N',
-      (tester) async {
+  testWidgets(
+      'photos with a linked row: the switch, on, with N, is in the Words '
+      'settings, not above the table (words-photo-panel)', (tester) async {
     await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
+    expect(find.textContaining('Include photos'), findsNothing);
+    expect(find.byType(Switch), findsNothing);
+    await openSettings(tester);
     expect(find.text('Include photos (2)'), findsOneWidget);
     expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
-    // Above the table, not in the sheet.
+    // At the top of the settings, above the AI choices.
     expect(tester.getTopLeft(find.byType(Switch)).dy,
-        lessThan(tester.getTopLeft(find.byType(DataTable)).dy));
+        lessThan(tester.getTopLeft(find.text('Story writer')).dy));
+    await back(tester);
     await openSheet(tester);
     expect(find.text('Share file'), findsOneWidget); // file option unchanged
-    expect(find.byType(Switch), findsOneWidget); // only the page's
+    expect(find.byType(Switch), findsNothing); // not in the sheet
+  });
+
+  testWidgets('the switch keeps its value between visits to the settings',
+      (tester) async {
+    await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
+    await switchPhotosOff(tester);
+    await openSettings(tester);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
+    await tester.tap(find.byType(Switch));
+    await tester.pump();
+    await back(tester);
+    await openSettings(tester);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
   });
 
   // import-from-quizlet AC-15: the switch counts photos only; a set with a
@@ -187,8 +251,10 @@ void main() {
     final publisher = _FakePublisher();
     await pumpTable(tester, WordDetailMode.translation,
         publisher: publisher, shown: withPhotosAndSet());
+    await openSettings(tester);
     expect(find.text('Include photos (2)'), findsOneWidget);
     expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
+    await back(tester);
     await openSheet(tester);
     expect(find.text(photosNote), findsOneWidget);
     await tapShareLink(tester);
@@ -233,7 +299,9 @@ void main() {
       ..sources = [set('1')];
     await pumpTable(tester, WordDetailMode.translation,
         publisher: publisher, shown: shown);
+    await openSettings(tester);
     expect(find.byType(Switch), findsNothing);
+    await back(tester);
     await openSheet(tester);
     expect(find.textContaining('30 days'), findsNothing);
     await tapShareLink(tester);
@@ -242,8 +310,10 @@ void main() {
 
   testWidgets('no source photos: no switch and no note', (tester) async {
     await pumpTable(tester, WordDetailMode.translation);
+    await openSettings(tester);
     expect(find.byType(Switch), findsNothing);
     expect(find.textContaining('Include photos'), findsNothing);
+    await back(tester);
     await openSheet(tester);
     expect(find.text('Share file'), findsOneWidget);
     expect(find.text('Share link'), findsOneWidget);
@@ -274,7 +344,9 @@ void main() {
       ]
       ..sources = [photo('p1', 1)];
     await pumpTable(tester, WordDetailMode.translation, shown: shown);
+    await openSettings(tester);
     expect(find.byType(Switch), findsNothing);
+    await back(tester);
     await openSheet(tester);
     expect(find.textContaining('30 days'), findsNothing);
   });
@@ -373,6 +445,7 @@ void main() {
   testWidgets('tapping the photo stack opens the viewer; swipe and close',
       (tester) async {
     await pumpTable(tester, WordDetailMode.translation, shown: withPhotos());
+    await openSettings(tester);
     await tester.tap(find.bySemanticsLabel('Show photos'));
     await tester.pumpAndSettle();
     // Only the photos with a linked row, as the switch counts them.

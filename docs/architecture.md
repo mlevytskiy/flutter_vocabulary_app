@@ -145,7 +145,11 @@ lib/
                                       photos_with_words.dart (+.g), photo_preview.dart, row_jump.dart;
                                       looks/: photo_panel_look.dart (the interface, tab ≤ 200 dp),
                                       look_a.dart (the one look, picked 2026-10-14) and edge_glass.dart
-                                      (photo-panel-glass)
+                                      (photo-panel-glass); photo_panel_host.dart (words-photo-panel):
+                                      the PhotoPanelHost mixin both hosting screens use (the controller,
+                                      the guard that closes an open panel on a touch, the highlight);
+                                      PhotoPanel(collectionId:) lists a stored collection's sources
+                                      (storedSourcesWithWordsProvider) instead of the current one's
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
@@ -183,9 +187,13 @@ lib/
       words_table_screen.dart         reads words from the notifier (no sessionId) or from
                                       sessionByIdProvider (a History row), read-only either way;
                                       Share → bottom sheet: file (TSV) or link (publish, task-05);
-                                      the "Include photos (N)" switch (photos only; Quizlet sets
-                                      are always sent) with stacked thumbnails sits above the
-                                      table; the sheet warns about public photos and that
+                                      the photo tab and panel as on the main screen (words-photo-panel:
+                                      while open the table cross-fades into one line per row; Notes
+                                      only for the current collection); include_photos.dart: the
+                                      "Include photos (N)" value (includePhotosProvider, per collection
+                                      id, not saved; photos only, Quizlet sets are always sent), its
+                                      switch with stacked thumbnails (widgets/photo_stack.dart) is in
+                                      the Words settings; the sheet warns about public photos and that
                                       a republish replaces the partner's edits (good-looking-web);
                                       a History session that is not current gets a red Edit FAB →
                                       "Do you want to edit…?" → switchTo + WordInputRoute().go
@@ -274,7 +282,8 @@ lib/
                                       under its scene picture, drawing it once (DialogueRoute)
     words_settings/
       words_settings_screen.dart      Words settings (WordsSettingsRoute, from the Words screen's
-                                      settings button): the three AI choices (story writer, picture
+                                      settings button, with the collection id): the "Include photos (N)"
+                                      switch at the top (words-photo-panel), the three AI choices (story writer, picture
                                       prompt writer, picture maker), each list cheapest first with the
                                       average price of past runs and the list price; "Story runs"
       story_runs_screen.dart          every story run on the phone, newest first, with totals

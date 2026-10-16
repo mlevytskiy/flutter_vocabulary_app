@@ -292,11 +292,18 @@ mixin _$DialogueRoute on GoRouteData {
 
 mixin _$WordsSettingsRoute on GoRouteData {
   static WordsSettingsRoute _fromState(GoRouterState state) =>
-      const WordsSettingsRoute();
+      WordsSettingsRoute(
+        collectionId: state.uri.queryParameters['collection-id'],
+      );
+
+  WordsSettingsRoute get _self => this as WordsSettingsRoute;
 
   @override
   String get location => GoRouteData.$location(
         '/table/settings',
+        queryParams: {
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
+        },
       );
 
   @override

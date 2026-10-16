@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/models/session_source.dart';
+import '../../../core/models/word_collection.dart';
+import '../../../core/providers.dart';
 import '../word_input_notifier.dart';
 
 part 'photos_with_words.g.dart';
@@ -34,8 +36,18 @@ extension SourceWithWordsKind on SourceWithWords {
 /// sources never appear (spec AC-16); a row whose word is cleared does not
 /// count (spec AC-15).
 @riverpod
-List<SourceWithWords> sourcesWithWords(Ref ref) {
-  final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+List<SourceWithWords> sourcesWithWords(Ref ref) =>
+    sourcesWithWordsOf(ref.watch(wordInputNotifierProvider).valueOrNull);
+
+/// The sources with words of a stored collection, e.g. one the Words screen
+/// shows from History, read-only (words-photo-panel).
+@riverpod
+List<SourceWithWords> storedSourcesWithWords(Ref ref, String collectionId) =>
+    sourcesWithWordsOf(
+        ref.watch(collectionByIdProvider(collectionId)).valueOrNull);
+
+/// [collection]'s sources with words, as [sourcesWithWords] lists them.
+List<SourceWithWords> sourcesWithWordsOf(WordCollection? collection) {
   if (collection == null) return const [];
   final rowsBySource = <String, List<int>>{};
   for (var i = 0; i < collection.words.length; i++) {
