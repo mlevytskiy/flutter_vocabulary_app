@@ -5,7 +5,7 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
-| T1 | [Record the owner's approvals for collections-screen in CLAUDE.md rules 3 and 5](./T1-docs-claude-md-approvals.md) | docs | Maksym | S | — | todo |
+| T1 | [Record the owner's approvals for collections-screen in CLAUDE.md rules 3 and 5](./T1-docs-claude-md-approvals.md) | docs | Maksym | S | — | done |
 | T2 | [Rename Session to WordCollection across the app with every stored name pinned](./T2-domain-rename-session-to-wordcollection.md) | domain | Maksym | L | T1 | todo |
 | T3 | [Add the pure name rule, the default date name and the creation moment from a collection id](./T3-domain-collection-name-rules.md) | domain | Maksym | S | — | todo |
 | T4 | [Add the pure filing rules: tree walks, folder into itself, level renumbering, restore target, days left and expiry](./T4-domain-filing-rules.md) | domain | Maksym | M | — | todo |
