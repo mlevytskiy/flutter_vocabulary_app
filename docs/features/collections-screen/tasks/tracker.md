@@ -14,7 +14,7 @@
 | T7 | [Add CollectionStore.update(id, change) and move every background writer onto it](./T7-infra-atomic-update-for-background-writers.md) | infra | Maksym | M | T5 | done |
 | T8 | [Add rename, new folder, move and reorder transactions and the level, path and History streams](./T8-infra-filing-transactions.md) | infra | Maksym | M | T4, T5 | done |
 | T9 | [Add bin, restore, erase, empty-bin and the 30-day sweep to CollectionStore](./T9-infra-bin-restore-erase-sweep.md) | infra | Maksym | L | T4, T8 | done |
-| T10 | [Run the QG-1 stability suite: 100 interleavings of every background writer with every filing change](./T10-tests-name-and-place-stability-suite.md) | tests | Maksym | M | T7, T9 | todo |
+| T10 | [Run the QG-1 stability suite: 100 interleavings of every background writer with every filing change](./T10-tests-name-and-place-stability-suite.md) | tests | Maksym | M | T7, T9 | done |
 | T11 | [Make launch and resume reopen the current collection, sweep the bin, and drop the RESTORE offer](./T11-app-launch-rule-reopens-current.md) | app | Maksym | M | T9 | todo |
 | T12 | [Add open(id) and newCollection(folderId) to the main screen's notifier with the AC-19 leave rule](./T12-app-open-and-new-collection.md) | app | Maksym | M | T8, T11 | todo |
 | T13 | [Deliver late translation, photo reading, Quizlet and subtitle results into the collection they started in](./T13-app-late-results-land-in-their-own-collection.md) | app | Maksym | M | T7, T12 | todo |

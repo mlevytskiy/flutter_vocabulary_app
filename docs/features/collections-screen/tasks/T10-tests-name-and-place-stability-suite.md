@@ -7,7 +7,7 @@ acs: ["AC-27"]
 files_hint: ["test/collection_stability_test.dart"]
 owner: "Maksym"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Run the QG-1 stability suite: 100 interleavings of every background writer with every filing change
