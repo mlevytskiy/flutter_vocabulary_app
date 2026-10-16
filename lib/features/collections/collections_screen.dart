@@ -10,6 +10,7 @@ import '../word_input/word_input_notifier.dart';
 import 'bin_dialogs.dart';
 import 'collection_drag.dart';
 import 'collection_icon.dart';
+import 'collections_filter_sheet.dart';
 import 'collections_notifier.dart';
 import 'collections_results_view.dart';
 import 'collections_search_notifier.dart';
@@ -85,9 +86,14 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     ref.read(_searchProvider.notifier).clear();
   }
 
-  /// The filter icon. TODO(T14): open the filter sheet (SCR-06) here and
-  /// apply its result with `ref.read(_searchProvider.notifier).setFilter`.
-  void onOpenFilter() {}
+  /// The filter icon: the filter sheet (SCR-06) applies only on its button;
+  /// dismissing it changes nothing. The search text is kept.
+  Future<void> onOpenFilter() async {
+    final current = ref.read(_searchProvider).filter;
+    final result = await showCollectionsFilterSheet(context, current: current);
+    if (result == null || !mounted) return;
+    ref.read(_searchProvider.notifier).setFilter(result);
+  }
 
   void _dragStarted(CollectionItemView item) {
     setState(() {
