@@ -7,7 +7,7 @@ acs: ["AC-20", "AC-21", "AC-22", "AC-24", "AC-25", "AC-26"]
 files_hint: ["lib/core/services/collection_store.dart", "lib/core/services/source_photo_store.dart", "test/collection_bin_test.dart"]
 owner: "Maksym"
 estimate: "L"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Add bin, restore, erase, empty-bin and the 30-day sweep to CollectionStore
