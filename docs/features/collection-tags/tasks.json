@@ -1,0 +1,339 @@
+{
+  "slug": "collection-tags",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record the collection-tags approvals in CLAUDE.md rules 3 and 5",
+      "layer": "docs",
+      "deps": [],
+      "acs": [],
+      "dod": "CLAUDE.md rule 3 and rule 5 carry the collection-tags lines verbatim from sad \u00a79",
+      "files_hint": [
+        "CLAUDE.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add TagKind and the pure tag rules: validation, keys, limits, presets, legacy sort, matching and ranking",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-09",
+        "AC-10",
+        "AC-11",
+        "AC-17b",
+        "AC-31",
+        "AC-35"
+      ],
+      "dod": "unit tests cover every rule, incl. AC-31 preset lists and 'Travel'\u2192origin, word-start 'co' matches Cooking/Home cooking not Tacos; autocomplete ranking over 1,000 entries completes \u2264 50 ms in a timed unit test (spec \u00a76)",
+      "files_hint": [
+        "lib/core/models/tag_kind.dart",
+        "lib/core/services/tag_rules.dart",
+        "test/tag_rules_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the pure collection search: summaries, matching, filters, calendar-day ranges, sort and tag counts",
+      "layer": "domain",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-19",
+        "AC-20",
+        "AC-20b",
+        "AC-21",
+        "AC-23",
+        "AC-25",
+        "AC-37",
+        "AC-38"
+      ],
+      "dod": "unit tests for every AC listed, incl. 'Last 7 days' = today + 6 days and a custom range including its whole end day; search over 500 summaries / 2,000 tags returns \u2264 100 ms in a timed test (spec \u00a76)",
+      "files_hint": [
+        "lib/core/services/collection_search.dart",
+        "test/collection_search_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add description, typed tags and TagLibraryEntry to the Isar models and regenerate the schema",
+      "layer": "infra",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-26"
+      ],
+      "dod": "JSON round-trip tests carry the new fields; app builds and existing store tests stay green",
+      "files_hint": [
+        "lib/core/models/word_collection.dart",
+        "lib/core/models/session_source.dart",
+        "lib/core/models/tag_library_entry.dart",
+        "lib/core/services/collection_store.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Protect description and typed tags in put/update and add setDetails, create(details), addCollectionTags and the library writes",
+      "layer": "infra",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-09",
+        "AC-12",
+        "AC-15",
+        "AC-18",
+        "AC-28",
+        "AC-29",
+        "AC-30",
+        "AC-33"
+      ],
+      "dod": "stale `put()` after setDetails/addCollectionTags keeps description, typed tags, updatedAt, lastLocalModifiedAt for every writer path (autosave, markShared, updateDialogues, markDialoguesPublished, story run, learn result, late lookup) \u2014 QG-1; copy-up cap returns notAdded kinds; re-saving an unchanged source copies nothing; a re-add after removal copies again; library: first spelling wins, Forget hides, explicit add un-forgets",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "test/collection_tags_store_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Migrate untyped tags once on store open with the legacy-as-topic fallback",
+      "layer": "infra",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-17",
+        "AC-17b",
+        "AC-18",
+        "AC-31",
+        "AC-32"
+      ],
+      "dod": "fixture test: AC-17, AC-17b, AC-31 Travel, AC-32 cross-collection spelling, source tags copied past 10, legacy emptied, times untouched, idempotent second open; 500 seeded collections migrate within 1 s (spec \u00a76)",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "test/collection_tags_migration_test.dart"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add the summaries stream and the library providers, and move tag suggestions into features/tags",
+      "layer": "wiring",
+      "deps": [
+        "T3",
+        "T6"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-27",
+        "AC-30",
+        "AC-35",
+        "AC-38"
+      ],
+      "dod": "stream test: empty collections included, binned excluded, one re-read per write burst; provider test: ranking per AC-35, forgotten excluded",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "lib/core/providers.dart",
+        "lib/features/tags/tag_suggestions.dart",
+        "lib/features/notes/tag_suggestions.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Route details, Notes tag edits and source notes through the store and adopt stored values in the main notifier",
+      "layer": "app",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-15",
+        "AC-16",
+        "AC-18",
+        "AC-28",
+        "AC-29",
+        "AC-33"
+      ],
+      "dod": "test: a Notes-page tag save shows in the notifier state at once and the next autosave doesn't write the older copy back (owner D4); test: a source tag survives the autosave (owner D11); test: edited time is not rolled back by markShared/updateDialogues after a details save",
+      "files_hint": [
+        "lib/features/word_input/word_input_notifier.dart",
+        "test/collection_tags_notifier_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Add TagChip and grow TagEditor into TypedTagField with hints, examples, suggestion row, autocomplete, limits and Forget",
+      "layer": "ui",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-07",
+        "AC-08",
+        "AC-09",
+        "AC-10",
+        "AC-11",
+        "AC-12",
+        "AC-35"
+      ],
+      "dod": "widget tests: hint + helper text per kind, tap suggestion adds and removes it from the row, 11th tag refused with message, long-press Forget only on own tags, whenFocused mode hides the row unfocused",
+      "files_hint": [
+        "lib/features/tags/tag_chip.dart",
+        "lib/features/tags/typed_tag_field.dart",
+        "lib/features/notes/tag_editor.dart",
+        "test/typed_tag_field_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Add the Collection details sheet with Discard changes and wire New collection and the main screen's edit button to it",
+      "layer": "ui",
+      "deps": [
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-05",
+        "AC-27",
+        "AC-36"
+      ],
+      "dod": "widget tests: Create with name only; invalid name/description disables the button with a message; dismiss after change asks Discard changes?; edit Save updates title",
+      "files_hint": [
+        "lib/features/collections/collection_details_sheet.dart",
+        "lib/features/collections/collections_screen.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "test/collection_details_sheet_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Show the tag line in the main screen's AppBar bottom and push filtered Collections on a tag tap",
+      "layer": "ui",
+      "deps": [
+        "T9"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-14"
+      ],
+      "dod": "widget test at phone width: bottom height 0 with no tags, \u224840 dp with tags, origin chips before topic; route test: tap pushes CollectionsRoute with kind + text",
+      "files_hint": [
+        "lib/features/word_input/collection_tag_line.dart",
+        "lib/features/word_input/word_input_screen.dart",
+        "lib/router/routes.dart",
+        "test/collection_tag_line_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Make the Notes page's collection and source tag fields typed, with focus-only suggestions and the copy-up snackbar",
+      "layer": "ui",
+      "deps": [
+        "T7",
+        "T8",
+        "T9"
+      ],
+      "acs": [
+        "AC-15",
+        "AC-16",
+        "AC-29",
+        "AC-34"
+      ],
+      "dod": "widget tests: two fields per place, suggestions only when focused, snackbar text for a refused topic tag, existing Notes tests updated and green",
+      "files_hint": [
+        "lib/features/notes/notes_screen.dart",
+        "test/notes_typed_tags_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Add search mode and the flat results view to the Collections screen, seeded from the route",
+      "layer": "ui",
+      "deps": [
+        "T7",
+        "T9",
+        "T11"
+      ],
+      "acs": [
+        "AC-14",
+        "AC-19",
+        "AC-22",
+        "AC-23",
+        "AC-24",
+        "AC-27",
+        "AC-39"
+      ],
+      "dod": "widget tests for AC-19, AC-22, AC-24, AC-39 (all three Back/Clear/tap paths) and a route-seeded tag filter",
+      "files_hint": [
+        "lib/features/collections/collections_search_notifier.dart",
+        "lib/features/collections/collections_results_view.dart",
+        "lib/features/collections/collections_screen.dart",
+        "test/collections_search_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Add the filter sheet: tag sections with counts, Created and Edited choices with a custom range, sort, Reset and Show N",
+      "layer": "ui",
+      "deps": [
+        "T13"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-20b",
+        "AC-21",
+        "AC-37",
+        "AC-38"
+      ],
+      "dod": "widget tests: counts and Show all/narrow, live N incl. 0, Reset, dismiss without apply changes nothing, start-after-end refused",
+      "files_hint": [
+        "lib/features/collections/collections_filter_sheet.dart",
+        "test/collections_filter_sheet_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Pin that description and tags never reach a publish payload or an export file",
+      "layer": "tests",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-26"
+      ],
+      "dod": "test passes and fails if either field is added to a payload",
+      "files_hint": [
+        "test/collection_tags_privacy_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Update architecture.md and the roadmap for collection-tags",
+      "layer": "docs",
+      "deps": [
+        "T10",
+        "T11",
+        "T12",
+        "T13",
+        "T14",
+        "T15"
+      ],
+      "acs": [],
+      "dod": "docs list every new file; roadmap status updated",
+      "files_hint": [
+        "docs/architecture.md",
+        "docs/roadmap.md"
+      ]
+    }
+  ]
+}
