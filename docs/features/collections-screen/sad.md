@@ -276,29 +276,35 @@ ADR files live under `docs/features/collections-screen/adr/NNNN-<title>.md`.
 
 ## 10. Quality requirements
 
-<!-- 🎯 Why: the QUALITY TREE — take a goal from §1 and break it into concrete leaves: tests,
-     metrics, configs, drills. ⭐ Without §10, §1 is a manifesto. With §10 each declaration maps
-     to something PROVABLE.
-     📋 Write: per §1 goal — When / Then / How-verify. Numbers from spec §6 NFR VERBATIM (don't
-     round ≤250ms to ≤300ms — that's a critic F6 hit).
-     📌 e.g. «p95 ≤ 500 ms on a block update, verified by a 100 req/s load test». -->
+**QG-1. Name and place stability**
+- **When:** the learner renames, moves, reorders, deletes or erases for good a collection while background work for it (autosave, translation, photo reading, Quizlet or subtitle import, story, scene picture, dialogue delivery, photo upload, exercise result) finishes.
+- **Then:** 0 reverted names, places or orders, and 0 collections coming back from the bin, over 100 scripted runs of rename / move / delete / erase for good while background work for that collection finishes.
+- **How verify:** automated test with each background writer: a `CollectionStore` test over a real Isar instance that interleaves each writer's `update`/`put` with each filing transaction, 100 runs, asserting name, folder, order and bin mark after each run and after reopening the store.
 
-Each top-3 goal from §1 expanded into a full scenario:
+**QG-2. Update safety**
+- **When:** the owner installs the updated app over their existing data (rename + filing backfill).
+- **Then:** 0 words, photos, notes, stories or exercise results lost when moving to the updated app.
+- **How verify:** migration test over a copy of the owner's real data: counts before = counts after (words, sources, dialogues, groups, results, tags per collection; story runs; photo files), plus every collection at the top level with a name from its creation moment (AC-04).
 
-**QG-1. <quality attribute>**
-- **When:** <trigger condition>
-- **Then:** <expected behaviour with numbers from spec §6 NFR>
-- **How verify:** <test / chaos drill / load test / metric>
+**QG-3. Collections screen open time**
+- **When:** the learner taps Collections in the side menu with 300 collections and 50 folders stored.
+- **Then:** ≤ 500 ms from tapping the menu item to a full icon grid.
+- **How verify:** release build on the owner's phone, screen-ready timing in a profile run.
 
-**QG-2. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-4. Move durability**
+- **When:** a drop, rename, delete or restore is made and the app is force-closed.
+- **Then:** a drop, rename, delete or restore survives a force-close made 1 s after it.
+- **How verify:** device test: act, wait 1 s, kill the app, reopen, check. Filing writes are not debounced, so the transaction has committed before the screen updates.
 
-**QG-3. <quality attribute>**
-- **When:** <trigger>
-- **Then:** <expected>
-- **How verify:** <how>
+**QG-5. Bin retention**
+- **When:** an item sits in the recycle bin and the app is opened or resumed at various times, with the clock moved backwards in some runs.
+- **Then:** erased no earlier than 30 × 24 h after deletion, and at the first app open after that.
+- **How verify:** unit test with a controlled clock, including a clock moved backwards (a clock moved forward is trusted, AC-26), over `filing.dart` expiry and `CollectionStore.sweepBin`.
+
+**QG-6. Drag vs tap**
+- **When:** the learner long-presses and drags icons of every kind (onto folders, Up, the path, between icons, the bin zone, empty spots).
+- **Then:** 0 collection switches caused by a drag, over 50 scripted drags.
+- **How verify:** widget test of long-press drags of every kind, asserting the current-collection pointer after each.
 
 ## 11. Risks and technical debt
 
