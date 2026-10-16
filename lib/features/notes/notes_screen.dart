@@ -17,7 +17,8 @@ import '../word_input/word_input_notifier.dart';
 import '../word_input/word_input_screen.dart' show showSourceWordsDialog;
 import '../../router/routes.dart';
 import 'photo_viewer_screen.dart';
-import 'tag_editor.dart';
+import '../../core/models/effective_tags.dart';
+import '../tags/typed_tag_field.dart';
 import '../tags/tag_suggestions.dart';
 
 /// Notes (owner, 2026-10-15): opened from the half-open photo panel's expand
@@ -47,9 +48,13 @@ class NotesScreen extends ConsumerStatefulWidget {
 
   /// The first link field; [linkFieldKey] names each.
   static const linkKey = Key('notes-link');
-  static Key linkFieldKey(int i) => i == 0 ? linkKey : ValueKey('notes-link-$i');
+  static Key linkFieldKey(int i) =>
+      i == 0 ? linkKey : ValueKey('notes-link-$i');
   static const addLinkKey = Key('notes-add-link');
   static const tagFieldKey = Key('notes-tag-field');
+  static const originTagFieldKey = Key('notes-origin-tag-field');
+  static const collectionOriginTagFieldKey =
+      Key('notes-collection-origin-tag-field');
   static const collectionTagFieldKey = Key('notes-session-tag-field');
 
   /// One item's height, its title and spacing included.
@@ -107,13 +112,9 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
     final mode = ref.watch(wordDetailModeProvider);
     final preloader = ref.watch(photoPreloaderProvider);
     final current = ref.watch(wordInputNotifierProvider).valueOrNull;
-    // T12 rebuilds this page; until then the one editor means topic tags,
-    // showing the legacy tags while no typed ones exist.
     final collectionTags = current == null
-        ? const <String>[]
-        : (current.originTags.isEmpty && current.topicTags.isEmpty
-            ? current.tags
-            : current.topicTags);
+        ? (origin: const <String>[], topic: const <String>[])
+        : effectiveTagsOf(current);
     final notifier = ref.read(wordInputNotifierProvider.notifier);
     return Scaffold(
       backgroundColor: Colors.white,
@@ -132,13 +133,13 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
               color: Color(0xFFF7F2FF),
               border: Border(bottom: BorderSide(color: Color(0x33954EF3))),
             ),
-            child: TagEditor(
-              fieldKey: NotesScreen.collectionTagFieldKey,
-              label: 'Collection tags',
-              tags: collectionTags,
-              suggestions: ref.watch(collectionTagSuggestionsProvider),
-              onChanged: (tags) =>
-                  notifier.setCollectionTags(TagKind.topic, tags),
+            child: _typedTagFields(
+              ref,
+              origin: collectionTags.origin,
+              topic: collectionTags.topic,
+              originKey: NotesScreen.collectionOriginTagFieldKey,
+              topicKey: NotesScreen.collectionTagFieldKey,
+              onChanged: (kind, tags) => notifier.setCollectionTags(kind, tags),
             ),
           ),
           Expanded(
@@ -262,8 +263,8 @@ class _NoteItemState extends ConsumerState<_NoteItem>
     with AutomaticKeepAliveClientMixin {
   static const _picturePage = 1;
 
-  final _pages =
-      PageController(initialPage: _picturePage, viewportFraction: notesPageFraction);
+  final _pages = PageController(
+      initialPage: _picturePage, viewportFraction: notesPageFraction);
   late final TextEditingController _title;
   late final TextEditingController _description;
   final _links = <TextEditingController>[];
@@ -303,6 +304,24 @@ class _NoteItemState extends ConsumerState<_NoteItem>
       c.dispose();
     }
     super.dispose();
+  }
+
+  /// A tag edit on this source: the collection takes a source's tags up to
+  /// its limit, and each kind it refused is said once (AC-16).
+  Future<void> _saveTags(TagKind kind, List<String> tags) async {
+    final refused = await _notifier.updateSourceNote(
+      _id,
+      origin: kind == TagKind.origin ? tags : null,
+      topic: kind == TagKind.topic ? tags : null,
+    );
+    if (!mounted || refused.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    for (final k in refused) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('The collection already has 10 ${k.name} tags'
+            ' — not added to it'),
+      ));
+    }
   }
 
   void _saveLinks() => _notifier.updateSourceNote(_id, links: [
@@ -430,14 +449,15 @@ class _NoteItemState extends ConsumerState<_NoteItem>
               onZooming: _setZooming,
               // The large decode starts at the touch and is done before
               // the viewer opens, so nothing blinks.
-              onPress: () => _viewerReady = PhotoViewerScreen.precache(
-                  context, source, widget.preloader),
+              onPress: () => _viewerReady =
+                  PhotoViewerScreen.precache(context, source, widget.preloader),
               onTap: () async {
                 await (_viewerReady ??= PhotoViewerScreen.precache(
                     context, source, widget.preloader));
                 _viewerReady = null;
                 if (context.mounted) {
-                  await PhotoViewerRoute(sourceId: source.id).push<void>(context);
+                  await PhotoViewerRoute(sourceId: source.id)
+                      .push<void>(context);
                 }
               },
               child: picture,
@@ -466,84 +486,86 @@ class _NoteItemState extends ConsumerState<_NoteItem>
     return GestureDetector(
       key: NotesScreen.wordsKey(_id),
       behavior: HitTestBehavior.opaque,
-      onTap: () => showSourceWordsDialog(context,
-          sourceId: _id, title: widget.title),
+      onTap: () =>
+          showSourceWordsDialog(context, sourceId: _id, title: widget.title),
       child: list,
     );
   }
 
   /// The note: a title, a description, links and tags, each change kept.
-  Widget _note(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          TextField(
-            key: NotesScreen.titleKey,
-            controller: _title,
-            textCapitalization: TextCapitalization.sentences,
-            onChanged: (text) => _notifier.updateSourceNote(_id, title: text),
-            decoration: const InputDecoration(
-              labelText: 'Title',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
+  Widget _note(BuildContext context) {
+    final tags = effectiveSourceTagsOf(widget.item.source);
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        TextField(
+          key: NotesScreen.titleKey,
+          controller: _title,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: (text) => _notifier.updateSourceNote(_id, title: text),
+          decoration: const InputDecoration(
+            labelText: 'Title',
+            border: OutlineInputBorder(),
+            isDense: true,
           ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          key: NotesScreen.descriptionKey,
+          controller: _description,
+          minLines: 2,
+          maxLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: (text) =>
+              _notifier.updateSourceNote(_id, description: text),
+          decoration: const InputDecoration(
+            labelText: 'Description',
+            border: OutlineInputBorder(),
+            isDense: true,
+          ),
+        ),
+        for (var i = 0; i < _links.length; i++) ...[
           const SizedBox(height: 10),
           TextField(
-            key: NotesScreen.descriptionKey,
-            controller: _description,
-            minLines: 2,
-            maxLines: 4,
-            textCapitalization: TextCapitalization.sentences,
-            onChanged: (text) =>
-                _notifier.updateSourceNote(_id, description: text),
-            decoration: const InputDecoration(
-              labelText: 'Description',
-              border: OutlineInputBorder(),
+            key: NotesScreen.linkFieldKey(i),
+            controller: _links[i],
+            keyboardType: TextInputType.url,
+            onChanged: (_) => _saveLinks(),
+            decoration: InputDecoration(
+              labelText: 'Link',
+              prefixIcon: const Icon(Icons.link),
+              suffixIcon: _links.length > 1 || _links[i].text.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Remove link',
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () => _removeLink(i),
+                    )
+                  : null,
+              border: const OutlineInputBorder(),
               isDense: true,
             ),
           ),
-          for (var i = 0; i < _links.length; i++) ...[
-            const SizedBox(height: 10),
-            TextField(
-              key: NotesScreen.linkFieldKey(i),
-              controller: _links[i],
-              keyboardType: TextInputType.url,
-              onChanged: (_) => _saveLinks(),
-              decoration: InputDecoration(
-                labelText: 'Link',
-                prefixIcon: const Icon(Icons.link),
-                suffixIcon: _links.length > 1 || _links[i].text.isNotEmpty
-                    ? IconButton(
-                        tooltip: 'Remove link',
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => _removeLink(i),
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ],
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              key: NotesScreen.addLinkKey,
-              onPressed: _addLink,
-              icon: const Icon(Icons.add_link, size: 18),
-              label: const Text('Add link'),
-            ),
-          ),
-          TagEditor(
-            fieldKey: NotesScreen.tagFieldKey,
-            tags: widget.item.source.originTags.isEmpty &&
-                    widget.item.source.topicTags.isEmpty
-                ? widget.item.source.tags
-                : widget.item.source.topicTags,
-            suggestions: ref.watch(sourceTagSuggestionsProvider),
-            onChanged: (tags) => _notifier.updateSourceNote(_id, topic: tags),
-          ),
         ],
-      );
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            key: NotesScreen.addLinkKey,
+            onPressed: _addLink,
+            icon: const Icon(Icons.add_link, size: 18),
+            label: const Text('Add link'),
+          ),
+        ),
+        _typedTagFields(
+          ref,
+          origin: tags.origin,
+          topic: tags.topic,
+          originKey: NotesScreen.originTagFieldKey,
+          topicKey: NotesScreen.tagFieldKey,
+          onChanged: _saveTags,
+        ),
+      ],
+    );
+  }
 }
 
 /// A picture on the Notes pager that a pinch zooms in place. While two
@@ -614,4 +636,37 @@ class _ZoomablePictureState extends State<_ZoomablePicture> {
           ),
         ),
       );
+}
+
+/// The origin and topic tag fields of one place on the Notes page, with
+/// suggestions only while a field has focus (AC-34).
+Widget _typedTagFields(
+  WidgetRef ref, {
+  required List<String> origin,
+  required List<String> topic,
+  required Key originKey,
+  required Key topicKey,
+  required void Function(TagKind kind, List<String> tags) onChanged,
+}) {
+  Widget field(TagKind kind, List<String> tags, Key key) => TypedTagField(
+        fieldKey: key,
+        kind: kind,
+        tags: tags,
+        suggestions: ref.watch(tagSuggestionsProvider(kind)),
+        mode: SuggestionMode.whenFocused,
+        onChanged: (t) => onChanged(kind, t),
+        onForget: (t) async {
+          final store = await ref.read(collectionStoreProvider.future);
+          await store.forgetTag(kind, t);
+        },
+      );
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      field(TagKind.origin, origin, originKey),
+      const SizedBox(height: 8),
+      field(TagKind.topic, topic, topicKey),
+    ],
+  );
 }
