@@ -7,6 +7,8 @@ import '../../core/models/tag_kind.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_level.dart';
 import '../../core/services/collection_search.dart';
+import '../../core/services/collection_search_scope.dart';
+import '../../core/services/filing.dart';
 import '../../router/routes.dart';
 import '../word_input/word_input_notifier.dart';
 import 'bin_dialogs.dart';
@@ -19,6 +21,7 @@ import 'collections_search_notifier.dart';
 import 'collections_speed_dial.dart';
 import 'collections_view.dart';
 import 'fly_to_bin.dart';
+import 'match_outside_sheet.dart';
 import 'name_dialog.dart';
 import 'recycle_bin_screen.dart';
 
@@ -29,9 +32,12 @@ import 'recycle_bin_screen.dart';
 /// recycle bin offers to open it or to switch delete mode, where each icon
 /// gets a small bin button that flies it into the recycle bin.
 ///
-/// The top bar's search and filter icons (collection-tags SCR-05) swap the
-/// folder view for a flat list of matches from every folder; [tagKind] and
-/// [tag], from a tag tap on the main screen, open the screen filtered.
+/// The top bar's search icon (collection-tags SCR-05) opens the search
+/// field and the filter icon; while a search or filter is on, the folder
+/// view gives way to what matches directly in the open folder, and the
+/// Match outside sheet holds the rest with the route to each
+/// (collections-search). [tagKind] and [tag], from a tag tap on the main
+/// screen, open the screen filtered.
 class CollectionsScreen extends ConsumerStatefulWidget {
   const CollectionsScreen({super.key, this.tagKind, this.tag});
 
@@ -299,6 +305,44 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
         ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
     final parentOf = {for (final f in folders) f.folderId: f.parentId};
     final notifier = ref.read(collectionsNotifierProvider.notifier);
+
+    // Where the matches are, seen from the open folder (collections-search).
+    SearchSplit? split;
+    var route = const <RouteRow>[];
+    final liveFolders = <SearchFolder>[];
+    if (results != null) {
+      final binned = {
+        for (final f in folders)
+          if (f.binnedAt != null) f.folderId,
+      };
+      for (final f in folders) {
+        if (isInBin(
+          binned: f.binnedAt != null,
+          folderId: f.parentId,
+          parentOf: parentOf,
+          binnedFolderIds: binned,
+        )) {
+          continue;
+        }
+        liveFolders.add(SearchFolder(
+            id: f.folderId,
+            name: f.name,
+            parentId: f.parentId,
+            order: f.order));
+      }
+      split = splitByLevel(
+        results: results,
+        folders: liveFolders,
+        openFolderId: state.folderId,
+        filter: search.filter,
+      );
+      if (!split.outsideIsEmpty) {
+        route = matchRoute(
+            split: split, folders: liveFolders, openFolderId: state.folderId);
+      }
+    }
+    final showsSheet = split != null && !split.outsideIsEmpty;
+    final folderName = state.isTopLevel ? null : state.path.last.name;
     CollectionDragLevel level() => CollectionDragLevel(
           openFolderId: state.folderId,
           parentOf: parentOf,
@@ -322,8 +366,11 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                     controller: _query,
                     autofocus: true,
                     textInputAction: TextInputAction.search,
-                    decoration: const InputDecoration(
-                      hintText: 'Search collections',
+                    decoration: InputDecoration(
+                      // Where the search looks (collections-search AC-02).
+                      hintText: folderName == null
+                          ? 'Search collections'
+                          : 'Search in $folderName',
                       border: InputBorder.none,
                     ),
                     onChanged: searchNotifier.setQuery,
@@ -337,78 +384,117 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                   tooltip: 'Search',
                   onPressed: _openSearch,
                 ),
-              IconButton(
-                icon: const Icon(Icons.tune),
-                tooltip: 'Filter',
-                onPressed: onOpenFilter,
-              ),
+              // The filter belongs to search; a filter that is on without the
+              // field (a tag tap) shows it too (collections-search AC-01).
+              if (search.searching || search.filter.isActive)
+                IconButton(
+                  icon: const Icon(Icons.tune),
+                  tooltip: 'Filter',
+                  onPressed: onOpenFilter,
+                ),
             ],
           ),
           // Settings bottom-left like the main screen's, the recycle bin in
           // the middle, the plus button bottom-right.
           floatingActionButtonLocation:
               FloatingActionButtonLocation.centerFloat,
-          floatingActionButton: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                FloatingActionButton(
-                  heroTag: null,
-                  onPressed: () => const SettingsRoute().push(context),
-                  tooltip: 'Settings',
-                  elevation: 8.0,
-                  shape: const CircleBorder(),
-                  backgroundColor: AppDecor.of(context).fabAlt,
-                  foregroundColor: AppDecor.of(context).onFabAlt,
-                  child: const Icon(Icons.settings),
-                ),
-                BinDropTarget(
-                  level: level(),
-                  onDecision: _decide,
-                  // A short bounce when a flown picture lands in it.
-                  builder: (context, highlighted) => AnimatedScale(
-                    scale: _binBounce ? 1.18 : 1,
-                    duration: const Duration(milliseconds: 120),
-                    onEnd: () {
-                      if (_binBounce && mounted) {
-                        setState(() => _binBounce = false);
-                      }
-                    },
-                    child: FloatingActionButton(
-                      key: _binKey,
-                      heroTag: null,
-                      onPressed: _binMenu,
-                      tooltip: 'Recycle bin',
-                      elevation: 8.0,
-                      shape: const CircleBorder(),
-                      backgroundColor: highlighted
-                          ? AppDecor.of(context).binHot
-                          : AppDecor.of(context).bin,
-                      foregroundColor: AppDecor.of(context).onBin,
-                      // Full while the recycle bin holds something (owner,
-                      // 2026-10-17).
-                      child:
-                          Icon(binFull ? Icons.delete : Icons.delete_outline),
+          // Hidden while Match outside shows, so they do not cover it
+          // (collections-search AC-05).
+          floatingActionButton: Offstage(
+            // Kept in the tree (the bin button's key must not be built twice
+            // while the Scaffold animates it back in).
+            offstage: showsSheet,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  FloatingActionButton(
+                    heroTag: null,
+                    onPressed: () => const SettingsRoute().push(context),
+                    tooltip: 'Settings',
+                    elevation: 8.0,
+                    shape: const CircleBorder(),
+                    backgroundColor: AppDecor.of(context).fabAlt,
+                    foregroundColor: AppDecor.of(context).onFabAlt,
+                    child: const Icon(Icons.settings),
+                  ),
+                  BinDropTarget(
+                    level: level(),
+                    onDecision: _decide,
+                    // A short bounce when a flown picture lands in it.
+                    builder: (context, highlighted) => AnimatedScale(
+                      scale: _binBounce ? 1.18 : 1,
+                      duration: const Duration(milliseconds: 120),
+                      onEnd: () {
+                        if (_binBounce && mounted) {
+                          setState(() => _binBounce = false);
+                        }
+                      },
+                      child: FloatingActionButton(
+                        key: _binKey,
+                        heroTag: null,
+                        onPressed: _binMenu,
+                        tooltip: 'Recycle bin',
+                        elevation: 8.0,
+                        shape: const CircleBorder(),
+                        backgroundColor: highlighted
+                            ? AppDecor.of(context).binHot
+                            : AppDecor.of(context).bin,
+                        foregroundColor: AppDecor.of(context).onBin,
+                        // Full while the recycle bin holds something (owner,
+                        // 2026-10-17).
+                        child:
+                            Icon(binFull ? Icons.delete : Icons.delete_outline),
+                      ),
                     ),
                   ),
-                ),
-                CollectionsSpeedDial(
-                  onNewFolder: () => _newFolder(state.folderId),
-                  onNewCollection: () => _newCollection(state.folderId),
-                ),
-              ],
+                  CollectionsSpeedDial(
+                    onNewFolder: () => _newFolder(state.folderId),
+                    onNewCollection: () => _newCollection(state.folderId),
+                  ),
+                ],
+              ),
             ),
           ),
           body: search.showsResults
-              ? CollectionsResultsView(
-                  filter: search.filter,
-                  results: results,
-                  onOpen: _openCollection,
-                  onClear: _clearSearch,
-                  onRemoveTag: searchNotifier.removeTag,
-                  onClearCreated: searchNotifier.clearCreated,
-                  onClearEdited: searchNotifier.clearEdited,
+              ? LayoutBuilder(
+                  builder: (context, box) => Stack(
+                    children: [
+                      CollectionsResultsView(
+                        filter: search.filter,
+                        results: split?.hereCollections,
+                        folders: split?.hereFolders ?? const [],
+                        onOpenFolder: notifier.open,
+                        emptyHere:
+                            split != null && showsSheet && split.hereIsEmpty
+                                ? _emptyHere(split, folderName)
+                                : null,
+                        bottomPadding: showsSheet
+                            ? box.maxHeight * MatchOutsideSheet.peekSize + 16
+                            : 96,
+                        onOpen: _openCollection,
+                        onClear: _clearSearch,
+                        onRemoveTag: searchNotifier.removeTag,
+                        onClearCreated: searchNotifier.clearCreated,
+                        onClearEdited: searchNotifier.clearEdited,
+                      ),
+                      if (showsSheet)
+                        Positioned.fill(
+                          child: MatchOutsideSheet(
+                            split: split!,
+                            route: route,
+                            folders: liveFolders,
+                            query: search.filter.query,
+                            autoOpen: split.hereIsEmpty,
+                            autoOpenKey:
+                                _autoOpenKey(state.folderId, search.filter),
+                            onOpenFolder: notifier.open,
+                            onOpenCollection: _openCollection,
+                          ),
+                        ),
+                    ],
+                  ),
                 )
               : Column(
                   children: [
@@ -497,6 +583,34 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     );
   }
 }
+
+/// The list's two lines when nothing matches directly in the open folder
+/// but Match outside has something (collections-search AC-08).
+(String, String) _emptyHere(SearchSplit split, String? folderName) {
+  final place = folderName ?? 'the top level';
+  if (split.deeper == 0) {
+    return (
+      'Nothing in $folderName or its subfolders matches',
+      '${split.elsewhere} found elsewhere, shown below',
+    );
+  }
+  final elsewhere =
+      split.elsewhere > 0 ? ' and ${split.elsewhere} elsewhere' : '';
+  return (
+    'Nothing directly in $place matches',
+    '${split.deeper} found deeper$elsewhere, shown below',
+  );
+}
+
+/// Match outside opens by itself once per open folder and search (AC-08).
+String _autoOpenKey(String? folderId, CollectionFilter f) => [
+      folderId ?? '',
+      f.query.trim().toLowerCase(),
+      f.originTags.join(','),
+      f.topicTags.join(','),
+      f.created.hashCode,
+      f.edited.hashCode,
+    ].join('|');
 
 const goToBinText = 'Go to recycle bin';
 const enableDeleteModeText = 'Enable delete mode';

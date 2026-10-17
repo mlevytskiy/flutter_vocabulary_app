@@ -115,22 +115,43 @@ void main() {
     expect(find.text('No tags yet'), findsOneWidget); // origin
   });
 
-  testWidgets('live N including 0, which still applies', (t) async {
+  testWidgets(
+      'collections-search AC-09: counts follow the draft, a 0 chip is '
+      'disabled, the order stays', (t) async {
     await open(t, few);
     await t.tap(find.text('Series 2'));
     await t.pump();
     expect(find.text('Show 2 collections'), findsOneWidget);
-    await t.tap(find.text('Book 1'));
+    expect(find.text('Series 2'), findsOneWidget);
+    expect(find.text('Book 0'), findsOneWidget);
+    expect(
+        t
+            .widget<FilterChip>(find.widgetWithText(FilterChip, 'Book 0'))
+            .onSelected,
+        isNull);
+    expect(find.text('Food 2'), findsOneWidget);
+    expect(find.text('Idioms 1'), findsOneWidget);
+    await t.tap(find.text('Idioms 1'));
     await t.pump();
+    expect(find.text('Food 1'), findsOneWidget);
+    expect(find.text('Show 1 collections'), findsOneWidget);
+    // a picked chip stays enabled even at 0
+    final chips = t.widgetList<FilterChip>(find.byType(FilterChip)).toList();
+    expect(chips.where((c) => c.selected).every((c) => c.onSelected != null),
+        isTrue);
+  });
+
+  testWidgets('live N of 0 still applies', (t) async {
+    await open(t, few, current: const CollectionFilter(query: 'zzz'));
     expect(find.text('Show 0 collections'), findsOneWidget);
     await t.tap(find.text('Show 0 collections'));
     await t.pumpAndSettle();
-    expect(result!.originTags, ['Series', 'Book']);
+    expect(result!.query, 'zzz');
   });
 
   testWidgets('Reset clears the draft but keeps the query', (t) async {
-    await open(t, few, current: const CollectionFilter(query: 'x'));
-    await t.tap(find.text('Series 2'));
+    await open(t, few,
+        current: const CollectionFilter(query: 'x', originTags: ['Series']));
     await t.tap(find.text('Last 7 days').first);
     await t.tap(find.text('Name A–Z'));
     await t.pump();
@@ -220,6 +241,9 @@ void main() {
     ));
     await t.pump();
     await t.pump(const Duration(milliseconds: 1));
+    // the filter belongs to search (collections-search AC-01)
+    await t.tap(find.byIcon(Icons.search));
+    await t.pump();
     await t.tap(find.byIcon(Icons.tune));
     await t.pumpAndSettle();
     await t.tap(find.text('Series 2'));

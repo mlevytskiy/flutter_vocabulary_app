@@ -17,11 +17,14 @@ import 'package:flutter_vocabulary_app/core/services/collection_search.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_drag.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_results_view.dart';
+import 'package:flutter_vocabulary_app/features/collections/match_outside_sheet.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 /// collection-tags T13 (SCR-05; AC-14, AC-19, AC-22, AC-23, AC-24, AC-27,
-/// AC-39): search mode and the flat results of the Collections screen.
+/// AC-39): search mode and the results of the Collections screen; since
+/// collections-search (AC-01 – AC-08, AC-10) the list is the open folder's
+/// level and Match outside holds the rest.
 
 class _FakeInput extends WordInputNotifier {
   _FakeInput(this.collection);
@@ -57,6 +60,7 @@ CollectionSummary _summary(
   List<String> origin = const [],
   List<String> topic = const [],
   String path = 'Top level',
+  String? folderId,
   int index = 0,
 }) =>
     CollectionSummary(
@@ -68,6 +72,7 @@ CollectionSummary _summary(
       sourceOriginKeys: const {},
       sourceTopicKeys: const {},
       folderPath: path,
+      folderId: folderId,
       treeIndex: index,
       created: DateTime(2026, 10, 1),
       edited: DateTime(2026, 10, 1),
@@ -83,9 +88,11 @@ void main() {
         origin: ['Podcast'],
         topic: ['Food'],
         path: 'Films / Podcasts',
+        folderId: 'f2',
         index: 0),
     _summary('c', 'Cooking club', path: 'Top level', index: 1),
-    _summary('d', 'Dark S1', origin: ['Netflix'], path: 'Films', index: 2),
+    _summary('d', 'Dark S1',
+        origin: ['Netflix'], path: 'Films', folderId: 'f1', index: 2),
     _summary('o', 'Food court', origin: ['Food'], path: 'Top level', index: 3),
     _summary(current.collectionId, 'Phrasal verbs', index: 4),
   ];
@@ -111,6 +118,8 @@ void main() {
         collectionLevelProvider('f1').overrideWith((ref) => Stream.value([
               LevelItem.folder(podcasts),
             ])),
+        collectionLevelProvider('f2')
+            .overrideWith((ref) => Stream.value(<LevelItem>[])),
         collectionSummariesProvider
             .overrideWith((ref) => Stream.value(summaries)),
       ],
@@ -153,10 +162,116 @@ void main() {
   Finder resultTile(String name) =>
       find.widgetWithText(CollectionResultTile, name);
 
-  testWidgets('the top bar has search and filter icons', (t) async {
+  Finder routeCollection(String id) => find.byKey(Key('route-collection-$id'));
+
+  Future<void> openSheet(WidgetTester t) async {
+    await t.tap(find.byKey(const Key('match-outside-header')));
+    await t.pumpAndSettle();
+  }
+
+  testWidgets(
+      'collections-search AC-01: outside search only the search icon; the '
+      'filter comes with the field', (t) async {
     await pump(t);
     expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(find.byIcon(Icons.tune), findsNothing);
+    await t.tap(find.byIcon(Icons.search));
+    await t.pump();
     expect(find.byIcon(Icons.tune), findsOneWidget);
+  });
+
+  testWidgets('AC-01: a filter from a tag tap shows the filter icon too',
+      (t) async {
+    await pump(t, tagKind: TagKind.topic, tag: 'Food');
+    expect(find.byIcon(Icons.tune), findsOneWidget);
+  });
+
+  testWidgets('AC-02: the hint says where the search looks', (t) async {
+    await pump(t);
+    await t.tap(find.byIcon(Icons.search));
+    await t.pump();
+    expect(find.text('Search collections'), findsOneWidget);
+    await back(t);
+    await t.tap(find.text('Films'));
+    await t.pump();
+    await t.pump();
+    await t.tap(find.byIcon(Icons.search));
+    await t.pump();
+    expect(find.text('Search in Films'), findsOneWidget);
+  });
+
+  testWidgets(
+      'AC-03/AC-05: the list is this level; deeper matches peek in Match '
+      'outside and the round buttons hide', (t) async {
+    await pump(t);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+    await openSearch(t, 'cook');
+    expect(resultTile('Cooking club'), findsOneWidget);
+    expect(resultTile('Kitchen talk'), findsNothing);
+    expect(find.text(MatchOutsideSheet.title), findsOneWidget);
+    expect(find.text('1 deeper'), findsOneWidget);
+    expect(find.text('Show route'), findsOneWidget); // peeking
+    expect(find.byTooltip('Settings'), findsNothing);
+    await openSheet(t);
+    expect(routeCollection('k'), findsOneWidget);
+    expect(find.text('Hide'), findsOneWidget);
+  });
+
+  testWidgets('AC-05: nothing outside, no sheet', (t) async {
+    await pump(t);
+    await openSearch(t, 'club');
+    expect(resultTile('Cooking club'), findsOneWidget);
+    expect(find.text(MatchOutsideSheet.title), findsNothing);
+    expect(find.byTooltip('Settings'), findsOneWidget);
+  });
+
+  testWidgets(
+      'AC-03/AC-04: a folder directly here whose name matches is a result; '
+      'a tap opens it and keeps the query', (t) async {
+    await pump(t);
+    await openSearch(t, 'film');
+    expect(find.byKey(const Key('folder-result-f1')), findsOneWidget);
+    await t.tap(find.byKey(const Key('folder-result-f1')));
+    await t.pump();
+    await t.pump();
+    expect(find.text('Search in Films'), findsOneWidget);
+    expect(find.text('film'), findsOneWidget); // the query stays
+  });
+
+  testWidgets(
+      'AC-06/AC-07: inside Films the route marks "You are here", and a tap '
+      'on Collections opens the top level with the query', (t) async {
+    await pump(t);
+    await t.tap(find.text('Films'));
+    await t.pump();
+    await t.pump();
+    await openSearch(t, 'o'); // here: the Podcasts folder; outside: more
+    expect(find.byKey(const Key('folder-result-f2')), findsOneWidget);
+    await openSheet(t);
+    expect(find.text(MatchOutsideSheet.hereText), findsOneWidget);
+    expect(routeCollection('k'), findsOneWidget); // deeper, under Films
+    expect(routeCollection('c'), findsOneWidget); // elsewhere
+    await t.tap(find.byKey(const Key('route-root')));
+    await t.pumpAndSettle();
+    expect(find.text('Search collections'), findsOneWidget);
+    expect(resultTile('Cooking club'), findsOneWidget);
+  });
+
+  testWidgets(
+      'AC-08: nothing in the folder or below → the list says so and the sheet '
+      'opens by itself', (t) async {
+    await pump(t);
+    await t.tap(find.text('Films'));
+    await t.pump();
+    await t.pump();
+    await openSearch(t, 'club');
+    await t.pumpAndSettle();
+    expect(find.text('Nothing in Films or its subfolders matches'),
+        findsOneWidget);
+    expect(find.text('1 found elsewhere, shown below'), findsOneWidget);
+    expect(find.text('Hide'), findsOneWidget); // opened
+    expect(t.getRect(routeCollection('c')).top,
+        lessThan(t.getSize(find.byType(Scaffold)).height * 0.75));
   });
 
   testWidgets(
@@ -177,29 +292,26 @@ void main() {
       'folders with folder paths, folders hidden, live', (t) async {
     await pump(t);
     await openSearch(t, 'cook');
-    expect(resultTile('Kitchen talk'), findsOneWidget);
+    // here: by name; deeper, in Match outside: by description
     expect(resultTile('Cooking club'), findsOneWidget);
-    expect(find.text('Films / Podcasts'), findsOneWidget);
-    expect(find.text('Top level'), findsOneWidget);
-    expect(resultTile('Dark S1'), findsNothing);
-    // folders are hidden while searching
-    expect(find.text('Films'), findsNothing);
-    // tag chips on the tile
-    expect(
-        find.descendant(
-            of: resultTile('Kitchen talk'), matching: find.text('Food')),
-        findsOneWidget);
+    await openSheet(t);
+    expect(routeCollection('k'), findsOneWidget);
+    expect(find.text('Films / Podcasts'), findsOneWidget); // its place chip
+    expect(routeCollection('d'), findsNothing);
+    // the folder view is gone while searching
+    expect(find.byType(DraggableCollectionIcon), findsNothing);
 
     await t.enterText(find.byType(TextField), 'club');
     await t.pump();
-    expect(resultTile('Kitchen talk'), findsNothing);
+    expect(routeCollection('k'), findsNothing);
     expect(resultTile('Cooking club'), findsOneWidget);
   });
 
   testWidgets('AC-27: an empty collection is found by its name', (t) async {
     await pump(t);
     await openSearch(t, 'dark');
-    expect(resultTile('Dark S1'), findsOneWidget);
+    await t.pumpAndSettle(); // nothing at the top: the sheet opens itself
+    expect(routeCollection('d'), findsOneWidget);
   });
 
   testWidgets('AC-22: while searching no drag, and delete mode is not offered',
@@ -210,11 +322,11 @@ void main() {
     await t.tap(find.byIcon(Icons.search));
     await t.pump();
     expect(find.byType(DraggableCollectionIcon), findsNothing);
-    await t.enterText(find.byType(TextField), 'cook');
+    await t.enterText(find.byType(TextField), 'club');
     await t.pump();
     await t.pump();
     expect(find.byType(DraggableCollectionIcon), findsNothing);
-    await t.longPress(resultTile('Kitchen talk'));
+    await t.longPress(resultTile('Cooking club'));
     await t.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
     expect(input.opened, isEmpty);
@@ -265,10 +377,14 @@ void main() {
       'AC-14 / route-seeded: a topic tag opens results from all folders with '
       'a removable chip, topic only, My order', (t) async {
     await pump(t, tagKind: TagKind.topic, tag: 'Food');
-    expect(resultTile('Kitchen talk'), findsOneWidget);
+    await t.pumpAndSettle();
+    // Kitchen talk is in Films / Podcasts: deeper, so the sheet opened
+    expect(routeCollection('k'), findsOneWidget);
+    expect(
+        find.text('Nothing directly in the top level matches'), findsOneWidget);
     // "Food" as an origin tag does not match a topic filter (AC-39)
     expect(resultTile('Food court'), findsNothing);
-    expect(find.byType(CollectionResultTile), findsOneWidget);
+    expect(find.byType(CollectionResultTile), findsNothing);
     expect(find.widgetWithText(TextButton, 'Clear'), findsOneWidget);
 
     // removing the chip brings the folder view back
@@ -311,7 +427,8 @@ void main() {
   testWidgets('AC-39: from a tag, a tapped result opens it as current',
       (t) async {
     await pump(t, tagKind: TagKind.topic, tag: 'Food');
-    await t.tap(resultTile('Kitchen talk'));
+    await t.pumpAndSettle();
+    await t.tap(routeCollection('k'));
     await t.pumpAndSettle();
     expect(input.opened, ['k']);
     expect(find.text('MAIN SCREEN'), findsOneWidget);

@@ -20,6 +20,7 @@ class CollectionSummary {
     required this.sourceOriginKeys,
     required this.sourceTopicKeys,
     required this.folderPath,
+    this.folderId,
     required this.treeIndex,
     required this.created,
     required this.edited,
@@ -37,6 +38,10 @@ class CollectionSummary {
 
   /// The folders above the collection, for display under its name.
   final String folderPath;
+
+  /// The folder it is directly in; null is the top level
+  /// (collections-search AC-03).
+  final String? folderId;
 
   /// The position in My order: folder by folder, each folder's collections
   /// where that folder sits (AC-37).

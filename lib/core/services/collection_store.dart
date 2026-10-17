@@ -1219,6 +1219,7 @@ class CollectionStore {
           sourceOriginKeys: originKeys,
           sourceTopicKeys: topicKeys,
           folderPath: pathOf(c.folderId),
+          folderId: c.folderId,
           treeIndex: result.length,
           created: creationMomentOf(c.collectionId) ?? c.updatedAt,
           edited: c.updatedAt,

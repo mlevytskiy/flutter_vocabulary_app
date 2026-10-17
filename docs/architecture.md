@@ -99,6 +99,10 @@ lib/
                                 matching, suggestion ranking)
                                 collection_search.dart (collection-tags: CollectionSummary, search,
                                 filters, calendar-day ranges, sort, tag counts; pure)
+                                collection_search_scope.dart (collections-search: the matches split
+                                by the open folder — here / deeper / elsewhere —, the pruned route of
+                                the Match outside sheet, live tag counts; pure). The sheet is
+                                features/collections/match_outside_sheet.dart
                                 collection_store.dart also holds the tag writes (setDetails,
                                 saveSourceNote, addCollectionTags, forgetTag), the one-time typed-tag
                                 migration and watchSummaries() (ADR-0004/0003/0006/0009 of collection-tags)

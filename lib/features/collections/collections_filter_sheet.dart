@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/tag_kind.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_search.dart';
+import '../../core/services/collection_search_scope.dart';
 import '../../core/services/tag_rules.dart';
 import 'collections_results_view.dart';
 
@@ -139,12 +140,16 @@ class _CollectionsFilterSheetState
         _draft = created ? _copy(created: choice) : _copy(edited: choice));
   }
 
+  /// [found] is what the draft finds now: each chip counts the matches
+  /// that carry its tag, and one that is not picked and has none is disabled
+  /// (collections-search AC-09).
   Widget _tagSection(
     String title,
     TagKind kind,
     List<CollectionSummary> summaries,
+    List<CollectionSummary> found,
   ) {
-    final counts = tagCounts(summaries, kind);
+    final counts = liveTagCounts(summaries, found, kind);
     final picked =
         kind == TagKind.origin ? _draft.originTags : _draft.topicTags;
     final pickedKeys = {for (final t in picked) tagKey(t)};
@@ -184,7 +189,10 @@ class _CollectionsFilterSheetState
                   key: Key('tag-${kind.name}-${c.text}'),
                   label: Text('${c.text} ${c.count}'),
                   selected: pickedKeys.contains(tagKey(c.text)),
-                  onSelected: (_) => _toggleTag(kind, c.text),
+                  onSelected:
+                      c.count == 0 && !pickedKeys.contains(tagKey(c.text))
+                          ? null
+                          : (_) => _toggleTag(kind, c.text),
                 ),
             ],
           ),
@@ -235,7 +243,8 @@ class _CollectionsFilterSheetState
   Widget build(BuildContext context) {
     final summaries =
         ref.watch(collectionSummariesProvider).valueOrNull ?? const [];
-    final n = searchCollections(summaries, _draft, now: DateTime.now()).length;
+    final matching = searchCollections(summaries, _draft, now: DateTime.now());
+    final n = matching.length;
     const sorts = {
       CollectionSort.myOrder: 'My order',
       CollectionSort.nameAZ: 'Name A–Z',
@@ -262,9 +271,10 @@ class _CollectionsFilterSheetState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _tagSection(
-                          'Where it comes from', TagKind.origin, summaries),
-                      _tagSection("What it's about", TagKind.topic, summaries),
+                      _tagSection('Where it comes from', TagKind.origin,
+                          summaries, matching),
+                      _tagSection("What it's about", TagKind.topic, summaries,
+                          matching),
                       _dateRow('Created', true),
                       _dateRow('Edited', false),
                       _row('Sort', [

@@ -80,7 +80,8 @@ void main() {
 
   testWidgets(
       'round buttons: Settings, Recycle bin, plus; top bar has only search '
-      'and filter (collection-tags SCR-04)', (t) async {
+      '(collection-tags SCR-04; the filter comes with the search field, '
+      'collections-search AC-01)', (t) async {
     await pump(t);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byTooltip('Recycle bin'), findsOneWidget);
@@ -88,9 +89,9 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(AppBar), matching: find.byType(IconButton)),
-        findsNWidgets(2));
+        findsNWidgets(1));
     expect(find.byIcon(Icons.search), findsOneWidget);
-    expect(find.byIcon(Icons.tune), findsOneWidget);
+    expect(find.byIcon(Icons.tune), findsNothing);
   });
 
   testWidgets('folder tap grows the path; path part and Up go back', (t) async {
