@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/models/tag_kind.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
@@ -117,7 +118,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
         : effectiveTagsOf(current);
     final notifier = ref.read(wordInputNotifierProvider.notifier);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppDecor.of(context).paper,
       appBar: AppBar(
         leading: widget.preview ? BackButton(onPressed: () {}) : null,
         title: const Text('Notes'),
@@ -129,9 +130,10 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           // The whole session's tags (notes-editing).
           Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF7F2FF),
-              border: Border(bottom: BorderSide(color: Color(0x33954EF3))),
+            decoration: BoxDecoration(
+              color: AppDecor.of(context).panel,
+              border: Border(
+                  bottom: BorderSide(color: AppDecor.of(context).panelBorder)),
             ),
             child: _typedTagFields(
               ref,
@@ -144,10 +146,11 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
           ),
           Expanded(
             child: sources.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No photos yet',
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                      style: TextStyle(
+                          fontSize: 18, color: AppDecor.of(context).muted),
                     ),
                   )
                 : LayoutBuilder(builder: (context, box) {
@@ -409,9 +412,9 @@ class _NoteItemState extends ConsumerState<_NoteItem>
         padding: const EdgeInsets.symmetric(horizontal: 6),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F2FF),
+            color: AppDecor.of(context).panel,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0x33954EF3)),
+            border: Border.all(color: AppDecor.of(context).panelBorder),
           ),
           child:
               ClipRRect(borderRadius: BorderRadius.circular(12), child: child),
@@ -469,8 +472,9 @@ class _NoteItemState extends ConsumerState<_NoteItem>
   /// Tapped, the words open as on the main screen, to edit and add to.
   Widget _words(BuildContext context) {
     final list = widget.lines.isEmpty
-        ? const Center(
-            child: Text('No words', style: TextStyle(color: Colors.grey)))
+        ? Center(
+            child: Text('No words',
+                style: TextStyle(color: AppDecor.of(context).muted)))
         : ListView(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
             children: [
@@ -638,8 +642,7 @@ class _ZoomablePictureState extends State<_ZoomablePicture> {
       );
 }
 
-/// The origin and topic tag fields of one place on the Notes page, with
-/// suggestions only while a field has focus (AC-34).
+/// The origin and topic tag fields of one place on the Notes page.
 Widget _typedTagFields(
   WidgetRef ref, {
   required List<String> origin,
@@ -653,7 +656,6 @@ Widget _typedTagFields(
         kind: kind,
         tags: tags,
         suggestions: ref.watch(tagSuggestionsProvider(kind)),
-        mode: SuggestionMode.whenFocused,
         onChanged: (t) => onChanged(kind, t),
         onForget: (t) async {
           final store = await ref.read(collectionStoreProvider.future);

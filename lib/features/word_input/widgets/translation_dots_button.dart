@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/translation_result.dart';
 import 'translation_options_content.dart';
 import 'open_dots_menu.dart';
@@ -61,7 +62,8 @@ class TranslationDotsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFilled = options?.hasDictionary ?? false;
     final dotIcon = isFilled ? Icons.circle : Icons.circle_outlined;
-    final dotColor = Colors.purple[600];
+    final decor = AppDecor.of(context);
+    final dotColor = decor.rowIcon;
     final dotsIcon = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -90,7 +92,7 @@ class TranslationDotsButton extends StatelessWidget {
           if (isShowing) onOpen();
         },
         showArrow: true,
-        arrowColor: Colors.black87,
+        arrowColor: decor.popup,
         arrowSize: 10,
         barrierColor: Colors.transparent,
         verticalMargin: 6,
@@ -100,7 +102,7 @@ class TranslationDotsButton extends StatelessWidget {
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Material(
-              color: Colors.black87,
+              color: decor.popup,
               child: Container(
                 constraints: BoxConstraints(
                   maxWidth: maxWidth,

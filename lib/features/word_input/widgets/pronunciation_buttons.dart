@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/services/pronunciation_service.dart';
 
 /// One flag+speaker button. Tapping it asks to hear the row's word in that
@@ -37,7 +38,8 @@ class _AccentButton extends StatelessWidget {
             Positioned(
               bottom: -2,
               right: -3,
-              child: Icon(Icons.volume_up, size: 9, color: Colors.purple[600]),
+              child: Icon(Icons.volume_up,
+                  size: 9, color: AppDecor.of(context).rowIcon),
             ),
           ],
         ),

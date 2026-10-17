@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/models/tag_kind.dart';
+import '../features/app_settings/app_settings_screen.dart';
 import '../features/collections/collections_screen.dart';
 import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
@@ -52,6 +53,7 @@ part 'routes.g.dart';
     TypedGoRoute<CollectionsRoute>(path: 'collections'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
+    TypedGoRoute<AppSettingsRoute>(path: 'app-settings'),
     TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
   ],
 )
@@ -230,6 +232,15 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
 
   @override
   Widget build(BuildContext context, GoRouterState state) => const SettingsScreen();
+}
+
+/// App settings (app-themes): settings for the whole app, opened from the
+/// side menu below History. Holds the theme gallery.
+class AppSettingsRoute extends GoRouteData with _$AppSettingsRoute {
+  const AppSettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const AppSettingsScreen();
 }
 
 /// The recycle bin (collections-screen SCR-08); opened from the top-level bin

@@ -9,6 +9,8 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopup
 import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
+import '../../core/theme/app_theme.dart';
+
 import '../../core/models/collection_name.dart';
 import '../../core/models/definition_result.dart';
 import '../../core/models/session_source.dart';
@@ -1003,7 +1005,34 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       child: Scaffold(
       appBar: photoPanelGuardedAppBar(AppBar(
         automaticallyImplyLeading: true,
-        title: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
+        // The title starts right after the menu button, the edit button right
+        // after the title; the free space goes before Next.
+        centerTitle: false,
+        leadingWidth: 48,
+        // The menu button takes the edit icon's colour.
+        iconTheme: IconThemeData(color: AppDecor.of(context).onBarButtonOf(context)),
+        titleSpacing: 0,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 2),
+            IconButton(
+              tooltip: 'Rename collection',
+              onPressed: _renameCollection,
+              // Narrow, so the pencil sits right after the title; the tap
+              // area keeps the full bar height.
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 48),
+              style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              color: AppDecor.of(context).onBarButtonOf(context),
+              icon: const Icon(Icons.edit, size: 20),
+            ),
+          ],
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         bottom: CollectionTagLine(
           originTags: originTags,
@@ -1014,28 +1043,14 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Tooltip(
-              message: 'Rename collection',
-              child: ElevatedButton(
-                onPressed: _renameCollection,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Theme.of(context).colorScheme.primary,
-                ),
-                child: const Icon(Icons.edit),
-              ),
-            ),
-          ),
-          Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
               onPressed: _navigateToTableScreen,
               icon: const Icon(Icons.arrow_forward),
               label: const Text('Next'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: AppDecor.of(context).barButton,
+                foregroundColor: AppDecor.of(context).onBarButtonOf(context),
               ),
             ),
           ),
@@ -1082,10 +1097,21 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                       const HistoryRoute().go(context);
                     },
                   ),
+              ListTile(
+                key: const Key('drawer-app-settings'),
+                leading: const Icon(Icons.palette_outlined),
+                title: const Text('App settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  const AppSettingsRoute().go(context);
+                },
+              ),
                 ],
               ),
             ),
-      body: Stack(
+        // The theme's backdrop, behind the list (app-themes).
+      body: AppBackdrop(
+            child: Stack(
         children: [
       Stack(
         children: [
@@ -1155,7 +1181,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             ),
           ),
         ],
-      ),
+        )),
       // Both round buttons share the Scaffold's FAB slot, so the Scaffold moves
       // them together: above a snackbar, above the keyboard, above the bottom
       // safe area -- always on one line. A full-width row, centred, puts the
@@ -1179,8 +1205,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               tooltip: 'Settings',
               elevation: 8.0,
               shape: const CircleBorder(),
-              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
-              foregroundColor: Colors.white,
+              backgroundColor: AppDecor.of(context).fabAlt,
+              foregroundColor: AppDecor.of(context).onFabAlt,
               child: const Icon(Icons.settings),
             ),
             WordInputSpeedDial(

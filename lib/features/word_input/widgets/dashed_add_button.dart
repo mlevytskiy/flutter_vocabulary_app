@@ -1,6 +1,7 @@
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// The shared page's "+ Add a word" button in the app: bold blue text in a
 /// 1 px dashed outline (notes-editing, owner 2026-10-15; the page's `.add`
@@ -15,27 +16,28 @@ class DashedAddButton extends StatelessWidget {
   final String label;
   final VoidCallback onPressed;
 
-  static const color = Color(0xFF2962FF);
-
   @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.centerLeft,
-        child: CustomPaint(
-          painter: const _DashedOutline(color: color, radius: 6),
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(6),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              child: Text(
-                label,
-                style: const TextStyle(
-                    color: color, fontWeight: FontWeight.w600, fontSize: 15),
-              ),
+  Widget build(BuildContext context) {
+    final color = AppDecor.of(context).addAccent;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: CustomPaint(
+        painter: _DashedOutline(color: color, radius: 6),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Text(
+              label,
+              style: TextStyle(
+                  color: color, fontWeight: FontWeight.w600, fontSize: 15),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _DashedOutline extends CustomPainter {

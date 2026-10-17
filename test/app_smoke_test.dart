@@ -15,6 +15,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
+import 'package:flutter_vocabulary_app/features/app_settings/app_settings_screen.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
 import 'package:flutter_vocabulary_app/features/history/history_screen.dart';
 import 'package:flutter_vocabulary_app/features/settings/settings_screen.dart';
@@ -89,8 +90,9 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // The main screen, on the current session.
+    // The main screen, on the current session; no new-user trial line.
     expect(find.byType(WordInputScreen), findsOneWidget);
+    expect(find.byKey(TrialFrame.lineKey), findsNothing);
     expect(container.read(wordInputNotifierProvider).value!.words.first.word,
         'apple');
 
@@ -138,6 +140,19 @@ void main() {
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(WordInputScreen), findsOneWidget);
+
+    // The side menu -> App settings, below History.
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    expect(
+        tester.getTopLeft(find.byKey(const Key('drawer-app-settings'))).dy,
+        greaterThan(tester.getTopLeft(find.text('History')).dy));
+    await tester.tap(find.text('App settings'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppSettingsScreen), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.byType(WordInputScreen), findsOneWidget);

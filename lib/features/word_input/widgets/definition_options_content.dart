@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Content of the popup opened from the definition dots button
 /// (definition-mode, spec AC-08): the dictionary's short senses for the row's
@@ -74,7 +75,7 @@ class _DefinitionOptionsContentState extends State<DefinitionOptionsContent> {
             child: _senses.isEmpty ? _buildLoadPrompt() : _buildSenses(),
           ),
         ),
-        const Divider(color: Colors.white24, height: 1),
+        Divider(color: _on(context).withAlpha(0x3D), height: 1),
         Padding(
           padding: const EdgeInsets.all(8),
           child: Row(
@@ -82,7 +83,7 @@ class _DefinitionOptionsContentState extends State<DefinitionOptionsContent> {
             children: [
               IconButton(
                 icon: const Icon(Icons.close),
-                color: Colors.white70,
+                color: _on(context).withAlpha(0xB3),
                 iconSize: 24,
                 onPressed: widget.onClose,
               ),
@@ -100,21 +101,21 @@ class _DefinitionOptionsContentState extends State<DefinitionOptionsContent> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_busy)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
               child: SizedBox(
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white70,
+                  color: _on(context).withAlpha(0xB3),
                 ),
               ),
             )
           else
             IconButton(
               icon: const Icon(Icons.refresh),
-              color: Colors.white70,
+              color: _on(context).withAlpha(0xB3),
               iconSize: 28,
               tooltip: 'Load definitions',
               onPressed: widget.canLoad ? _load : null,
@@ -126,7 +127,7 @@ class _DefinitionOptionsContentState extends State<DefinitionOptionsContent> {
                     ? 'No definitions loaded yet. Tap to load.'
                     : 'Type a word to load definitions.'),
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: _on(context).withAlpha(0xB3)),
           ),
         ],
       ),
@@ -145,23 +146,21 @@ class _DefinitionOptionsContentState extends State<DefinitionOptionsContent> {
               borderRadius: BorderRadius.circular(10),
               onTap: () => widget.onSelectSense(_senses[i]),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.white12,
+                  color: _on(context).withAlpha(0x1F),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('${i + 1}. ',
-                        style: const TextStyle(
-                            color: Colors.white38, fontSize: 15)),
+                        style: TextStyle(
+                            color: _on(context).withAlpha(0x62), fontSize: 15)),
                     Expanded(
                       child: Text(
                         _senses[i],
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 15),
+                        style: TextStyle(color: _on(context), fontSize: 15),
                       ),
                     ),
                   ],
@@ -173,3 +172,6 @@ class _DefinitionOptionsContentState extends State<DefinitionOptionsContent> {
     );
   }
 }
+
+/// The text and lines on the three dots' menu (app-themes).
+Color _on(BuildContext context) => AppDecor.of(context).onPopup;

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/session_source.dart';
 import '../../../core/providers.dart';
 
@@ -53,18 +54,18 @@ class _PhotoStackState extends ConsumerState<PhotoStack> {
           for (final (i, bytes) in _bytes.indexed)
             Transform.rotate(
               angle: stacked ? _turns[i] * math.pi / 180 : 0,
-              child: _thumb(bytes),
+              child: _thumb(context, bytes),
             ),
         ],
       ),
     );
   }
 
-  Widget _thumb(Future<Uint8List?> bytes) => Container(
+  Widget _thumb(BuildContext context, Future<Uint8List?> bytes) => Container(
         width: _size,
         height: _size,
         decoration: BoxDecoration(
-          color: Colors.grey.shade400,
+          color: AppDecor.of(context).thumb,
           border: Border.all(color: Colors.white, width: 2),
           borderRadius: BorderRadius.circular(8),
           boxShadow: const [

@@ -1,0 +1,97 @@
+import 'package:flutter/material.dart';
+
+import '../app_decor.dart';
+import '../theme_kit.dart';
+import 'themes.dart';
+
+final aurora = AppThemeSpec(
+  id: AppThemeId.aurora,
+  name: 'Aurora',
+  description: 'Dark glass under northern lights',
+  build: () {
+    const night = Color(0xFF070B14);
+    const card = Color(0xFF101A2E);
+    const mint = Color(0xFF64FFDA);
+    const violet = Color(0xFFB388FF);
+    const ice = Color(0xFFE6F1FF);
+    return buildTheme(
+      scheme: seedScheme(const Color(0xFF1DE9B6), Brightness.dark,
+          primary: mint,
+          onPrimary: const Color(0xFF00201A),
+          secondary: violet,
+          surface: night,
+          onSurface: ice,
+          secondaryContainer: const Color(0xFF123A33),
+          onSecondaryContainer: mint,
+          tertiaryContainer: const Color(0xFF2E1F55),
+          onTertiaryContainer: const Color(0xFFD6C4FF)),
+      decor: AppDecor(
+        topBar: const Color(0xCC0C1322),
+        wordRow: Colors.white.withValues(alpha: 0.07),
+        wordRowBorder: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        wordRowRadius: 18,
+        wordRowBlur: 22,
+        rowText: ice,
+        rowSubtext: const Color(0xFF9FB3C8),
+        rowIcon: mint,
+        rowHandle: violet,
+        rowClose: const Color(0xFF7A86A8),
+        popup: const Color(0xF2141F36),
+        onPopup: ice,
+        addAccent: mint,
+        fab: mint,
+        fabActive: const Color(0xFF3DD9B8),
+        onFab: const Color(0xFF00201A),
+        fabAlt: violet,
+        onFabAlt: const Color(0xFF1A0F33),
+        dialPhoto: const Color(0xFF1DE9B6),
+        dialSubtitles: const Color(0xFF2A3350),
+        dialQuizlet: const Color(0xFF448AFF),
+        dialFolder: const Color(0xFFFFD166),
+        onDial: const Color(0xFF07131A),
+        barButton: Colors.white.withValues(alpha: 0.1),
+        onBarButton: mint,
+        paper: night,
+        panel: card,
+        panelBorder: mint.withValues(alpha: 0.2),
+        muted: const Color(0xFF6F7F99),
+        subtle: const Color(0xFF8C9BB3),
+        strongIcon: ice,
+        placeholder: const Color(0xFF1A2335),
+        onPlaceholder: const Color(0x66FFFFFF),
+        thumb: const Color(0xFF1F2A40),
+        bin: const Color(0xFF34436B),
+        binHot: const Color(0xFFFF5277),
+        onBin: ice,
+        binFolder: const Color(0xFFFFD166),
+        right: const Color(0xFF3DDC97),
+        wrong: const Color(0xFFFF5C7A),
+        picked: const Color(0xFF7C8DB0),
+        pic50: const Color(0xFF1B2F3A),
+        pic100: const Color(0xFF22404A),
+        pic200: const Color(0xFF2F6266),
+        pic500: mint,
+        pic600: violet,
+        picPaper: card,
+        glassTab: const Color(0x330C1322),
+        glassPanel: const Color(0x660C1322),
+        glassEdge: mint,
+        glassShadow: Colors.black,
+        backdrop: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF0B1426), night],
+        ),
+        blobs: const [
+          Color(0x661DE9B6),
+          Color(0x777C4DFF),
+          Color(0x5500B0FF),
+          Color(0x44FF4FD8),
+        ],
+      ),
+      bodyFont: 'Manrope',
+      displayFont: 'Unbounded',
+      radius: 18,
+    );
+  },
+);

@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
 import 'collection_pictures.dart';
+import '../../core/theme/app_theme.dart';
 
 /// What a [CollectionIcon] stands for on the Collections screen (SCR-04).
 enum CollectionIconKind { folder, collection }
-
-/// The recycle-bin button's colour; the small bin buttons of delete mode
-/// match it.
-const binButtonColor = Colors.blueGrey;
 
 /// One tile of the Collections grid: the [CollectionPicture], the name (two
 /// lines, ellipsis), "N words" and a "current" badge for a collection, and,
@@ -85,7 +82,8 @@ class CollectionIcon extends StatelessWidget {
             if (_isCollection)
               Text(
                 '$wordCount words',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                style:
+                    TextStyle(fontSize: 12, color: AppDecor.of(context).muted),
               ),
             if (_isCollection && isCurrent)
               Container(
@@ -159,7 +157,8 @@ class CollectionPicture extends StatelessWidget {
   }
 }
 
-/// Delete mode's small bin button: a white bin on a [binButtonColor] circle,
+/// Delete mode's small bin button: a white bin on a blue-grey circle in every
+/// theme ([AppDecor.smallBin]),
 /// 22 across, in a 32x32 touch area inside the picture's top-left corner.
 class _SmallBinButton extends StatelessWidget {
   const _SmallBinButton({required this.onTap});
@@ -180,18 +179,18 @@ class _SmallBinButton extends StatelessWidget {
             child: Container(
               width: 22,
               height: 22,
-              decoration: const BoxDecoration(
-                color: binButtonColor,
+              decoration: BoxDecoration(
+                color: AppDecor.of(context).smallBin,
                 shape: BoxShape.circle,
-                boxShadow: [
+                boxShadow: const [
                   BoxShadow(
                       color: Colors.black26,
                       blurRadius: 3,
                       offset: Offset(0, 1)),
                 ],
               ),
-              child: const Icon(Icons.delete_outline,
-                  size: 14, color: Colors.white),
+              child: Icon(Icons.delete_outline,
+                  size: 14, color: AppDecor.of(context).onSmallBin),
             ),
           ),
         ),

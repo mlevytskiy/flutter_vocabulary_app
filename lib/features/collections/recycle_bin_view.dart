@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_theme.dart';
 
 /// One item of the recycle bin (SCR-08), as plain values.
 @immutable
@@ -46,8 +47,8 @@ class RecycleBinList extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     if (list.isEmpty) {
-      return const Center(
-        child: Text(emptyText, style: TextStyle(fontSize: 18, color: Colors.grey)),
+      return Center(
+        child: Text(emptyText, style: TextStyle(fontSize: 18, color: AppDecor.of(context).muted)),
       );
     }
     return ListView.builder(
@@ -84,7 +85,7 @@ class _BinRow extends StatelessWidget {
     return ListTile(
       leading: Icon(
         item.isFolder ? Icons.folder : Icons.style,
-        color: item.isFolder ? Colors.amber.shade600 : Theme.of(context).colorScheme.primary,
+        color: item.isFolder ? AppDecor.of(context).binFolder : Theme.of(context).colorScheme.primary,
       ),
       title: Text(item.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: item.isFolder ? null : Text(_count(item.wordCount, 'word')),

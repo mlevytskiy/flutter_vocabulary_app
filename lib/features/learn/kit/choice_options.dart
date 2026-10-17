@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'question_builder.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// The four options of a choice question (learn-pick-the-answer S-28, D-17,
 /// D-43): full-width buttons whose text wraps, never cut. [onPick] fires once;
@@ -39,9 +40,10 @@ class _ChoiceOptionsState extends State<ChoiceOptions> {
   Color? _color(int i) {
     final picked = widget.picked;
     if (picked == null) return null;
-    if (!widget.reveal) return i == picked ? Colors.blueGrey : null;
-    if (i == widget.question.rightIndex) return Colors.green;
-    return i == picked ? Colors.red : null;
+    final decor = AppDecor.of(context);
+    if (!widget.reveal) return i == picked ? decor.picked : null;
+    if (i == widget.question.rightIndex) return decor.right;
+    return i == picked ? decor.wrong : null;
   }
 
   void _tap(int i) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/subtitle_import_options.dart';
 import '../../../core/models/vocab_word.dart';
 import 'subtitle_poster.dart';
@@ -132,7 +133,7 @@ Future<List<VocabWord>?> _showResultDialog(
                               children: [
                                 if (setName != null) Text(setName, style: const TextStyle(fontWeight: FontWeight.bold)),
                                 if (headerText.isNotEmpty)
-                                  Text(headerText, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                                  Text(headerText, style: TextStyle(fontSize: 12, color: AppDecor.of(context).subtle)),
                               ],
                             ),
                           ),
@@ -149,7 +150,7 @@ Future<List<VocabWord>?> _showResultDialog(
                         headerText,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey.shade600,
+                          color: AppDecor.of(context).subtle,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -189,7 +190,7 @@ Future<List<VocabWord>?> _showResultDialog(
                                     ),
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.close, color: Colors.black),
+                                    icon: Icon(Icons.close, color: AppDecor.of(context).strongIcon),
                                     tooltip: 'Skip this word',
                                     visualDensity: VisualDensity.compact,
                                     onPressed: () {

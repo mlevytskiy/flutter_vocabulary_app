@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 
+import '../../../core/theme/app_theme.dart';
+
 import 'quizlet_logo_icon.dart';
 
 /// The word-input screen's floating speed-dial FAB: take a photo (green),
@@ -22,13 +24,14 @@ class WordInputSpeedDial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final decor = AppDecor.of(context);
     return SpeedDial(
       icon: Icons.add,
       activeIcon: Icons.close,
-      backgroundColor: Colors.red,
-      foregroundColor: Colors.white,
-      activeBackgroundColor: Colors.red[700],
-      activeForegroundColor: Colors.white,
+      backgroundColor: decor.fab,
+      foregroundColor: decor.onFab,
+      activeBackgroundColor: decor.fabActive,
+      activeForegroundColor: decor.onFab,
       visible: true,
       closeManually: false,
       curve: Curves.bounceIn,
@@ -40,22 +43,22 @@ class WordInputSpeedDial extends StatelessWidget {
         SpeedDialChild(
           child: const Icon(Icons.camera_alt),
           label: 'Get words from photo',
-          backgroundColor: Colors.green,
-          foregroundColor: Colors.white,
+          backgroundColor: decor.dialPhoto,
+          foregroundColor: decor.onDial,
           onTap: onTakePhoto,
         ),
         SpeedDialChild(
           child: const Icon(Icons.closed_caption),
           label: 'From subtitles',
-          backgroundColor: Colors.grey[800],
-          foregroundColor: Colors.white,
+          backgroundColor: decor.dialSubtitles,
+          foregroundColor: decor.onDial,
           onTap: onFromSubtitles,
         ),
         SpeedDialChild(
           child: const QuizletLogoIcon(),
           label: 'Import from Quizlet',
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
+          backgroundColor: decor.dialQuizlet,
+          foregroundColor: decor.onDial,
           onTap: onImportFromQuizlet,
         ),
       ],

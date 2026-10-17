@@ -1,0 +1,295 @@
+import 'dart:ui' show ImageFilter;
+
+import 'package:flutter/material.dart';
+
+/// The top bars' colour in the Classic theme: the main screen's word-row
+/// background (`word_row_item.dart`), chosen by the owner 2026-10-16.
+const classicTopBarColor = Color(0x57d9c1ff);
+
+/// Every colour the screens used to hard-code, per theme (app-themes, owner
+/// 2026-10-17). The defaults are the Classic values: the very constants the
+/// screens had, except the text colours, which are Matcha's (owner,
+/// 2026-10-17); [AppDecor.of] falls back
+/// to it, so a widget built without an app theme (tests, previews) does too.
+@immutable
+class AppDecor extends ThemeExtension<AppDecor> {
+  const AppDecor({
+    this.topBar = classicTopBarColor,
+    this.wordRow = const Color(0x57d9c1ff),
+    this.wordRowBorder,
+    this.wordRowRadius = 12,
+    this.wordRowBlur = 0,
+    this.rowText = const Color(0xFF2F4A22),
+    this.rowSubtext = const Color(0xFF5E6E52),
+    this.rowIcon = const Color(0xFF8E24AA),
+    this.rowHandle = const Color(0xFF7F77DD),
+    this.rowClose = const Color(0xFFa883ca),
+    this.popup = Colors.black87,
+    this.onPopup = Colors.white,
+    this.addAccent = const Color(0xFF2962FF),
+    this.fab = Colors.red,
+    this.fabActive = const Color(0xFFD32F2F),
+    this.onFab = Colors.white,
+    this.fabAlt = const Color(0xff954ef3),
+    this.onFabAlt = Colors.white,
+    this.dialPhoto = Colors.green,
+    this.dialSubtitles = const Color(0xFF424242),
+    this.dialQuizlet = Colors.blue,
+    this.dialFolder = const Color(0xFFFFA000),
+    this.onDial = Colors.white,
+    this.barButton = Colors.white,
+    this.onBarButton,
+    this.paper = Colors.white,
+    this.panel = const Color(0xFFF7F2FF),
+    this.panelBorder = const Color(0x33954EF3),
+    this.muted = const Color(0xFF8A9A7E),
+    this.subtle = const Color(0xFF6B7A60),
+    this.strongIcon = const Color(0xFF2F3A28),
+    this.placeholder = const Color(0xFFE0E0E0),
+    this.onPlaceholder = Colors.black45,
+    this.thumb = const Color(0xFFBDBDBD),
+    this.bin = Colors.blueGrey,
+    this.binHot = const Color(0xFFD32F2F),
+    this.onBin = Colors.white,
+    this.binFolder = const Color(0xFFFFB300),
+    this.smallBin = Colors.blueGrey,
+    this.onSmallBin = Colors.white,
+    this.right = Colors.green,
+    this.wrong = Colors.red,
+    this.picked = Colors.blueGrey,
+    this.pic50 = const Color(0xfff6effe),
+    this.pic100 = const Color(0xffeee2fd),
+    this.pic200 = const Color(0xffdcc4fb),
+    this.pic500 = const Color(0xff954ef3),
+    this.pic600 = const Color(0xff7c3ad6),
+    this.picPaper = Colors.white,
+    this.picOutline = false,
+    this.glassTab = const Color(0x38FFFFFF),
+    this.glassPanel = const Color(0x4DFFFFFF),
+    this.glassEdge = const Color(0xFF9F86D8),
+    this.glassShadow = const Color(0xFF3A1D6E),
+    this.backdrop,
+    this.blobs = const [],
+  });
+
+  /// Every top bar (and `inversePrimary`).
+  final Color topBar;
+
+  /// A word row's fill, border, corner radius and the blur behind it (0: none).
+  final Color wordRow;
+  final BoxBorder? wordRowBorder;
+  final double wordRowRadius;
+  final double wordRowBlur;
+
+  /// A one-line row's word and detail (the photo panel's rows).
+  final Color rowText;
+  final Color rowSubtext;
+
+  /// A row's lightning buttons, three dots and speaker, drag handle, cross.
+  final Color rowIcon;
+  final Color rowHandle;
+  final Color rowClose;
+
+  /// The three dots' menu.
+  final Color popup;
+  final Color onPopup;
+
+  /// The dashed "+ Add a word" button.
+  final Color addAccent;
+
+  /// The plus button of a speed dial, and its open state.
+  final Color fab;
+  final Color fabActive;
+  final Color onFab;
+
+  /// The round button beside it (Settings).
+  final Color fabAlt;
+  final Color onFabAlt;
+
+  /// The speed dials' small buttons.
+  final Color dialPhoto;
+  final Color dialSubtitles;
+  final Color dialQuizlet;
+  final Color dialFolder;
+  final Color onDial;
+
+  /// The buttons on a top bar (Rename, Next, Start); [onBarButton] null is
+  /// the scheme's primary.
+  final Color barButton;
+  final Color? onBarButton;
+
+  /// The white page of Notes; the Notes tag strip and pages, and their edge.
+  final Color paper;
+  final Color panel;
+  final Color panelBorder;
+
+  /// Empty-state text, secondary text, a dark close icon.
+  final Color muted;
+  final Color subtle;
+  final Color strongIcon;
+
+  /// A missing photo, its icon, and the back of a photo thumbnail.
+  final Color placeholder;
+  final Color onPlaceholder;
+  final Color thumb;
+
+  /// The recycle bin button, while something is held over it, its glyph; a
+  /// folder's icon in the bin.
+  final Color bin;
+  final Color binHot;
+  final Color onBin;
+  final Color binFolder;
+
+  /// Delete mode's small bin button beside each Collections item, and its
+  /// glyph: the same blue-grey circle with a white bin in every theme, so it
+  /// stands out on any background (owner, 2026-10-17).
+  final Color smallBin;
+  final Color onSmallBin;
+
+  /// An exercise's right and wrong answers, and the one picked before.
+  final Color right;
+  final Color wrong;
+  final Color picked;
+
+  /// The Collections pictures' shades, lightest to darkest, their paper, and
+  /// whether they are drawn as outlines only.
+  final Color pic50;
+  final Color pic100;
+  final Color pic200;
+  final Color pic500;
+  final Color pic600;
+  final Color picPaper;
+  final bool picOutline;
+
+  /// The photo tab's and panel's glass, its edge light and its shadow.
+  final Color glassTab;
+  final Color glassPanel;
+  final Color glassEdge;
+  final Color glassShadow;
+
+  /// Painted behind the main screen's list: a gradient and soft colour blobs.
+  final Gradient? backdrop;
+  final List<Color> blobs;
+
+  static const classic = AppDecor();
+
+  static AppDecor of(BuildContext context) =>
+      Theme.of(context).extension<AppDecor>() ?? classic;
+
+  Color onBarButtonOf(BuildContext context) =>
+      onBarButton ?? Theme.of(context).colorScheme.primary;
+
+  @override
+  AppDecor copyWith() => this;
+
+  /// Themes switch at the halfway point; [MaterialApp] still animates the
+  /// colour scheme around it.
+  @override
+  AppDecor lerp(AppDecor? other, double t) =>
+      other == null || t < 0.5 ? this : other;
+}
+
+/// Paints [AppDecor.backdrop] and its blobs behind [child]; nothing in a theme
+/// without one. The tree is the same either way, so switching themes keeps
+/// the state below.
+class AppBackdrop extends StatelessWidget {
+  const AppBackdrop({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+        painter: _BackdropPainter(AppDecor.of(context)),
+        child: child,
+      );
+}
+
+class _BackdropPainter extends CustomPainter {
+  _BackdropPainter(this.decor);
+
+  final AppDecor decor;
+
+  // Where the blobs sit, as fractions of the size, and their radius as a
+  // fraction of the shorter side.
+  static const _spots = [
+    (0.12, 0.10, 0.75),
+    (0.95, 0.38, 0.70),
+    (0.20, 0.78, 0.80),
+    (0.85, 0.95, 0.60),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    if (decor.backdrop != null) {
+      canvas.drawRect(
+          rect, Paint()..shader = decor.backdrop!.createShader(rect));
+    }
+    final side = size.shortestSide;
+    for (var i = 0; i < decor.blobs.length && i < _spots.length; i++) {
+      final (x, y, r) = _spots[i];
+      final center = Offset(size.width * x, size.height * y);
+      final radius = side * r;
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [decor.blobs[i], decor.blobs[i].withValues(alpha: 0)],
+          ).createShader(Rect.fromCircle(center: center, radius: radius)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_BackdropPainter old) => old.decor != decor;
+}
+
+/// A word row's surface: the theme's fill, border and radius, with a frosted
+/// blur behind it when the theme has one. The tree does not depend on the
+/// theme, so a switch keeps the row's state.
+class DecorSurface extends StatelessWidget {
+  const DecorSurface({
+    super.key,
+    required this.padding,
+    this.margin = EdgeInsets.zero,
+    this.foregroundDecoration,
+    required this.child,
+  });
+
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry margin;
+  final Decoration? foregroundDecoration;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final decor = AppDecor.of(context);
+    final radius = BorderRadius.circular(decor.wordRowRadius);
+    final blur = decor.wordRowBlur;
+    // A non-uniform border (a ruled line) cannot take rounded corners.
+    final uniform = decor.wordRowBorder is! Border ||
+        (decor.wordRowBorder! as Border).isUniform;
+    return Padding(
+      padding: margin,
+      child: ClipRRect(
+        borderRadius: radius,
+        clipBehavior: blur > 0 ? Clip.antiAlias : Clip.none,
+        child: BackdropFilter(
+          enabled: blur > 0,
+          filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              color: decor.wordRow,
+              border: decor.wordRowBorder,
+              borderRadius: uniform ? radius : null,
+            ),
+            foregroundDecoration: foregroundDecoration,
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}

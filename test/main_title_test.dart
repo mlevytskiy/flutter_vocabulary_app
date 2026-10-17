@@ -116,14 +116,18 @@ void main() {
     await pumpMain(tester, name: 'Kitchen words');
     expect((tester.widget(title()) as Text).data, 'Kitchen words');
     expect(find.text('English Vocabulary'), findsNothing);
-    final edit = tester.widget<ElevatedButton>(find.ancestor(
-        of: find.byIcon(Icons.edit), matching: find.byType(ElevatedButton)));
-    expect(edit.style?.backgroundColor?.resolve({}), Colors.white);
+    // A bare icon (no filled circle) right after the title, in the colour
+    // the menu button shares.
+    final edit = tester.widget<IconButton>(find.ancestor(
+        of: find.byIcon(Icons.edit), matching: find.byType(IconButton)));
+    expect(edit.style?.backgroundColor, isNull);
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.iconTheme?.color, edit.color);
     expect(
         find.descendant(
             of: find.ancestor(
                 of: find.byIcon(Icons.edit),
-                matching: find.byType(ElevatedButton)),
+                matching: find.byType(IconButton)),
             matching: find.byType(Text)),
         findsNothing);
     expect(find.text('Next'), findsOneComponent());
@@ -149,11 +153,16 @@ void main() {
         tester
             .getSize(find.ancestor(
                 of: find.byIcon(Icons.edit),
-                matching: find.byType(ElevatedButton)))
-            .width,
+                matching: find.byType(IconButton)))
+            .height,
         greaterThanOrEqualTo(48));
     expect(tester.getRect(title()).right,
         lessThanOrEqualTo(tester.getRect(editButton()).left));
+    // The pencil sits right after the title: no hidden tap-target margin.
+    expect(
+        tester.getRect(find.byIcon(Icons.edit)).left -
+            tester.getRect(title()).right,
+        lessThanOrEqualTo(8));
     await tearDownMain(tester);
   });
 

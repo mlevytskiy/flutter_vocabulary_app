@@ -182,10 +182,6 @@ class _CollectionsFilterSheetState
               for (final c in shown)
                 FilterChip(
                   key: Key('tag-${kind.name}-${c.text}'),
-                  avatar: Icon(
-                    kind == TagKind.origin ? Icons.explore_outlined : Icons.tag,
-                    size: 16,
-                  ),
                   label: Text('${c.text} ${c.count}'),
                   selected: pickedKeys.contains(tagKey(c.text)),
                   onSelected: (_) => _toggleTag(kind, c.text),

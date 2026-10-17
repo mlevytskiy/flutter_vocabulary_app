@@ -15,8 +15,11 @@ updated_at: "2026-10-15"
 
 ```
 lib/
-  main.dart                     runApp(ProviderScope(child: App()))
-  app.dart                      MaterialApp.router — theme unchanged
+  main.dart                     runApp(AppRestarter())
+  app_restarter.dart            ProviderScope(child: App()) that can be dropped and built again
+                                (new-user-trial: the data moves while nothing holds the database)
+  app.dart                      MaterialApp.router — the chosen theme; TrialFrame draws the
+                                new-user trial's red line over every screen
   router/
     routes.dart (+ routes.g.dart)   the ONLY place routes are declared (go_router_builder)
   config/
@@ -58,6 +61,15 @@ lib/
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
+    theme/                      app-themes; import app_theme.dart (exports the rest).
+      app_decor.dart            AppDecor (every colour a screen used to hard-code, the Collections
+                                pictures' shades, row shape, blur, backdrop; defaults = Classic),
+                                AppBackdrop, DecorSurface
+      theme_kit.dart            AppThemeSpec, buildTheme, seedScheme, withDisplayFont
+      themes/                   one file per theme (classic, aurora, matcha, amber_terminal,
+                                windows95); themes.dart = AppThemeId + appThemes and how to add
+                                one. The choice is the persisted appThemeNotifier in
+                                providers.dart, shown on the App settings page
     services/                   photo_scaler.dart, vocab_photo_service.dart,
                                 collection_store.dart (persistence: Isar + the current-session pointer,
                                 and beside it the History pick record — session id + time,
@@ -72,6 +84,8 @@ lib/
                                 url) and each row's sourceId; republishes with the stored token,
                                 good-looking-web)
                                 dictionary_service.dart (definition-mode: POST /define on the Worker)
+                                new_user_trial.dart (new-user-trial: moves the documents dir and
+                                every preference to new_user_backup/ in the support dir, and back)
                                 source_photo_store.dart (the kept 1600 px photo files under
                                 source_photos/ in the documents dir; never throws, good-looking-web)
                                 photo_upload_service.dart (background POST /sessions/<id>/sources/

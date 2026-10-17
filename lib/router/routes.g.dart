@@ -79,6 +79,10 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           factory: _$SettingsRoute._fromState,
         ),
         GoRouteData.$route(
+          path: 'app-settings',
+          factory: _$AppSettingsRoute._fromState,
+        ),
+        GoRouteData.$route(
           path: 'recycle-bin',
           factory: _$RecycleBinRoute._fromState,
         ),
@@ -490,6 +494,29 @@ mixin _$SettingsRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/settings',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$AppSettingsRoute on GoRouteData {
+  static AppSettingsRoute _fromState(GoRouterState state) =>
+      const AppSettingsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/app-settings',
       );
 
   @override

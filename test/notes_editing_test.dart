@@ -266,8 +266,11 @@ void main() {
       await tester.pump();
       expect(source('p1').links, ['https://one', 'https://two']);
 
-      await tester.tap(
-          find.descendant(of: second, matching: find.byTooltip('Remove link')));
+      final remove =
+          find.descendant(of: second, matching: find.byTooltip('Remove link'));
+      await tester.ensureVisible(remove);
+      await tester.pumpAndSettle();
+      await tester.tap(remove);
       await tester.pumpAndSettle();
       expect(source('p1').links, ['https://one']);
     });
@@ -282,16 +285,13 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      // Focused, the field suggests the presets of its kind (T12, AC-34).
+      // Typing, the field suggests the presets of its kind (T12, AC-34).
       await tester.ensureVisible(field);
       await tester.pumpAndSettle();
-      await tester.tap(field);
+      await tester.enterText(field, 'fo');
       await tester.pumpAndSettle();
-      expect(find.byKey(TypedTagField.suggestionKey('Food')), findsOneWidget);
-      await tester
-          .ensureVisible(find.byKey(TypedTagField.suggestionKey('Food')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(TypedTagField.suggestionKey('Food')));
+      expect(find.byKey(TypedTagField.optionKey('Food')), findsOneWidget);
+      await tester.tap(find.byKey(TypedTagField.optionKey('Food')));
       await tester.pumpAndSettle();
       expect(source('p1').topicTags, ['kitchen', 'Food']);
       expect(
@@ -324,9 +324,9 @@ void main() {
           lessThan(tester.getTopLeft(field).dy));
       expect(find.text('Session tags'), findsNothing);
 
-      await tester.tap(field);
+      await tester.enterText(field, 'fo');
       await tester.pumpAndSettle();
-      expect(find.byKey(TypedTagField.suggestionKey('Food')), findsWidgets);
+      expect(find.byKey(TypedTagField.optionKey('Food')), findsWidgets);
       await tester.enterText(field, 'week 3');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();

@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/dialogues/dialogue_rules.dart' show afterPublish;
+import '../../core/theme/app_theme.dart';
 import '../../core/models/collection_name.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
@@ -552,8 +553,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
               tooltip: 'Settings',
               elevation: 8.0,
               shape: const CircleBorder(),
-              backgroundColor: const Color(0xff954ef3),
-              foregroundColor: Colors.white,
+              backgroundColor: AppDecor.of(context).fabAlt,
+              foregroundColor: AppDecor.of(context).onFabAlt,
               child: const Icon(Icons.settings),
             ),
             if (canEdit)
@@ -561,8 +562,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
                 heroTag: null,
                 onPressed: () => _confirmEdit(collectionId),
                 tooltip: 'Edit',
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: AppDecor.of(context).fab,
+                foregroundColor: AppDecor.of(context).onFab,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.edit),
               ),
@@ -576,10 +577,10 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
         isSharing: _isPublishing,
       )),
       body: wordPairs.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No words added yet',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+                style: TextStyle(fontSize: 18, color: AppDecor.of(context).muted),
               ),
             )
           : Stack(
@@ -720,7 +721,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
               Theme.of(context).colorScheme.primaryContainer,
             ),
             border: TableBorder.all(
-              color: Colors.grey.shade300,
+              color: AppDecor.of(context).placeholder,
               width: 1,
             ),
             columns: [

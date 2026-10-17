@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/models/tag_kind.dart';
 import '../../core/services/collection_search.dart';
 import '../tags/tag_chip.dart';
@@ -96,9 +97,10 @@ class CollectionsResultsView extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(emptyText,
-                              style:
-                                  TextStyle(fontSize: 18, color: Colors.grey)),
+                          Text(emptyText,
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  color: AppDecor.of(context).muted)),
                           const SizedBox(height: 12),
                           FilledButton.tonal(
                             onPressed: onClear,

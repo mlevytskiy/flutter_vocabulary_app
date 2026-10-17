@@ -3,6 +3,7 @@ import 'package:popup_menu_2/popup_menu_2.dart';
 
 import 'definition_options_content.dart';
 import 'open_dots_menu.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// Definition dots button (definition-mode, spec AC-08): the definition
 /// counterpart of `TranslationDotsButton`, built the same way — outside the
@@ -38,7 +39,8 @@ class DefinitionDotsButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFilled = senses?.isNotEmpty ?? false;
     final dotIcon = isFilled ? Icons.circle : Icons.circle_outlined;
-    final dotColor = Colors.purple[600];
+    final decor = AppDecor.of(context);
+    final dotColor = decor.rowIcon;
     final dotsIcon = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -63,7 +65,7 @@ class DefinitionDotsButton extends StatelessWidget {
           if (isShowing) onOpen();
         },
         showArrow: true,
-        arrowColor: Colors.black87,
+        arrowColor: decor.popup,
         arrowSize: 10,
         barrierColor: Colors.transparent,
         verticalMargin: 6,
@@ -72,7 +74,7 @@ class DefinitionDotsButton extends StatelessWidget {
           return ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Material(
-              color: Colors.black87,
+              color: decor.popup,
               child: Container(
                 constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: 420),
                 child: DefinitionOptionsContent(

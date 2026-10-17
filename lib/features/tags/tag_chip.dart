@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../../core/models/tag_kind.dart';
 
 /// One look for a tag everywhere (collection-tags, screens.md Chip look): a
-/// compact stadium chip. An origin tag has [Icons.explore_outlined] on the
-/// secondary container tint, a topic tag has [Icons.tag] on the tertiary one.
+/// compact stadium chip with no icon (tag-field-restyle). An origin tag is on
+/// the secondary container tint, a topic tag on the tertiary one.
 class TagChip extends StatelessWidget {
   const TagChip({
     super.key,
@@ -30,8 +30,6 @@ class TagChip extends StatelessWidget {
     final foreground =
         origin ? scheme.onSecondaryContainer : scheme.onTertiaryContainer;
     final chip = InputChip(
-      avatar: Icon(origin ? Icons.explore_outlined : Icons.tag,
-          size: 16, color: foreground),
       label: Text(text, style: TextStyle(color: foreground)),
       backgroundColor: background,
       side: BorderSide.none,

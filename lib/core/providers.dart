@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'models/offered_ai.dart';
+import 'theme/app_theme.dart' show AppThemeId;
 import 'models/collection_folder.dart';
 import 'models/tag_library_entry.dart';
 import 'models/word_collection.dart';
@@ -16,6 +17,7 @@ import 'services/dictionary_service.dart';
 import 'services/exam_result_sink.dart';
 import 'services/google_translate_service.dart';
 import 'services/learn_api_service.dart';
+import 'services/new_user_trial.dart';
 import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
@@ -48,6 +50,16 @@ ImagePicker imagePicker(Ref ref) => ImagePicker();
 
 @Riverpod(keepAlive: true)
 Future<CollectionStore> collectionStore(Ref ref) => CollectionStore.open();
+
+/// Puts the user's data aside to show the app as to a new user, and brings
+/// it back (new-user-trial, owner 2026-10-17).
+@Riverpod(keepAlive: true)
+NewUserTrial newUserTrial(Ref ref) => NewUserTrial();
+
+/// When the new-user trial's backup was made; null while no trial is on.
+@riverpod
+Future<DateTime?> newUserBackup(Ref ref) =>
+    ref.watch(newUserTrialProvider).backupTakenAt();
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
 @Riverpod(keepAlive: true)
@@ -298,6 +310,41 @@ class WordDetailModeNotifier extends _$WordDetailModeNotifier {
     state = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(prefsKey, mode.name);
+  }
+}
+
+/// The app's theme, picked on the App settings page (app-themes, owner
+/// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+/// [AppThemeId.classic] and switches once the stored value is read.
+@Riverpod(keepAlive: true)
+class AppThemeNotifier extends _$AppThemeNotifier {
+  static const prefsKey = 'app_theme';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  AppThemeId build() {
+    loaded;
+    return AppThemeId.classic;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(prefsKey);
+    // A choice made before the stored value arrived wins over it.
+    if (_setByLearner) return;
+    state = AppThemeId.values.firstWhere(
+      (t) => t.name == stored,
+      orElse: () => AppThemeId.classic,
+    );
+  }
+
+  Future<void> set(AppThemeId id) async {
+    _setByLearner = true;
+    state = id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefsKey, id.name);
   }
 }
 

@@ -1,0 +1,86 @@
+import 'package:flutter/material.dart';
+
+import '../app_decor.dart';
+import '../theme_kit.dart';
+import 'themes.dart';
+
+final amberTerminal = AppThemeSpec(
+  id: AppThemeId.amberTerminal,
+  name: 'Amber Terminal',
+  description: 'A glowing amber monitor',
+  build: () {
+    const amber = Color(0xFFFFB000);
+    const glow = Color(0xFFFFD27A);
+    const dark = Color(0xFF120D05);
+    const panel = Color(0xFF1C1408);
+    return buildTheme(
+      scheme: seedScheme(amber, Brightness.dark,
+          variant: DynamicSchemeVariant.fidelity,
+          primary: amber,
+          onPrimary: dark,
+          secondary: const Color(0xFFFF7A3D),
+          surface: dark,
+          onSurface: glow,
+          secondaryContainer: const Color(0xFF3A2A06),
+          onSecondaryContainer: amber,
+          tertiaryContainer: const Color(0xFF3D1C0B),
+          onTertiaryContainer: const Color(0xFFFF9D6B)),
+      decor: AppDecor(
+        topBar: const Color(0xFF1E1608),
+        wordRow: const Color(0xFF17110A),
+        wordRowBorder: Border.all(color: amber.withValues(alpha: 0.45)),
+        wordRowRadius: 2,
+        rowText: glow,
+        rowSubtext: const Color(0xFFC79A4A),
+        rowIcon: amber,
+        rowHandle: amber.withValues(alpha: 0.6),
+        rowClose: const Color(0xFF9C7A3A),
+        popup: panel,
+        onPopup: glow,
+        addAccent: amber,
+        fab: amber,
+        fabActive: const Color(0xFFE09A00),
+        onFab: dark,
+        fabAlt: const Color(0xFFFF7A3D),
+        onFabAlt: dark,
+        dialPhoto: amber,
+        dialSubtitles: const Color(0xFF5C4310),
+        dialQuizlet: const Color(0xFFFF7A3D),
+        dialFolder: glow,
+        onDial: dark,
+        barButton: const Color(0xFF2A1F0B),
+        onBarButton: amber,
+        paper: dark,
+        panel: panel,
+        panelBorder: amber.withValues(alpha: 0.33),
+        muted: const Color(0xFF9C7A3A),
+        subtle: const Color(0xFFB38A45),
+        strongIcon: glow,
+        placeholder: const Color(0xFF2A1F0B),
+        onPlaceholder: amber.withValues(alpha: 0.6),
+        thumb: const Color(0xFF3A2A0E),
+        bin: const Color(0xFF5C4310),
+        binHot: const Color(0xFFFF5A1F),
+        onBin: glow,
+        binFolder: amber,
+        right: const Color(0xFF7BD389),
+        wrong: const Color(0xFFFF6B35),
+        picked: const Color(0xFFC79A4A),
+        pic50: const Color(0xFF17110A),
+        pic100: const Color(0xFF2A1F0B),
+        pic200: const Color(0xFF7A5A12),
+        pic500: amber,
+        pic600: glow,
+        picPaper: dark,
+        picOutline: true,
+        glassTab: const Color(0x33120D05),
+        glassPanel: const Color(0x66120D05),
+        glassEdge: amber,
+        glassShadow: Colors.black,
+      ),
+      bodyFont: 'JetBrains Mono',
+      radius: 2,
+      onTopBar: amber,
+    );
+  },
+);

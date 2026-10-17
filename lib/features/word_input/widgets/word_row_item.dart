@@ -4,6 +4,7 @@ import 'package:popup_menu_2/popup_menu_2.dart';
 import '../../../core/models/translation_result.dart';
 import '../../../core/providers.dart' show WordDetailMode;
 import '../../../core/services/pronunciation_service.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/hidden_field_text.dart';
 import '../../../core/widgets/synced_text_field_row.dart';
 import 'definition_dots_button.dart';
@@ -128,16 +129,17 @@ class WordRowItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final decor = AppDecor.of(context);
     final dragHandle = isDragMode
         ? ReorderableDragStartListener(
             index: index,
-            child: const SizedBox(
+            child: SizedBox(
               width: 32,
               height: 44,
               child: Center(
                 child: Icon(
                   Icons.drag_indicator,
-                  color: Color(0xFF7F77DD),
+                  color: decor.rowHandle,
                   size: 32,
                 ),
               ),
@@ -156,13 +158,9 @@ class WordRowItem extends StatelessWidget {
     const fieldSpacing = 16.0;
     const flagsWidth = 52.0; // two 26px accent buttons, no gap
 
-    return Container(
+    return DecorSurface(
       margin: const EdgeInsets.only(bottom: 12.0),
       padding: const EdgeInsets.only(top: 4, right: 8, bottom: 12, left: 8),
-      decoration: BoxDecoration(
-        color: const Color(0x57d9c1ff),
-        borderRadius: BorderRadius.circular(12),
-      ),
       foregroundDecoration: highlight,
       child: LayoutBuilder(
         builder: (context, cardConstraints) {
@@ -209,7 +207,7 @@ class WordRowItem extends StatelessWidget {
                         splashRadius: 16,
                         iconSize: 18,
                         icon: const Icon(Icons.close),
-                        color: const Color(0xFFa883ca),
+                        color: decor.rowClose,
                         onPressed: onRemove,
                       ),
                     ),
@@ -274,7 +272,7 @@ class WordRowItem extends StatelessWidget {
                                           child: IconButton(
                                             icon:
                                                 const Icon(Icons.electric_bolt),
-                                            color: Colors.purple[600],
+                                            color: AppDecor.of(context).rowIcon,
                                             iconSize: 28,
                                             tooltip: 'AI Translate (to Word)',
                                             onPressed: onFillWordWithAI,
@@ -301,7 +299,7 @@ class WordRowItem extends StatelessWidget {
                                           child: IconButton(
                                             icon:
                                                 const Icon(Icons.electric_bolt),
-                                            color: Colors.purple[600],
+                                            color: AppDecor.of(context).rowIcon,
                                             iconSize: 28,
                                             tooltip: 'AI Translate',
                                             onPressed: onFillWithAI,
@@ -433,7 +431,7 @@ class WordRowItem extends StatelessWidget {
                     color: Colors.transparent,
                     child: IconButton(
                       icon: const Icon(Icons.electric_bolt),
-                      color: Colors.purple[600],
+                      color: AppDecor.of(context).rowIcon,
                       iconSize: 28,
                       tooltip: 'Look up definition',
                       onPressed: onFillDefinition,

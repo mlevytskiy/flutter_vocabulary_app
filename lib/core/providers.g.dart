@@ -75,6 +75,44 @@ final collectionStoreProvider = FutureProvider<CollectionStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CollectionStoreRef = FutureProviderRef<CollectionStore>;
+String _$newUserTrialHash() => r'914f1c160762186768b6cda8ed7401d812808cfb';
+
+/// Puts the user's data aside to show the app as to a new user, and brings
+/// it back (new-user-trial, owner 2026-10-17).
+///
+/// Copied from [newUserTrial].
+@ProviderFor(newUserTrial)
+final newUserTrialProvider = Provider<NewUserTrial>.internal(
+  newUserTrial,
+  name: r'newUserTrialProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$newUserTrialHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NewUserTrialRef = ProviderRef<NewUserTrial>;
+String _$newUserBackupHash() => r'a385c54cf25fbd0a4a932aea61c2d67dddd8beca';
+
+/// When the new-user trial's backup was made; null while no trial is on.
+///
+/// Copied from [newUserBackup].
+@ProviderFor(newUserBackup)
+final newUserBackupProvider = AutoDisposeFutureProvider<DateTime?>.internal(
+  newUserBackup,
+  name: r'newUserBackupProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$newUserBackupHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NewUserBackupRef = AutoDisposeFutureProviderRef<DateTime?>;
 String _$sourcePhotoStoreHash() => r'5ba15f72c22a820489d043a9260d86a9f9d91b3d';
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
@@ -1021,6 +1059,26 @@ final wordDetailModeNotifierProvider =
 );
 
 typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+String _$appThemeNotifierHash() => r'6224233ff14b800d30acbad8a25b501db5c323f0';
+
+/// The app's theme, picked on the App settings page (app-themes, owner
+/// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+/// [AppThemeId.classic] and switches once the stored value is read.
+///
+/// Copied from [AppThemeNotifier].
+@ProviderFor(AppThemeNotifier)
+final appThemeNotifierProvider =
+    NotifierProvider<AppThemeNotifier, AppThemeId>.internal(
+  AppThemeNotifier.new,
+  name: r'appThemeNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$appThemeNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$AppThemeNotifier = Notifier<AppThemeId>;
 String _$dialoguesSettingNotifierHash() =>
     r'79a0b0141cc70e6d14eb3a468af48a9fb1300bb6';
 

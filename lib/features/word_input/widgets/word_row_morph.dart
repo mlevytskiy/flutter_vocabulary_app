@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../core/providers.dart' show WordDetailMode;
+import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/hidden_field_text.dart';
 
 /// The text after the dash on a row's one line while the photo panel is
@@ -77,29 +78,31 @@ class CompactWordLine extends StatelessWidget {
         : TextRange(start: start, end: start + detail.length);
   }
 
-  static const _wordColor = Color(0xFF3B2470);
-  static const _detailColor = Color(0xFF5E5470);
-
   static TextStyle _base(BuildContext context) =>
       Theme.of(context).textTheme.bodyLarge ?? const TextStyle(fontSize: 16);
 
   /// How the line draws a typed word, and the detail.
-  static TextStyle wordStyle(BuildContext context) =>
-      _base(context).copyWith(fontWeight: FontWeight.w600, color: _wordColor);
+  static TextStyle wordStyle(BuildContext context) => _base(context).copyWith(
+      fontWeight: FontWeight.w600, color: AppDecor.of(context).rowText);
   static TextStyle detailStyle(BuildContext context) =>
-      _base(context).copyWith(color: _detailColor);
+      _base(context).copyWith(color: AppDecor.of(context).rowSubtext);
 
   @override
   Widget build(BuildContext context) {
     final w = word.trim();
+    final decor = AppDecor.of(context);
     Color shown(Color color, bool hidden) =>
         hidden ? color.withValues(alpha: 0) : color;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: EdgeInsets.fromLTRB(14, 12, 14 + endInset, 12),
       decoration: BoxDecoration(
-        color: const Color(0x57d9c1ff),
-        borderRadius: BorderRadius.circular(12),
+        color: decor.wordRow,
+        border: decor.wordRowBorder,
+        borderRadius: decor.wordRowBorder is Border &&
+                !(decor.wordRowBorder! as Border).isUniform
+            ? null
+            : BorderRadius.circular(decor.wordRowRadius),
       ),
       foregroundDecoration: highlight,
       child: Text.rich(
@@ -109,8 +112,8 @@ class CompactWordLine extends StatelessWidget {
               text: w.isEmpty ? '—' : w,
               style: wordStyle(context).copyWith(
                 color: w.isEmpty
-                    ? const Color(0x803B2470)
-                    : shown(_wordColor, hideWord),
+                    ? decor.rowText.withValues(alpha: 0.5)
+                    : shown(decor.rowText, hideWord),
               ),
             ),
           if (w.isNotEmpty && detail.isNotEmpty)
@@ -119,7 +122,7 @@ class CompactWordLine extends StatelessWidget {
             TextSpan(
               text: detail,
               style: detailStyle(context)
-                  .copyWith(color: shown(_detailColor, hideDetail)),
+                  .copyWith(color: shown(decor.rowSubtext, hideDetail)),
             ),
         ]),
         semanticsLabel: text,

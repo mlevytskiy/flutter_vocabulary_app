@@ -161,6 +161,7 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
         ...presetsFor(kind),
       ],
       fieldKey: ValueKey('details-${kind.name}-field'),
+      startInEditMode: true,
     );
   }
 

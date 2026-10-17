@@ -146,7 +146,7 @@ void main() {
   });
 
   testWidgets(
-      'each source note has two fields and suggestions show only when focused',
+      'each source note has two fields with no helper line',
       (tester) async {
     await pump(tester, _FakeInput(_collection()));
     final topic = await toSourceField(tester, NotesScreen.tagFieldKey);
@@ -156,11 +156,9 @@ void main() {
         find.descendant(
             of: pager(), matching: find.byKey(NotesScreen.originTagFieldKey)),
         findsOneWidget);
-    // Not focused: no helper line, no suggestion chips.
-    expect(find.text(TypedTagField.helperFor(TagKind.topic)), findsNothing);
     await tester.tap(topic);
     await tester.pumpAndSettle();
-    expect(find.text(TypedTagField.helperFor(TagKind.topic)), findsOneWidget);
+    expect(find.textContaining('e.g.'), findsNothing);
     await finish(tester);
   });
 

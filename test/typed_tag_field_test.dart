@@ -13,13 +13,11 @@ class _Host extends StatefulWidget {
     required this.kind,
     this.tags = const [],
     this.suggestions = const [],
-    this.mode = SuggestionMode.always,
     this.forgotten,
   });
   final TagKind kind;
   final List<String> tags;
   final List<TagSuggestion> suggestions;
-  final SuggestionMode mode;
   final List<String>? forgotten;
 
   @override
@@ -39,7 +37,6 @@ class _HostState extends State<_Host> {
                 kind: widget.kind,
                 tags: tags,
                 suggestions: widget.suggestions,
-                mode: widget.mode,
                 onChanged: (t) => setState(() => tags = t),
                 onForget: widget.forgotten?.add,
                 fieldKey: const Key('field'),
@@ -60,19 +57,16 @@ Future<void> _longPress(WidgetTester tester, Finder f) async {
 }
 
 void main() {
-  testWidgets('hint and helper per kind', (tester) async {
+  testWidgets('the question per kind on top, no helper line', (tester) async {
     await tester.pumpWidget(const _Host(kind: TagKind.origin));
     expect(find.text('Where does it come from?'), findsOneWidget);
-    expect(find.text('e.g. Friends (series), a podcast, a trip to London'),
-        findsOneWidget);
+    expect(find.textContaining('e.g.'), findsNothing);
     await tester.pumpWidget(const _Host(kind: TagKind.topic));
     await tester.pump();
     expect(find.text('What is it about?'), findsOneWidget);
-    expect(
-        find.text('e.g. Food, Phrasal verbs, Job interview'), findsOneWidget);
   });
 
-  testWidgets('TagChip look per kind', (tester) async {
+  testWidgets('tags have no icons', (tester) async {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
           body: Column(children: [
@@ -80,29 +74,66 @@ void main() {
         TagChip(kind: TagKind.topic, text: 'Food'),
       ])),
     ));
-    expect(find.byIcon(Icons.explore_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.tag), findsOneWidget);
+    expect(find.byIcon(Icons.explore_outlined), findsNothing);
+    expect(find.byIcon(Icons.tag), findsNothing);
   });
 
-  testWidgets('a tapped suggestion is added and leaves the row',
+  testWidgets('startInEditMode opens in the edit state until Done',
       (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: TypedTagField(
+          kind: TagKind.topic,
+          tags: const ['Food'],
+          suggestions: const [],
+          onChanged: (_) {},
+          startInEditMode: true,
+        ),
+      ),
+    ));
+    expect(find.byKey(TypedTagField.doneKey), findsOneWidget);
+    expect(find.byTooltip('Delete'), findsOneWidget);
+    await tester.tap(find.byKey(TypedTagField.doneKey));
+    await tester.pumpAndSettle();
+    expect(find.byKey(TypedTagField.doneKey), findsNothing);
+  });
+
+  testWidgets('view state: no delete, no Done; a tap opens the edit state',
+      (tester) async {
+    await tester.pumpWidget(const _Host(kind: TagKind.topic, tags: ['Food']));
+    expect(find.byTooltip('Delete'), findsNothing);
+    expect(find.byKey(TypedTagField.doneKey), findsNothing);
+    await tester.tap(find.widgetWithText(TagChip, 'Food'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Delete'), findsOneWidget);
+    expect(find.byKey(TypedTagField.doneKey), findsOneWidget);
+    await tester.tap(find.byKey(TypedTagField.doneKey));
+    await tester.pumpAndSettle();
+    expect(find.byKey(TypedTagField.doneKey), findsNothing);
+    expect(find.byTooltip('Delete'), findsNothing);
+  });
+
+  testWidgets('a chip is removed in the edit state', (tester) async {
+    await tester
+        .pumpWidget(const _Host(kind: TagKind.topic, tags: ['Food', 'Work']));
+    await tester.tap(find.byKey(const Key('field')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+        of: find.widgetWithText(TagChip, 'Food'),
+        matching: find.byTooltip('Delete')));
+    await tester.pumpAndSettle();
+    expect(find.byType(TagChip), findsOneWidget);
+  });
+
+  testWidgets('no suggestions until something is typed', (tester) async {
     await tester.pumpWidget(_Host(
       kind: TagKind.topic,
       suggestions: [_own('Food'), _preset('Work')],
     ));
-    await tester.tap(find.byKey(TypedTagField.suggestionKey('Food')));
-    await tester.pump();
-    expect(find.byType(TagChip), findsOneWidget);
-    expect(find.byKey(TypedTagField.suggestionKey('Food')), findsNothing);
-    expect(find.byKey(TypedTagField.suggestionKey('Work')), findsOneWidget);
-  });
-
-  testWidgets('the row shows at most 8 suggestions', (tester) async {
-    await tester.pumpWidget(_Host(
-      kind: TagKind.topic,
-      suggestions: [for (var i = 0; i < 12; i++) _own('t$i')],
-    ));
-    expect(find.byType(ActionChip), findsNWidgets(8));
+    await tester.tap(find.byKey(const Key('field')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(TypedTagField.optionKey('Food')), findsNothing);
+    expect(find.byKey(TypedTagField.optionKey('Work')), findsNothing);
   });
 
   testWidgets('typing filters options by word start and adds on tap',
@@ -118,6 +149,49 @@ void main() {
     await tester.tap(find.byKey(TypedTagField.optionKey('Home cooking')));
     await tester.pumpAndSettle();
     expect(find.byType(TagChip), findsOneWidget);
+  });
+
+  testWidgets('the list shows at most 8 suggestions plus the new tag row',
+      (tester) async {
+    await tester.pumpWidget(_Host(
+      kind: TagKind.topic,
+      suggestions: [for (var i = 0; i < 12; i++) _own('t$i')],
+    ));
+    await tester.enterText(find.byKey(const Key('field')), 't');
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 8; i++) {
+      expect(find.byKey(TypedTagField.optionKey('t$i')), findsOneWidget);
+    }
+    expect(find.byKey(TypedTagField.optionKey('t8')), findsNothing);
+    expect(find.byKey(TypedTagField.newOptionKey), findsOneWidget);
+  });
+
+  testWidgets('a text not in the list is added as a new tag', (tester) async {
+    await tester.pumpWidget(_Host(
+      kind: TagKind.topic,
+      suggestions: [_own('Food')],
+    ));
+    await tester.enterText(find.byKey(const Key('field')), 'Fo');
+    await tester.pumpAndSettle();
+    expect(find.text('New tag'), findsOneWidget);
+    await tester.enterText(find.byKey(const Key('field')), 'food');
+    await tester.pumpAndSettle();
+    // Already a suggestion: no new tag row.
+    expect(find.byKey(TypedTagField.newOptionKey), findsNothing);
+    await tester.enterText(find.byKey(const Key('field')), 'Street food');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(TypedTagField.newOptionKey));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TagChip, 'Street food'), findsOneWidget);
+  });
+
+  testWidgets('a tap outside keeps the typed tag', (tester) async {
+    await tester.pumpWidget(const _Host(kind: TagKind.topic));
+    await tester.enterText(find.byKey(const Key('field')), 'Kitchen');
+    await tester.tapAt(const Offset(400, 580));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TagChip, 'Kitchen'), findsOneWidget);
+    expect(find.byKey(TypedTagField.doneKey), findsNothing);
   });
 
   testWidgets('a typed tag keeps the known spelling, ignoring case',
@@ -157,31 +231,17 @@ void main() {
     final forgotten = <String>[];
     await tester.pumpWidget(_Host(
       kind: TagKind.topic,
-      suggestions: [_own('Food'), _preset('Work')],
+      suggestions: [_own('Food'), _preset('Fruit')],
       forgotten: forgotten,
     ));
-    await _longPress(tester, find.byKey(TypedTagField.suggestionKey('Work')));
-    expect(find.text('Forget this tag'), findsNothing);
-    await _longPress(tester, find.byKey(TypedTagField.suggestionKey('Food')));
+    await tester.enterText(find.byKey(const Key('field')), 'f');
+    await tester.pumpAndSettle();
+    await _longPress(tester, find.byKey(TypedTagField.optionKey('Food')));
     expect(find.text('Forget this tag'), findsOneWidget);
     await tester.tap(find.text('Forget this tag'));
     await tester.pumpAndSettle();
     expect(forgotten, ['Food']);
-  });
-
-  testWidgets('whenFocused hides the row unfocused and shows it focused',
-      (tester) async {
-    await tester.pumpWidget(_Host(
-      kind: TagKind.topic,
-      suggestions: [_own('Food')],
-      mode: SuggestionMode.whenFocused,
-    ));
-    expect(find.byKey(TypedTagField.suggestionKey('Food')), findsNothing);
-    await tester.tap(find.byKey(const Key('field')));
-    await tester.pump();
-    expect(find.byKey(TypedTagField.suggestionKey('Food')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('other')));
-    await tester.pump();
-    expect(find.byKey(TypedTagField.suggestionKey('Food')), findsNothing);
+    await _longPress(tester, find.byKey(TypedTagField.optionKey('Fruit')));
+    expect(find.text('Forget this tag'), findsNothing);
   });
 }

@@ -8,6 +8,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
+import 'package:flutter_vocabulary_app/features/collections/recycle_bin_screen.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_drag.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_view.dart';
@@ -71,6 +72,7 @@ void main() {
     await t.pumpWidget(ProviderScope(
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
+        binItemsProvider.overrideWith((ref) => Stream.value(const [])),
         wordInputNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english, unit3])),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'collection_icon.dart';
 import 'collection_pictures.dart';
+import '../../core/theme/app_theme.dart';
 
 /// One item of a Collections level, as the grid shows it.
 @immutable
@@ -143,9 +144,9 @@ class CollectionsGrid extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     if (list.isEmpty) {
-      return const Center(
-        child:
-            Text(emptyText, style: TextStyle(fontSize: 18, color: Colors.grey)),
+      return Center(
+        child: Text(emptyText,
+            style: TextStyle(fontSize: 18, color: AppDecor.of(context).muted)),
       );
     }
     return GridView.builder(
@@ -168,9 +169,7 @@ class CollectionsGrid extends StatelessWidget {
           isCurrent: item.isCurrent,
           badges: item.badges,
           onTap: () => onTap(item),
-          onBin: onBin == null || item.isCurrent
-              ? null
-              : (rect) => onBin!(item, rect),
+          onBin: onBin == null ? null : (rect) => onBin!(item, rect),
         );
         final shown = itemWrapper?.call(context, item, icon) ?? icon;
         return hidden.contains(item.id)

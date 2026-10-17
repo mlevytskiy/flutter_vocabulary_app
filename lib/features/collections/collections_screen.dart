@@ -2,6 +2,7 @@ import 'collection_details_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/models/tag_kind.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_level.dart';
@@ -19,6 +20,7 @@ import 'collections_speed_dial.dart';
 import 'collections_view.dart';
 import 'fly_to_bin.dart';
 import 'name_dialog.dart';
+import 'recycle_bin_screen.dart';
 
 /// The Collections screen (SCR-04): the path bar (inside a folder) and the
 /// icon grid of one level, with three round buttons along the bottom:
@@ -222,6 +224,12 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   /// back from the bin). A folder holding the current collection keeps it out
   /// and says so (AC-22).
   Future<void> _binByButton(CollectionItemView item, Rect picture) async {
+    // The current collection shows the button too, but stays (owner,
+    // 2026-10-17).
+    if (item.isCurrent) {
+      _snack(refusedCurrentText);
+      return;
+    }
     final bin = _binKey.currentContext?.findRenderObject() as RenderBox?;
     if (bin == null || _flying.contains(item.id)) return;
     final landing = bin.localToGlobal(bin.size.center(Offset.zero));
@@ -277,6 +285,8 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     final search = ref.watch(_searchProvider);
     final searchNotifier = ref.read(_searchProvider.notifier);
     final locked = search.searching || search.filter.isActive;
+    final binFull =
+        ref.watch(binItemsProvider).valueOrNull?.isNotEmpty ?? false;
     List<CollectionSummary>? results;
     if (search.showsResults) {
       final summaries = ref.watch(collectionSummariesProvider).valueOrNull;
@@ -349,8 +359,8 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                   tooltip: 'Settings',
                   elevation: 8.0,
                   shape: const CircleBorder(),
-                  backgroundColor: const Color(0xff954ef3),
-                  foregroundColor: Colors.white,
+                  backgroundColor: AppDecor.of(context).fabAlt,
+                  foregroundColor: AppDecor.of(context).onFabAlt,
                   child: const Icon(Icons.settings),
                 ),
                 BinDropTarget(
@@ -372,12 +382,14 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                       tooltip: 'Recycle bin',
                       elevation: 8.0,
                       shape: const CircleBorder(),
-                      backgroundColor:
-                          highlighted ? Colors.red[700] : binButtonColor,
-                      foregroundColor: Colors.white,
-                      // Filled while delete mode is on.
-                      child: Icon(
-                          _deleteMode ? Icons.delete : Icons.delete_outline),
+                      backgroundColor: highlighted
+                          ? AppDecor.of(context).binHot
+                          : AppDecor.of(context).bin,
+                      foregroundColor: AppDecor.of(context).onBin,
+                      // Full while the recycle bin holds something (owner,
+                      // 2026-10-17).
+                      child:
+                          Icon(binFull ? Icons.delete : Icons.delete_outline),
                     ),
                   ),
                 ),

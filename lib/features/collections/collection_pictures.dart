@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_theme.dart';
+
 /// The Collections screen's pictures, drawn from the owner's Stitch design
 /// ("Collections - Unified Text Icon with Badges", 2026-10-16): the SVG paths
 /// on its 48x48 grid, painted directly because the app has no SVG package.
 
-/// The pictures' shades, built around the Settings button's violet
-/// (`0xff954ef3`, [_violet500]) — warmer than Stitch's indigo, picked by the
-/// owner 2026-10-16. Lightest to darkest.
-const _violet50 = Color(0xfff6effe);
-const _violet100 = Color(0xffeee2fd);
-const _violet200 = Color(0xffdcc4fb);
-const _violet500 = Color(0xff954ef3);
-const _violet600 = Color(0xff7c3ad6);
+/// The pictures' shades come from the theme (app-themes): [AppDecor.pic50]
+/// to [AppDecor.pic600], lightest to darkest, on [AppDecor.picPaper]. In
+/// Classic they are the owner's violet, built around the Settings button's
+/// `0xff954ef3` (2026-10-16). A theme with [AppDecor.picOutline] draws them
+/// as outlines only, like a wireframe.
 
 /// How a collection's document is outlined: plain, or darker for the current
 /// collection. How many sources it has does not change it (owner, 2026-10-16).
@@ -29,8 +28,9 @@ class DocumentPicture extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: _DocumentPainter(look));
+  Widget build(BuildContext context) => CustomPaint(
+      size: Size.square(size),
+      painter: _DocumentPainter(look, AppDecor.of(context)));
 }
 
 /// A folder's picture, 48x48 by default.
@@ -40,12 +40,12 @@ class FolderPicture extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: const _FolderPainter());
+  Widget build(BuildContext context) => CustomPaint(
+      size: Size.square(size), painter: _FolderPainter(AppDecor.of(context)));
 }
 
-/// One corner badge: Q in a circle, a white clapperboard on violet, or a
-/// picture frame. 16 wide; the movie badge is 14 high, the others 16.
+/// One corner badge: Q in a circle, a clapperboard on the theme's colour, or
+/// a picture frame. 16 wide; the movie badge is 14 high, the others 16.
 class SourceBadgePicture extends StatelessWidget {
   const SourceBadgePicture(this.badge, {super.key});
 
@@ -53,6 +53,10 @@ class SourceBadgePicture extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final d = AppDecor.of(context);
+    // An outline theme keeps every badge on paper, with its colour as ink.
+    final movieFill = d.picOutline ? d.picPaper : d.pic500;
+    final movieInk = d.picOutline ? d.pic500 : d.picPaper;
     switch (badge) {
       case SourceBadge.quizlet:
         return Container(
@@ -60,17 +64,17 @@ class SourceBadgePicture extends StatelessWidget {
           height: 16,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: d.picPaper,
             shape: BoxShape.circle,
-            border: Border.all(color: _violet500),
+            border: Border.all(color: d.pic500),
           ),
-          child: const Text(
+          child: Text(
             'Q',
             style: TextStyle(
               fontSize: 8.5,
               height: 1,
               fontWeight: FontWeight.w700,
-              color: _violet600,
+              color: d.pic600,
             ),
           ),
         );
@@ -80,13 +84,13 @@ class SourceBadgePicture extends StatelessWidget {
           height: 14,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: _violet500,
+            color: movieFill,
             borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: Colors.white),
+            border: Border.all(color: d.picOutline ? d.pic500 : d.picPaper),
           ),
-          child: const CustomPaint(
-              size: Size.square(10),
-              painter: _GlyphPainter(_movieGlyph, Colors.white)),
+          child: CustomPaint(
+              size: const Size.square(10),
+              painter: _GlyphPainter(_movieGlyph, movieInk)),
         );
       case SourceBadge.image:
         return Container(
@@ -94,30 +98,39 @@ class SourceBadgePicture extends StatelessWidget {
           height: 16,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: d.picPaper,
             borderRadius: BorderRadius.circular(3),
-            border: Border.all(color: _violet500),
+            border: Border.all(color: d.pic500),
           ),
-          child: const CustomPaint(
-              size: Size.square(10),
-              painter: _GlyphPainter(_imageGlyph, _violet600)),
+          child: CustomPaint(
+              size: const Size.square(10),
+              painter: _GlyphPainter(_imageGlyph, d.pic600)),
         );
     }
   }
 }
 
+Paint _stroke(Color color, double width) => Paint()
+  ..style = PaintingStyle.stroke
+  ..strokeJoin = StrokeJoin.round
+  ..strokeCap = StrokeCap.round
+  ..strokeWidth = width
+  ..color = color;
+
 class _DocumentPainter extends CustomPainter {
-  const _DocumentPainter(this.look);
+  const _DocumentPainter(this.look, this.d);
 
   final DocumentLook look;
+  final AppDecor d;
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / 48, size.height / 48);
     final current = look == DocumentLook.current;
+    final outline = d.picOutline;
     final edge = switch (look) {
-      DocumentLook.plain => _violet200,
-      DocumentLook.current => _violet600,
+      DocumentLook.plain => outline ? d.pic500 : d.pic200,
+      DocumentLook.current => d.pic600,
     };
     final edgeWidth = switch (look) {
       DocumentLook.plain => 1.5,
@@ -125,28 +138,24 @@ class _DocumentPainter extends CustomPainter {
     };
     const r = Radius.circular(3.5);
     // The sheet behind.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(const Rect.fromLTWH(11, 7, 26, 34), r),
-      Paint()
-        ..color = (current ? _violet200 : _violet100)
-            .withValues(alpha: current ? 0.9 : 0.7),
-    );
+    final back = RRect.fromRectAndRadius(const Rect.fromLTWH(11, 7, 26, 34), r);
+    if (outline) {
+      canvas.drawRRect(back, _stroke(d.pic200, 1.2));
+    } else {
+      canvas.drawRRect(
+        back,
+        Paint()
+          ..color = (current ? d.pic200 : d.pic100)
+              .withValues(alpha: current ? 0.9 : 0.7),
+      );
+    }
     // The front sheet.
     final front = RRect.fromRectAndRadius(const Rect.fromLTWH(9, 9, 26, 34), r);
-    canvas.drawRRect(front, Paint()..color = Colors.white);
-    canvas.drawRRect(
-      front,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = edgeWidth
-        ..color = edge,
-    );
+    canvas.drawRRect(front, Paint()..color = d.picPaper);
+    canvas.drawRRect(front, _stroke(edge, edgeWidth));
     // The text lines.
-    final lines = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = current ? 2 : 1.75
-      ..color = current ? _violet600 : _violet500;
+    final lines = _stroke(
+        current ? d.pic600 : d.pic500, current ? 2 : 1.75);
     for (final (y, w) in const [
       (16.0, 16.0),
       (21.0, 16.0),
@@ -163,11 +172,7 @@ class _DocumentPainter extends CustomPainter {
         ..arcToPoint(const Offset(30, 16),
             radius: const Radius.circular(2), clockwise: false)
         ..lineTo(35, 16),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = current ? 1.8 : 1.5
-        ..color = current ? _violet600 : _violet200,
+      _stroke(current || outline ? edge : d.pic200, current ? 1.8 : 1.5),
     );
     canvas.drawPath(
       Path()
@@ -176,49 +181,63 @@ class _DocumentPainter extends CustomPainter {
         ..lineTo(30, 16)
         ..arcToPoint(const Offset(28, 14), radius: const Radius.circular(2))
         ..close(),
-      Paint()..color = current ? _violet200 : _violet50,
+      Paint()
+        ..color = outline
+            ? d.picPaper
+            : current
+                ? d.pic200
+                : d.pic50,
     );
   }
 
   @override
-  bool shouldRepaint(_DocumentPainter old) => old.look != look;
+  bool shouldRepaint(_DocumentPainter old) => old.look != look || old.d != d;
 }
 
 class _FolderPainter extends CustomPainter {
-  const _FolderPainter();
+  const _FolderPainter(this.d);
+
+  final AppDecor d;
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / 48, size.height / 48);
+    final outline = d.picOutline;
     // The back with its tab.
-    canvas.drawPath(
-      Path()
-        ..moveTo(8, 14)
-        ..cubicTo(8, 12.3431, 9.34315, 11, 11, 11)
-        ..lineTo(19.1716, 11)
-        ..cubicTo(20.2324, 11, 21.2499, 11.4214, 22, 12.1716)
-        ..lineTo(24.8284, 15)
-        ..lineTo(37, 15)
-        ..cubicTo(38.6569, 15, 40, 16.3431, 40, 18)
-        ..lineTo(40, 34)
-        ..cubicTo(40, 35.6569, 38.6569, 37, 37, 37)
-        ..lineTo(11, 37)
-        ..cubicTo(9.34315, 37, 8, 35.6569, 8, 34)
-        ..close(),
-      Paint()..color = _violet200,
-    );
+    final back = Path()
+      ..moveTo(8, 14)
+      ..cubicTo(8, 12.3431, 9.34315, 11, 11, 11)
+      ..lineTo(19.1716, 11)
+      ..cubicTo(20.2324, 11, 21.2499, 11.4214, 22, 12.1716)
+      ..lineTo(24.8284, 15)
+      ..lineTo(37, 15)
+      ..cubicTo(38.6569, 15, 40, 16.3431, 40, 18)
+      ..lineTo(40, 34)
+      ..cubicTo(40, 35.6569, 38.6569, 37, 37, 37)
+      ..lineTo(11, 37)
+      ..cubicTo(9.34315, 37, 8, 35.6569, 8, 34)
+      ..close();
+    canvas.drawPath(back, outline ? _stroke(d.pic200, 1.5) : (Paint()..color = d.pic200));
     // The paper inside.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(12, 15, 24, 12), const Radius.circular(2)),
-      Paint()..color = Colors.white.withValues(alpha: 0.9),
-    );
+    final paper = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(12, 15, 24, 12), const Radius.circular(2));
+    if (outline) {
+      canvas.drawRRect(paper, _stroke(d.pic500.withValues(alpha: 0.6), 1));
+    } else {
+      canvas.drawRRect(paper, Paint()..color = d.picPaper.withValues(alpha: 0.9));
+    }
     // The front.
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-          const Rect.fromLTWH(8, 16, 32, 21), const Radius.circular(3)),
-      Paint()..color = _violet500,
-    );
+    final front = RRect.fromRectAndRadius(
+        const Rect.fromLTWH(8, 16, 32, 21), const Radius.circular(3));
+    if (outline) {
+      canvas.drawRRect(front, Paint()..color = d.picPaper);
+      canvas.drawRRect(front, _stroke(d.pic500, 1.6));
+      // A scan line across the front, as on an old monitor.
+      canvas.drawLine(const Offset(12, 27), const Offset(36, 27),
+          _stroke(d.pic500.withValues(alpha: 0.45), 1));
+      return;
+    }
+    canvas.drawRRect(front, Paint()..color = d.pic500);
     // The light along the front's top edge.
     canvas.drawPath(
       Path()
@@ -232,12 +251,12 @@ class _FolderPainter extends CustomPainter {
         ..lineTo(8, 19)
         ..cubicTo(8, 17.3431, 9.34315, 16, 11, 16)
         ..close(),
-      Paint()..color = _violet100.withValues(alpha: 0.6),
+      Paint()..color = d.pic100.withValues(alpha: 0.6),
     );
   }
 
   @override
-  bool shouldRepaint(_FolderPainter old) => false;
+  bool shouldRepaint(_FolderPainter old) => old.d != d;
 }
 
 /// A badge glyph on a 16x16 grid, filled even-odd so its cut-outs stay open.
