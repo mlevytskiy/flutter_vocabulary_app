@@ -418,7 +418,7 @@ void main() {
     await t.pump();
     expect(find.byType(CollectionResultTile), findsNothing);
     expect(find.text('Films'), findsOneWidget);
-    expect(find.text('Up'), findsNothing); // the top level
+    expect(find.byTooltip('Up'), findsNothing); // the top level
     // nothing active any more: Back leaves
     await back(t);
     expect(find.text('MAIN SCREEN'), findsOneWidget);

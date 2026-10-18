@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
+import 'package:flutter_vocabulary_app/core/models/tag_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
@@ -11,11 +13,12 @@ import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_search.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_filter_sheet.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_results_view.dart';
+import 'package:flutter_vocabulary_app/features/collections/filter_tag_field.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 /// collection-tags T14 (SCR-06, SCR-07; AC-20, AC-20b, AC-21, AC-37, AC-38):
-/// the Collections filter sheet.
+/// the Collections filter sheet, in the Pills layout (filter-sheet-pills).
 
 CollectionSummary _s(
   String id,
@@ -47,10 +50,8 @@ class _FakeInput extends WordInputNotifier {
 }
 
 void main() {
-  final many = [
-    for (var i = 0; i < 14; i++)
-      _s('m$i', 'Coll $i', topic: ['topic$i'], index: i),
-  ];
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   final few = [
     _s('a', 'A', origin: ['Series'], topic: ['Food'], index: 0),
     _s('b', 'B', origin: ['Series'], topic: ['Food', 'Idioms'], index: 1),
@@ -92,53 +93,111 @@ void main() {
     await t.pumpAndSettle();
   }
 
-  testWidgets('counts, Show all and narrowing', (t) async {
+  final five = [
+    ...few,
+    _s('d', 'D', origin: ['Film'], topic: ['Travel'], index: 3),
+  ];
+
+  Future<void> pickFromMenu(WidgetTester t, Key pill, String item) async {
+    await t.tap(find.byKey(pill));
+    await t.pumpAndSettle();
+    await t.tap(find
+        .ancestor(
+            of: find.text(item).last,
+            matching: find.byWidgetPredicate((w) => w is PopupMenuEntry))
+        .first);
+    await t.pumpAndSettle();
+  }
+
+  testWidgets('one tag field: suggestions by word start with kind and count',
+      (t) async {
     await open(t, few);
-    expect(find.text('Series 2'), findsOneWidget);
-    expect(find.text('Book 1'), findsOneWidget);
-    expect(find.text('Food 2'), findsOneWidget);
     expect(find.text('Show 3 collections'), findsOneWidget);
-
-    await t.enterText(find.byKey(const Key('narrow-topic')), 'idi');
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'se');
     await t.pump();
-    expect(find.text('Idioms 1'), findsOneWidget);
-    expect(find.text('Food 2'), findsNothing);
-  });
-
-  testWidgets('first 12 then Show all', (t) async {
-    await open(t, many);
-    expect(find.byType(FilterChip), findsNWidgets(12));
-    await t.ensureVisible(find.text('Show all'));
-    await t.tap(find.text('Show all'));
+    expect(find.byKey(FilterTagField.optionKey(TagKind.origin, 'Series')),
+        findsOneWidget);
+    expect(find.text('origin · 2'), findsOneWidget);
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'idi');
     await t.pump();
-    expect(find.byType(FilterChip), findsNWidgets(14));
-    expect(find.text('No tags yet'), findsOneWidget); // origin
+    expect(find.text('topic · 1'), findsOneWidget);
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'oms');
+    await t.pump();
+    expect(find.text('No tag starts with “oms”'), findsOneWidget);
   });
 
   testWidgets(
-      'collections-search AC-09: counts follow the draft, a 0 chip is '
-      'disabled, the order stays', (t) async {
+      'picking a tag adds its chip, counts follow the draft, a 0 option is '
+      'disabled (collections-search AC-09)', (t) async {
     await open(t, few);
-    await t.tap(find.text('Series 2'));
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'ser');
+    await t.pump();
+    await t.tap(find.byKey(FilterTagField.optionKey(TagKind.origin, 'Series')));
+    await t.pump();
+    expect(find.byKey(const ValueKey('filter-picked-origin-Series')),
+        findsOneWidget);
+    expect(find.text('Show 2 collections'), findsOneWidget);
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'bo');
+    await t.pump();
+    final book = t.widget<ListTile>(
+        find.byKey(FilterTagField.optionKey(TagKind.origin, 'Book')));
+    expect(book.enabled, isFalse);
+    // Enter picks the first enabled option.
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'f');
+    await t.testTextInput.receiveAction(TextInputAction.done);
+    await t.pump();
+    expect(
+        find.byKey(const ValueKey('filter-picked-topic-Food')), findsOneWidget);
+    // The chip's delete button unpicks it.
+    await t.tap(find.descendant(
+        of: find.byKey(const ValueKey('filter-picked-origin-Series')),
+        matching: find.byIcon(Icons.clear)));
     await t.pump();
     expect(find.text('Show 2 collections'), findsOneWidget);
-    expect(find.text('Series 2'), findsOneWidget);
-    expect(find.text('Book 0'), findsOneWidget);
-    expect(
-        t
-            .widget<FilterChip>(find.widgetWithText(FilterChip, 'Book 0'))
-            .onSelected,
-        isNull);
-    expect(find.text('Food 2'), findsOneWidget);
-    expect(find.text('Idioms 1'), findsOneWidget);
-    await t.tap(find.text('Idioms 1'));
+  });
+
+  testWidgets('Popular: hidden with 4 tags or fewer', (t) async {
+    await open(t, few);
+    expect(find.text('Popular'), findsNothing);
+  });
+
+  testWidgets('Popular: 4 most used without recent searches; a tap picks',
+      (t) async {
+    SharedPreferences.setMockInitialValues({});
+    await open(t, five);
+    expect(find.text('Popular'), findsOneWidget);
+    for (final q in [
+      (TagKind.origin, 'Series'),
+      (TagKind.topic, 'Food'),
+      (TagKind.origin, 'Book'),
+      (TagKind.origin, 'Film'),
+    ]) {
+      expect(find.byKey(CollectionsFilterSheet.quickKey(q.$1, q.$2)),
+          findsOneWidget);
+    }
+    await t.tap(
+        find.byKey(CollectionsFilterSheet.quickKey(TagKind.origin, 'Series')));
     await t.pump();
-    expect(find.text('Food 1'), findsOneWidget);
-    expect(find.text('Show 1 collections'), findsOneWidget);
-    // a picked chip stays enabled even at 0
-    final chips = t.widgetList<FilterChip>(find.byType(FilterChip)).toList();
-    expect(chips.where((c) => c.selected).every((c) => c.onSelected != null),
-        isTrue);
+    expect(find.text('Show 2 collections'), findsOneWidget);
+  });
+
+  testWidgets('Popular: 2 recent searches then 2 most used', (t) async {
+    SharedPreferences.setMockInitialValues({
+      RecentFilterTagsNotifier.prefsKey: ['topic|travel', 'topic|Idioms'],
+    });
+    await open(t, five);
+    await t.pumpAndSettle();
+    for (final q in [
+      (TagKind.topic, 'Travel'),
+      (TagKind.topic, 'Idioms'),
+      (TagKind.origin, 'Series'),
+      (TagKind.topic, 'Food'),
+    ]) {
+      expect(find.byKey(CollectionsFilterSheet.quickKey(q.$1, q.$2)),
+          findsOneWidget);
+    }
+    expect(find.byKey(CollectionsFilterSheet.quickKey(TagKind.origin, 'Book')),
+        findsNothing);
   });
 
   testWidgets('live N of 0 still applies', (t) async {
@@ -149,12 +208,25 @@ void main() {
     expect(result!.query, 'zzz');
   });
 
+  testWidgets('date pills and the Sort pill apply', (t) async {
+    await open(t, few);
+    expect(find.text('Sort: My order'), findsOneWidget);
+    await pickFromMenu(t, CollectionsFilterSheet.dateKey(true), 'Last 7 days');
+    expect(find.text('Last 7 days'), findsOneWidget);
+    await pickFromMenu(t, CollectionsFilterSheet.sortKey, 'Name A–Z');
+    expect(find.text('Sort: Name A–Z'), findsOneWidget);
+    await t.tap(find.textContaining('Show '));
+    await t.pumpAndSettle();
+    expect(result!.created, DateChoice.last7Days);
+    expect(result!.edited, DateChoice.any);
+    expect(result!.sort, CollectionSort.nameAZ);
+  });
+
   testWidgets('Reset clears the draft but keeps the query', (t) async {
     await open(t, few,
         current: const CollectionFilter(query: 'x', originTags: ['Series']));
-    await t.tap(find.text('Last 7 days').first);
-    await t.tap(find.text('Name A–Z'));
-    await t.pump();
+    await pickFromMenu(t, CollectionsFilterSheet.dateKey(true), 'Last 7 days');
+    await pickFromMenu(t, CollectionsFilterSheet.sortKey, 'Name A–Z');
     await t.tap(find.text('Reset'));
     await t.pump();
     await t.tap(find.textContaining('Show '));
@@ -167,50 +239,43 @@ void main() {
 
   testWidgets('dismiss without the button changes nothing', (t) async {
     await open(t, few);
-    await t.tap(find.text('Series 2'));
-    await t.pump();
+    await pickFromMenu(t, CollectionsFilterSheet.dateKey(true), 'This year');
     await t.tapAt(const Offset(10, 10));
     await t.pumpAndSettle();
     expect(opened, isTrue);
     expect(result, isNull);
   });
 
-  testWidgets('custom range: label, and start after end is refused', (t) async {
+  testWidgets('custom range: label on the pill, same day is fine', (t) async {
     var next =
         DateTimeRange(start: DateTime(2026, 10, 1), end: DateTime(2026, 10, 5));
     await open(t, few, pick: (_, __) async => next);
-    await t.tap(find.text('Custom range…').first);
-    await t.pump();
+    await pickFromMenu(
+        t, CollectionsFilterSheet.dateKey(true), 'Custom range…');
     expect(find.text('1 Oct – 5 Oct'), findsOneWidget);
 
-    // DateTimeRange itself forbids start > end, so test the guard directly
-    // and through a picker that returns an equal-day range.
     expect(rangeProblem(DateTime(2026, 10, 6), DateTime(2026, 10, 5)),
         rangeProblemMessage);
     next =
         DateTimeRange(start: DateTime(2026, 10, 7), end: DateTime(2026, 10, 7));
-    await t.ensureVisible(find.text('Custom range…'));
-    await t.tap(find.text('Custom range…')); // Edited row
-    await t.pump();
+    await pickFromMenu(
+        t, CollectionsFilterSheet.dateKey(false), 'Custom range…');
     expect(find.text(rangeProblemMessage), findsNothing);
     expect(find.text('7 Oct – 7 Oct'), findsOneWidget);
 
-    await t.ensureVisible(find.textContaining('Show '));
     await t.tap(find.textContaining('Show '));
     await t.pumpAndSettle();
     expect(result!.created.isCustom, isTrue);
     expect(result!.edited.isCustom, isTrue);
   });
 
-  testWidgets('a refused range shows the SnackBar and is not applied',
+  testWidgets('a refused range shows the message and is not applied',
       (t) async {
-    // A picker that bypasses DateTimeRange's own assert is impossible, so
-    // use a subclass-free fake: start after end via a mutable subclass.
     await open(t, few, pick: (_, __) async => _BadRange());
-    await t.tap(find.text('Custom range…').first);
-    await t.pump();
-    expect(find.text(rangeProblemMessage), findsWidgets);
-    expect(find.text('Custom range…'), findsNWidgets(2));
+    await pickFromMenu(
+        t, CollectionsFilterSheet.dateKey(true), 'Custom range…');
+    expect(find.text(rangeProblemMessage), findsOneWidget);
+    expect(find.text('Any time'), findsNWidgets(2));
   });
 
   testWidgets('apply shows the chips on the results', (t) async {
@@ -246,12 +311,18 @@ void main() {
     await t.pump();
     await t.tap(find.byIcon(Icons.tune));
     await t.pumpAndSettle();
-    await t.tap(find.text('Series 2'));
+    await t.enterText(find.byKey(FilterTagField.inputKey), 'ser');
+    await t.pump();
+    await t.tap(find.byKey(FilterTagField.optionKey(TagKind.origin, 'Series')));
     await t.pump();
     await t.tap(find.text('Show 2 collections'));
     await t.pumpAndSettle();
     expect(find.byType(CollectionResultTile), findsNWidgets(2));
     expect(find.widgetWithText(InputChip, 'Series'), findsWidgets);
+    // The applied tag is remembered for the Popular line.
+    final scope = t.element(find.byType(CollectionResultTile).first);
+    expect(ProviderScope.containerOf(scope).read(recentFilterTagsProvider),
+        [(kind: TagKind.origin, text: 'Series')]);
   });
 }
 

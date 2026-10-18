@@ -52,6 +52,10 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    the hint "Search in <folder>", the search list of only the open folder's level with its matching folders, the "Match
    outside" sheet (peeking at 20%, opening on the route with "You are here", opening by itself when the list is empty),
    the round buttons hidden while that sheet shows, and live tag counts with disabled 0 chips in the filter sheet);
+   filter-sheet-pills (owner, 2026-10-18) rebuilds the Collections filter sheet: one tag field for both kinds with
+   autocomplete (each suggestion with its kind and live count), a Popular line of four tags (two recently applied, then
+   the most used; hidden with four tags or fewer), Created and Edited as two dropdown pills side by side, Sort as a pill
+   beside Reset, the sheet sized to its content with a drag handle, and a refused range shown under the pills;
    classic-purple (owner, 2026-10-18) gives Classic the Next button's purple where it had Matcha's dark green (row
    text, dark icons) and lilac greys for Matcha's grey greens; collection-naming (owner, 2026-10-18) names a
    collection nobody named "Vocabulary" ("Vocabulary 1", "Vocabulary 2", … when taken) and, once it has 5 words,
@@ -67,7 +71,11 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    waiting, get their AI names and descriptions from one request, `POST /collections/autofill` (owner, 2026-10-18);
    the Collections screen's Settings button opens its own Collections settings screen with one row, "Replace all
    date names", which renames every "17.10.2026 17:05" name by those rules in one request and says what it did in a
-   snackbar (owner, 2026-10-18)). Keep `popup_menu_2`, `flutter_speed_dial`,
+   snackbar (owner, 2026-10-18); inside a folder the Collections screen's Up is an arrow in the top bar's leading
+   slot and the path is the bar's title on one line (the open folder in the title style, the levels above smaller
+   and grey, a long path scrolling sideways to its end) in place of the row below the bar (owner, 2026-10-18); the
+   recycle-bin button lights up and takes the drop as soon as any part of a dragged icon, its name too, covers it,
+   not only the point under the finger (owner, 2026-10-18)). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models (approved: `Exercise` by learn-part-step-1; `WordGroup`, `StoryRun`, `StoryStep` and `WordPair.rowId` by mnemonic-story, ADR-0003; `FilmDialogue`, `WordGroup.dialogueId`,

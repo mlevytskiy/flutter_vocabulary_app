@@ -295,3 +295,41 @@ List<({String text, int count})> liveTagCounts(
       (text: c.text, count: live[tagKey(c.text)] ?? 0),
   ];
 }
+
+/// One tag with its kind, as the filter sheet picks it.
+typedef QuickTag = ({TagKind kind, String text});
+
+/// The filter sheet's Popular line (filter-sheet-pills, owner 2026-10-18):
+/// with more than [slots] tags in use, the first [recentSlots] tags of
+/// [recent] that are still in use, then the most used tags, up to [slots] in
+/// all; with [slots] or fewer tags in use, nothing. Each tag shows in the
+/// spelling the collections use.
+List<QuickTag> quickTags(
+  List<CollectionSummary> all,
+  List<QuickTag> recent, {
+  int slots = 4,
+  int recentSlots = 2,
+}) {
+  final used = [
+    for (final kind in TagKind.values)
+      for (final c in tagCounts(all, kind))
+        (kind: kind, text: c.text, count: c.count),
+  ]..sort((a, b) {
+      final n = b.count.compareTo(a.count);
+      return n != 0 ? n : a.text.toLowerCase().compareTo(b.text.toLowerCase());
+    });
+  if (used.length <= slots) return const [];
+  String id(TagKind kind, String text) => '${kind.name}|${tagKey(text)}';
+  final byId = {for (final u in used) id(u.kind, u.text): u};
+  final picked = <String, QuickTag>{};
+  for (final r in recent) {
+    if (picked.length == recentSlots) break;
+    final u = byId[id(r.kind, r.text)];
+    if (u != null) picked[id(u.kind, u.text)] = (kind: u.kind, text: u.text);
+  }
+  for (final u in used) {
+    if (picked.length == slots) break;
+    picked.putIfAbsent(id(u.kind, u.text), () => (kind: u.kind, text: u.text));
+  }
+  return picked.values.toList();
+}

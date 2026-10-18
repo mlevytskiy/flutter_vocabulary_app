@@ -218,6 +218,61 @@ Widget _highlight(BuildContext context, bool on, Widget child) {
 
 bool _valid(DropDecision d) => d is MoveInto || d is Reorder || d is ToBin;
 
+/// While an item is dragged on the Collections screen: whether any part of
+/// it — its picture or its name — is over the recycle bin button (owner,
+/// 2026-10-18). A `DragTarget` sees only the point under the finger, which
+/// sits on the picture, so the name could cover the bin without it taking
+/// the drop. The dragged icon reports its rectangle here on every move, the
+/// bin registers where it is, and while [hot] the bin lights up and a drop
+/// anywhere goes to it.
+class BinZone extends ChangeNotifier {
+  BuildContext? _bin;
+  CollectionItemView? _dragged;
+  bool _hot = false;
+
+  bool get hot => _hot;
+  CollectionItemView? get dragged => _dragged;
+
+  Rect? get _binRect {
+    final box = _bin?.findRenderObject();
+    if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// [item] is dragged and its icon now covers [rect] (global).
+  void update(CollectionItemView item, Rect rect) {
+    _dragged = item;
+    final bin = _binRect;
+    _set(bin != null && bin.overlaps(rect));
+  }
+
+  /// The drag ended.
+  void end() {
+    _dragged = null;
+    _set(false);
+  }
+
+  void _set(bool hot) {
+    if (hot == _hot) return;
+    _hot = hot;
+    notifyListeners();
+  }
+
+  /// The zone of the screen around [context], without depending on it.
+  static BinZone? read(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<BinZoneScope>()?.notifier;
+
+  /// The same, rebuilding [context] when [hot] changes.
+  static BinZone? watch(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<BinZoneScope>()?.notifier;
+}
+
+/// Puts a [BinZone] above the Collections screen's grid and bin button.
+class BinZoneScope extends InheritedNotifier<BinZone> {
+  const BinZoneScope({super.key, required BinZone zone, required super.child})
+      : super(notifier: zone);
+}
+
 /// A `DragTarget` for one [DropTarget] kind with the shared highlight and,
 /// when [hoverOpenId] is given, the 1 s hold-to-open timer.
 class _DropArea extends StatefulWidget {
@@ -260,9 +315,12 @@ class _DropAreaState extends State<_DropArea> {
     _hover = null;
   }
 
+  BinZone? _zone;
+
   @override
   void dispose() {
     _cancel();
+    if (_zone?._bin == context) _zone?._bin = null;
     super.dispose();
   }
 
@@ -271,6 +329,10 @@ class _DropAreaState extends State<_DropArea> {
 
   @override
   Widget build(BuildContext context) {
+    final isBin = widget.target is BinTarget;
+    // The bin rebuilds when the zone turns hot; the others read it on drop.
+    final zone = _zone = isBin ? BinZone.watch(context) : BinZone.read(context);
+    if (isBin && zone != null) zone._bin = context;
     return DragTarget<CollectionItemView>(
       onWillAcceptWithDetails: (details) {
         _cancel();
@@ -290,11 +352,20 @@ class _DropAreaState extends State<_DropArea> {
       onAcceptWithDetails: (details) {
         _cancel();
         if (_isStill(details.data)) return;
-        widget.onDecision(widget.level.decide(details.data, widget.target));
+        // Over the bin with any part of it: the bin takes it, whatever is
+        // under the finger.
+        final target = zone != null && zone.hot ? const BinTarget() : widget.target;
+        widget.onDecision(widget.level.decide(details.data, target));
       },
       builder: (context, candidates, _) {
         final dragged = candidates.whereType<CollectionItemView>().firstOrNull;
-        final on = dragged != null && _valid(widget.level.decide(dragged, widget.target));
+        var on = dragged != null && _valid(widget.level.decide(dragged, widget.target));
+        final hotItem = zone != null && zone.hot ? zone.dragged : null;
+        if (isBin) {
+          on = on || (hotItem != null && _valid(widget.level.decide(hotItem, const BinTarget())));
+        } else if (hotItem != null) {
+          on = false;
+        }
         final b = widget.builder;
         if (b != null) return b(context, on);
         return _highlight(context, on, widget.child ?? const SizedBox.shrink());
@@ -338,6 +409,12 @@ class _DraggableCollectionIconState extends State<DraggableCollectionIcon> {
   Offset? _start;
   bool _moved = false;
 
+  /// Where the finger took the icon, inside it, and the icon's size: with
+  /// them each move gives the dragged icon's rectangle (for [BinZone]).
+  Offset _grab = Offset.zero;
+  Size? _size;
+  final _box = GlobalKey();
+
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
@@ -353,21 +430,32 @@ class _DraggableCollectionIconState extends State<DraggableCollectionIcon> {
         ),
         childWhenDragging: Opacity(opacity: 0.3, child: widget.child),
         onDragStarted: () => widget.onDragStarted?.call(),
+        onDragUpdate: (d) {
+          final size = _size;
+          if (size == null) return;
+          BinZone.read(context)?.update(item, (d.globalPosition - _grab) & size);
+        },
         onDragEnd: (d) {
+          final zone = BinZone.read(context);
           if (!_moved) {
             widget.onLongPressNoMove?.call();
           } else if (!d.wasAccepted) {
-            widget.onDecision(widget.level.decide(item, const EmptySpotTarget()));
+            widget.onDecision(widget.level.decide(
+                item, zone != null && zone.hot ? const BinTarget() : const EmptySpotTarget()));
           }
+          zone?.end();
           widget.onDragEnded?.call();
         },
         child: widget.child,
       ),
     );
     final tracked = Listener(
+      key: _box,
       onPointerDown: (e) {
         _start = e.position;
         _moved = false;
+        _grab = e.localPosition;
+        _size = _box.currentContext?.size;
       },
       onPointerMove: (e) {
         final start = _start;

@@ -26,6 +26,9 @@ import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
 import 'services/collection_naming_service.dart';
 import 'services/collection_search.dart' show CollectionSummary;
+import 'services/collection_search_scope.dart' show QuickTag;
+import 'services/tag_rules.dart' show tagKey;
+import 'models/tag_kind.dart';
 import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
@@ -562,4 +565,63 @@ class PhotoTabTopNotifier extends _$PhotoTabTopNotifier {
   /// ([max]); when the screen is too short for both, the top bar wins.
   static double clamp(double top, {required double min, required double max}) =>
       max < min ? min : top.clamp(min, max);
+}
+
+/// Short name for [RecentFilterTagsNotifier].
+final recentFilterTagsProvider = recentFilterTagsNotifierProvider;
+
+/// The tags the learner applied from the Collections filter sheet, newest
+/// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+/// like [WordDetailModeNotifier] under one preferences key, each entry
+/// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+@Riverpod(keepAlive: true)
+class RecentFilterTagsNotifier extends _$RecentFilterTagsNotifier {
+  static const prefsKey = 'collections_recent_filter_tags';
+  static const keep = 10;
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  List<QuickTag> build() {
+    loaded;
+    return const [];
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getStringList(prefsKey) ?? const <String>[];
+    if (_setByLearner) return;
+    state = [
+      for (final s in stored)
+        if (_decode(s) case final QuickTag tag) tag,
+    ];
+  }
+
+  static QuickTag? _decode(String s) {
+    final i = s.indexOf('|');
+    if (i < 0) return null;
+    final kind = TagKind.values.where((k) => k.name == s.substring(0, i));
+    if (kind.isEmpty) return null;
+    return (kind: kind.first, text: s.substring(i + 1));
+  }
+
+  /// Moves [tags] to the front, the first of them first.
+  Future<void> record(List<QuickTag> tags) async {
+    if (tags.isEmpty) return;
+    _setByLearner = true;
+    String id(QuickTag t) => '${t.kind.name}|${tagKey(t.text)}';
+    final ids = {for (final t in tags) id(t)};
+    state = [
+      ...tags,
+      for (final t in state)
+        if (!ids.contains(id(t))) t,
+    ].take(keep).toList();
+    try {
+      await (await SharedPreferences.getInstance()).setStringList(
+          prefsKey, [for (final t in state) '${t.kind.name}|${t.text}']);
+    } catch (e) {
+      debugPrint('VOCAB: filter sheet: recent tags not saved: $e');
+    }
+  }
 }

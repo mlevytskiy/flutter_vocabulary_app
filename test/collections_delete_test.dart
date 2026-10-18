@@ -10,6 +10,7 @@ import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/bin_dialogs.dart';
 import 'package:flutter_vocabulary_app/features/collections/bin_drop_zone.dart';
+import 'package:flutter_vocabulary_app/features/collections/collection_drag.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
@@ -201,6 +202,50 @@ void main() {
     expect(find.text(refusedCurrentText), findsOneWidget);
     expect(store.binned, isEmpty);
     expect(store.previewed, isEmpty);
+  });
+
+  testWidgets(
+      'the bin lights and takes the drop once any part of the icon covers it, '
+      'the finger still above it (owner, 2026-10-18)', (t) async {
+    await pump(t);
+    final icon = t.getRect(find.ancestor(
+        of: find.text('Films words'),
+        matching: find.byType(DraggableCollectionIcon)));
+    final bin = t.getRect(find.byTooltip('Recycle bin'));
+    Color? binColour() => t
+        .widget<FloatingActionButton>(find.ancestor(
+            of: find.byTooltip('Recycle bin'),
+            matching: find.byType(FloatingActionButton)))
+        .backgroundColor;
+    final idle = binColour();
+
+    // Taken by the picture, near the icon's top.
+    final grab = Offset(icon.center.dx, icon.top + 10);
+    final g = await t.startGesture(grab);
+    await t.pump(kLongPressTimeout + const Duration(milliseconds: 100));
+    await g.moveBy(const Offset(0, 30));
+    await t.pump();
+
+    // Only the name's bottom edge reaches the bin; the finger is above it.
+    final finger = Offset(bin.center.dx, bin.top + 6 - (icon.height - 10));
+    expect(finger.dy, lessThan(bin.top));
+    await g.moveTo(finger);
+    await t.pump();
+    expect(binColour(), isNot(idle));
+
+    // Moved off again: the bin goes back.
+    await g.moveTo(finger - const Offset(0, 120));
+    await t.pump();
+    expect(binColour(), idle);
+
+    await g.moveTo(finger);
+    await t.pump();
+    await g.up();
+    await t.pumpAndSettle();
+    expect(find.text('Delete "Films words"?'), findsOneWidget);
+    await t.tap(find.widgetWithText(TextButton, 'Delete'));
+    await t.pumpAndSettle();
+    expect(store.binned, [films.collectionId]);
   });
 
   testWidgets('inside a folder the bin button takes the drop; no drop zone',

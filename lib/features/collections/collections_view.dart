@@ -35,71 +35,95 @@ class PathPart {
   final String name;
 }
 
-/// Up plus the tappable path "Collections › English course › Unit 3".
+/// Up, in the top bar's leading slot inside a folder (owner, 2026-10-18:
+/// with the path, on the bar's one line).
+class CollectionsUpButton extends StatelessWidget {
+  const CollectionsUpButton({
+    super.key,
+    required this.enabled,
+    required this.onUp,
+    this.wrapper,
+  });
+
+  final bool enabled;
+  final VoidCallback onUp;
+
+  /// Wraps the button, e.g. in a drop target (T17).
+  final Widget Function(BuildContext context, Widget child)? wrapper;
+
+  @override
+  Widget build(BuildContext context) {
+    final up = IconButton(
+      onPressed: enabled ? onUp : null,
+      tooltip: 'Up',
+      icon: const Icon(Icons.arrow_upward),
+    );
+    return wrapper?.call(context, up) ?? up;
+  }
+}
+
+/// The tappable path "Collections › English course › Unit 3" as the top
+/// bar's title, on one line (owner, 2026-10-18). The open folder is in the
+/// bar's title style, the levels above it smaller and quieter; a path too
+/// long for the bar scrolls sideways and opens at its end, so the open
+/// folder always shows.
 class CollectionsPathBar extends StatelessWidget {
   const CollectionsPathBar({
     super.key,
     required this.parts,
-    required this.upEnabled,
-    required this.onUp,
     required this.onPart,
     this.partWrapper,
-    this.upWrapper,
   });
 
   final List<PathPart> parts;
-  final bool upEnabled;
-  final VoidCallback onUp;
   final ValueChanged<String?> onPart;
 
   /// Wraps each path part, e.g. in a drop target (T17).
   final Widget Function(BuildContext context, PathPart part, Widget child)?
       partWrapper;
 
-  /// Wraps the Up button, e.g. in a drop target (T17).
-  final Widget Function(BuildContext context, Widget child)? upWrapper;
-
   @override
   Widget build(BuildContext context) {
-    final up = TextButton.icon(
-      onPressed: upEnabled ? onUp : null,
-      icon: const Icon(Icons.arrow_upward),
-      label: const Text('Up'),
+    final title = DefaultTextStyle.of(context).style;
+    final above = title.copyWith(
+      fontSize: 15,
+      fontWeight: FontWeight.normal,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          upWrapper?.call(context, up) ?? up,
-          const SizedBox(width: 8),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  for (var i = 0; i < parts.length; i++) ...[
-                    if (i > 0)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 4),
-                        child: Text('›', style: TextStyle(fontSize: 16)),
-                      ),
-                    _part(context, parts[i]),
-                  ],
-                ],
-              ),
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        // Opens at the end: the open folder is what must show.
+        reverse: true,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minWidth: constraints.maxWidth),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              for (var i = 0; i < parts.length; i++) ...[
+                if (i > 0)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text('›', style: above),
+                  ),
+                _part(context, parts[i], i == parts.length - 1 ? title : above),
+              ],
+              const SizedBox(width: 8),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _part(BuildContext context, PathPart part) {
+  Widget _part(BuildContext context, PathPart part, TextStyle style) {
     final child = InkWell(
+      borderRadius: BorderRadius.circular(6),
       onTap: () => onPart(part.id),
-      child: Text(part.name, style: const TextStyle(fontSize: 16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+        child: Text(part.name, style: style, maxLines: 1, softWrap: false),
+      ),
     );
     return partWrapper?.call(context, part, child) ?? child;
   }

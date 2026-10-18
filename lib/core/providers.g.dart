@@ -1323,5 +1323,27 @@ final photoTabTopNotifierProvider =
 );
 
 typedef _$PhotoTabTopNotifier = Notifier<double>;
+String _$recentFilterTagsNotifierHash() =>
+    r'77536d2475125cb27b9f63ec9d2caef380839c1d';
+
+/// The tags the learner applied from the Collections filter sheet, newest
+/// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+/// like [WordDetailModeNotifier] under one preferences key, each entry
+/// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+///
+/// Copied from [RecentFilterTagsNotifier].
+@ProviderFor(RecentFilterTagsNotifier)
+final recentFilterTagsNotifierProvider =
+    NotifierProvider<RecentFilterTagsNotifier, List<QuickTag>>.internal(
+  RecentFilterTagsNotifier.new,
+  name: r'recentFilterTagsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$recentFilterTagsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$RecentFilterTagsNotifier = Notifier<List<QuickTag>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

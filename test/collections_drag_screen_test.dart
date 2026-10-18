@@ -137,7 +137,7 @@ void main() {
     await pump(t);
     await t.tap(find.text('English course'));
     await t.pumpAndSettle();
-    await drag(t, find.text('Lesson 3'), t.getCenter(find.text('Up')));
+    await drag(t, find.text('Lesson 3'), t.getCenter(find.byTooltip('Up')));
     await drag(
         t,
         find.text('Lesson 3'),
@@ -175,11 +175,11 @@ void main() {
         hold: const Duration(milliseconds: 1100));
     // the folder opened (path grew) and the drop went to the opened level's
     // folder icon "English course" no longer there: nothing but the open.
-    expect(find.text('Up'), findsOneWidget);
+    expect(find.byTooltip('Up'), findsOneWidget);
     expect(
         t
-            .widget<TextButton>(find.ancestor(
-                of: find.text('Up'), matching: find.bySubtype<TextButton>()))
+            .widget<IconButton>(find.ancestor(
+                of: find.byTooltip('Up'), matching: find.byType(IconButton)))
             .onPressed,
         isNotNull);
     expect(find.text('Unit 3'), findsOneWidget);
