@@ -73,7 +73,11 @@ lib/
     theme/                      app-themes; import app_theme.dart (exports the rest).
       app_decor.dart            AppDecor (every colour a screen used to hard-code, the Collections
                                 pictures' shades, row shape, blur, backdrop; defaults = Classic),
-                                AppBackdrop, DecorSurface
+                                AppBackdrop, DecorSurface, LiveBlur (on Android a DecorSurface
+                                blurs live only under a LiveBlur — the main screen's dragged row —
+                                since at rest only the smooth backdrop is under a row and a
+                                live blur costs a full-screen pass per animated frame; owner,
+                                2026-10-18)
       theme_kit.dart            AppThemeSpec, buildTheme, seedScheme, withDisplayFont
       themes/                   one file per theme (classic, aurora, matcha, amber_terminal,
                                 windows95); themes.dart = AppThemeId + appThemes and how to add
@@ -198,6 +202,11 @@ lib/
                                         "word — translation" (the definition when there is no
                                         translation or the mode shows none) — and back on close
         translation_dots_button.dart    _buildTranslationDotsButton (popup_menu_2 stays)
+        still_body.dart                 StillBody / StillBodyWhileMounted: on Android the main
+                                        screen's body is one picture (SnapshotWidget) while the
+                                        side menu is on screen — the Scaffold builds the drawer's
+                                        child only then — so a frame of the menu's slide does not
+                                        draw Aurora's row blurs again (owner, 2026-10-18)
         vocab_result_dialog.dart        showVocabResultDialog (was _showVocabResultDialog) and
                                         showQuizletResultDialog (set name, "Read X of Y", skipped
                                         cards, "No new words in this set.")

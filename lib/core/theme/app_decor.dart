@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// The top bars' colour in the Classic theme: the main screen's word-row
@@ -274,11 +275,28 @@ class DecorSurface extends StatelessWidget {
   final Decoration? foregroundDecoration;
   final Widget child;
 
+  /// Overrides whether every surface blurs live (off Android); tests only.
+  @visibleForTesting
+  static bool? debugBlurEverywhere;
+
+  /// Whether a surface blurs what is under it wherever it is. Off Android,
+  /// yes. On Android only under a [LiveBlur]: a backdrop blur is drawn again
+  /// on every frame anything moves over the list (the side menu, the + menu,
+  /// a sheet), one full-screen pass per frame, which the phones the owner
+  /// tried could not keep up with (2026-10-18). Under a row at rest there is
+  /// only the theme's smooth backdrop, and a blur of a smooth gradient is
+  /// that gradient, so skipping it there changes nothing seen. Where other
+  /// rows can pass under a surface -- a row dragged over the list -- the
+  /// [LiveBlur] marker keeps the frosted glass.
+  static bool get blurEverywhere =>
+      debugBlurEverywhere ?? defaultTargetPlatform != TargetPlatform.android;
+
   @override
   Widget build(BuildContext context) {
     final decor = AppDecor.of(context);
     final radius = BorderRadius.circular(decor.wordRowRadius);
     final blur = decor.wordRowBlur;
+    final live = blur > 0 && (blurEverywhere || LiveBlur.of(context));
     // A non-uniform border (a ruled line) cannot take rounded corners.
     final uniform = decor.wordRowBorder is! Border ||
         (decor.wordRowBorder! as Border).isUniform;
@@ -286,12 +304,14 @@ class DecorSurface extends StatelessWidget {
       padding: margin,
       child: ClipRRect(
         borderRadius: radius,
-        clipBehavior: blur > 0 ? Clip.antiAlias : Clip.none,
+        clipBehavior: live ? Clip.antiAlias : Clip.none,
         child: BackdropFilter(
-          enabled: blur > 0,
+          enabled: live,
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           // Rows under one BackdropGroup share a single backdrop read: one
           // per row made the Android drawer lag in Aurora (owner, 2026-10-18).
+          // While the drawer is on screen the main screen's body is one
+          // picture, so the blur is not drawn again per frame (StillBody).
           backdropGroupKey: BackdropGroup.of(context)?.backdropKey,
           child: Container(
             padding: padding,
@@ -307,4 +327,17 @@ class DecorSurface extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Marks a subtree whose [DecorSurface]s blur what is under them live even
+/// on Android: see [DecorSurface.blurEverywhere]. The main screen puts it on
+/// the row being dragged over the others.
+class LiveBlur extends InheritedWidget {
+  const LiveBlur({super.key, required super.child});
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<LiveBlur>() != null;
+
+  @override
+  bool updateShouldNotify(LiveBlur old) => false;
 }

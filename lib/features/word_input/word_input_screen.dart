@@ -42,6 +42,7 @@ import 'widgets/word_row_item.dart';
 import 'widgets/anchored_scroll_controller.dart';
 import 'widgets/dashed_add_button.dart';
 import 'widgets/word_row_morph.dart';
+import 'widgets/still_body.dart';
 import 'word_input_notifier.dart';
 
 part 'source_words_dialog.dart';
@@ -125,6 +126,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
 
   /// The drawer is open: the photo tab hides behind it (ADR-0001).
   bool _drawerOpen = false;
+
+  /// Holds the body as one picture while the drawer is on screen, so a frame
+  /// of its slide does not draw Aurora's row blurs again (Android; StillBody).
+  final _bodyStill = SnapshotController();
 
   /// Kept free at the end of a row's one line: the half-open panel covers the
   /// list's right side past its 16 px padding. Set in build from the look.
@@ -917,6 +922,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   @override
   void dispose() {
     _tagLine.dispose();
+    _bodyStill.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _pronunciation.stop();
     for (var controller in _wordControllers) {
@@ -1101,6 +1107,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         if (open) photoPanel.close();
       },
       drawer: Drawer(
+              // In the tree exactly while the drawer is on screen (StillBody).
+              child: StillBodyWhileMounted(
+              controller: _bodyStill,
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
@@ -1146,9 +1155,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               ),
                 ],
               ),
+              ),
             ),
         // The theme's backdrop, behind the list (app-themes).
-      body: AppBackdrop(
+      body: StillBody(
+          controller: _bodyStill,
+          child: AppBackdrop(
             child: Stack(
         children: [
       Stack(
@@ -1172,7 +1184,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                 proxyDecorator: (child, index, animation) {
                   return Material(
                     color: Colors.transparent,
-                    child: child,
+                    // Dragged over the other rows: frosted on Android too.
+                    child: LiveBlur(child: child),
                   );
                 },
               )
@@ -1222,7 +1235,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             ),
           ),
         ],
-        )),
+        ))),
       // Both round buttons share the Scaffold's FAB slot, so the Scaffold moves
       // them together: above a snackbar, above the keyboard, above the bottom
       // safe area -- always on one line. A full-width row, centred, puts the
