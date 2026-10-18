@@ -13,14 +13,16 @@ const classic = AppThemeSpec(
 );
 
 /// The Classic theme: the app's colours from before themes, with Matcha's
-/// fonts and text colours (owner, 2026-10-17).
+/// fonts and near-black text (owner, 2026-10-17); its dark greens are
+/// purples since 2026-10-18 ([classicDarkPurple]).
 ThemeData classicTheme() {
   final matcha = matchaScheme();
   final base = ThemeData(
     colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple).copyWith(
       inversePrimary: classicTopBarColor,
       onSurface: matcha.onSurface,
-      onSurfaceVariant: matcha.onSurfaceVariant,
+      // Matcha's dark olive gave way to a purple grey (owner, 2026-10-18).
+      onSurfaceVariant: const Color(0xFF49454E),
     ),
     appBarTheme: const AppBarTheme(backgroundColor: classicTopBarColor),
     useMaterial3: true,

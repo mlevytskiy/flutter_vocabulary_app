@@ -86,6 +86,10 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           path: 'recycle-bin',
           factory: _$RecycleBinRoute._fromState,
         ),
+        GoRouteData.$route(
+          path: 'collections-settings',
+          factory: _$CollectionsSettingsRoute._fromState,
+        ),
       ],
     );
 
@@ -540,6 +544,29 @@ mixin _$RecycleBinRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/recycle-bin',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$CollectionsSettingsRoute on GoRouteData {
+  static CollectionsSettingsRoute _fromState(GoRouterState state) =>
+      const CollectionsSettingsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/collections-settings',
       );
 
   @override

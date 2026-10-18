@@ -33,6 +33,7 @@ final amberTerminal = AppThemeSpec(
         rowText: glow,
         rowSubtext: const Color(0xFFC79A4A),
         rowIcon: amber,
+        aiAccent: const Color(0xFF5FD7FF),
         rowHandle: amber.withValues(alpha: 0.6),
         rowClose: const Color(0xFF9C7A3A),
         popup: panel,

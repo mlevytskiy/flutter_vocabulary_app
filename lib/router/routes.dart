@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/models/tag_kind.dart';
 import '../features/app_settings/app_settings_screen.dart';
 import '../features/collections/collections_screen.dart';
+import '../features/collections/collections_settings_screen.dart';
 import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
@@ -55,6 +56,7 @@ part 'routes.g.dart';
     TypedGoRoute<SettingsRoute>(path: 'settings'),
     TypedGoRoute<AppSettingsRoute>(path: 'app-settings'),
     TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
+    TypedGoRoute<CollectionsSettingsRoute>(path: 'collections-settings'),
   ],
 )
 class WordInputRoute extends GoRouteData with _$WordInputRoute {
@@ -250,6 +252,17 @@ class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
 
   @override
   Widget build(BuildContext context, GoRouterState state) => const RecycleBinScreen();
+}
+
+/// Collections settings (owner, 2026-10-18): the Collections screen's
+/// Settings button. Holds "Replace all date names".
+class CollectionsSettingsRoute extends GoRouteData
+    with _$CollectionsSettingsRoute {
+  const CollectionsSettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const CollectionsSettingsScreen();
 }
 
 final appRouter = GoRouter(routes: $appRoutes);

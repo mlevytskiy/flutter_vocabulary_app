@@ -411,7 +411,8 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                 children: [
                   FloatingActionButton(
                     heroTag: null,
-                    onPressed: () => const SettingsRoute().push(context),
+                    onPressed: () =>
+                        const CollectionsSettingsRoute().push(context),
                     tooltip: 'Settings',
                     elevation: 8.0,
                     shape: const CircleBorder(),

@@ -51,7 +51,22 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    collections-search (owner, 2026-10-17) shows the Collections filter icon only in search (or while a filter is on),
    the hint "Search in <folder>", the search list of only the open folder's level with its matching folders, the "Match
    outside" sheet (peeking at 20%, opening on the route with "You are here", opening by itself when the list is empty),
-   the round buttons hidden while that sheet shows, and live tag counts with disabled 0 chips in the filter sheet). Keep `popup_menu_2`, `flutter_speed_dial`,
+   the round buttons hidden while that sheet shows, and live tag counts with disabled 0 chips in the filter sheet);
+   classic-purple (owner, 2026-10-18) gives Classic the Next button's purple where it had Matcha's dark green (row
+   text, dark icons) and lilac greys for Matcha's grey greens; collection-naming (owner, 2026-10-18) names a
+   collection nobody named "Vocabulary" ("Vocabulary 1", "Vocabulary 2", … when taken) and, once it has 5 words,
+   the AI's short name (Worker `POST /collections/name`, Sonnet 5.5), which the main screen's title reveals letter
+   by letter; a name the learner typed is never replaced; New collection's name is optional, labelled
+   "Name (optional)" with a pale grey hint "Leave empty to let AI name it" and, while empty, a sparkle note
+   under it; likewise a description nobody wrote stays empty until 20 words, then AI writes it (Worker
+   `POST /collections/description`), with the hint "Leave empty to let AI write it" and its note in New collection;
+   the Collection details sheet's Create/Save is a full-width button in a bar pinned at the bottom, above the
+   keyboard, and the AI notes are helper lines (the description's beside its counter) in a per-theme
+   `AppDecor.aiAccent` with no box (owner, 2026-10-18); at launch the collections from before, and any still
+   waiting, get their AI names and descriptions from one request, `POST /collections/autofill` (owner, 2026-10-18);
+   the Collections screen's Settings button opens its own Collections settings screen with one row, "Replace all
+   date names", which renames every "17.10.2026 17:05" name by those rules in one request and says what it did in a
+   snackbar (owner, 2026-10-18)). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models (approved: `Exercise` by learn-part-step-1; `WordGroup`, `StoryRun`, `StoryStep` and `WordPair.rowId` by mnemonic-story, ADR-0003; `FilmDialogue`, `WordGroup.dialogueId`,
@@ -62,7 +77,9 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep`, and the new Isar collection `CollectionFolder` by
    collections-screen (owner, 2026-10-16, ADR-0003/0004/0005), no packages; `WordCollection.description`, `WordCollection.originTags`/`.topicTags`, `SessionSource.originTags`/`.topicTags`, the enum `TagKind` and the Isar collection `TagLibraryEntry` by collection-tags (owner via Fable 5.1 proxy, 2026-10-16), no packages; the OFL
    font assets Comfortaa, JetBrains Mono, Manrope, Nunito and Unbounded by app-themes (owner,
-   2026-10-17), no packages), no `packages/` folder — ask first.
+   2026-10-17), no packages; `WordCollection.nameKind` and the enum `NameKind` by collection-naming (owner,
+   2026-10-18) and `WordCollection.descriptionKind` (owner, 2026-10-18), no packages), no `packages/` folder —
+   ask first.
 6. If a step cannot be done as written, stop and write what you found under that step in
    `docs/refactoring-plan.md`. Do not improvise a different structure.
 7. Tests (`docs/testing.md`): while developing run `tool/test.sh smoke`; write tests for what you

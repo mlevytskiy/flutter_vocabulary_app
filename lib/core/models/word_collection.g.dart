@@ -32,107 +32,119 @@ const WordCollectionSchema = CollectionSchema(
       name: r'description',
       type: IsarType.string,
     ),
-    r'dialogues': PropertySchema(
+    r'descriptionKind': PropertySchema(
       id: 3,
+      name: r'descriptionKind',
+      type: IsarType.byte,
+      enumMap: _WordCollectiondescriptionKindEnumValueMap,
+    ),
+    r'dialogues': PropertySchema(
+      id: 4,
       name: r'dialogues',
       type: IsarType.objectList,
       target: r'FilmDialogue',
     ),
     r'editToken': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'editToken',
       type: IsarType.string,
     ),
     r'folderId': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'folderId',
       type: IsarType.string,
     ),
     r'groupedWordsKey': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'groupedWordsKey',
       type: IsarType.string,
     ),
     r'groups': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'groups',
       type: IsarType.objectList,
       target: r'WordGroup',
     ),
     r'isShared': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'isShared',
       type: IsarType.bool,
     ),
     r'keep': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'keep',
       type: IsarType.bool,
     ),
     r'lastLocalModifiedAt': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'lastLocalModifiedAt',
       type: IsarType.dateTime,
     ),
     r'name': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'name',
       type: IsarType.string,
     ),
+    r'nameKind': PropertySchema(
+      id: 13,
+      name: r'nameKind',
+      type: IsarType.byte,
+      enumMap: _WordCollectionnameKindEnumValueMap,
+    ),
     r'order': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'order',
       type: IsarType.long,
     ),
     r'originTags': PropertySchema(
-      id: 13,
+      id: 15,
       name: r'originTags',
       type: IsarType.stringList,
     ),
     r'publishedId': PropertySchema(
-      id: 14,
+      id: 16,
       name: r'publishedId',
       type: IsarType.string,
     ),
     r'results': PropertySchema(
-      id: 15,
+      id: 17,
       name: r'results',
       type: IsarType.objectList,
       target: r'WordResult',
     ),
     r'selectedGroupId': PropertySchema(
-      id: 16,
+      id: 18,
       name: r'selectedGroupId',
       type: IsarType.string,
     ),
     r'sessionId': PropertySchema(
-      id: 17,
+      id: 19,
       name: r'sessionId',
       type: IsarType.string,
     ),
     r'sources': PropertySchema(
-      id: 18,
+      id: 20,
       name: r'sources',
       type: IsarType.objectList,
       target: r'SourcePhoto',
     ),
     r'tags': PropertySchema(
-      id: 19,
+      id: 21,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'topicTags': PropertySchema(
-      id: 20,
+      id: 22,
       name: r'topicTags',
       type: IsarType.stringList,
     ),
     r'updatedAt': PropertySchema(
-      id: 21,
+      id: 23,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'words': PropertySchema(
-      id: 22,
+      id: 24,
       name: r'words',
       type: IsarType.objectList,
       target: r'WordPair',
@@ -327,47 +339,49 @@ void _wordCollectionSerialize(
   writer.writeDateTime(offsets[0], object.binnedAt);
   writer.writeString(offsets[1], object.binnedFromFolderId);
   writer.writeString(offsets[2], object.description);
+  writer.writeByte(offsets[3], object.descriptionKind.index);
   writer.writeObjectList<FilmDialogue>(
-    offsets[3],
+    offsets[4],
     allOffsets,
     FilmDialogueSchema.serialize,
     object.dialogues,
   );
-  writer.writeString(offsets[4], object.editToken);
-  writer.writeString(offsets[5], object.folderId);
-  writer.writeString(offsets[6], object.groupedWordsKey);
+  writer.writeString(offsets[5], object.editToken);
+  writer.writeString(offsets[6], object.folderId);
+  writer.writeString(offsets[7], object.groupedWordsKey);
   writer.writeObjectList<WordGroup>(
-    offsets[7],
+    offsets[8],
     allOffsets,
     WordGroupSchema.serialize,
     object.groups,
   );
-  writer.writeBool(offsets[8], object.isShared);
-  writer.writeBool(offsets[9], object.keep);
-  writer.writeDateTime(offsets[10], object.lastLocalModifiedAt);
-  writer.writeString(offsets[11], object.name);
-  writer.writeLong(offsets[12], object.order);
-  writer.writeStringList(offsets[13], object.originTags);
-  writer.writeString(offsets[14], object.publishedId);
+  writer.writeBool(offsets[9], object.isShared);
+  writer.writeBool(offsets[10], object.keep);
+  writer.writeDateTime(offsets[11], object.lastLocalModifiedAt);
+  writer.writeString(offsets[12], object.name);
+  writer.writeByte(offsets[13], object.nameKind.index);
+  writer.writeLong(offsets[14], object.order);
+  writer.writeStringList(offsets[15], object.originTags);
+  writer.writeString(offsets[16], object.publishedId);
   writer.writeObjectList<WordResult>(
-    offsets[15],
+    offsets[17],
     allOffsets,
     WordResultSchema.serialize,
     object.results,
   );
-  writer.writeString(offsets[16], object.selectedGroupId);
-  writer.writeString(offsets[17], object.collectionId);
+  writer.writeString(offsets[18], object.selectedGroupId);
+  writer.writeString(offsets[19], object.collectionId);
   writer.writeObjectList<SessionSource>(
-    offsets[18],
+    offsets[20],
     allOffsets,
     SessionSourceSchema.serialize,
     object.sources,
   );
-  writer.writeStringList(offsets[19], object.tags);
-  writer.writeStringList(offsets[20], object.topicTags);
-  writer.writeDateTime(offsets[21], object.updatedAt);
+  writer.writeStringList(offsets[21], object.tags);
+  writer.writeStringList(offsets[22], object.topicTags);
+  writer.writeDateTime(offsets[23], object.updatedAt);
   writer.writeObjectList<WordPair>(
-    offsets[22],
+    offsets[24],
     allOffsets,
     WordPairSchema.serialize,
     object.words,
@@ -384,52 +398,58 @@ WordCollection _wordCollectionDeserialize(
   object.binnedAt = reader.readDateTimeOrNull(offsets[0]);
   object.binnedFromFolderId = reader.readStringOrNull(offsets[1]);
   object.description = reader.readStringOrNull(offsets[2]);
+  object.descriptionKind = _WordCollectiondescriptionKindValueEnumMap[
+          reader.readByteOrNull(offsets[3])] ??
+      NameKind.undefined;
   object.dialogues = reader.readObjectList<FilmDialogue>(
-        offsets[3],
+        offsets[4],
         FilmDialogueSchema.deserialize,
         allOffsets,
         FilmDialogue(),
       ) ??
       [];
-  object.editToken = reader.readStringOrNull(offsets[4]);
-  object.folderId = reader.readStringOrNull(offsets[5]);
-  object.groupedWordsKey = reader.readStringOrNull(offsets[6]);
+  object.editToken = reader.readStringOrNull(offsets[5]);
+  object.folderId = reader.readStringOrNull(offsets[6]);
+  object.groupedWordsKey = reader.readStringOrNull(offsets[7]);
   object.groups = reader.readObjectList<WordGroup>(
-        offsets[7],
+        offsets[8],
         WordGroupSchema.deserialize,
         allOffsets,
         WordGroup(),
       ) ??
       [];
   object.id = id;
-  object.isShared = reader.readBool(offsets[8]);
-  object.keep = reader.readBool(offsets[9]);
-  object.lastLocalModifiedAt = reader.readDateTime(offsets[10]);
-  object.name = reader.readStringOrNull(offsets[11]);
-  object.order = reader.readLong(offsets[12]);
-  object.originTags = reader.readStringList(offsets[13]) ?? [];
-  object.publishedId = reader.readStringOrNull(offsets[14]);
+  object.isShared = reader.readBool(offsets[9]);
+  object.keep = reader.readBool(offsets[10]);
+  object.lastLocalModifiedAt = reader.readDateTime(offsets[11]);
+  object.name = reader.readStringOrNull(offsets[12]);
+  object.nameKind =
+      _WordCollectionnameKindValueEnumMap[reader.readByteOrNull(offsets[13])] ??
+          NameKind.undefined;
+  object.order = reader.readLong(offsets[14]);
+  object.originTags = reader.readStringList(offsets[15]) ?? [];
+  object.publishedId = reader.readStringOrNull(offsets[16]);
   object.results = reader.readObjectList<WordResult>(
-        offsets[15],
+        offsets[17],
         WordResultSchema.deserialize,
         allOffsets,
         WordResult(),
       ) ??
       [];
-  object.selectedGroupId = reader.readStringOrNull(offsets[16]);
-  object.collectionId = reader.readString(offsets[17]);
+  object.selectedGroupId = reader.readStringOrNull(offsets[18]);
+  object.collectionId = reader.readString(offsets[19]);
   object.sources = reader.readObjectList<SessionSource>(
-        offsets[18],
+        offsets[20],
         SessionSourceSchema.deserialize,
         allOffsets,
         SessionSource(),
       ) ??
       [];
-  object.tags = reader.readStringList(offsets[19]) ?? [];
-  object.topicTags = reader.readStringList(offsets[20]) ?? [];
-  object.updatedAt = reader.readDateTime(offsets[21]);
+  object.tags = reader.readStringList(offsets[21]) ?? [];
+  object.topicTags = reader.readStringList(offsets[22]) ?? [];
+  object.updatedAt = reader.readDateTime(offsets[23]);
   object.words = reader.readObjectList<WordPair>(
-        offsets[22],
+        offsets[24],
         WordPairSchema.deserialize,
         allOffsets,
         WordPair(),
@@ -452,6 +472,10 @@ P _wordCollectionDeserializeProp<P>(
     case 2:
       return (reader.readStringOrNull(offset)) as P;
     case 3:
+      return (_WordCollectiondescriptionKindValueEnumMap[
+              reader.readByteOrNull(offset)] ??
+          NameKind.undefined) as P;
+    case 4:
       return (reader.readObjectList<FilmDialogue>(
             offset,
             FilmDialogueSchema.deserialize,
@@ -459,13 +483,13 @@ P _wordCollectionDeserializeProp<P>(
             FilmDialogue(),
           ) ??
           []) as P;
-    case 4:
-      return (reader.readStringOrNull(offset)) as P;
     case 5:
       return (reader.readStringOrNull(offset)) as P;
     case 6:
       return (reader.readStringOrNull(offset)) as P;
     case 7:
+      return (reader.readStringOrNull(offset)) as P;
+    case 8:
       return (reader.readObjectList<WordGroup>(
             offset,
             WordGroupSchema.deserialize,
@@ -473,21 +497,25 @@ P _wordCollectionDeserializeProp<P>(
             WordGroup(),
           ) ??
           []) as P;
-    case 8:
-      return (reader.readBool(offset)) as P;
     case 9:
       return (reader.readBool(offset)) as P;
     case 10:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readBool(offset)) as P;
     case 11:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readDateTime(offset)) as P;
     case 12:
-      return (reader.readLong(offset)) as P;
-    case 13:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 14:
       return (reader.readStringOrNull(offset)) as P;
+    case 13:
+      return (_WordCollectionnameKindValueEnumMap[
+              reader.readByteOrNull(offset)] ??
+          NameKind.undefined) as P;
+    case 14:
+      return (reader.readLong(offset)) as P;
     case 15:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 16:
+      return (reader.readStringOrNull(offset)) as P;
+    case 17:
       return (reader.readObjectList<WordResult>(
             offset,
             WordResultSchema.deserialize,
@@ -495,11 +523,11 @@ P _wordCollectionDeserializeProp<P>(
             WordResult(),
           ) ??
           []) as P;
-    case 16:
-      return (reader.readStringOrNull(offset)) as P;
-    case 17:
-      return (reader.readString(offset)) as P;
     case 18:
+      return (reader.readStringOrNull(offset)) as P;
+    case 19:
+      return (reader.readString(offset)) as P;
+    case 20:
       return (reader.readObjectList<SessionSource>(
             offset,
             SessionSourceSchema.deserialize,
@@ -507,13 +535,13 @@ P _wordCollectionDeserializeProp<P>(
             SessionSource(),
           ) ??
           []) as P;
-    case 19:
-      return (reader.readStringList(offset) ?? []) as P;
-    case 20:
-      return (reader.readStringList(offset) ?? []) as P;
     case 21:
-      return (reader.readDateTime(offset)) as P;
+      return (reader.readStringList(offset) ?? []) as P;
     case 22:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 23:
+      return (reader.readDateTime(offset)) as P;
+    case 24:
       return (reader.readObjectList<WordPair>(
             offset,
             WordPairSchema.deserialize,
@@ -525,6 +553,27 @@ P _wordCollectionDeserializeProp<P>(
       throw IsarError('Unknown property with id $propertyId');
   }
 }
+
+const _WordCollectiondescriptionKindEnumValueMap = {
+  'undefined': 0,
+  'auto': 1,
+  'byUser': 2,
+};
+const _WordCollectiondescriptionKindValueEnumMap = {
+  0: NameKind.undefined,
+  1: NameKind.auto,
+  2: NameKind.byUser,
+};
+const _WordCollectionnameKindEnumValueMap = {
+  'undefined': 0,
+  'auto': 1,
+  'byUser': 2,
+};
+const _WordCollectionnameKindValueEnumMap = {
+  0: NameKind.undefined,
+  1: NameKind.auto,
+  2: NameKind.byUser,
+};
 
 Id _wordCollectionGetId(WordCollection object) {
   return object.id;
@@ -1292,6 +1341,62 @@ extension WordCollectionQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'description',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionKindEqualTo(NameKind value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'descriptionKind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionKindGreaterThan(
+    NameKind value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'descriptionKind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionKindLessThan(
+    NameKind value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'descriptionKind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      descriptionKindBetween(
+    NameKind lower,
+    NameKind upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'descriptionKind',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -2217,6 +2322,62 @@ extension WordCollectionQueryFilter
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'name',
         value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameKindEqualTo(NameKind value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'nameKind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameKindGreaterThan(
+    NameKind value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'nameKind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameKindLessThan(
+    NameKind value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'nameKind',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterFilterCondition>
+      nameKindBetween(
+    NameKind lower,
+    NameKind upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'nameKind',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
       ));
     });
   }
@@ -3804,6 +3965,20 @@ extension WordCollectionQuerySortBy
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByDescriptionKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionKind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByDescriptionKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionKind', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
@@ -3892,6 +4067,19 @@ extension WordCollectionQuerySortBy
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByNameDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'name', Sort.desc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> sortByNameKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameKind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      sortByNameKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameKind', Sort.desc);
     });
   }
 
@@ -4006,6 +4194,20 @@ extension WordCollectionQuerySortThenBy
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByDescriptionKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionKind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByDescriptionKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'descriptionKind', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByEditToken() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'editToken', Sort.asc);
@@ -4109,6 +4311,19 @@ extension WordCollectionQuerySortThenBy
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByNameKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameKind', Sort.asc);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QAfterSortBy>
+      thenByNameKindDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'nameKind', Sort.desc);
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QAfterSortBy> thenByOrder() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'order', Sort.asc);
@@ -4200,6 +4415,13 @@ extension WordCollectionQueryWhereDistinct
     });
   }
 
+  QueryBuilder<WordCollection, WordCollection, QDistinct>
+      distinctByDescriptionKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'descriptionKind');
+    });
+  }
+
   QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByEditToken(
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
@@ -4245,6 +4467,12 @@ extension WordCollectionQueryWhereDistinct
       {bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'name', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<WordCollection, WordCollection, QDistinct> distinctByNameKind() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'nameKind');
     });
   }
 
@@ -4332,6 +4560,13 @@ extension WordCollectionQueryProperty
     });
   }
 
+  QueryBuilder<WordCollection, NameKind, QQueryOperations>
+      descriptionKindProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'descriptionKind');
+    });
+  }
+
   QueryBuilder<WordCollection, List<FilmDialogue>, QQueryOperations>
       dialoguesProperty() {
     return QueryBuilder.apply(this, (query) {
@@ -4387,6 +4622,12 @@ extension WordCollectionQueryProperty
   QueryBuilder<WordCollection, String?, QQueryOperations> nameProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'name');
+    });
+  }
+
+  QueryBuilder<WordCollection, NameKind, QQueryOperations> nameKindProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'nameKind');
     });
   }
 

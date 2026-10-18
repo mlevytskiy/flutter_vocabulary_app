@@ -35,6 +35,14 @@
 //   "STUB:same"  -> not ok, the fixed sentence equal to the learner's
 //   "STUB:notask" -> usesTask false
 //   "STUB:error" / "STUB:malformed" / "STUB:slow" as above
+// A naming request (system names a "vocabulary collection", user = JSON {words}, collection-naming) answers
+// {"name": "Kitchen Tools"}. Markers, as the first word: "STUB:error" -> 500, "STUB:malformed" -> prose,
+// "STUB:long" -> a name of 80 characters in quotes with a full stop, "STUB:empty" -> {"name": ""}.
+// A description request (system names a "vocabulary set") answers {"description": "Words for cooking at home: tools
+// and actions."}; "STUB:error", "STUB:malformed" and "STUB:long" (600 characters in quotes) as for naming.
+// An autofill request (system names "several of a learner's word lists", user = JSON {collections}) answers a name
+// and a description for every collection plus one for an id nobody asked about; a collection with the id
+// "STUB:skip" gets none, a first collection "STUB:error" -> 500, "STUB:malformed" -> prose.
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
 // the last request body and its x-api-key -- so a test can tell whether the AI
 // was reached.
@@ -167,6 +175,45 @@ function learnCheckAnswer(model, content) {
   return { status: 200, body: message(model, JSON.stringify(reply)) };
 }
 
+function namingAnswer(model, content) {
+  let first = "";
+  try {
+    first = JSON.parse(content).words?.[0]?.word ?? "";
+  } catch {}
+  if (first === "STUB:error") return { status: 500, body: { type: "error", error: { type: "api_error", message: "stub" } } };
+  const text = first === "STUB:malformed" ? "A fine name would be Kitchen Tools."
+    : first === "STUB:long" ? JSON.stringify({ name: `"${"Very long name ".repeat(6).trim()}."` })
+    : first === "STUB:empty" ? JSON.stringify({ name: "" })
+    : JSON.stringify({ name: "Kitchen Tools" });
+  return { status: 200, body: message(model, text) };
+}
+
+function describeAnswer(model, content) {
+  let first = "";
+  try {
+    first = JSON.parse(content).words?.[0]?.word ?? "";
+  } catch {}
+  if (first === "STUB:error") return { status: 500, body: { type: "error", error: { type: "api_error", message: "stub" } } };
+  const text = first === "STUB:malformed" ? "These words are about the kitchen."
+    : first === "STUB:long" ? JSON.stringify({ description: `"${"A long sentence about words. ".repeat(20).trim()}"` })
+    : JSON.stringify({ description: "Words for cooking at home: tools and actions." });
+  return { status: 200, body: message(model, text) };
+}
+
+function autofillAnswer(model, content) {
+  let collections = [];
+  try {
+    collections = JSON.parse(content).collections ?? [];
+  } catch {}
+  if (collections[0]?.id === "STUB:error") return { status: 500, body: { type: "error", error: { type: "api_error", message: "stub" } } };
+  if (collections[0]?.id === "STUB:malformed") return { status: 200, body: message(model, "Here are some names.") };
+  const answers = collections
+    .filter((c) => c.id !== "STUB:skip")
+    .map((c) => ({ id: c.id, name: `Name ${c.id}`, description: `About ${c.id}.` }));
+  answers.push({ id: "not-asked", name: "Invented" });
+  return { status: 200, body: message(model, JSON.stringify({ collections: answers })) };
+}
+
 export function startAnthropicStub() {
   const calls = { count: 0, last: null, lastApiKey: null };
   const server = createServer((req, res) => {
@@ -183,6 +230,21 @@ export function startAnthropicStub() {
       calls.last = body;
       calls.lastApiKey = req.headers["x-api-key"] ?? null;
       const content = typeof body.messages?.[0]?.content === "string" ? body.messages[0].content : "";
+      if (typeof body.system === "string" && body.system.includes("several of a learner's word lists")) {
+        const { status, body: reply } = autofillAnswer(body.model, content);
+        res.writeHead(status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(reply));
+      }
+      if (typeof body.system === "string" && body.system.includes("vocabulary set")) {
+        const { status, body: reply } = describeAnswer(body.model, content);
+        res.writeHead(status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(reply));
+      }
+      if (typeof body.system === "string" && body.system.includes("vocabulary collection")) {
+        const { status, body: reply } = namingAnswer(body.model, content);
+        res.writeHead(status, { "content-type": "application/json" });
+        return res.end(JSON.stringify(reply));
+      }
       if (typeof body.system === "string" && body.system.includes("topical groups")) {
         const { status, body: reply } = groupingAnswer(body.model, content);
         res.writeHead(status, { "content-type": "application/json" });

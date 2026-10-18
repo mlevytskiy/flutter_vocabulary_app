@@ -35,6 +35,7 @@ final matcha = AppThemeSpec(
         rowText: deep,
         rowSubtext: Color(0xFF5E6E52),
         rowIcon: leaf,
+        aiAccent: Color(0xFF8A5A9E),
         rowHandle: Color(0xFF8DAA74),
         rowClose: Color(0xFF9DAF8C),
         popup: deep,

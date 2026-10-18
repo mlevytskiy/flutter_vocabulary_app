@@ -61,6 +61,7 @@ ThemeData windows95Theme() {
       rowText: black,
       rowSubtext: Color(0xFF404040),
       rowIcon: navy,
+      aiAccent: Color(0xFF008080),
       rowHandle: shadow,
       rowClose: Color(0xFF404040),
       popup: face,

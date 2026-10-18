@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/collection_folder.dart';
 import '../models/collection_name.dart';
 import '../models/effective_tags.dart';
+import '../models/name_kind.dart';
 import '../models/tag_library_entry.dart';
 import '../models/word_collection.dart';
 import '../models/session_source.dart';
@@ -71,6 +72,7 @@ class CollectionStore {
     await store._fillRowIdsEverywhere();
     await store._backfillFiling();
     await store._backfillTypedTags();
+    await store._sortNameKinds();
     return store;
   }
 
@@ -163,6 +165,146 @@ class CollectionStore {
       debugPrint('VOCAB: backfill failed, retried on the next open: $e');
     }
   }
+
+  // ---- Name kinds of records from before collection-naming ----
+
+  /// Sorts the names of records stored before collection-naming (owner,
+  /// 2026-10-18), which all read as `undefined`: a "Vocabulary N" name stays
+  /// undefined; a date name (the automatic name from before) stays undefined
+  /// and, with fewer than [minWordsForAutoName] words, becomes the next free
+  /// "Vocabulary N", while a bigger one keeps its date name until the AI
+  /// names it; any other name was typed by the learner. Times stay. Runs on
+  /// every open and finds nothing to do once sorted; nothing here throws.
+  Future<void> _sortNameKinds() async {
+    try {
+      await _isar.writeTxn(() async {
+        final unsorted = await _isar.wordCollections
+            .filter()
+            .nameKindEqualTo(NameKind.undefined)
+            .nameIsNotNull()
+            .findAll();
+        final changed = <WordCollection>[];
+        List<String?>? taken;
+        for (final c in unsorted) {
+          final name = c.name!;
+          if (isVocabularyName(name)) continue;
+          if (!isDateName(name)) {
+            changed.add(c..nameKind = NameKind.byUser);
+          } else if (wordCount(c) < minWordsForAutoName) {
+            taken ??= [
+              for (final o in await _isar.wordCollections.where().findAll())
+                o.name,
+            ];
+            final next = nextVocabularyName(taken);
+            taken.add(next);
+            changed.add(c..name = next);
+          }
+        }
+        if (changed.isNotEmpty) await _isar.wordCollections.putAll(changed);
+        // A description from before was written by the learner.
+        final described = await _isar.wordCollections
+            .filter()
+            .descriptionKindEqualTo(NameKind.undefined)
+            .descriptionIsNotNull()
+            .findAll();
+        if (described.isNotEmpty) {
+          await _isar.wordCollections.putAll(
+              [for (final c in described) c..descriptionKind = NameKind.byUser]);
+        }
+      });
+    } catch (e) {
+      debugPrint('VOCAB: name kinds not sorted, retried on the next open: $e');
+    }
+  }
+
+  /// "Replace all date names" (Collections settings, owner 2026-10-18): every
+  /// collection whose name looks like "17.10.2026 17:05", bin included,
+  /// goes by the naming rules in one transaction. With fewer than
+  /// [minWordsForAutoName] words it becomes the next free "Vocabulary N";
+  /// with more its name becomes undefined, keeping the date until the AI's
+  /// name replaces it. Returns how many became "Vocabulary N" and the ones
+  /// for the AI, each with whether it wants a description too. Nothing on a
+  /// failed write.
+  Future<
+      ({
+        int vocabulary,
+        List<({WordCollection collection, bool description})> forAi,
+      })> replaceDateNames() async {
+    try {
+      return await _isar.writeTxn(() async {
+        final all = await _isar.wordCollections.where().findAll();
+        final taken = [for (final c in all) c.name];
+        final changed = <WordCollection>[];
+        final forAi = <({WordCollection collection, bool description})>[];
+        for (final c in all) {
+          if (c.name == null || !isDateName(c.name!)) continue;
+          final words = wordCount(c);
+          c.nameKind = NameKind.undefined;
+          if (words < minWordsForAutoName) {
+            c.name = nextVocabularyName(taken);
+            taken.add(c.name);
+          } else {
+            forAi.add((
+              collection: c,
+              description: c.descriptionKind == NameKind.undefined &&
+                  c.description == null &&
+                  words >= minWordsForAutoDescription,
+            ));
+          }
+          changed.add(c);
+        }
+        if (changed.isNotEmpty) await _isar.wordCollections.putAll(changed);
+        return (vocabulary: changed.length - forAi.length, forAi: forAi);
+      });
+    } catch (_) {
+      return (
+        vocabulary: 0,
+        forAi: const <({WordCollection collection, bool description})>[]
+      );
+    }
+  }
+
+  /// Every collection outside the bin that AI should name or describe
+  /// (collection-naming): its name still undefined with at least
+  /// [minWordsForAutoName] words, or its description never written, still
+  /// empty, with at least [minWordsForAutoDescription] words. Newest first,
+  /// at most [limit]. The launch upgrade sends them in one request. Empty on
+  /// a failed read.
+  Future<List<({WordCollection collection, bool name, bool description})>>
+      pendingAutofill({int limit = 100}) async {
+    try {
+      final all = await _isar.wordCollections
+          .filter()
+          .binnedAtIsNull()
+          .group((q) => q
+              .nameKindEqualTo(NameKind.undefined)
+              .or()
+              .descriptionKindEqualTo(NameKind.undefined))
+          .sortByLastLocalModifiedAtDesc()
+          .findAll();
+      final pending =
+          <({WordCollection collection, bool name, bool description})>[];
+      for (final c in all) {
+        final words = wordCount(c);
+        final name =
+            c.nameKind == NameKind.undefined && words >= minWordsForAutoName;
+        final description = c.descriptionKind == NameKind.undefined &&
+            c.description == null &&
+            words >= minWordsForAutoDescription;
+        if (name || description) {
+          pending.add((collection: c, name: name, description: description));
+        }
+        if (pending.length == limit) break;
+      }
+      return pending;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// The words of [c] that are not blank, as the naming rule counts them.
+  static int wordCount(WordCollection c) =>
+      c.words.where((w) => w.word.trim().isNotEmpty).length;
 
   // ---- One-time typed-tag migration (collection-tags T6, ADR-0003) ----
 
@@ -371,8 +513,8 @@ class CollectionStore {
     }
   }
 
-  /// Inserts a new collection named after this moment
-  /// (`defaultCollectionName`), at the end of its level: [folderId], null
+  /// Inserts a new collection named "Vocabulary" (or the next free
+  /// "Vocabulary N", `nextVocabularyName`; collection-naming), at the end of its level: [folderId], null
   /// being the top level. The only way a collection comes into being
   /// (ADR-0003): first launch and the launch rule pass `keep: false`, New
   /// collection `keep: true` (AC-19). Returns the new collection, with no
@@ -393,17 +535,26 @@ class CollectionStore {
   }) async {
     final collection = WordCollection.create();
     final now = collection.updatedAt;
+    final named = name != null && collectionNameProblem(name) == null;
     collection
-      ..name = name != null && collectionNameProblem(name) == null
-          ? name
-          : defaultCollectionName(collection.updatedAt)
+      ..name = named ? name : undefinedCollectionName
+      ..nameKind = named ? NameKind.byUser : NameKind.undefined
       ..folderId = folderId
       ..description = _blankAsNull(description)
+      ..descriptionKind = _blankAsNull(description) == null
+          ? NameKind.undefined
+          : NameKind.byUser
       ..originTags = _cleanTags(origin)
       ..topicTags = _cleanTags(topic);
     collection.keep = keep || _hasDetails(collection);
     try {
       await _isar.writeTxn(() async {
+        if (!named) {
+          collection.name = nextVocabularyName([
+            for (final c in await _isar.wordCollections.where().findAll())
+              c.name,
+          ]);
+        }
         collection.id = await _isar.wordCollections.put(collection);
         await _renumberLevel(folderId, newCollection: collection);
         await _touchTags(TagKind.origin, collection.originTags, now);
@@ -482,12 +633,14 @@ class CollectionStore {
         if (stored == null) return false;
         final id = stored.id,
             name = stored.name,
+            nameKind = stored.nameKind,
             folderId = stored.folderId,
             order = stored.order,
             binnedAt = stored.binnedAt,
             binnedFromFolderId = stored.binnedFromFolderId,
             keep = stored.keep,
             description = stored.description,
+            descriptionKind = stored.descriptionKind,
             originTags = [...stored.originTags],
             topicTags = [...stored.topicTags];
         change(stored);
@@ -495,12 +648,14 @@ class CollectionStore {
           ..id = id
           ..collectionId = collectionId
           ..name = name
+          ..nameKind = nameKind
           ..folderId = folderId
           ..order = order
           ..binnedAt = binnedAt
           ..binnedFromFolderId = binnedFromFolderId
           ..keep = keep
           ..description = description
+          ..descriptionKind = descriptionKind
           ..originTags = originTags
           ..topicTags = topicTags;
         await _isar.wordCollections.put(stored);
@@ -564,12 +719,14 @@ class CollectionStore {
           ..dialogues = [for (final d in s.dialogues) d.copy()]
           ..tags = [...s.tags]
           ..description = existing.description
+          ..descriptionKind = existing.descriptionKind
           ..originTags = existing.originTags
           ..topicTags = existing.topicTags
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
           ..results = existing.results
           ..name = existing.name
+          ..nameKind = existing.nameKind
           ..folderId = existing.folderId
           ..order = existing.order
           ..binnedAt = existing.binnedAt
@@ -698,13 +855,17 @@ class CollectionStore {
         if (c == null) return null;
         var changed = false, keep = c.keep;
         if (name != null && name != c.name) {
-          c.name = name;
+          c
+            ..name = name
+            ..nameKind = NameKind.byUser;
           changed = keep = true;
         }
         if (description != null) {
           final d = _blankAsNull(description);
           if (d != c.description) {
-            c.description = d;
+            c
+              ..description = d
+              ..descriptionKind = NameKind.byUser;
             changed = true;
           }
         }
@@ -961,6 +1122,7 @@ class CollectionStore {
       if (collection != null) {
         await _isar.wordCollections.put(collection
           ..name = name
+          ..nameKind = NameKind.byUser
           ..keep = true);
         return FilingResult.done;
       }
@@ -969,6 +1131,51 @@ class CollectionStore {
       await _isar.collectionFolders.put(folder..name = name);
       return FilingResult.done;
     });
+  }
+
+  /// Gives collection [id] the AI's [name] (collection-naming): only while
+  /// its name is still `undefined`, so a name the learner typed meanwhile
+  /// wins. Not an edit: neither time moves and `keep` stays. Returns the
+  /// stored record when the name went in, else null.
+  Future<WordCollection?> setAutoName(String id, String name) async {
+    if (collectionNameProblem(name) != null) return null;
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(id);
+        if (c == null || c.nameKind != NameKind.undefined) return null;
+        await _isar.wordCollections.put(c
+          ..name = name
+          ..nameKind = NameKind.auto);
+        return c;
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Gives collection [id] the AI's [description] (collection-naming): only
+  /// while nobody wrote one (`undefined`, still empty). Not an edit: neither
+  /// time moves. Returns the stored record when it went in, else null.
+  Future<WordCollection?> setAutoDescription(
+      String id, String description) async {
+    final d = _blankAsNull(description);
+    if (d == null || d.runes.length > maxAutoDescriptionLength) return null;
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(id);
+        if (c == null ||
+            c.descriptionKind != NameKind.undefined ||
+            c.description != null) {
+          return null;
+        }
+        await _isar.wordCollections.put(c
+          ..description = d
+          ..descriptionKind = NameKind.auto);
+        return c;
+      });
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Makes a folder named [name] at the end of [parentId]'s level (AC-13),
@@ -1106,6 +1313,14 @@ class CollectionStore {
   /// it is gone), on listen and after every write (the main screen's title).
   Stream<String?> watchName(String id) =>
       _watchFiling(() async => (await _collectionById(id))?.name);
+
+  /// The name of collection [id] with where it came from (collection-naming),
+  /// read together so a change of both arrives as one; null when it is gone.
+  Stream<({String? name, NameKind kind})?> watchNaming(String id) =>
+      _watchFiling(() async {
+        final c = await _collectionById(id);
+        return c == null ? null : (name: c.name, kind: c.nameKind);
+      });
 
   /// Every folder, binned ones too, for the path and the tree; unsorted.
   Stream<List<CollectionFolder>> watchFolders() =>

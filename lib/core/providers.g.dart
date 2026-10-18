@@ -267,6 +267,27 @@ final storyApiServiceProvider = Provider<StoryApiService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef StoryApiServiceRef = ProviderRef<StoryApiService>;
+String _$collectionNamingServiceHash() =>
+    r'ea710e876937b0fa9333378880697a6e9fce73db';
+
+/// The Worker's collection naming (collection-naming, owner 2026-10-18).
+///
+/// Copied from [collectionNamingService].
+@ProviderFor(collectionNamingService)
+final collectionNamingServiceProvider =
+    Provider<CollectionNamingService>.internal(
+  collectionNamingService,
+  name: r'collectionNamingServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$collectionNamingServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CollectionNamingServiceRef = ProviderRef<CollectionNamingService>;
 String _$learnApiServiceHash() => r'2da4556e695e318b873e02fe83b565960e790244';
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
@@ -952,6 +973,162 @@ class _CollectionNameProviderElement
 
   @override
   String get collectionId => (origin as CollectionNameProvider).collectionId;
+}
+
+String _$collectionNamingHash() => r'eacf5846b5e9db437f2f039634d17ff5f7715b0c';
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+///
+/// Copied from [collectionNaming].
+@ProviderFor(collectionNaming)
+const collectionNamingProvider = CollectionNamingFamily();
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+///
+/// Copied from [collectionNaming].
+class CollectionNamingFamily
+    extends Family<AsyncValue<({String? name, NameKind kind})?>> {
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  ///
+  /// Copied from [collectionNaming].
+  const CollectionNamingFamily();
+
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  ///
+  /// Copied from [collectionNaming].
+  CollectionNamingProvider call(
+    String collectionId,
+  ) {
+    return CollectionNamingProvider(
+      collectionId,
+    );
+  }
+
+  @override
+  CollectionNamingProvider getProviderOverride(
+    covariant CollectionNamingProvider provider,
+  ) {
+    return call(
+      provider.collectionId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'collectionNamingProvider';
+}
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+///
+/// Copied from [collectionNaming].
+class CollectionNamingProvider
+    extends AutoDisposeStreamProvider<({String? name, NameKind kind})?> {
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  ///
+  /// Copied from [collectionNaming].
+  CollectionNamingProvider(
+    String collectionId,
+  ) : this._internal(
+          (ref) => collectionNaming(
+            ref as CollectionNamingRef,
+            collectionId,
+          ),
+          from: collectionNamingProvider,
+          name: r'collectionNamingProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$collectionNamingHash,
+          dependencies: CollectionNamingFamily._dependencies,
+          allTransitiveDependencies:
+              CollectionNamingFamily._allTransitiveDependencies,
+          collectionId: collectionId,
+        );
+
+  CollectionNamingProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.collectionId,
+  }) : super.internal();
+
+  final String collectionId;
+
+  @override
+  Override overrideWith(
+    Stream<({String? name, NameKind kind})?> Function(
+            CollectionNamingRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: CollectionNamingProvider._internal(
+        (ref) => create(ref as CollectionNamingRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        collectionId: collectionId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeStreamProviderElement<({String? name, NameKind kind})?>
+      createElement() {
+    return _CollectionNamingProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CollectionNamingProvider &&
+        other.collectionId == collectionId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin CollectionNamingRef
+    on AutoDisposeStreamProviderRef<({String? name, NameKind kind})?> {
+  /// The parameter `collectionId` of this provider.
+  String get collectionId;
+}
+
+class _CollectionNamingProviderElement
+    extends AutoDisposeStreamProviderElement<({String? name, NameKind kind})?>
+    with CollectionNamingRef {
+  _CollectionNamingProviderElement(super.provider);
+
+  @override
+  String get collectionId => (origin as CollectionNamingProvider).collectionId;
 }
 
 String _$collectionFoldersHash() => r'0201bdb7340183c54b86017aa80dc98dee5f1df7';

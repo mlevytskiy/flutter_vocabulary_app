@@ -11,6 +11,7 @@ import 'models/offered_ai.dart';
 import 'theme/app_theme.dart' show AppThemeId;
 import 'models/collection_folder.dart';
 import 'models/tag_library_entry.dart';
+import 'models/name_kind.dart';
 import 'models/word_collection.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
@@ -23,6 +24,7 @@ import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
 import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
+import 'services/collection_naming_service.dart';
 import 'services/collection_search.dart' show CollectionSummary;
 import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
@@ -95,6 +97,11 @@ DictionaryService dictionaryService(Ref ref) => DictionaryService();
 /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
 @Riverpod(keepAlive: true)
 StoryApiService storyApiService(Ref ref) => StoryApiService();
+
+/// The Worker's collection naming (collection-naming, owner 2026-10-18).
+@Riverpod(keepAlive: true)
+CollectionNamingService collectionNamingService(Ref ref) =>
+    CollectionNamingService();
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 @Riverpod(keepAlive: true)
@@ -246,6 +253,15 @@ Stream<List<TagLibraryEntry>> tagLibrary(Ref ref) async* {
 Stream<String?> collectionName(Ref ref, String collectionId) async* {
   final store = await ref.watch(collectionStoreProvider.future);
   yield* store.watchName(collectionId);
+}
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+@riverpod
+Stream<({String? name, NameKind kind})?> collectionNaming(
+    Ref ref, String collectionId) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchNaming(collectionId);
 }
 
 /// Every folder, binned ones too, for the Collections path and the tree.

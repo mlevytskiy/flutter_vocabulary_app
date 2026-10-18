@@ -181,6 +181,8 @@ void main() {
     expect(input.made, isEmpty);
     await t.enterText(find.byKey(const Key('details-name')), 'Friends');
     await t.pump();
+    await t.ensureVisible(find.byKey(const Key('details-confirm')));
+    await t.pump();
     await t.tap(find.byKey(const Key('details-confirm')));
     await t.pumpAndSettle();
     expect(input.made, [null]);
@@ -195,6 +197,8 @@ void main() {
     await t.pumpAndSettle();
     await plus(t, 'New collection');
     await t.enterText(find.byKey(const Key('details-name')), 'Unit notes');
+    await t.pump();
+    await t.ensureVisible(find.byKey(const Key('details-confirm')));
     await t.pump();
     await t.tap(find.byKey(const Key('details-confirm')));
     await t.pumpAndSettle();

@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/collection_name.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -197,7 +196,7 @@ void main() {
   });
 
   group('newCollection', () {
-    test('makes a kept, empty, date-named collection current', () async {
+    test('makes a kept, empty, "Vocabulary N" collection current', () async {
       final left = await current();
 
       await notifier().newCollection(null);
@@ -206,7 +205,9 @@ void main() {
       expect(now.collectionId, isNot(left.collectionId));
       expect(now.keep, isTrue);
       expect(now.isEmpty, isTrue);
-      expect(now.name, defaultCollectionName(now.updatedAt));
+      // collection-naming: the left one still held "Vocabulary" when it was
+      // made.
+      expect(now.name, 'Vocabulary 1');
       expect(await store.currentCollectionId(), now.collectionId);
       expect((await store.byId(now.collectionId))!.keep, isTrue);
       expect(await store.byId(left.collectionId), isNull);

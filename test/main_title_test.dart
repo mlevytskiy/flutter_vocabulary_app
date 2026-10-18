@@ -13,6 +13,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/name_dialog.dart';
+import 'package:flutter_vocabulary_app/features/word_input/widgets/collection_title.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
 
@@ -126,8 +127,7 @@ void main() {
     expect(
         find.descendant(
             of: find.ancestor(
-                of: find.byIcon(Icons.edit),
-                matching: find.byType(IconButton)),
+                of: find.byIcon(Icons.edit), matching: find.byType(IconButton)),
             matching: find.byType(Text)),
         findsNothing);
     expect(find.text('Next'), findsOneComponent());
@@ -152,8 +152,7 @@ void main() {
     expect(
         tester
             .getSize(find.ancestor(
-                of: find.byIcon(Icons.edit),
-                matching: find.byType(IconButton)))
+                of: find.byIcon(Icons.edit), matching: find.byType(IconButton)))
             .height,
         greaterThanOrEqualTo(48));
     expect(tester.getRect(title()).right,
@@ -174,6 +173,35 @@ void main() {
     final expected = defaultCollectionName(
         creationMomentOf(current.collectionId) ?? current.updatedAt);
     expect((tester.widget(title()) as Text).data, expected);
+    await tearDownMain(tester);
+  });
+
+  testWidgets(
+      'collection-naming: the AI\'s name replaces "Vocabulary" with the reveal',
+      (tester) async {
+    await pumpMain(tester, name: 'Vocabulary');
+    await tester.runAsync(
+        () => store.setAutoName(current.collectionId, 'Kitchen Tools'));
+    var revealed = false;
+    for (var i = 0; i < 60 && !revealed; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      revealed = find
+          .descendant(
+              of: find.byType(AppBar), matching: find.byType(ImageFiltered))
+          .evaluate()
+          .isNotEmpty;
+      if (!revealed) {
+        await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)));
+      }
+    }
+    expect(revealed, isTrue);
+    // The first pump starts the ticker; the reveal runs from there.
+    await tester.pump();
+    await tester
+        .pump(CollectionTitle.duration + const Duration(milliseconds: 50));
+    await tester.pump();
+    expect((tester.widget(title()) as Text).data, 'Kitchen Tools');
     await tearDownMain(tester);
   });
 

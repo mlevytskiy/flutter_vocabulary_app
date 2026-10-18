@@ -151,7 +151,13 @@ void main() {
       for (final c in collections) {
         final moment = creationMomentOf(c.collectionId);
         expect(moment, isNotNull);
-        expect(c.name, defaultCollectionName(moment!));
+        // collection-naming: a date name stays only with 5 words or more.
+        final words = c.words.where((w) => w.word.trim().isNotEmpty).length;
+        expect(
+            c.name,
+            words >= 5
+                ? defaultCollectionName(moment!)
+                : predicate<String>(isVocabularyName, 'a Vocabulary name'));
         expect(c.folderId, isNull);
         expect(c.keep,
             !c.isEmpty || c.originTags.isNotEmpty || c.topicTags.isNotEmpty);

@@ -3,8 +3,11 @@ import 'package:flutter/services.dart' show MaxLengthEnforcement;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/collection_name.dart';
+import '../../core/models/name_kind.dart'
+    show minWordsForAutoDescription, minWordsForAutoName;
 import '../../core/models/tag_kind.dart';
 import '../../core/providers.dart';
+import '../../core/theme/app_decor.dart';
 import '../../core/services/tag_rules.dart';
 import '../tags/tag_suggestions.dart';
 import '../tags/typed_tag_field.dart';
@@ -22,8 +25,9 @@ enum DetailsMode {
   final String confirmLabel;
 }
 
-/// What the sheet hands back: the name as typed, the description as typed
-/// (blank means none) and the tags of each kind.
+/// What the sheet hands back: the name as typed (in [DetailsMode.create]
+/// blank means "let AI name it", collection-naming), the description as
+/// typed (blank means none) and the tags of each kind.
 typedef CollectionDetails = ({
   String name,
   String description,
@@ -99,14 +103,24 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
       a.length == b.length &&
       [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
 
-  bool get _nameOk => collectionNameProblem(_name.text) == null;
+  /// New collection may leave the name blank: AI names it once it has
+  /// [minWordsForAutoName] words (collection-naming, owner 2026-10-18).
+  bool get _nameLeftToAi =>
+      widget.mode == DetailsMode.create && _name.text.trim().isEmpty;
+
+  /// New collection's empty description is left to AI too, from
+  /// [minWordsForAutoDescription] words on (owner, 2026-10-18).
+  bool get _descriptionLeftToAi =>
+      widget.mode == DetailsMode.create && _description.text.trim().isEmpty;
+  bool get _nameOk =>
+      _nameLeftToAi || collectionNameProblem(_name.text) == null;
   bool get _descriptionOk =>
       _description.text.runes.length <= maxDescriptionLength;
 
   void _submit() {
     if (!_nameOk || !_descriptionOk) return;
     Navigator.of(context).pop<CollectionDetails>((
-      name: _name.text,
+      name: _nameLeftToAi ? '' : _name.text,
       description: _description.text,
       origin: _origin,
       topic: _topic,
@@ -167,89 +181,170 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final create = widget.mode == DetailsMode.create;
+    // The AI hints are quieter than an ordinary hint (owner, 2026-10-18).
+    final aiHintStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
+        color: Theme.of(context)
+            .colorScheme
+            .onSurfaceVariant
+            .withValues(alpha: 0.45));
     final nameError = (_nameTouched || _name.text.isNotEmpty) && !_nameOk
         ? nameProblemMessage
         : null;
+    final scheme = Theme.of(context).colorScheme;
+    final ai = AppDecor.of(context).aiAccent;
     return PopScope(
       canPop: !_changed,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _askDiscard();
       },
+      // Header, the fields scrolling between, and the action bar pinned at
+      // the bottom, so Create stays just above the keyboard (owner,
+      // 2026-10-18).
       child: Padding(
         padding:
             EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                key: const Key('details-handle'),
-                behavior: HitTestBehavior.opaque,
-                onVerticalDragEnd: (d) {
-                  if ((d.primaryVelocity ?? 0) > 300) _requestClose();
-                },
-                child: Center(
-                  child: Container(
-                    width: 32,
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              key: const Key('details-handle'),
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragEnd: (d) {
+                if ((d.primaryVelocity ?? 0) > 300) _requestClose();
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 32,
+                      height: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: scheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Text(widget.mode.title,
+                        style: Theme.of(context).textTheme.titleLarge),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      key: const Key('details-name'),
+                      controller: _name,
+                      autofocus: create,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (_) => _nameTouched = true,
+                      decoration: InputDecoration(
+                        labelText: create ? 'Name (optional)' : 'Name',
+                        hintText:
+                            create ? 'Leave empty to let AI name it' : null,
+                        hintStyle: aiHintStyle,
+                        border: const OutlineInputBorder(),
+                        errorText: nameError,
+                        helper: create && _nameLeftToAi
+                            ? _AiHelper(
+                                key: const Key('details-ai-name-note'),
+                                color: ai,
+                                text: 'AI names it at $minWordsForAutoName '
+                                    'words. Until then it is '
+                                    '"$undefinedCollectionName".',
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      key: const Key('details-description'),
+                      controller: _description,
+                      minLines: 2,
+                      maxLines: 5,
+                      maxLength: maxDescriptionLength,
+                      maxLengthEnforcement: MaxLengthEnforcement.none,
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        hintText:
+                            create ? 'Leave empty to let AI write it' : null,
+                        hintStyle: aiHintStyle,
+                        border: const OutlineInputBorder(),
+                        errorText:
+                            _descriptionOk ? null : descriptionProblemMessage,
+                        // On the counter's line, left of "0/500".
+                        helper: create && _descriptionLeftToAi
+                            ? _AiHelper(
+                                key: const Key('details-ai-description-note'),
+                                color: ai,
+                                text: 'AI writes it at '
+                                    '$minWordsForAutoDescription words',
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _tagField(TagKind.origin, _origin,
+                        (tags) => setState(() => _origin = tags)),
+                    const SizedBox(height: 12),
+                    _tagField(TagKind.topic, _topic,
+                        (tags) => setState(() => _topic = tags)),
+                  ],
                 ),
               ),
-              Text(widget.mode.title,
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('details-name'),
-                controller: _name,
-                autofocus: widget.mode == DetailsMode.create,
-                textInputAction: TextInputAction.next,
-                onChanged: (_) => _nameTouched = true,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: const OutlineInputBorder(),
-                  errorText: nameError,
-                ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: scheme.outlineVariant)),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                key: const Key('details-description'),
-                controller: _description,
-                minLines: 2,
-                maxLines: 5,
-                maxLength: maxDescriptionLength,
-                maxLengthEnforcement: MaxLengthEnforcement.none,
-                decoration: InputDecoration(
-                  labelText: 'Description',
-                  border: const OutlineInputBorder(),
-                  errorText: _descriptionOk ? null : descriptionProblemMessage,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _tagField(TagKind.origin, _origin,
-                  (tags) => setState(() => _origin = tags)),
-              const SizedBox(height: 12),
-              _tagField(TagKind.topic, _topic,
-                  (tags) => setState(() => _topic = tags)),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: FilledButton(
                   key: const Key('details-confirm'),
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48)),
                   onPressed: _nameOk && _descriptionOk ? _submit : null,
                   child: Text(widget.mode.confirmLabel),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+/// The helper line of one of New collection's empty fields: AI will fill it
+/// from the collection's words (collection-naming). In the theme's
+/// [AppDecor.aiAccent], with no box, so it is not mistaken for a tag box.
+class _AiHelper extends StatelessWidget {
+  const _AiHelper({super.key, required this.color, required this.text});
+
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = Theme.of(context).textTheme.bodySmall?.copyWith(color: color);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.auto_awesome, size: 14, color: color),
+        const SizedBox(width: 6),
+        Flexible(child: Text(text, style: style)),
+      ],
     );
   }
 }

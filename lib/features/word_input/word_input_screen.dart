@@ -13,6 +13,7 @@ import '../../core/theme/app_theme.dart';
 
 import '../../core/models/collection_name.dart';
 import '../../core/models/definition_result.dart';
+import '../../core/models/name_kind.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
@@ -35,6 +36,7 @@ import 'subtitle_import_flow.dart';
 import 'widgets/photo_source_dialog.dart';
 import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
+import 'widgets/collection_title.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
 import 'widgets/anchored_scroll_controller.dart';
@@ -660,11 +662,30 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   String _collectionTitle() {
     final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
     if (collection == null) return '';
-    final stored =
-        ref.watch(collectionNameProvider(collection.collectionId)).valueOrNull;
+    final stored = ref
+        .watch(collectionNamingProvider(collection.collectionId))
+        .valueOrNull
+        ?.name;
     return stored ??
         defaultCollectionName(
             creationMomentOf(collection.collectionId) ?? collection.updatedAt);
+  }
+
+  /// The kind of name the title shows and the one it showed before
+  /// (collection-naming): the title animates when the AI's name replaces an
+  /// undefined one.
+  NameKind? _shownNameKind;
+  bool _titleReveals() {
+    final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final kind = collection == null
+        ? null
+        : ref
+            .watch(collectionNamingProvider(collection.collectionId))
+            .valueOrNull
+            ?.kind;
+    final reveals = kind == NameKind.auto && _shownNameKind == NameKind.undefined;
+    _shownNameKind = kind;
+    return reveals;
   }
 
   /// The pencil button: opens the Collection details sheet (name, description,
@@ -1016,7 +1037,11 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: CollectionTitle(
+                text: _collectionTitle(),
+                collectionId: ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId,
+                animate: _titleReveals(),
+              ),
             ),
             const SizedBox(width: 2),
             IconButton(

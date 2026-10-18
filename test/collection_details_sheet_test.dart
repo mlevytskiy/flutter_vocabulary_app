@@ -10,6 +10,7 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
+import 'package:flutter_vocabulary_app/core/theme/app_decor.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_details_sheet.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 
@@ -98,16 +99,26 @@ void main() {
     await t.pumpAndSettle();
   }
 
-  testWidgets('create: title, Create disabled until a name, name only',
-      (t) async {
+  testWidgets('create: title, the name optional, name only', (t) async {
     await setUpStore(t);
     addTearDown(() => tearDownStore(t));
     await openSheet(t);
     expect(find.text('New collection'), findsOneWidget);
-    expect(enabled(t), isFalse);
-    await t.enterText(find.byKey(const Key('details-name')), 'Friends S01');
-    await t.pump();
+    // collection-naming: an empty name is left to AI, and the sheet says so.
     expect(enabled(t), isTrue);
+    expect(find.text('Name (optional)'), findsOneWidget);
+    expect(find.byKey(const Key('details-ai-name-note')), findsOneWidget);
+    expect(
+        find.byKey(const Key('details-ai-description-note')), findsOneWidget);
+    await t.enterText(find.byKey(const Key('details-name')), 'Friends S01');
+    await t.pumpAndSettle();
+    expect(enabled(t), isTrue);
+    expect(find.byKey(const Key('details-ai-name-note')), findsNothing);
+    await t.enterText(
+        find.byKey(const Key('details-description')), 'About friends');
+    await t.pumpAndSettle();
+    expect(find.byKey(const Key('details-ai-description-note')), findsNothing);
+    await t.enterText(find.byKey(const Key('details-description')), '');
     await t.ensureVisible(confirm());
     await t.pump();
     await t.tap(confirm());
@@ -119,15 +130,77 @@ void main() {
     expect(result!.topic, isEmpty);
   });
 
-  testWidgets('invalid name disables the button with the message', (t) async {
+  testWidgets('create: Create stays on screen above the keyboard', (t) async {
+    t.view.physicalSize = const Size(360, 640);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await setUpStore(t);
+    addTearDown(() => tearDownStore(t));
+    await openSheet(t);
+    t.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await t.pumpAndSettle();
+    final button = t.getRect(confirm());
+    expect(button.bottom, lessThanOrEqualTo(640 - 300));
+    expect(button.top, greaterThan(0));
+    // Tappable without scrolling first.
+    await t.tap(confirm());
+    await t.pumpAndSettle();
+    expect(closed, isTrue);
+  });
+
+  testWidgets(
+      'create: the description note sits on the counter line, in '
+      'the AI colour, not a tag tint', (t) async {
+    await setUpStore(t);
+    addTearDown(() => tearDownStore(t));
+    await openSheet(t);
+    final note = find.byKey(const Key('details-ai-description-note'));
+    final counter = find.text('0/$maxDescriptionLength');
+    expect((t.getCenter(note).dy - t.getCenter(counter).dy).abs(), lessThan(4));
+    expect(t.getRect(note).right, lessThan(t.getRect(counter).left));
+    final text =
+        t.widget<Text>(find.descendant(of: note, matching: find.byType(Text)));
+    final scheme = Theme.of(t.element(note)).colorScheme;
+    expect(text.style?.color, AppDecor.classic.aiAccent);
+    expect(text.style?.color, isNot(scheme.secondaryContainer));
+    expect(text.style?.color, isNot(scheme.tertiaryContainer));
+    expect(find.descendant(of: note, matching: find.byType(DecoratedBox)),
+        findsNothing);
+  });
+
+  testWidgets('create: an empty name hands back a blank one for AI', (t) async {
     await setUpStore(t);
     addTearDown(() => tearDownStore(t));
     await openSheet(t);
     await t.enterText(find.byKey(const Key('details-name')), '   ');
     await t.pump();
-    expect(enabled(t), isFalse);
+    expect(enabled(t), isTrue);
     expect(find.text('A name must be 1 to 60 characters on one line'),
-        findsOneWidget);
+        findsNothing);
+    await t.ensureVisible(confirm());
+    await t.pump();
+    await t.tap(confirm());
+    await t.pumpAndSettle();
+    expect(result!.name, '');
+  });
+
+  testWidgets('edit: the name stays required', (t) async {
+    await setUpStore(t);
+    addTearDown(() => tearDownStore(t));
+    await openSheet(t,
+        mode: DetailsMode.edit,
+        initial: (name: 'Trip', description: '', origin: [], topic: []));
+    expect(find.byKey(const Key('details-ai-name-note')), findsNothing);
+    expect(find.byKey(const Key('details-ai-description-note')), findsNothing);
+    await t.enterText(find.byKey(const Key('details-name')), '');
+    await t.pump();
+    expect(enabled(t), isFalse);
+  });
+
+  testWidgets('invalid name disables the button with the message', (t) async {
+    await setUpStore(t);
+    addTearDown(() => tearDownStore(t));
+    await openSheet(t);
     await t.enterText(find.byKey(const Key('details-name')), 'x' * 61);
     await t.pump();
     expect(enabled(t), isFalse);

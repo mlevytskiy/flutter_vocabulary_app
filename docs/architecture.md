@@ -50,6 +50,15 @@ lib/
                                 (never published: the Worker knows photo and set only). Stored
                                 name stays SourcePhoto (good-looking-web; import-from-quizlet,
                                 ADR-0005; side-panel-sources AC-22)
+                                name_kind.dart — NameKind { undefined, auto, byUser } (ordinal stored;
+                                collection-naming): "Vocabulary N" until 5 words, then the AI's name
+                                (collection_naming_service.dart → Worker POST /collections/name), a
+                                typed name for good; WordCollection.nameKind, written only by the store;
+                                WordCollection.descriptionKind the same for the description: empty until
+                                20 words, then the AI's (POST /collections/description), unless typed
+                                At launch, every collection still waiting for either goes to the AI in
+                                one request (POST /collections/autofill, ≤100, newest first); Collections
+                                settings' "Replace all date names" does the same for every date name
                                 tag_kind.dart — TagKind { origin, topic } (ordinal stored; collection-tags);
                                 tag_library_entry.dart (+.g) — Isar @collection TagLibraryEntry {kind, key,
                                 text, lastUsedAt, forgotten}, unique (kind, key); effective_tags.dart — legacy

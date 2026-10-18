@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:isar_community/isar.dart';
 
 import 'film_dialogue.dart';
+import 'name_kind.dart';
 import 'session_source.dart';
 import 'word_group.dart';
 import 'word_pair.dart';
@@ -76,6 +77,13 @@ class WordCollection {
   /// The learner's description of the collection and its typed tags
   /// (collection-tags, ADR-0001). Legacy [tags] stays untouched.
   String? description;
+
+  /// Where [description] came from (collection-naming, owner 2026-10-18):
+  /// `undefined` while it is empty and nobody wrote one, `auto` once the AI
+  /// wrote it at [minWordsForAutoDescription] words, `byUser` once the
+  /// learner changed it (an emptied one too). Written only by the store.
+  @enumerated
+  NameKind descriptionKind = NameKind.undefined;
   List<String> originTags = [];
   List<String> topicTags = [];
 
@@ -87,6 +95,12 @@ class WordCollection {
   /// Written by `CollectionStore.create()` and rename; null only on a record
   /// from before collections-screen until the backfill names it.
   String? name;
+
+  /// Where [name] came from (collection-naming, owner 2026-10-18): written
+  /// only by the store, with the name. A record from before reads as
+  /// `undefined` until the store's naming migration sorts it.
+  @enumerated
+  NameKind nameKind = NameKind.undefined;
 
   /// The `CollectionFolder.folderId` it sits in; null is the top level.
   @Index()

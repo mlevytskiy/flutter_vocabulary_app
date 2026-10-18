@@ -34,6 +34,7 @@ final aurora = AppThemeSpec(
         rowText: ice,
         rowSubtext: const Color(0xFF9FB3C8),
         rowIcon: mint,
+        aiAccent: const Color(0xFFFF8AC2),
         rowHandle: violet,
         rowClose: const Color(0xFF7A86A8),
         popup: const Color(0xF2141F36),

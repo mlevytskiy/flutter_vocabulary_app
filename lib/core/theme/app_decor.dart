@@ -6,10 +6,16 @@ import 'package:flutter/material.dart';
 /// background (`word_row_item.dart`), chosen by the owner 2026-10-16.
 const classicTopBarColor = Color(0x57d9c1ff);
 
+/// Classic's dark text purple: the Classic scheme's primary, the colour of
+/// the top bar's Next button. It replaces Matcha's dark green in Classic's
+/// row text and dark icons, and lilac greys replace Matcha's grey greens
+/// (owner, 2026-10-18).
+const classicDarkPurple = Color(0xFF68548E);
+
 /// Every colour the screens used to hard-code, per theme (app-themes, owner
 /// 2026-10-17). The defaults are the Classic values: the very constants the
-/// screens had, except the text colours, which are Matcha's (owner,
-/// 2026-10-17); [AppDecor.of] falls back
+/// screens had, except the text colours, which are Classic's purples (owner,
+/// 2026-10-18; Matcha's greens before); [AppDecor.of] falls back
 /// to it, so a widget built without an app theme (tests, previews) does too.
 @immutable
 class AppDecor extends ThemeExtension<AppDecor> {
@@ -19,8 +25,8 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.wordRowBorder,
     this.wordRowRadius = 12,
     this.wordRowBlur = 0,
-    this.rowText = const Color(0xFF2F4A22),
-    this.rowSubtext = const Color(0xFF5E6E52),
+    this.rowText = classicDarkPurple,
+    this.rowSubtext = const Color(0xFF7A6E92),
     this.rowIcon = const Color(0xFF8E24AA),
     this.rowHandle = const Color(0xFF7F77DD),
     this.rowClose = const Color(0xFFa883ca),
@@ -42,9 +48,9 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.paper = Colors.white,
     this.panel = const Color(0xFFF7F2FF),
     this.panelBorder = const Color(0x33954EF3),
-    this.muted = const Color(0xFF8A9A7E),
-    this.subtle = const Color(0xFF6B7A60),
-    this.strongIcon = const Color(0xFF2F3A28),
+    this.muted = const Color(0xFF9A90AA),
+    this.subtle = const Color(0xFF7D7290),
+    this.strongIcon = classicDarkPurple,
     this.placeholder = const Color(0xFFE0E0E0),
     this.onPlaceholder = Colors.black45,
     this.thumb = const Color(0xFFBDBDBD),
@@ -68,6 +74,7 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.glassPanel = const Color(0x4DFFFFFF),
     this.glassEdge = const Color(0xFF9F86D8),
     this.glassShadow = const Color(0xFF3A1D6E),
+    this.aiAccent = const Color(0xFF00838F),
     this.backdrop,
     this.blobs = const [],
   });
@@ -166,6 +173,11 @@ class AppDecor extends ThemeExtension<AppDecor> {
   final Color glassPanel;
   final Color glassEdge;
   final Color glassShadow;
+
+  /// What AI will fill in: the sparkle and its words beside an empty field
+  /// (collection-naming, owner 2026-10-18). A hue no tag tint, button or
+  /// accent of the theme uses, so it reads as its own thing.
+  final Color aiAccent;
 
   /// Painted behind the main screen's list: a gradient and soft colour blobs.
   final Gradient? backdrop;

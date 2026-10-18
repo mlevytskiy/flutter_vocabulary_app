@@ -22,8 +22,9 @@ void main() {
     }
   });
 
-  test('Classic keeps its colours and takes Matcha\'s fonts and text colours',
-      () {
+  test(
+      'Classic keeps its colours, takes Matcha\'s fonts and near-black text, '
+      'and has purples where Matcha has dark greens', () {
     final data = classicTheme();
     final matcha = AppThemeSpec.of(AppThemeId.matcha).build();
     final before = ColorScheme.fromSeed(seedColor: Colors.deepPurple);
@@ -32,13 +33,17 @@ void main() {
     expect(data.colorScheme.inversePrimary, classicTopBarColor);
     expect(data.appBarTheme.backgroundColor, classicTopBarColor);
     expect(data.colorScheme.onSurface, matcha.colorScheme.onSurface);
-    expect(data.colorScheme.onSurfaceVariant, matcha.colorScheme.onSurfaceVariant);
+    expect(data.colorScheme.onSurfaceVariant, const Color(0xFF49454E));
     expect(data.textTheme.bodyLarge!.fontFamily, 'Nunito');
     expect(data.textTheme.titleLarge!.fontFamily, 'Comfortaa');
     expect(data.textTheme.bodyLarge!.color, matcha.textTheme.bodyLarge!.color);
     final m = matcha.extension<AppDecor>()!;
-    expect(AppDecor.classic.rowText, m.rowText);
-    expect(AppDecor.classic.muted, m.muted);
+    // Owner, 2026-10-18: the dark green text is the Next button's purple.
+    expect(AppDecor.classic.rowText, data.colorScheme.primary);
+    expect(AppDecor.classic.rowText, classicDarkPurple);
+    expect(AppDecor.classic.strongIcon, classicDarkPurple);
+    expect(AppDecor.classic.rowText, isNot(m.rowText));
+    expect(AppDecor.classic.muted, isNot(m.muted));
     expect(AppDecor.classic.wordRow, const Color(0x57d9c1ff));
     expect(AppDecor.classic.fab, Colors.red);
     expect(AppDecor.classic.fabAlt, const Color(0xff954ef3));
@@ -62,15 +67,26 @@ void main() {
   });
 
   test('the kept themes recolour what Classic hard-coded', () {
-    for (final id in [AppThemeId.aurora, AppThemeId.matcha, AppThemeId.amberTerminal, AppThemeId.windows95]) {
+    for (final id in [
+      AppThemeId.aurora,
+      AppThemeId.matcha,
+      AppThemeId.amberTerminal,
+      AppThemeId.windows95
+    ]) {
       final d = AppThemeSpec.of(id).build().extension<AppDecor>()!;
       expect(d.rowIcon, isNot(AppDecor.classic.rowIcon), reason: id.name);
       expect(d.pic500, isNot(AppDecor.classic.pic500), reason: id.name);
       expect(d.popup, isNot(AppDecor.classic.popup), reason: id.name);
       expect(d.addAccent, isNot(AppDecor.classic.addAccent), reason: id.name);
     }
-    expect(AppThemeSpec.of(AppThemeId.amberTerminal).build().extension<AppDecor>()!.picOutline, isTrue);
-    final w95 = AppThemeSpec.of(AppThemeId.windows95).build().extension<AppDecor>()!;
+    expect(
+        AppThemeSpec.of(AppThemeId.amberTerminal)
+            .build()
+            .extension<AppDecor>()!
+            .picOutline,
+        isTrue);
+    final w95 =
+        AppThemeSpec.of(AppThemeId.windows95).build().extension<AppDecor>()!;
     expect(w95.wordRowRadius, 0);
     expect(w95.wordRowBorder, isA<Border>());
   });
@@ -96,7 +112,8 @@ void main() {
   });
 
   test('an unknown or removed stored name is Classic', () async {
-    SharedPreferences.setMockInitialValues({AppThemeNotifier.prefsKey: 'bauhaus'});
+    SharedPreferences.setMockInitialValues(
+        {AppThemeNotifier.prefsKey: 'bauhaus'});
     final container = ProviderContainer();
     addTearDown(container.dispose);
     await container.read(appThemeNotifierProvider.notifier).loaded;

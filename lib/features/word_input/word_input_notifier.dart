@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/dialogues/dialogue_rules.dart';
 import '../../core/models/film_dialogue.dart';
+import '../../core/models/name_kind.dart';
 import '../../core/models/tag_kind.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
@@ -32,12 +33,77 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// nobody edited.
   bool _dirty = false;
 
+  /// The collection whose name the AI is being asked for, and when the last
+  /// ask failed (collection-naming): one ask at a time, and none for
+  /// [_namingRetryAfter] after a failure.
+  String? _namingFor;
+  DateTime? _namingFailedAt;
+  static const _namingRetryAfter = Duration(seconds: 30);
+
+  /// The same for the AI's description (owner, 2026-10-18).
+  String? _describingFor;
+  DateTime? _describingFailedAt;
+
+  /// True while the launch upgrade asks for every pending name and
+  /// description in one request; the single asks wait for it.
+  bool _autofillRunning = false;
+
   @override
   Future<WordCollection> build() async {
     ref.onDispose(() => _saveTimer?.cancel());
+    // A collection opened with enough words but no name yet is named now.
+    listenSelf((previous, next) {
+      if (previous?.valueOrNull?.collectionId !=
+          next.valueOrNull?.collectionId) {
+        _maybeAutoName();
+        _maybeAutoDescribe();
+      }
+    });
     final store = await ref.read(collectionStoreProvider.future);
     await store.sweepBin(DateTime.now());
+    _autofillRunning = true;
+    unawaited(_autofillPending(store));
     return _openCurrent(store);
+  }
+
+  /// The upgrade from before collection-naming (owner, 2026-10-18): every
+  /// collection that should have an AI name (5 words) or description (20
+  /// words) and has none gets it from one request at launch. What does not
+  /// come back stays as it is; the next launch, or a word added to the
+  /// current collection, asks again.
+  Future<void> _autofillPending(CollectionStore store) async {
+    try {
+      final pending = await store.pendingAutofill();
+      if (pending.isEmpty) return;
+      debugPrint('VOCAB: autofill: asking for ${pending.length} collections');
+      final answers = await ref.read(collectionNamingServiceProvider).autofill([
+        for (final p in pending)
+          (
+            id: p.collection.collectionId,
+            words: p.collection.words,
+            name: p.name,
+            description: p.description,
+          ),
+      ]);
+      if (answers == null) return;
+      await _applyAnswers(store, answers);
+      debugPrint('VOCAB: autofill: ${answers.length} answered');
+    } catch (e) {
+      debugPrint('VOCAB: autofill failed: $e');
+    } finally {
+      _autofillRunning = false;
+      // The copy on screen may predate the answers: take the stored kinds
+      // before deciding whether the current collection still needs asking.
+      final current = state.isLoading ? null : state.valueOrNull;
+      if (current != null) {
+        try {
+          final stored = await store.byId(current.collectionId);
+          if (stored != null) _adopt(stored, withSources: false);
+        } catch (_) {}
+      }
+      _maybeAutoName();
+      _maybeAutoDescribe();
+    }
   }
 
   /// The launch and resume rule (collections-screen ADR-0007): the pointer's
@@ -559,13 +625,19 @@ class WordInputNotifier extends _$WordInputNotifier {
   /// current one: details, tags, both times (never earlier than the ones held)
   /// and, after a source note, the sources, which `put()` copies from the
   /// caller.
+  ///
+  /// Never while loading: a rebuild keeps the previous collection as the
+  /// loading value, and adopting into it would put it back on screen.
   void _adopt(WordCollection stored, {required bool withSources}) {
+    if (state.isLoading) return;
     final c = state.valueOrNull;
     if (c == null || c.collectionId != stored.collectionId) return;
     c
       ..name = stored.name
+      ..nameKind = stored.nameKind
       ..keep = stored.keep || c.keep
       ..description = stored.description
+      ..descriptionKind = stored.descriptionKind
       ..originTags = [...stored.originTags]
       ..topicTags = [...stored.topicTags]
       ..updatedAt = stored.updatedAt.isAfter(c.updatedAt)
@@ -682,5 +754,136 @@ class WordInputNotifier extends _$WordInputNotifier {
     _dirty = true;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(milliseconds: 500), flush);
+    _maybeAutoName();
+    _maybeAutoDescribe();
+  }
+
+  /// A collection whose description nobody wrote, still empty, that reached
+  /// [minWordsForAutoDescription] words gets the AI's description (owner,
+  /// 2026-10-18). The store takes it only while still undefined, so a
+  /// description typed meanwhile wins.
+  void _maybeAutoDescribe() {
+    final c = state.valueOrNull;
+    if (c == null ||
+        c.descriptionKind != NameKind.undefined ||
+        (c.description ?? '').isNotEmpty) {
+      return;
+    }
+    if (CollectionStore.wordCount(c) < minWordsForAutoDescription) return;
+    if (_describingFor != null || _autofillRunning) return;
+    final failed = _describingFailedAt;
+    if (failed != null &&
+        DateTime.now().difference(failed) < _namingRetryAfter) {
+      return;
+    }
+    unawaited(_autoDescribe(c.collectionId, [...c.words]));
+  }
+
+  Future<void> _autoDescribe(String collectionId, List<WordPair> words) async {
+    _describingFor = collectionId;
+    try {
+      final text =
+          await ref.read(collectionNamingServiceProvider).descriptionFor(words);
+      if (text == null) {
+        _describingFailedAt = DateTime.now();
+        return;
+      }
+      _describingFailedAt = null;
+      final store = await ref.read(collectionStoreProvider.future);
+      final stored = await store.setAutoDescription(collectionId, text);
+      if (stored != null) _adopt(stored, withSources: false);
+    } finally {
+      _describingFor = null;
+    }
+  }
+
+  /// Stores the AI's [answers] by collection id; the current collection on
+  /// screen takes them at once. Returns how many names went in.
+  Future<int> _applyAnswers(CollectionStore store,
+      Map<String, ({String? name, String? description})> answers) async {
+    var named = 0;
+    for (final MapEntry(key: id, value: answer) in answers.entries) {
+      WordCollection? stored;
+      if (answer.name != null) {
+        final n = await store.setAutoName(id, answer.name!);
+        if (n != null) named++;
+        stored = n ?? stored;
+      }
+      if (answer.description != null) {
+        stored =
+            await store.setAutoDescription(id, answer.description!) ?? stored;
+      }
+      if (stored != null) _adopt(stored, withSources: false);
+    }
+    return named;
+  }
+
+  /// "Replace all date names" (Collections settings, owner 2026-10-18): the
+  /// small date-named collections become "Vocabulary N" at once, the rest get
+  /// AI names (and descriptions from 20 words) from one request. `ai` counts
+  /// the names that came back, `kept` the date names left because the AI
+  /// gave none (a failed request, or no answer for them).
+  Future<({int vocabulary, int ai, int kept})> replaceDateNames() async {
+    final store = await ref.read(collectionStoreProvider.future);
+    await flush();
+    final replaced = await store.replaceDateNames();
+    var ai = 0;
+    if (replaced.forAi.isNotEmpty) {
+      final answers = await ref.read(collectionNamingServiceProvider).autofill([
+        for (final p in replaced.forAi)
+          (
+            id: p.collection.collectionId,
+            words: p.collection.words,
+            name: true,
+            description: p.description,
+          ),
+      ]);
+      if (answers != null) ai = await _applyAnswers(store, answers);
+    }
+    final current = state.valueOrNull;
+    if (current != null) {
+      final stored = await store.byId(current.collectionId);
+      if (stored != null) _adopt(stored, withSources: false);
+    }
+    return (
+      vocabulary: replaced.vocabulary,
+      ai: ai,
+      kept: replaced.forAi.length - ai,
+    );
+  }
+
+  /// collection-naming (owner, 2026-10-18): a collection nobody named that
+  /// reached [minWordsForAutoName] words gets the AI's name. The store takes
+  /// it only while the name is still undefined, so a name typed meanwhile
+  /// wins; the main screen's title animates to it.
+  void _maybeAutoName() {
+    final c = state.valueOrNull;
+    if (c == null || c.nameKind != NameKind.undefined) return;
+    if (CollectionStore.wordCount(c) < minWordsForAutoName) return;
+    if (_namingFor != null || _autofillRunning) return;
+    final failed = _namingFailedAt;
+    if (failed != null &&
+        DateTime.now().difference(failed) < _namingRetryAfter) {
+      return;
+    }
+    unawaited(_autoName(c.collectionId, [...c.words]));
+  }
+
+  Future<void> _autoName(String collectionId, List<WordPair> words) async {
+    _namingFor = collectionId;
+    try {
+      final name =
+          await ref.read(collectionNamingServiceProvider).nameFor(words);
+      if (name == null) {
+        _namingFailedAt = DateTime.now();
+        return;
+      }
+      _namingFailedAt = null;
+      final store = await ref.read(collectionStoreProvider.future);
+      final stored = await store.setAutoName(collectionId, name);
+      if (stored != null) _adopt(stored, withSources: false);
+    } finally {
+      _namingFor = null;
+    }
   }
 }
