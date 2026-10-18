@@ -13,6 +13,7 @@ import { learnRoutes } from "./learn/routes";
 import { subtitleRoutes } from "./subtitles/routes";
 import { subtitleSearchRoutes } from "./subtitles/search";
 import { storyRoutes } from "./story/routes.ts";
+import { namingRoutes } from "./naming/routes.ts";
 import { deleteOldPictures } from "./story/store.ts";
 
 export type { Env } from "./env";
@@ -273,6 +274,7 @@ const ROUTES: RouteDefinition[] = [
   ...subtitleSearchRoutes,
   ...learnRoutes,
   ...storyRoutes,
+  ...namingRoutes,
 ];
 
 export default {

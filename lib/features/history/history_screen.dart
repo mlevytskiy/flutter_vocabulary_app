@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/models/collection_name.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/providers.dart';
@@ -24,10 +25,11 @@ class HistoryScreen extends ConsumerWidget {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: collections.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No collections yet',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+                style:
+                    TextStyle(fontSize: 18, color: AppDecor.of(context).muted),
               ),
             )
           : ListView.builder(

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:flutter_vocabulary_app/core/models/tag_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -13,7 +14,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/notes/photo_viewer_screen.dart';
-import 'package:flutter_vocabulary_app/features/notes/tag_editor.dart';
+import 'package:flutter_vocabulary_app/features/tags/typed_tag_field.dart';
 import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_preview.dart';
 import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
@@ -32,6 +33,41 @@ class _FakeInput extends WordInputNotifier {
 
   @override
   Future<WordCollection> build() async => collection;
+
+  // No store here: apply the edits in memory the way the stored record would.
+  @override
+  Future<Set<TagKind>> updateSourceNote(
+    String id, {
+    String? title,
+    String? description,
+    List<String>? links,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
+    final s = collection.sources.firstWhere((s) => s.id == id);
+    if (title != null) s.title = title.trim().isEmpty ? null : title;
+    if (description != null) {
+      s.description = description.trim().isEmpty ? null : description;
+    }
+    if (links != null) s.links = [...links];
+    if (origin != null) s.originTags = [...origin];
+    if (topic != null) s.topicTags = [...topic];
+    state = AsyncData(collection);
+    return const {};
+  }
+
+  @override
+  Future<bool> saveDetails({
+    String? name,
+    String? description,
+    List<String>? origin,
+    List<String>? topic,
+  }) async {
+    if (origin != null) collection.originTags = [...origin];
+    if (topic != null) collection.topicTags = [...topic];
+    state = AsyncData(collection);
+    return true;
+  }
 }
 
 WordCollection _collection() => WordCollection.create()
@@ -82,7 +118,7 @@ void main() {
       expect(WordCollection.fromJson({}).tags, isEmpty);
     });
 
-    testWidgets('the notifier changes notes, session tags and inserts a word',
+    testWidgets('the notifier inserts a word and tracks edits made elsewhere',
         (tester) async {
       final container = ProviderContainer(overrides: [
         wordInputNotifierProvider.overrideWith(() => _FakeInput(_collection())),
@@ -93,28 +129,18 @@ void main() {
       await container.read(wordInputNotifierProvider.future);
       final notifier = container.read(wordInputNotifierProvider.notifier);
 
-      notifier.updateSourceNote('p1',
-          title: 'Market', links: ['https://a'], tags: ['food']);
-      notifier.updateSourceNote('p1', description: 'Saturday');
-      final p1 = container
-          .read(wordInputNotifierProvider)
-          .value!
-          .sources
-          .firstWhere((s) => s.id == 'p1');
-      expect(p1.title, 'Market', reason: 'left out, the title stays');
-      expect(p1.description, 'Saturday');
-      expect(p1.links, ['https://a']);
-      expect(p1.tags, ['food']);
-      notifier.updateSourceNote('p1', title: '  ');
-      expect(p1.title, isNull, reason: 'an empty title is dropped');
-
-      notifier.setCollectionTags(['week 1']);
-      expect(container.read(wordInputNotifierProvider).value!.tags, ['week 1']);
-
-      notifier.insertAt(2, WordPair(word: 'jug', translation: '', sourceId: 'p1'));
-      expect(
-          [for (final w in container.read(wordInputNotifierProvider).value!.words) w.word],
-          ['cup', 'fork', 'jug', 'pan', '']);
+      notifier.insertAt(
+          2, WordPair(word: 'jug', translation: '', sourceId: 'p1'));
+      expect([
+        for (final w in container.read(wordInputNotifierProvider).value!.words)
+          w.word
+      ], [
+        'cup',
+        'fork',
+        'jug',
+        'pan',
+        ''
+      ]);
 
       expect(notifier.takeEditedElsewhere(), isFalse);
       notifier.markEditedElsewhere();
@@ -141,8 +167,8 @@ void main() {
         collectionStoreProvider
             .overrideWith((ref) => Completer<CollectionStore>().future),
         nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value(stored)),
-        sourcePhotoStoreProvider.overrideWithValue(
-            photos = MapSourcePhotoStore({'p1': kPng})),
+        sourcePhotoStoreProvider
+            .overrideWithValue(photos = MapSourcePhotoStore({'p1': kPng})),
       ]);
       addTearDown(container.dispose);
       await tester
@@ -176,7 +202,8 @@ void main() {
           await tester.pump(const Duration(seconds: 1));
         });
 
-    WordCollection collection() => container.read(wordInputNotifierProvider).value!;
+    WordCollection collection() =>
+        container.read(wordInputNotifierProvider).value!;
     SessionSource source(String id) =>
         collection().sources.firstWhere((s) => s.id == id);
     Finder pager(String id) => find.byKey(NotesScreen.pagerKey(id));
@@ -201,8 +228,8 @@ void main() {
         (tester) async {
       await pumpNotes(tester);
       await toNote(tester, 'p1');
-      final title =
-          find.descendant(of: pager('p1'), matching: find.byKey(NotesScreen.titleKey));
+      final title = find.descendant(
+          of: pager('p1'), matching: find.byKey(NotesScreen.titleKey));
       final description = find.descendant(
           of: pager('p1'), matching: find.byKey(NotesScreen.descriptionKey));
       expect(tester.getTopLeft(title).dy,
@@ -226,7 +253,8 @@ void main() {
       await pumpNotes(tester);
       await toNote(tester, 'p1');
       await tester.enterText(
-          find.descendant(of: pager('p1'), matching: find.byKey(NotesScreen.linkKey)),
+          find.descendant(
+              of: pager('p1'), matching: find.byKey(NotesScreen.linkKey)),
           'https://one');
       final add = await scrollToInNote(
           tester, 'p1', find.byKey(NotesScreen.addLinkKey));
@@ -238,17 +266,18 @@ void main() {
       await tester.pump();
       expect(source('p1').links, ['https://one', 'https://two']);
 
-      await tester.tap(find.descendant(
-          of: second, matching: find.byTooltip('Remove link')));
+      final remove =
+          find.descendant(of: second, matching: find.byTooltip('Remove link'));
+      await tester.ensureVisible(remove);
+      await tester.pumpAndSettle();
+      await tester.tap(remove);
       await tester.pumpAndSettle();
       expect(source('p1').links, ['https://one']);
     });
 
     notesTest('several tags on a source, suggested from tags used anywhere',
         (tester) async {
-      final older = WordCollection.create()
-        ..sources = [SessionSource()..id = 'old'..tags = ['travel']];
-      await pumpNotes(tester, stored: [older]);
+      await pumpNotes(tester);
       await toNote(tester, 'p1');
       final field = await scrollToInNote(
           tester, 'p1', find.byKey(NotesScreen.tagFieldKey));
@@ -256,18 +285,19 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
 
-      // Typing shows the tags used on other sources, not session tags.
-      await tester.enterText(field, 'tr');
+      // Typing, the field suggests the presets of its kind (T12, AC-34).
+      await tester.ensureVisible(field);
       await tester.pumpAndSettle();
-      expect(find.byKey(TagEditor.suggestionKey('travel')), findsOneWidget);
-      expect(find.byKey(TagEditor.suggestionKey('food')), findsNothing,
-          reason: '"food" does not contain "tr"');
-      await tester.tap(find.byKey(TagEditor.suggestionKey('travel')));
+      await tester.enterText(field, 'fo');
       await tester.pumpAndSettle();
-      expect(source('p1').tags, ['kitchen', 'travel']);
+      expect(find.byKey(TypedTagField.optionKey('Food')), findsOneWidget);
+      await tester.tap(find.byKey(TypedTagField.optionKey('Food')));
+      await tester.pumpAndSettle();
+      expect(source('p1').topicTags, ['kitchen', 'Food']);
       expect(
           find.descendant(
-              of: pager('p1'), matching: find.widgetWithText(InputChip, 'travel')),
+              of: pager('p1'),
+              matching: find.widgetWithText(InputChip, 'Food')),
           findsOneWidget);
 
       await tester.tap(find.descendant(
@@ -276,29 +306,31 @@ void main() {
               matching: find.widgetWithText(InputChip, 'kitchen')),
           matching: find.byTooltip('Delete')));
       await tester.pumpAndSettle();
-      expect(source('p1').tags, ['travel']);
+      expect(source('p1').topicTags, ['Food']);
     });
 
-    notesTest('session tags sit above the list and are their own pool',
+    notesTest('collection tags sit above the list as two typed fields',
         (tester) async {
-      final older = WordCollection.create()..tags = ['B1 course'];
-      await pumpNotes(tester, stored: [older]);
+      await pumpNotes(tester);
       final field = find.byKey(NotesScreen.collectionTagFieldKey);
-      expect(tester.getTopLeft(field).dy,
-          lessThan(tester.getTopLeft(find.byKey(NotesScreen.itemKey('p1'))).dy));
-      expect(find.text('Collection tags'), findsOneWidget,
-          reason: 'AC-33: the learner reads "collection", not "session"');
+      expect(
+          tester.getTopLeft(field).dy,
+          lessThan(
+              tester.getTopLeft(find.byKey(NotesScreen.itemKey('p1'))).dy));
+      expect(
+          tester
+              .getTopLeft(find.byKey(NotesScreen.collectionOriginTagFieldKey))
+              .dy,
+          lessThan(tester.getTopLeft(field).dy));
       expect(find.text('Session tags'), findsNothing);
 
-      await tester.tap(field);
+      await tester.enterText(field, 'fo');
       await tester.pumpAndSettle();
-      expect(find.byKey(TagEditor.suggestionKey('B1 course')), findsOneWidget);
-      expect(find.byKey(TagEditor.suggestionKey('food')), findsNothing,
-          reason: 'a source tag is not a session tag');
+      expect(find.byKey(TypedTagField.optionKey('Food')), findsWidgets);
       await tester.enterText(field, 'week 3');
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pumpAndSettle();
-      expect(collection().tags, ['week 3']);
+      expect(collection().topicTags, ['week 3']);
       expect(find.widgetWithText(InputChip, 'week 3'), findsOneWidget);
     });
 
@@ -308,8 +340,8 @@ void main() {
       await tester.tap(find.byKey(NotesScreen.pictureKey('p1')));
       await tester.pumpAndSettle();
       expect(find.byKey(PhotoViewerScreen.viewerKey), findsOneWidget);
-      final viewer =
-          tester.widget<InteractiveViewer>(find.byKey(PhotoViewerScreen.viewerKey));
+      final viewer = tester
+          .widget<InteractiveViewer>(find.byKey(PhotoViewerScreen.viewerKey));
       expect(viewer.maxScale, greaterThan(1));
 
       final center = tester.getCenter(find.byKey(PhotoViewerScreen.viewerKey));
@@ -327,15 +359,15 @@ void main() {
       expect(find.byKey(NotesScreen.itemKey('p1')), findsOneWidget);
     });
 
-    notesTest('the photo opens with no blink: the panel\'s bytes, decoded '
+    notesTest(
+        'the photo opens with no blink: the panel\'s bytes, decoded '
         'ahead, are drawn in the viewer\'s first frame', (tester) async {
       await pumpNotes(tester);
       // As the photo panel does before Notes opens.
       final context = tester.element(find.byType(NotesScreen));
       final preloader = container.read(photoPreloaderProvider);
       await tester.runAsync(() async {
-        preloader.preload(
-            context, photos, [source('p1')], const [100]);
+        preloader.preload(context, photos, [source('p1')], const [100]);
         await Future<void>.delayed(const Duration(milliseconds: 50));
       });
       final reads = photos.reads.length;
@@ -372,10 +404,10 @@ void main() {
       await pumpNotes(tester);
       final picture = find.byKey(NotesScreen.pictureKey('p1'));
       final center = tester.getCenter(picture);
-      final a = await tester.startGesture(center - const Offset(20, 0),
-          pointer: 1);
-      final b = await tester.startGesture(center + const Offset(20, 0),
-          pointer: 2);
+      final a =
+          await tester.startGesture(center - const Offset(20, 0), pointer: 1);
+      final b =
+          await tester.startGesture(center + const Offset(20, 0), pointer: 2);
       await tester.pump();
       for (var i = 1; i <= 5; i++) {
         await a.moveTo(center - Offset(20.0 + 15 * i, 0));
@@ -407,10 +439,13 @@ void main() {
 
       final dialog = find.byType(SourceWordsDialog);
       expect(dialog, findsOneWidget);
-      final rows = find.descendant(of: dialog, matching: find.byType(WordRowItem));
+      final rows =
+          find.descendant(of: dialog, matching: find.byType(WordRowItem));
       expect(rows, findsNWidgets(2));
-      expect(find.descendant(of: dialog, matching: find.text('cup')), findsOneWidget);
-      expect(find.descendant(of: dialog, matching: find.text('pan')), findsNothing);
+      expect(find.descendant(of: dialog, matching: find.text('cup')),
+          findsOneWidget);
+      expect(find.descendant(of: dialog, matching: find.text('pan')),
+          findsNothing);
 
       // An edit goes into the session.
       await tester.enterText(
@@ -423,12 +458,20 @@ void main() {
       await tester.pumpAndSettle();
       expect(rows, findsNWidgets(3));
       await tester.enterText(
-          find.descendant(of: rows.at(2), matching: find.byType(TextField)).first,
+          find
+              .descendant(of: rows.at(2), matching: find.byType(TextField))
+              .first,
           'jug');
       await tester.pump();
-      expect([for (final w in collection().words) w.word],
-          ['cup', 'spoon', 'jug', 'pan', ''],
-          reason: 'after the source\'s last word');
+      expect([
+        for (final w in collection().words) w.word
+      ], [
+        'cup',
+        'spoon',
+        'jug',
+        'pan',
+        ''
+      ], reason: 'after the source\'s last word');
       expect(collection().words[2].sourceId, 'p1');
 
       // Added and left blank, a row is taken out again on close.
@@ -444,8 +487,7 @@ void main() {
       expect(notifier.takeEditedElsewhere(), isTrue,
           reason: 'the main screen builds its rows again');
       // The page's words follow.
-      expect(
-          find.descendant(of: pager('p1'), matching: find.text('jug — ')),
+      expect(find.descendant(of: pager('p1'), matching: find.text('jug — ')),
           findsNothing);
       expect(find.text('3 words'), findsOneWidget);
     });
@@ -458,8 +500,10 @@ void main() {
       await tester.tap(find.byKey(NotesScreen.wordsKey('p1')));
       await tester.pumpAndSettle();
       final dialog = find.byType(SourceWordsDialog);
-      final first = find.descendant(of: dialog, matching: find.byType(WordRowItem)).first;
-      await tester.tap(find.descendant(of: first, matching: find.byIcon(Icons.close)).first);
+      final first =
+          find.descendant(of: dialog, matching: find.byType(WordRowItem)).first;
+      await tester.tap(
+          find.descendant(of: first, matching: find.byIcon(Icons.close)).first);
       await tester.pumpAndSettle();
       expect([for (final w in collection().words) w.word], ['fork', 'pan', '']);
       expect(find.descendant(of: dialog, matching: find.byType(WordRowItem)),
@@ -468,7 +512,8 @@ void main() {
       await tester.enterText(
           find.descendant(of: dialog, matching: find.text('fork')), 'knife');
       await tester.pump();
-      expect([for (final w in collection().words) w.word], ['knife', 'pan', '']);
+      expect(
+          [for (final w in collection().words) w.word], ['knife', 'pan', '']);
     });
   });
 }

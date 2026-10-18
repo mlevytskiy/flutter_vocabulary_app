@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/models/tag_kind.dart';
+import '../features/app_settings/app_settings_screen.dart';
 import '../features/collections/collections_screen.dart';
+import '../features/collections/collections_settings_screen.dart';
 import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/history/history_screen.dart';
@@ -51,7 +54,9 @@ part 'routes.g.dart';
     TypedGoRoute<CollectionsRoute>(path: 'collections'),
     TypedGoRoute<HistoryRoute>(path: 'history'),
     TypedGoRoute<SettingsRoute>(path: 'settings'),
+    TypedGoRoute<AppSettingsRoute>(path: 'app-settings'),
     TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
+    TypedGoRoute<CollectionsSettingsRoute>(path: 'collections-settings'),
   ],
 )
 class WordInputRoute extends GoRouteData with _$WordInputRoute {
@@ -144,10 +149,15 @@ class DialogueRoute extends GoRouteData with _$DialogueRoute {
 /// Words settings (mnemonic-story, SCR-05): the AI for each step of a story
 /// run. Global, like the app's settings, so it carries no session id.
 class WordsSettingsRoute extends GoRouteData with _$WordsSettingsRoute {
-  const WordsSettingsRoute();
+  const WordsSettingsRoute({this.collectionId});
+
+  /// The Words screen's collection, as in [WordsTableRoute]: its "Include
+  /// photos (N)" switch is here (words-photo-panel).
+  final String? collectionId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) => WordsSettingsScreen(
+        collectionId: collectionId,
         onOpenStoryRuns: () => const StoryRunsRoute().push(context),
       );
 }
@@ -226,6 +236,15 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
   Widget build(BuildContext context, GoRouterState state) => const SettingsScreen();
 }
 
+/// App settings (app-themes): settings for the whole app, opened from the
+/// side menu below History. Holds the theme gallery.
+class AppSettingsRoute extends GoRouteData with _$AppSettingsRoute {
+  const AppSettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const AppSettingsScreen();
+}
+
 /// The recycle bin (collections-screen SCR-08); opened from the top-level bin
 /// icon on the Collections screen.
 class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
@@ -235,12 +254,28 @@ class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
   Widget build(BuildContext context, GoRouterState state) => const RecycleBinScreen();
 }
 
+/// Collections settings (owner, 2026-10-18): the Collections screen's
+/// Settings button. Holds "Replace all date names".
+class CollectionsSettingsRoute extends GoRouteData
+    with _$CollectionsSettingsRoute {
+  const CollectionsSettingsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const CollectionsSettingsScreen();
+}
+
 final appRouter = GoRouter(routes: $appRoutes);
 
 /// The Collections screen (collections-screen): folders and collections as icons.
 class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
-  const CollectionsRoute();
+  const CollectionsRoute({this.tagKind, this.tag});
+
+  /// A tag tap on the main screen filters the screen (collection-tags ADR-0008).
+  final TagKind? tagKind;
+  final String? tag;
 
   @override
-  Widget build(BuildContext context, GoRouterState state) => const CollectionsScreen();
+  Widget build(BuildContext context, GoRouterState state) =>
+      CollectionsScreen(tagKind: tagKind, tag: tag);
 }

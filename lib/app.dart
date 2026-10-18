@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/dialogues/dialogue_push.dart';
+import 'core/providers.dart';
 import 'core/story/story_run_tracker.dart';
+import 'core/theme/app_theme.dart';
 import 'router/routes.dart';
 
-/// The top bars' colour: the main screen's word-row background
-/// (`word_row_item.dart`), chosen by the owner 2026-10-16. Change it here to
-/// recolour every top bar.
-const topBarColor = Color(0x57d9c1ff);
+/// The top bars' colour in the Classic theme: the main screen's word-row
+/// background (`word_row_item.dart`), chosen by the owner 2026-10-16. Every
+/// theme sets its own as [AppDecor.topBar] (`lib/core/theme/app_theme.dart`).
+const topBarColor = classicTopBarColor;
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -26,14 +28,45 @@ class App extends ConsumerWidget {
       routerConfig: appRouter,
       title: 'English Vocabulary',
       debugShowCheckedModeBanner: false,
-      // Every top bar is `inversePrimary`, so [topBarColor] goes there, and
-      // to any bar that sets no colour.
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple)
-            .copyWith(inversePrimary: topBarColor),
-        appBarTheme: const AppBarTheme(backgroundColor: topBarColor),
-        useMaterial3: true,
-      ),
+      // Every top bar is `inversePrimary`, so the theme's top bar colour goes
+      // there, and to any bar that sets no colour (app-themes).
+      theme: AppThemeSpec.of(ref.watch(appThemeNotifierProvider)).build(),
+      // A red line along the top of every screen while the new-user trial is
+      // on, so the test account is never mistaken for the real one
+      // (new-user-trial, owner 2026-10-17).
+      builder: (context, child) => TrialFrame(child: child!),
+    );
+  }
+}
+
+/// Every screen; while the new-user trial is on, a red line over it, just
+/// under the status bar along the top edge of the top bar. Taps pass through.
+class TrialFrame extends ConsumerWidget {
+  const TrialFrame({super.key, required this.child});
+
+  static const lineKey = Key('trial-line');
+  static const lineHeight = 4.0;
+  static const lineColor = Color(0xFFE53935);
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(newUserBackupProvider).valueOrNull != null;
+    return Stack(
+      children: [
+        child,
+        if (on)
+          Positioned(
+            top: MediaQuery.paddingOf(context).top,
+            left: 0,
+            right: 0,
+            height: lineHeight,
+            child: const IgnorePointer(
+              child: ColoredBox(key: lineKey, color: lineColor),
+            ),
+          ),
+      ],
     );
   }
 }

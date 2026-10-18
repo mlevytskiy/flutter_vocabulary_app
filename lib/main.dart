@@ -1,11 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker_android/image_picker_android.dart';
 import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 
-import 'app.dart';
+import 'app_restarter.dart';
 import 'core/services/photo_scaler.dart';
 
 void main() {
@@ -15,7 +16,8 @@ void main() {
   // takes their first photo.
   unawaited(PhotoScaler.instance.start());
   useAndroidPhotoPicker();
-  runApp(const ProviderScope(child: App()));
+  registerFontLicenses();
+  runApp(const AppRestarter());
 }
 
 /// Gallery picks on Android open the system Photo Picker instead of
@@ -23,4 +25,24 @@ void main() {
 void useAndroidPhotoPicker() {
   final picker = ImagePickerPlatform.instance;
   if (picker is ImagePickerAndroid) picker.useAndroidPhotoPicker = true;
+}
+
+/// The theme fonts' SIL Open Font Licences, shown in the licence page
+/// (app-themes).
+void registerFontLicenses() {
+  const families = {
+    'Comfortaa': 'Comfortaa',
+    'JetBrains Mono': 'JetBrainsMono',
+    'Manrope': 'Manrope',
+    'Nunito': 'Nunito',
+    'Unbounded': 'Unbounded',
+  };
+  LicenseRegistry.addLicense(() async* {
+    for (final MapEntry(key: family, value: file) in families.entries) {
+      yield LicenseEntryWithLineBreaks(
+        [family],
+        await rootBundle.loadString('assets/fonts/licenses/$file-OFL.txt'),
+      );
+    }
+  });
 }

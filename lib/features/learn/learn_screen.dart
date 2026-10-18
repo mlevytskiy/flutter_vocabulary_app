@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/models/word_group.dart';
 import '../../core/providers.dart';
@@ -247,8 +248,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
                 icon: const Icon(Icons.play_arrow),
                 label: const Text('Start'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundColor: AppDecor.of(context).barButton,
+                  foregroundColor: AppDecor.of(context).onBarButtonOf(context),
                 ),
               ),
             ),
@@ -311,8 +312,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
             icon: Icon(isLast ? Icons.play_arrow : Icons.arrow_forward),
             label: Text(isLast ? 'Start' : 'Next'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: AppDecor.of(context).barButton,
+              foregroundColor: AppDecor.of(context).onBarButtonOf(context),
             ),
           ),
         ),

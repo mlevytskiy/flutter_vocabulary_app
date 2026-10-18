@@ -52,3 +52,70 @@ DateTime? creationMomentOf(String collectionId) {
     return null;
   }
 }
+
+// ---- collection-naming (owner, 2026-10-18) ---------------------------------
+
+/// The name of a collection nobody named that has too few words for the AI.
+const undefinedCollectionName = 'Vocabulary';
+
+final _vocabularyName = RegExp(r'^Vocabulary(?: ([1-9][0-9]*))?$');
+
+/// The first of "Vocabulary", "Vocabulary 1", "Vocabulary 2", … that no name
+/// in [taken] holds.
+String nextVocabularyName(Iterable<String?> taken) {
+  final used = <int>{};
+  for (final name in taken) {
+    final m = name == null ? null : _vocabularyName.firstMatch(name);
+    if (m != null) used.add(m.group(1) == null ? 0 : int.parse(m.group(1)!));
+  }
+  var n = 0;
+  while (used.contains(n)) {
+    n++;
+  }
+  return n == 0 ? undefinedCollectionName : '$undefinedCollectionName $n';
+}
+
+/// True for a "Vocabulary" or "Vocabulary N" name.
+bool isVocabularyName(String name) => _vocabularyName.hasMatch(name);
+
+final _dateName = RegExp(r'^\d\d\.\d\d\.\d{4} \d\d:\d\d$');
+
+/// True for a name in the shape [defaultCollectionName] writes, the
+/// automatic name from before collection-naming.
+bool isDateName(String name) => _dateName.hasMatch(name);
+
+/// The AI's name made fit to store: one line, spaces squeezed, quotes and a
+/// final full stop dropped, cut to [maxCollectionNameLength] code points at a
+/// word when it can be. Null when nothing usable is left.
+String? cleanAutoName(String raw) {
+  var name = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+  name = name.replaceAll(RegExp(r'^["“”«»]+|["“”«»]+$'), '').trim();
+  if (name.endsWith('.')) name = name.substring(0, name.length - 1).trim();
+  final runes = name.runes.toList();
+  if (runes.length > maxCollectionNameLength) {
+    name = String.fromCharCodes(runes.take(maxCollectionNameLength));
+    final space = name.lastIndexOf(' ');
+    if (space > 0) name = name.substring(0, space);
+    name = name.trim();
+  }
+  return collectionNameProblem(name) == null ? name : null;
+}
+
+/// The longest description the AI may write (the sheet allows 500).
+const maxAutoDescriptionLength = 300;
+
+/// The AI's description made fit to store: one paragraph, spaces squeezed,
+/// quotes dropped, cut to [maxAutoDescriptionLength] code points at a word.
+/// Null when nothing is left.
+String? cleanAutoDescription(String raw) {
+  var text = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+  text = text.replaceAll(RegExp(r'^["“”«»]+|["“”«»]+$'), '').trim();
+  final runes = text.runes.toList();
+  if (runes.length > maxAutoDescriptionLength) {
+    text = String.fromCharCodes(runes.take(maxAutoDescriptionLength));
+    final space = text.lastIndexOf(' ');
+    if (space > 0) text = text.substring(0, space);
+    text = text.trim();
+  }
+  return text.isEmpty ? null : text;
+}

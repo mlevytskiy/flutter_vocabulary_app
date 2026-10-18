@@ -11,6 +11,8 @@ import 'package:flutter_vocabulary_app/features/collections/bin_dialogs.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_icon.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
 import 'package:flutter_vocabulary_app/features/collections/fly_to_bin.dart';
+import 'package:flutter_vocabulary_app/features/collections/recycle_bin_screen.dart';
+import 'package:flutter_vocabulary_app/features/collections/recycle_bin_view.dart';
 import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
 import 'package:go_router/go_router.dart';
 
@@ -55,13 +57,15 @@ void main() {
   final films = _coll('Films words');
   late _FakeStore store;
 
-  Future<void> pump(WidgetTester t) async {
+  Future<void> pump(WidgetTester t,
+      {List<BinItemView> inBin = const []}) async {
     store = _FakeStore();
     await t.binding.setSurfaceSize(const Size(800, 600));
     addTearDown(() => t.binding.setSurfaceSize(null));
     await t.pumpWidget(ProviderScope(
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
+        binItemsProvider.overrideWith((ref) => Stream.value(inBin)),
         wordInputNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
@@ -117,19 +121,11 @@ void main() {
   });
 
   testWidgets(
-      'delete mode: a small bin on every icon but the current; Disable hides them',
+      'delete mode: a small bin on every icon, the current too; Disable hides them',
       (t) async {
     await pump(t);
     await binMenu(t, enableDeleteModeText);
-    // the folder and "Films words"; not the current "Phrasal verbs"
-    expect(smallBins, findsNWidgets(2));
-    expect(
-        find.descendant(
-            of: find.ancestor(
-                of: find.text('Phrasal verbs'),
-                matching: find.byType(CollectionIcon)),
-            matching: smallBins),
-        findsNothing);
+    expect(smallBins, findsNWidgets(3));
 
     await t.tap(find.byTooltip('Recycle bin'));
     await t.pumpAndSettle();
@@ -146,7 +142,8 @@ void main() {
     await binMenu(t, enableDeleteModeText);
     final filmsBin = find.descendant(
         of: find.ancestor(
-            of: find.text('Films words'), matching: find.byType(CollectionIcon)),
+            of: find.text('Films words'),
+            matching: find.byType(CollectionIcon)),
         matching: smallBins);
     final binCentre = t.getCenter(find.byTooltip('Recycle bin'));
 
@@ -160,8 +157,8 @@ void main() {
     expect(
         find.ancestor(
             of: find.text('Films words'),
-            matching: find.byWidgetPredicate(
-                (w) => w is Opacity && w.opacity == 0)),
+            matching:
+                find.byWidgetPredicate((w) => w is Opacity && w.opacity == 0)),
         findsOneWidget);
 
     // it closes in on the bin button and lands in it
@@ -191,5 +188,46 @@ void main() {
     await t.pumpAndSettle();
     expect(store.binned, ['f1']);
     expect(find.text(stayedText('Lesson 4')), findsOneWidget);
+  });
+
+  testWidgets('the current collection\'s small bin only says it cannot go',
+      (t) async {
+    await pump(t);
+    await binMenu(t, enableDeleteModeText);
+    await t.tap(find.descendant(
+        of: find.ancestor(
+            of: find.text('Phrasal verbs'),
+            matching: find.byType(CollectionIcon)),
+        matching: smallBins));
+    await t.pumpAndSettle();
+    expect(store.binned, isEmpty);
+    expect(find.text(refusedCurrentText), findsOneWidget);
+    expect(find.byType(CollectionPicture), findsNWidgets(3));
+  });
+
+  testWidgets(
+      'the bin button is full when the bin holds something, '
+      'whatever delete mode', (t) async {
+    final binButton = find.byTooltip('Recycle bin');
+    await pump(t);
+    expect(
+        find.descendant(
+            of: binButton, matching: find.byIcon(Icons.delete_outline)),
+        findsOneWidget);
+    await binMenu(t, enableDeleteModeText);
+    expect(
+        find.descendant(
+            of: binButton, matching: find.byIcon(Icons.delete_outline)),
+        findsOneWidget);
+  });
+
+  testWidgets('the bin button is full when the bin holds something', (t) async {
+    final binButton = find.byTooltip('Recycle bin');
+    await pump(t, inBin: const [
+      BinItemView(
+          id: 'x', isFolder: false, name: 'Old', wordCount: 1, daysLeft: 30),
+    ]);
+    expect(find.descendant(of: binButton, matching: find.byIcon(Icons.delete)),
+        findsOneWidget);
   });
 }

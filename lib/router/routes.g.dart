@@ -79,8 +79,16 @@ RouteBase get $wordInputRoute => GoRouteData.$route(
           factory: _$SettingsRoute._fromState,
         ),
         GoRouteData.$route(
+          path: 'app-settings',
+          factory: _$AppSettingsRoute._fromState,
+        ),
+        GoRouteData.$route(
           path: 'recycle-bin',
           factory: _$RecycleBinRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: 'collections-settings',
+          factory: _$CollectionsSettingsRoute._fromState,
         ),
       ],
     );
@@ -292,11 +300,18 @@ mixin _$DialogueRoute on GoRouteData {
 
 mixin _$WordsSettingsRoute on GoRouteData {
   static WordsSettingsRoute _fromState(GoRouterState state) =>
-      const WordsSettingsRoute();
+      WordsSettingsRoute(
+        collectionId: state.uri.queryParameters['collection-id'],
+      );
+
+  WordsSettingsRoute get _self => this as WordsSettingsRoute;
 
   @override
   String get location => GoRouteData.$location(
         '/table/settings',
+        queryParams: {
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
+        },
       );
 
   @override
@@ -418,12 +433,22 @@ mixin _$PhotoViewerRoute on GoRouteData {
 }
 
 mixin _$CollectionsRoute on GoRouteData {
-  static CollectionsRoute _fromState(GoRouterState state) =>
-      const CollectionsRoute();
+  static CollectionsRoute _fromState(GoRouterState state) => CollectionsRoute(
+        tagKind: _$convertMapValue(
+            'tag-kind', state.uri.queryParameters, _$TagKindEnumMap._$fromName),
+        tag: state.uri.queryParameters['tag'],
+      );
+
+  CollectionsRoute get _self => this as CollectionsRoute;
 
   @override
   String get location => GoRouteData.$location(
         '/collections',
+        queryParams: {
+          if (_self.tagKind != null)
+            'tag-kind': _$TagKindEnumMap[_self.tagKind!],
+          if (_self.tag != null) 'tag': _self.tag,
+        },
       );
 
   @override
@@ -439,6 +464,11 @@ mixin _$CollectionsRoute on GoRouteData {
   @override
   void replace(BuildContext context) => context.replace(location);
 }
+
+const _$TagKindEnumMap = {
+  TagKind.origin: 'origin',
+  TagKind.topic: 'topic',
+};
 
 mixin _$HistoryRoute on GoRouteData {
   static HistoryRoute _fromState(GoRouterState state) => const HistoryRoute();
@@ -484,6 +514,29 @@ mixin _$SettingsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
+mixin _$AppSettingsRoute on GoRouteData {
+  static AppSettingsRoute _fromState(GoRouterState state) =>
+      const AppSettingsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/app-settings',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
 mixin _$RecycleBinRoute on GoRouteData {
   static RecycleBinRoute _fromState(GoRouterState state) =>
       const RecycleBinRoute();
@@ -505,4 +558,41 @@ mixin _$RecycleBinRoute on GoRouteData {
 
   @override
   void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$CollectionsSettingsRoute on GoRouteData {
+  static CollectionsSettingsRoute _fromState(GoRouterState state) =>
+      const CollectionsSettingsRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/collections-settings',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+T? _$convertMapValue<T>(
+  String key,
+  Map<String, String> map,
+  T? Function(String) converter,
+) {
+  final value = map[key];
+  return value == null ? null : converter(value);
+}
+
+extension<T extends Enum> on Map<T, String> {
+  T? _$fromName(String? value) =>
+      entries.where((element) => element.value == value).firstOrNull?.key;
 }

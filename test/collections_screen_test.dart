@@ -29,8 +29,7 @@ WordCollection _coll(String name, int words) => WordCollection.create()
     for (var i = 0; i < words; i++) WordPair(word: 'w$i', translation: 't$i')
   ];
 
-final upButton =
-    find.ancestor(of: find.text('Up'), matching: find.bySubtype<TextButton>());
+final upButton = find.byTooltip('Up');
 
 void main() {
   final english = _folder('f1', 'English course', null);
@@ -66,7 +65,7 @@ void main() {
       (t) async {
     await pump(t);
     expect(find.widgetWithText(AppBar, 'Collections'), findsOneWidget);
-    expect(find.text('Up'), findsNothing);
+    expect(upButton, findsNothing);
     expect(find.text('English course'), findsOneWidget);
     expect(find.text('Phrasal verbs'), findsOneWidget);
     expect(find.text('32 words'), findsOneWidget);
@@ -78,8 +77,10 @@ void main() {
     expect(find.byIcon(Icons.more_vert), findsNothing);
   });
 
-  testWidgets('round buttons: Settings, Recycle bin, plus; no top bar actions',
-      (t) async {
+  testWidgets(
+      'round buttons: Settings, Recycle bin, plus; top bar has only search '
+      '(collection-tags SCR-04; the filter comes with the search field, '
+      'collections-search AC-01)', (t) async {
     await pump(t);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byTooltip('Recycle bin'), findsOneWidget);
@@ -87,7 +88,9 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(AppBar), matching: find.byType(IconButton)),
-        findsNothing);
+        findsNWidgets(1));
+    expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(find.byIcon(Icons.tune), findsNothing);
   });
 
   testWidgets('folder tap grows the path; path part and Up go back', (t) async {
@@ -97,7 +100,23 @@ void main() {
     await t.pump();
     expect(find.text('Unit 3'), findsOneWidget);
     expect(find.text('›'), findsOneWidget);
-    expect(t.widget<TextButton>(upButton).onPressed, isNotNull);
+    expect(
+        t
+            .widget<IconButton>(
+                find.ancestor(of: upButton, matching: find.byType(IconButton)))
+            .onPressed,
+        isNotNull);
+    // Up and the path are in the top bar, on its line (owner, 2026-10-18).
+    expect(find.descendant(of: find.byType(AppBar), matching: upButton),
+        findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byType(AppBar), matching: find.text('English course')),
+        findsOneWidget);
+    expect(
+        t.getCenter(upButton).dy,
+        moreOrLessEquals(t.getCenter(find.text('English course')).dy,
+            epsilon: 2));
 
     await t.tap(find.text('Unit 3'));
     await t.pump();
@@ -112,12 +131,11 @@ void main() {
     expect(find.text('›'), findsOneWidget);
     expect(find.text('Unit 4'), findsOneWidget);
 
-    // the first path part is "Collections" in the path bar (the AppBar title comes later in the tree)
-    await t.tap(find.text('Collections').first);
+    await t.tap(find.text('Collections'));
     await t.pump();
     await t.pump();
     expect(find.text('›'), findsNothing);
-    expect(find.text('Up'), findsNothing);
+    expect(upButton, findsNothing);
   });
 
   testWidgets('empty folder shows the hint', (t) async {
@@ -129,13 +147,13 @@ void main() {
     await t.pump();
     await t.pump();
     expect(find.text('This folder is empty'), findsOneWidget);
-    expect(find.text('Up'), findsOneWidget);
+    expect(upButton, findsOneWidget);
   });
 
   testWidgets('loading at the top level shows a spinner, no path bar',
       (t) async {
     await pump(t, loading: true);
-    expect(find.text('Up'), findsNothing);
+    expect(upButton, findsNothing);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });
 }

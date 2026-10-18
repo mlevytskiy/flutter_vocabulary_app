@@ -15,8 +15,11 @@ updated_at: "2026-10-15"
 
 ```
 lib/
-  main.dart                     runApp(ProviderScope(child: App()))
-  app.dart                      MaterialApp.router — theme unchanged
+  main.dart                     runApp(AppRestarter())
+  app_restarter.dart            ProviderScope(child: App()) that can be dropped and built again
+                                (new-user-trial: the data moves while nothing holds the database)
+  app.dart                      MaterialApp.router — the chosen theme; TrialFrame draws the
+                                new-user trial's red line over every screen
   router/
     routes.dart (+ routes.g.dart)   the ONLY place routes are declared (go_router_builder)
   config/
@@ -47,12 +50,35 @@ lib/
                                 (never published: the Worker knows photo and set only). Stored
                                 name stays SourcePhoto (good-looking-web; import-from-quizlet,
                                 ADR-0005; side-panel-sources AC-22)
+                                name_kind.dart — NameKind { undefined, auto, byUser } (ordinal stored;
+                                collection-naming): "Vocabulary N" until 5 words, then the AI's name
+                                (collection_naming_service.dart → Worker POST /collections/name), a
+                                typed name for good; WordCollection.nameKind, written only by the store;
+                                WordCollection.descriptionKind the same for the description: empty until
+                                20 words, then the AI's (POST /collections/description), unless typed
+                                At launch, every collection still waiting for either goes to the AI in
+                                one request (POST /collections/autofill, ≤100, newest first); Collections
+                                settings' "Replace all date names" does the same for every date name
+                                tag_kind.dart — TagKind { origin, topic } (ordinal stored; collection-tags);
+                                tag_library_entry.dart (+.g) — Isar @collection TagLibraryEntry {kind, key,
+                                text, lastUsedAt, forgotten}, unique (kind, key); effective_tags.dart — legacy
+                                tags read as topic tags until the migration ran. WordCollection gains
+                                description, originTags, topicTags; SessionSource originTags, topicTags
                                 word_result.dart (+.g) — Isar @embedded WordResult {rowId, exerciseId,
                                 label known/repeat, at}: WordCollection.results, append-only, at most 2000;
                                 never in a row, a publish or an export (learn-kit S-22)
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
+    theme/                      app-themes; import app_theme.dart (exports the rest).
+      app_decor.dart            AppDecor (every colour a screen used to hard-code, the Collections
+                                pictures' shades, row shape, blur, backdrop; defaults = Classic),
+                                AppBackdrop, DecorSurface
+      theme_kit.dart            AppThemeSpec, buildTheme, seedScheme, withDisplayFont
+      themes/                   one file per theme (classic, aurora, matcha, amber_terminal,
+                                windows95); themes.dart = AppThemeId + appThemes and how to add
+                                one. The choice is the persisted appThemeNotifier in
+                                providers.dart, shown on the App settings page
     services/                   photo_scaler.dart, vocab_photo_service.dart,
                                 collection_store.dart (persistence: Isar + the current-session pointer,
                                 and beside it the History pick record — session id + time,
@@ -67,6 +93,8 @@ lib/
                                 url) and each row's sourceId; republishes with the stored token,
                                 good-looking-web)
                                 dictionary_service.dart (definition-mode: POST /define on the Worker)
+                                new_user_trial.dart (new-user-trial: moves the documents dir and
+                                every preference to new_user_backup/ in the support dir, and back)
                                 source_photo_store.dart (the kept 1600 px photo files under
                                 source_photos/ in the documents dir; never throws, good-looking-web)
                                 photo_upload_service.dart (background POST /sessions/<id>/sources/
@@ -75,6 +103,18 @@ lib/
                                 system_gesture_exclusion.dart (side-bar-for-main-screen ADR-0002:
                                 the vocab/system_gesture_exclusion channel; MainActivity keeps the
                                 photo tab's screen edge from Android's Back gesture)
+                                tag_rules.dart (collection-tags: pure tag rules — 1-30 chars,
+                                10 per kind, case-insensitive keys, presets, legacy sort, word-start
+                                matching, suggestion ranking)
+                                collection_search.dart (collection-tags: CollectionSummary, search,
+                                filters, calendar-day ranges, sort, tag counts; pure)
+                                collection_search_scope.dart (collections-search: the matches split
+                                by the open folder — here / deeper / elsewhere —, the pruned route of
+                                the Match outside sheet, live tag counts; pure). The sheet is
+                                features/collections/match_outside_sheet.dart
+                                collection_store.dart also holds the tag writes (setDetails,
+                                saveSourceNote, addCollectionTags, forgetTag), the one-time typed-tag
+                                migration and watchSummaries() (ADR-0004/0003/0006/0009 of collection-tags)
                                 quizlet_link.dart (import-from-quizlet: pure rules — find a set link
                                 in pasted text, the plain https://quizlet.com/<id>/<name>/ form the
                                 Worker accepts, which web view navigations may be followed)
@@ -145,7 +185,11 @@ lib/
                                       photos_with_words.dart (+.g), photo_preview.dart, row_jump.dart;
                                       looks/: photo_panel_look.dart (the interface, tab ≤ 200 dp),
                                       look_a.dart (the one look, picked 2026-10-14) and edge_glass.dart
-                                      (photo-panel-glass)
+                                      (photo-panel-glass); photo_panel_host.dart (words-photo-panel):
+                                      the PhotoPanelHost mixin both hosting screens use (the controller,
+                                      the guard that closes an open panel on a touch, the highlight);
+                                      PhotoPanel(collectionId:) lists a stored collection's sources
+                                      (storedSourcesWithWordsProvider) instead of the current one's
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
@@ -183,9 +227,13 @@ lib/
       words_table_screen.dart         reads words from the notifier (no sessionId) or from
                                       sessionByIdProvider (a History row), read-only either way;
                                       Share → bottom sheet: file (TSV) or link (publish, task-05);
-                                      the "Include photos (N)" switch (photos only; Quizlet sets
-                                      are always sent) with stacked thumbnails sits above the
-                                      table; the sheet warns about public photos and that
+                                      the photo tab and panel as on the main screen (words-photo-panel:
+                                      while open the table cross-fades into one line per row; Notes
+                                      only for the current collection); include_photos.dart: the
+                                      "Include photos (N)" value (includePhotosProvider, per collection
+                                      id, not saved; photos only, Quizlet sets are always sent), its
+                                      switch with stacked thumbnails (widgets/photo_stack.dart) is in
+                                      the Words settings; the sheet warns about public photos and that
                                       a republish replaces the partner's edits (good-looking-web);
                                       a History session that is not current gets a red Edit FAB →
                                       "Do you want to edit…?" → switchTo + WordInputRoute().go
@@ -193,9 +241,14 @@ lib/
     notes/                            (notes-page, notes-editing) notes_screen.dart: one pager per
                                       panel source — note (title, description, links, tags), picture
                                       (pinch zoom, tap → PhotoViewerRoute), words (tap → the words
-                                      dialog); session tags above the list. tag_editor.dart (chips +
-                                      suggestions), tag_suggestions.dart (+.g: source and session tag
-                                      pools from every session), photo_viewer_screen.dart
+                                      dialog); the collection's origin + topic tag fields above the
+                                      list, two typed fields per source note (collection-tags T12).
+                                      tag_editor.dart (the old untyped chips editor),
+                                      photo_viewer_screen.dart
+    tags/                             (collection-tags) tag_chip.dart (one chip look per TagKind),
+                                      typed_tag_field.dart (hint, examples, ranked suggestion row,
+                                      autocomplete, limits, long-press Forget), tag_suggestions.dart
+                                      (+.g: tagSuggestions(kind) = library + live use counts + presets)
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
                                       the Worker side is vocab-photo-api/src/learn/
       exercises.dart                  Exercise (id, name, stage, available) + the const list of thirteen (learn-kit),
@@ -274,7 +327,8 @@ lib/
                                       under its scene picture, drawing it once (DialogueRoute)
     words_settings/
       words_settings_screen.dart      Words settings (WordsSettingsRoute, from the Words screen's
-                                      settings button): the three AI choices (story writer, picture
+                                      settings button, with the collection id): the "Include photos (N)"
+                                      switch at the top (words-photo-panel), the three AI choices (story writer, picture
                                       prompt writer, picture maker), each list cheapest first with the
                                       average price of past runs and the list price; "Story runs"
       story_runs_screen.dart          every story run on the phone, newest first, with totals

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
+import '../../../../core/theme/app_theme.dart';
 
 /// Glass that sticks to the screen's right edge (photo panel look A).
 ///
@@ -65,7 +66,7 @@ class EdgeGlass extends StatelessWidget {
       final surface =
           _liquid ? _liquidGlass(size) : _frosted(context, size, path);
       return CustomPaint(
-        painter: _Light(path, settings, shadow: true),
+        painter: _Light(path, settings, AppDecor.of(context), shadow: true),
         child: surface,
       );
     });
@@ -126,7 +127,8 @@ class EdgeGlass extends StatelessWidget {
   Widget _frosted(BuildContext context, Size size, Path path) {
     final blur = settings.effectiveBlur;
     return CustomPaint(
-      foregroundPainter: _Light(path, settings, shadow: false),
+      foregroundPainter:
+          _Light(path, settings, AppDecor.of(context), shadow: false),
       child: ClipPath(
         clipper: _PathClipper(path),
         child: BackdropFilter(
@@ -200,7 +202,9 @@ class _Tint extends CustomPainter {
 /// With [shadow], the soft shadow under the glass; without, the light rim
 /// along its outline, drawn over it.
 class _Light extends CustomPainter {
-  _Light(this.path, this.settings, {required this.shadow});
+  _Light(this.path, this.settings, this.decor, {required this.shadow});
+
+  final AppDecor decor;
 
   final Path path;
   final LiquidGlassSettings settings;
@@ -213,7 +217,7 @@ class _Light extends CustomPainter {
       canvas.drawPath(
           path.shift(const Offset(0, 5)),
           Paint()
-            ..color = Color.fromRGBO(58, 29, 110, 0.2 * light)
+            ..color = decor.glassShadow.withValues(alpha: 0.2 * light)
             ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 9));
       return;
     }
@@ -227,7 +231,7 @@ class _Light extends CustomPainter {
             end: Alignment.bottomRight,
             colors: [
               Colors.white.withValues(alpha: light),
-              const Color(0xFF9F86D8).withValues(alpha: 0.75 * light),
+              decor.glassEdge.withValues(alpha: 0.75 * light),
               Colors.white.withValues(alpha: 0.8 * light),
             ],
           ).createShader(path.getBounds()));

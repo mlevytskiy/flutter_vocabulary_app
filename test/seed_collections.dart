@@ -22,6 +22,7 @@ Future<void> seedCollection(CollectionStore store, WordCollection c) async {
       ..updatedAt = c.updatedAt
       ..lastLocalModifiedAt = c.lastLocalModifiedAt
       ..name = c.name
+      ..nameKind = c.nameKind
       ..folderId = c.folderId
       ..order = c.order
       ..binnedAt = c.binnedAt

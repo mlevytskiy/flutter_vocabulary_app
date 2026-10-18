@@ -167,13 +167,15 @@ void main() {
       await t.pumpWidget(MaterialApp(
         home: Scaffold(
           body: Column(children: [
+            CollectionsUpButton(
+              enabled: false,
+              onUp: () {},
+              wrapper: (c, child) =>
+                  UpDropTarget(level: level, onDecision: decisions.add, child: child),
+            ),
             CollectionsPathBar(
               parts: parts ?? const [PathPart(null, 'Collections')],
-              upEnabled: false,
-              onUp: () {},
               onPart: (_) {},
-              upWrapper: (c, child) =>
-                  UpDropTarget(level: level, onDecision: decisions.add, child: child),
               partWrapper: (c, part, child) => PathPartDropTarget(
                 part: part,
                 level: level,
@@ -256,7 +258,7 @@ void main() {
 
     testWidgets('drop on Up at the top level does nothing', (t) async {
       await pumpScreen(t);
-      await dragTo(t, 'Lesson 1', find.text('Up'));
+      await dragTo(t, 'Lesson 1', find.byTooltip('Up'));
       expect(decisions, [const NoOp()]);
     });
 

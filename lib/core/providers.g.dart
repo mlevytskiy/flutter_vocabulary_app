@@ -75,6 +75,44 @@ final collectionStoreProvider = FutureProvider<CollectionStore>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef CollectionStoreRef = FutureProviderRef<CollectionStore>;
+String _$newUserTrialHash() => r'914f1c160762186768b6cda8ed7401d812808cfb';
+
+/// Puts the user's data aside to show the app as to a new user, and brings
+/// it back (new-user-trial, owner 2026-10-17).
+///
+/// Copied from [newUserTrial].
+@ProviderFor(newUserTrial)
+final newUserTrialProvider = Provider<NewUserTrial>.internal(
+  newUserTrial,
+  name: r'newUserTrialProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$newUserTrialHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NewUserTrialRef = ProviderRef<NewUserTrial>;
+String _$newUserBackupHash() => r'a385c54cf25fbd0a4a932aea61c2d67dddd8beca';
+
+/// When the new-user trial's backup was made; null while no trial is on.
+///
+/// Copied from [newUserBackup].
+@ProviderFor(newUserBackup)
+final newUserBackupProvider = AutoDisposeFutureProvider<DateTime?>.internal(
+  newUserBackup,
+  name: r'newUserBackupProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$newUserBackupHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef NewUserBackupRef = AutoDisposeFutureProviderRef<DateTime?>;
 String _$sourcePhotoStoreHash() => r'5ba15f72c22a820489d043a9260d86a9f9d91b3d';
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
@@ -229,6 +267,27 @@ final storyApiServiceProvider = Provider<StoryApiService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef StoryApiServiceRef = ProviderRef<StoryApiService>;
+String _$collectionNamingServiceHash() =>
+    r'ea710e876937b0fa9333378880697a6e9fce73db';
+
+/// The Worker's collection naming (collection-naming, owner 2026-10-18).
+///
+/// Copied from [collectionNamingService].
+@ProviderFor(collectionNamingService)
+final collectionNamingServiceProvider =
+    Provider<CollectionNamingService>.internal(
+  collectionNamingService,
+  name: r'collectionNamingServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$collectionNamingServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CollectionNamingServiceRef = ProviderRef<CollectionNamingService>;
 String _$learnApiServiceHash() => r'2da4556e695e318b873e02fe83b565960e790244';
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
@@ -723,6 +782,50 @@ class _CollectionLevelProviderElement
   String? get folderId => (origin as CollectionLevelProvider).folderId;
 }
 
+String _$collectionSummariesHash() =>
+    r'e728a8708419084d7a2350ad47bd8d86dc8fb691';
+
+/// Every collection that is not in the bin, empty ones too, for the
+/// Collections search and the tag counts (collection-tags ADR-0006); one
+/// emission per burst of writes.
+///
+/// Copied from [collectionSummaries].
+@ProviderFor(collectionSummaries)
+final collectionSummariesProvider =
+    AutoDisposeStreamProvider<List<CollectionSummary>>.internal(
+  collectionSummaries,
+  name: r'collectionSummariesProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$collectionSummariesHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef CollectionSummariesRef
+    = AutoDisposeStreamProviderRef<List<CollectionSummary>>;
+String _$tagLibraryHash() => r'fa2e6b23b96de113752f004b78bf4e3279e69bc7';
+
+/// The whole tag library, forgotten entries included (collection-tags
+/// ADR-0009).
+///
+/// Copied from [tagLibrary].
+@ProviderFor(tagLibrary)
+final tagLibraryProvider =
+    AutoDisposeStreamProvider<List<TagLibraryEntry>>.internal(
+  tagLibrary,
+  name: r'tagLibraryProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$tagLibraryHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TagLibraryRef = AutoDisposeStreamProviderRef<List<TagLibraryEntry>>;
 String _$collectionNameHash() => r'8a07f2bd9b41c3855b426acf2b30592f9ccd9978';
 
 /// The stored name of one collection (collections-screen T14): the main
@@ -872,6 +975,162 @@ class _CollectionNameProviderElement
   String get collectionId => (origin as CollectionNameProvider).collectionId;
 }
 
+String _$collectionNamingHash() => r'eacf5846b5e9db437f2f039634d17ff5f7715b0c';
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+///
+/// Copied from [collectionNaming].
+@ProviderFor(collectionNaming)
+const collectionNamingProvider = CollectionNamingFamily();
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+///
+/// Copied from [collectionNaming].
+class CollectionNamingFamily
+    extends Family<AsyncValue<({String? name, NameKind kind})?>> {
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  ///
+  /// Copied from [collectionNaming].
+  const CollectionNamingFamily();
+
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  ///
+  /// Copied from [collectionNaming].
+  CollectionNamingProvider call(
+    String collectionId,
+  ) {
+    return CollectionNamingProvider(
+      collectionId,
+    );
+  }
+
+  @override
+  CollectionNamingProvider getProviderOverride(
+    covariant CollectionNamingProvider provider,
+  ) {
+    return call(
+      provider.collectionId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'collectionNamingProvider';
+}
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+///
+/// Copied from [collectionNaming].
+class CollectionNamingProvider
+    extends AutoDisposeStreamProvider<({String? name, NameKind kind})?> {
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  ///
+  /// Copied from [collectionNaming].
+  CollectionNamingProvider(
+    String collectionId,
+  ) : this._internal(
+          (ref) => collectionNaming(
+            ref as CollectionNamingRef,
+            collectionId,
+          ),
+          from: collectionNamingProvider,
+          name: r'collectionNamingProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$collectionNamingHash,
+          dependencies: CollectionNamingFamily._dependencies,
+          allTransitiveDependencies:
+              CollectionNamingFamily._allTransitiveDependencies,
+          collectionId: collectionId,
+        );
+
+  CollectionNamingProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.collectionId,
+  }) : super.internal();
+
+  final String collectionId;
+
+  @override
+  Override overrideWith(
+    Stream<({String? name, NameKind kind})?> Function(
+            CollectionNamingRef provider)
+        create,
+  ) {
+    return ProviderOverride(
+      origin: this,
+      override: CollectionNamingProvider._internal(
+        (ref) => create(ref as CollectionNamingRef),
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        collectionId: collectionId,
+      ),
+    );
+  }
+
+  @override
+  AutoDisposeStreamProviderElement<({String? name, NameKind kind})?>
+      createElement() {
+    return _CollectionNamingProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CollectionNamingProvider &&
+        other.collectionId == collectionId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin CollectionNamingRef
+    on AutoDisposeStreamProviderRef<({String? name, NameKind kind})?> {
+  /// The parameter `collectionId` of this provider.
+  String get collectionId;
+}
+
+class _CollectionNamingProviderElement
+    extends AutoDisposeStreamProviderElement<({String? name, NameKind kind})?>
+    with CollectionNamingRef {
+  _CollectionNamingProviderElement(super.provider);
+
+  @override
+  String get collectionId => (origin as CollectionNamingProvider).collectionId;
+}
+
 String _$collectionFoldersHash() => r'0201bdb7340183c54b86017aa80dc98dee5f1df7';
 
 /// Every folder, binned ones too, for the Collections path and the tree.
@@ -977,6 +1236,26 @@ final wordDetailModeNotifierProvider =
 );
 
 typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+String _$appThemeNotifierHash() => r'6224233ff14b800d30acbad8a25b501db5c323f0';
+
+/// The app's theme, picked on the App settings page (app-themes, owner
+/// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+/// [AppThemeId.classic] and switches once the stored value is read.
+///
+/// Copied from [AppThemeNotifier].
+@ProviderFor(AppThemeNotifier)
+final appThemeNotifierProvider =
+    NotifierProvider<AppThemeNotifier, AppThemeId>.internal(
+  AppThemeNotifier.new,
+  name: r'appThemeNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$appThemeNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$AppThemeNotifier = Notifier<AppThemeId>;
 String _$dialoguesSettingNotifierHash() =>
     r'79a0b0141cc70e6d14eb3a468af48a9fb1300bb6';
 
@@ -1044,5 +1323,27 @@ final photoTabTopNotifierProvider =
 );
 
 typedef _$PhotoTabTopNotifier = Notifier<double>;
+String _$recentFilterTagsNotifierHash() =>
+    r'77536d2475125cb27b9f63ec9d2caef380839c1d';
+
+/// The tags the learner applied from the Collections filter sheet, newest
+/// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+/// like [WordDetailModeNotifier] under one preferences key, each entry
+/// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+///
+/// Copied from [RecentFilterTagsNotifier].
+@ProviderFor(RecentFilterTagsNotifier)
+final recentFilterTagsNotifierProvider =
+    NotifierProvider<RecentFilterTagsNotifier, List<QuickTag>>.internal(
+  RecentFilterTagsNotifier.new,
+  name: r'recentFilterTagsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$recentFilterTagsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$RecentFilterTagsNotifier = Notifier<List<QuickTag>>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/translation_result.dart';
 
 /// Content of the "more options" popup opened from the Translation dots
@@ -97,7 +98,7 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
             child: _buildBody(),
           ),
         ),
-        const Divider(color: Colors.white24, height: 1),
+        Divider(color: _on(context).withAlpha(0x3D), height: 1),
         Padding(
           padding: const EdgeInsets.all(8),
           child: Row(
@@ -105,7 +106,7 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
             children: [
               IconButton(
                 icon: const Icon(Icons.close),
-                color: Colors.white70,
+                color: _on(context).withAlpha(0xB3),
                 iconSize: 24,
                 onPressed: widget.onClose,
               ),
@@ -131,21 +132,21 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (_busy)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
               child: SizedBox(
                 width: 28,
                 height: 28,
                 child: CircularProgressIndicator(
                   strokeWidth: 2.5,
-                  color: Colors.white70,
+                  color: _on(context).withAlpha(0xB3),
                 ),
               ),
             )
           else
             IconButton(
               icon: const Icon(Icons.refresh),
-              color: Colors.white70,
+              color: _on(context).withAlpha(0xB3),
               iconSize: 28,
               tooltip: 'Load translations',
               onPressed: widget.canLoad ? _load : null,
@@ -157,7 +158,7 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
                     ? 'No translations loaded yet. Tap to load.'
                     : 'Type a word to load translations.'),
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70),
+            style: TextStyle(color: _on(context).withAlpha(0xB3)),
           ),
         ],
       ),
@@ -187,12 +188,12 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white12,
+                      color: _on(context).withAlpha(0x1F),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
                       w.word,
-                      style: const TextStyle(color: Colors.white, fontSize: 15),
+                      style: TextStyle(color: _on(context), fontSize: 15),
                     ),
                   ),
                 ),
@@ -216,8 +217,8 @@ class _SectionHeader extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         label,
-        style: const TextStyle(
-          color: Colors.white38,
+        style: TextStyle(
+          color: _on(context).withAlpha(0x62),
           fontSize: 11,
           fontWeight: FontWeight.bold,
           letterSpacing: 0.5,
@@ -226,3 +227,6 @@ class _SectionHeader extends StatelessWidget {
     );
   }
 }
+
+/// The text and lines on the three dots' menu (app-themes).
+Color _on(BuildContext context) => AppDecor.of(context).onPopup;

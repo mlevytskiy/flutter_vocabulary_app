@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_theme.dart';
 
 /// The Words screen's top bar: the back arrow on the left, the title in the
 /// middle of the screen, Learn centred between the arrow and the title, Share
@@ -118,8 +119,8 @@ class LearnShareBar extends StatelessWidget implements PreferredSizeWidget {
   Widget _button(BuildContext context, _Layout layout, String name, Widget icon,
       VoidCallback? onPressed) {
     final style = ElevatedButton.styleFrom(
-      backgroundColor: Colors.white,
-      foregroundColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: AppDecor.of(context).barButton,
+      foregroundColor: AppDecor.of(context).onBarButtonOf(context),
     );
     switch (layout) {
       case _Layout.iconOnly:

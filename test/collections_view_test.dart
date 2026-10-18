@@ -76,32 +76,31 @@ void main() {
     });
   });
 
-  group('CollectionsPathBar', () {
-    testWidgets('top level: path "Collections", Up disabled', (t) async {
+  group('CollectionsUpButton', () {
+    testWidgets('an arrow with the tooltip Up; disabled does nothing',
+        (t) async {
       var ups = 0;
-      await t.pumpWidget(_wrap(CollectionsPathBar(
-        parts: const [PathPart(null, 'Collections')],
-        upEnabled: false,
-        onUp: () => ups++,
-        onPart: (_) {},
-      )));
-      expect(find.text('Collections'), findsOneWidget);
-      expect(find.text('Up'), findsOneWidget);
-      await t.tap(find.text('Up'));
+      await t.pumpWidget(
+          _wrap(CollectionsUpButton(enabled: false, onUp: () => ups++)));
+      await t.tap(find.byTooltip('Up'));
       expect(ups, 0);
+      await t.pumpWidget(
+          _wrap(CollectionsUpButton(enabled: true, onUp: () => ups++)));
+      await t.tap(find.byTooltip('Up'));
+      expect(ups, 1);
+      expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
     });
+  });
 
-    testWidgets('inside a folder: every part tappable, Up enabled', (t) async {
+  group('CollectionsPathBar', () {
+    testWidgets('every part tappable, on one line', (t) async {
       final tapped = <String?>[];
-      var ups = 0;
       await t.pumpWidget(_wrap(CollectionsPathBar(
         parts: const [
           PathPart(null, 'Collections'),
           PathPart('f1', 'English course'),
           PathPart('f2', 'Unit 3'),
         ],
-        upEnabled: true,
-        onUp: () => ups++,
         onPart: tapped.add,
       )));
       expect(find.text('›'), findsNWidgets(2));
@@ -109,8 +108,39 @@ void main() {
       await t.tap(find.text('English course'));
       await t.tap(find.text('Unit 3'));
       expect(tapped, [null, 'f1', 'f2']);
-      await t.tap(find.text('Up'));
-      expect(ups, 1);
+      final ys = {
+        for (final s in ['Collections', 'English course', 'Unit 3'])
+          t.getCenter(find.text(s)).dy.round(),
+      };
+      expect(ys, hasLength(1));
+    });
+
+    testWidgets('a long path stays one line and shows the open folder',
+        (t) async {
+      await t.pumpWidget(MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            leading: CollectionsUpButton(enabled: true, onUp: () {}),
+            titleSpacing: 0,
+            title: CollectionsPathBar(
+              parts: [
+                const PathPart(null, 'Collections'),
+                for (var i = 1; i <= 6; i++)
+                  PathPart('f$i', 'A rather long folder $i'),
+              ],
+              onPart: (_) {},
+            ),
+          ),
+        ),
+      ));
+      await t.pump();
+      expect(t.takeException(), isNull);
+      final open = t.getRect(find.text('A rather long folder 6'));
+      final bar = t.getRect(find.byType(AppBar));
+      expect(open.right, lessThanOrEqualTo(bar.right));
+      expect(open.left, greaterThanOrEqualTo(0));
+      expect(t.getCenter(find.text('A rather long folder 5')).dy,
+          moreOrLessEquals(open.center.dy, epsilon: 2));
     });
   });
 

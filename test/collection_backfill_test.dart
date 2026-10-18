@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
 import 'package:flutter_vocabulary_app/core/models/collection_name.dart';
+import 'package:flutter_vocabulary_app/core/models/name_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
@@ -76,6 +77,10 @@ void main() {
             ..at = t
         ];
 
+  /// Five words: enough to keep a date name until the AI names it
+  /// (collection-naming); fewer turn it into "Vocabulary N".
+  List<WordPair> five(String w) => [for (var i = 0; i < 5; i++) word('$w$i')];
+
   Future<void> seed(List<WordCollection> cs) =>
       isar.writeTxn(() => isar.wordCollections.putAll(cs));
 
@@ -93,9 +98,9 @@ void main() {
     final t2 = DateTime(2026, 4, 2, 10, 15);
     final t3 = DateTime(2026, 5, 3, 11, 25);
     // Seeded out of order so the Isar id order is not the answer.
-    final c3 = old(idAt(t3), DateTime(2026, 9, 9), words: [word('pear')]);
+    final c3 = old(idAt(t3), DateTime(2026, 9, 9), words: five('pear'));
     final c1 = old(idAt(t1), DateTime(2026, 9, 9));
-    final c2 = old(idAt(t2), DateTime(2026, 9, 9), words: [word('apple')]);
+    final c2 = old(idAt(t2), DateTime(2026, 9, 9), words: five('apple'));
     await seed([c3, c1, c2]);
     final before = {
       for (final c in [c1, c2, c3])
@@ -107,7 +112,8 @@ void main() {
     final r1 = await read(c1.collectionId);
     final r2 = await read(c2.collectionId);
     final r3 = await read(c3.collectionId);
-    expect(r1.name, defaultCollectionName(t1));
+    // No words: the date name gave way to "Vocabulary" (collection-naming).
+    expect(r1.name, 'Vocabulary');
     expect(r2.name, defaultCollectionName(t2));
     expect(r3.name, defaultCollectionName(t3));
     expect([r1.order, r2.order, r3.order], [0, 1, 2]);
@@ -115,6 +121,7 @@ void main() {
     expect([r1.keep, r2.keep, r3.keep], [false, true, true]);
     expect([r1.binnedAt, r2.binnedAt, r3.binnedAt], [null, null, null]);
     for (final r in [r1, r2, r3]) {
+      expect(r.nameKind, NameKind.undefined);
       expect(content(r), before[r.collectionId]);
     }
     expect(logs, contains('VOCAB: backfill named 3 (from id: 3, fallback: 0)'));
@@ -124,15 +131,17 @@ void main() {
       'an unparsable id falls back to the earliest of updatedAt, '
       'lastLocalModifiedAt and the sources\' takenAt', () async {
     final early = DateTime(2025, 1, 2, 3, 4);
-    final bad = old('no_moment_here', DateTime(2026, 6, 1), sources: [
+    final bad =
+        old('no_moment_here', DateTime(2026, 6, 1), words: five('a'), sources: [
       SessionSource()
         ..id = 's1'
         ..takenAt = early,
     ])
-      ..lastLocalModifiedAt = DateTime(2026, 7, 1);
-    final bad2 = old('also bad', DateTime(2026, 2, 1))
+          ..lastLocalModifiedAt = DateTime(2026, 7, 1);
+    final bad2 = old('also bad', DateTime(2026, 2, 1), words: five('b'))
       ..lastLocalModifiedAt = DateTime(2026, 1, 15, 8, 30);
-    final good = old(idAt(DateTime(2025, 6, 1)), DateTime(2026, 9, 9));
+    final good =
+        old(idAt(DateTime(2025, 6, 1)), DateTime(2026, 9, 9), words: five('c'));
     await seed([bad, bad2, good]);
 
     await CollectionStore.open(directory: dir.path);
@@ -159,7 +168,8 @@ void main() {
       ..name = 'Deep'
       ..folderId = 'f1'
       ..order = 9;
-    final unnamed = old(idAt(DateTime(2020, 1, 1)), DateTime(2020, 1, 1));
+    final unnamed =
+        old(idAt(DateTime(2020, 1, 1)), DateTime(2020, 1, 1), words: five('u'));
     await seed([filed, inFolder, unnamed]);
     await isar.writeTxn(() => isar.collectionFolders.put(CollectionFolder()
       ..folderId = 'f1'
@@ -170,6 +180,8 @@ void main() {
 
     final rFiled = await read(filed.collectionId);
     expect((rFiled.name, rFiled.order, rFiled.keep), ('Mine', 4, true));
+    // A name that is not a date name was typed (collection-naming).
+    expect(rFiled.nameKind, NameKind.byUser);
     expect((await read(inFolder.collectionId)).order, 9);
     expect((await isar.collectionFolders.where().findFirst())!.order, 6);
     final r = await read(unnamed.collectionId);

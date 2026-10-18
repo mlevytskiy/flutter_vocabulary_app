@@ -8,18 +8,27 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'models/offered_ai.dart';
+import 'theme/app_theme.dart' show AppThemeId;
 import 'models/collection_folder.dart';
+import 'models/tag_library_entry.dart';
+import 'models/name_kind.dart';
 import 'models/word_collection.dart';
 import 'models/subtitle_import_options.dart';
 import 'services/dictionary_service.dart';
 import 'services/exam_result_sink.dart';
 import 'services/google_translate_service.dart';
 import 'services/learn_api_service.dart';
+import 'services/new_user_trial.dart';
 import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
 import 'services/pronunciation_service.dart';
 import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
+import 'services/collection_naming_service.dart';
+import 'services/collection_search.dart' show CollectionSummary;
+import 'services/collection_search_scope.dart' show QuickTag;
+import 'services/tag_rules.dart' show tagKey;
+import 'models/tag_kind.dart';
 import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
 import 'services/story_api_service.dart';
@@ -46,6 +55,16 @@ ImagePicker imagePicker(Ref ref) => ImagePicker();
 
 @Riverpod(keepAlive: true)
 Future<CollectionStore> collectionStore(Ref ref) => CollectionStore.open();
+
+/// Puts the user's data aside to show the app as to a new user, and brings
+/// it back (new-user-trial, owner 2026-10-17).
+@Riverpod(keepAlive: true)
+NewUserTrial newUserTrial(Ref ref) => NewUserTrial();
+
+/// When the new-user trial's backup was made; null while no trial is on.
+@riverpod
+Future<DateTime?> newUserBackup(Ref ref) =>
+    ref.watch(newUserTrialProvider).backupTakenAt();
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
 @Riverpod(keepAlive: true)
@@ -81,6 +100,11 @@ DictionaryService dictionaryService(Ref ref) => DictionaryService();
 /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
 @Riverpod(keepAlive: true)
 StoryApiService storyApiService(Ref ref) => StoryApiService();
+
+/// The Worker's collection naming (collection-naming, owner 2026-10-18).
+@Riverpod(keepAlive: true)
+CollectionNamingService collectionNamingService(Ref ref) =>
+    CollectionNamingService();
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 @Riverpod(keepAlive: true)
@@ -209,12 +233,38 @@ Stream<List<LevelItem>> collectionLevel(Ref ref, String? folderId) async* {
   yield* store.watchLevel(folderId);
 }
 
+/// Every collection that is not in the bin, empty ones too, for the
+/// Collections search and the tag counts (collection-tags ADR-0006); one
+/// emission per burst of writes.
+@riverpod
+Stream<List<CollectionSummary>> collectionSummaries(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchSummaries();
+}
+
+/// The whole tag library, forgotten entries included (collection-tags
+/// ADR-0009).
+@riverpod
+Stream<List<TagLibraryEntry>> tagLibrary(Ref ref) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchLibrary();
+}
+
 /// The stored name of one collection (collections-screen T14): the main
 /// screen's title. Null before the backfill; callers show the date name.
 @riverpod
 Stream<String?> collectionName(Ref ref, String collectionId) async* {
   final store = await ref.watch(collectionStoreProvider.future);
   yield* store.watchName(collectionId);
+}
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+@riverpod
+Stream<({String? name, NameKind kind})?> collectionNaming(
+    Ref ref, String collectionId) async* {
+  final store = await ref.watch(collectionStoreProvider.future);
+  yield* store.watchNaming(collectionId);
 }
 
 /// Every folder, binned ones too, for the Collections path and the tree.
@@ -279,6 +329,41 @@ class WordDetailModeNotifier extends _$WordDetailModeNotifier {
     state = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(prefsKey, mode.name);
+  }
+}
+
+/// The app's theme, picked on the App settings page (app-themes, owner
+/// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+/// [AppThemeId.classic] and switches once the stored value is read.
+@Riverpod(keepAlive: true)
+class AppThemeNotifier extends _$AppThemeNotifier {
+  static const prefsKey = 'app_theme';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  AppThemeId build() {
+    loaded;
+    return AppThemeId.classic;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getString(prefsKey);
+    // A choice made before the stored value arrived wins over it.
+    if (_setByLearner) return;
+    state = AppThemeId.values.firstWhere(
+      (t) => t.name == stored,
+      orElse: () => AppThemeId.classic,
+    );
+  }
+
+  Future<void> set(AppThemeId id) async {
+    _setByLearner = true;
+    state = id;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefsKey, id.name);
   }
 }
 
@@ -480,4 +565,63 @@ class PhotoTabTopNotifier extends _$PhotoTabTopNotifier {
   /// ([max]); when the screen is too short for both, the top bar wins.
   static double clamp(double top, {required double min, required double max}) =>
       max < min ? min : top.clamp(min, max);
+}
+
+/// Short name for [RecentFilterTagsNotifier].
+final recentFilterTagsProvider = recentFilterTagsNotifierProvider;
+
+/// The tags the learner applied from the Collections filter sheet, newest
+/// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+/// like [WordDetailModeNotifier] under one preferences key, each entry
+/// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+@Riverpod(keepAlive: true)
+class RecentFilterTagsNotifier extends _$RecentFilterTagsNotifier {
+  static const prefsKey = 'collections_recent_filter_tags';
+  static const keep = 10;
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  List<QuickTag> build() {
+    loaded;
+    return const [];
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getStringList(prefsKey) ?? const <String>[];
+    if (_setByLearner) return;
+    state = [
+      for (final s in stored)
+        if (_decode(s) case final QuickTag tag) tag,
+    ];
+  }
+
+  static QuickTag? _decode(String s) {
+    final i = s.indexOf('|');
+    if (i < 0) return null;
+    final kind = TagKind.values.where((k) => k.name == s.substring(0, i));
+    if (kind.isEmpty) return null;
+    return (kind: kind.first, text: s.substring(i + 1));
+  }
+
+  /// Moves [tags] to the front, the first of them first.
+  Future<void> record(List<QuickTag> tags) async {
+    if (tags.isEmpty) return;
+    _setByLearner = true;
+    String id(QuickTag t) => '${t.kind.name}|${tagKey(t.text)}';
+    final ids = {for (final t in tags) id(t)};
+    state = [
+      ...tags,
+      for (final t in state)
+        if (!ids.contains(id(t))) t,
+    ].take(keep).toList();
+    try {
+      await (await SharedPreferences.getInstance()).setStringList(
+          prefsKey, [for (final t in state) '${t.kind.name}|${t.text}']);
+    } catch (e) {
+      debugPrint('VOCAB: filter sheet: recent tags not saved: $e');
+    }
+  }
 }

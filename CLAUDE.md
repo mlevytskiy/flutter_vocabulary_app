@@ -32,10 +32,50 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    drop zone shown during a drag and, at the top level, the "↑ Up  Collections" line, and adds three round buttons
    like the main screen's: Settings, the recycle bin (also the drop target to delete) and a plus with New folder
    and New collection; a tap on the recycle bin opens a dialog with "Go to recycle bin" and "Enable/Disable
-   delete mode", where every icon but the current collection shows a small round bin button whose tap flies the
-   picture into the recycle-bin button (it bounces) and bins the item without asking; every top bar takes the main screen's word-row colour (`topBarColor` in `lib/app.dart`);
+   delete mode", where every icon shows a small round bin button whose tap flies the
+   picture into the recycle-bin button (it bounces) and bins the item without asking (owner, 2026-10-17: the current
+   collection shows the bin button too, in every theme the old blue-grey circle with a white bin, and its tap only shows
+   the "cannot be deleted" snackbar; the recycle-bin button's icon is full while the bin holds something, empty
+   otherwise, whatever delete mode); every top bar takes the main screen's word-row colour (`topBarColor` in `lib/app.dart`);
    the session → collection rename of classes, fields, files and providers, with stored names pinned, is an approved
-   exception to "move code, do not rewrite it" (collections-screen ADR-0002)). Keep `popup_menu_2`, `flutter_speed_dial`,
+   exception to "move code, do not rewrite it" (collections-screen ADR-0002); collection-tags (owner via Fable 5.1 proxy, 2026-10-16) adds the Collection details sheet (name, description, origin and topic tag fields) for New collection and the main screen's edit button, the tag line under the main screen's top bar, typed tag fields with suggestion rows and Forget on the Notes page, and search, the filter sheet, the flat result list and filter chips on the Collections screen; words-photo-panel (owner, 2026-10-16) adds the photo tab and photo panel to the Words screen, as on the main screen, and moves the Words screen's "Include photos (N)" switch into the Words screen's settings; tag-field-restyle (owner,
+   2026-10-17) turns each tag field into one rounded box with a view state (tinted, kind label, chips without delete)
+   and an edit state (accent border, Done check, chips with delete), drops the helper line and the suggestion chip row,
+   and shows the autocomplete only while typing, with the typed part bold and an `Add "…"` row for a new tag; the
+   owner, 2026-10-17, then took the icons off every tag, put the kind's question on top of the box and opened the
+   Collection details sheet's tag fields in the edit state; app-themes (owner, 2026-10-17) adds "App settings" below
+   History in the side menu, the App settings page with its theme gallery, and four themes — Classic (the default: the
+   colours from before with Matcha's fonts, text colours and top-bar title size, owner 2026-10-17), Aurora, Matcha and Amber Terminal (owner, 2026-10-17, cut from ten), and Windows 95 (owner, 2026-10-17: teal desktop, grey bevelled rows, navy title bar, square corners, the platform font) — that recolour every screen,
+   its icons and the Collections pictures (outlines only in Amber Terminal) and change fonts, row shapes, blur and
+   backdrops through `AppDecor` in `lib/core/theme/app_decor.dart`, one file per theme in `lib/core/theme/themes/`; a new hard-coded colour goes there as a slot; new-user-trial (owner, 2026-10-17) adds the App settings card "Try the app as a new user" with "Start as a new user", which puts all data aside and restarts the app empty, and, while that is on, "Restore my data", which deletes the trial's data and brings the saved data back, each behind a confirm dialog; while the trial is on, a 4 px red line runs along the top of every screen, over the top bar's top edge (owner, 2026-10-17);
+   collections-search (owner, 2026-10-17) shows the Collections filter icon only in search (or while a filter is on),
+   the hint "Search in <folder>", the search list of only the open folder's level with its matching folders, the "Match
+   outside" sheet (peeking at 20%, opening on the route with "You are here", opening by itself when the list is empty),
+   the round buttons hidden while that sheet shows, and live tag counts with disabled 0 chips in the filter sheet);
+   filter-sheet-pills (owner, 2026-10-18) rebuilds the Collections filter sheet: one tag field for both kinds with
+   autocomplete (each suggestion with its kind and live count), a Popular line of four tags (two recently applied, then
+   the most used; hidden with four tags or fewer), Created and Edited as two dropdown pills side by side, Sort as a pill
+   beside Reset, the sheet sized to its content with a drag handle, and a refused range shown under the pills;
+   classic-purple (owner, 2026-10-18) gives Classic the Next button's purple where it had Matcha's dark green (row
+   text, dark icons) and lilac greys for Matcha's grey greens; collection-naming (owner, 2026-10-18) names a
+   collection nobody named "Vocabulary" ("Vocabulary 1", "Vocabulary 2", … when taken) and, once it has 5 words,
+   the AI's short name (Worker `POST /collections/name`, Sonnet 5.5), which the main screen's title reveals letter
+   by letter; a name the learner typed is never replaced; New collection's name is optional, labelled
+   "Name (optional)" with a pale grey hint "Leave empty to let AI name it" and, while empty, a sparkle note
+   under it; likewise a description nobody wrote stays empty until 20 words, then AI writes it (Worker
+   `POST /collections/description`), with the hint "Leave empty to let AI write it" and its note in New collection; the main screen's edit button
+   shows the same optional name, hints and notes for a name or description nobody gave (owner, 2026-10-18);
+   the Collection details sheet's Create/Save is a full-width button in a bar pinned at the bottom, above the
+   keyboard, and the AI notes are helper lines (the description's beside its counter) in a per-theme
+   `AppDecor.aiAccent` with no box (owner, 2026-10-18); at launch the collections from before, and any still
+   waiting, get their AI names and descriptions from one request, `POST /collections/autofill` (owner, 2026-10-18);
+   the Collections screen's Settings button opens its own Collections settings screen with one row, "Replace all
+   date names", which renames every "17.10.2026 17:05" name by those rules in one request and says what it did in a
+   snackbar (owner, 2026-10-18); inside a folder the Collections screen's Up is an arrow in the top bar's leading
+   slot and the path is the bar's title on one line (the open folder in the title style, the levels above smaller
+   and grey, a long path scrolling sideways to its end) in place of the row below the bar (owner, 2026-10-18); the
+   recycle-bin button lights up and takes the drop as soon as any part of a dragged icon, its name too, covers it,
+   not only the point under the finger (owner, 2026-10-18)). Keep `popup_menu_2`, `flutter_speed_dial`,
    `translator`, `http`. Move code into new files by cut-and-paste; do not rewrite it.
 4. Secrets stay as constants in `lib/config/vocab_api_config.dart` (gitignored). No dart-define.
 5. No new packages, no removed packages, no new domain models (approved: `Exercise` by learn-part-step-1; `WordGroup`, `StoryRun`, `StoryStep` and `WordPair.rowId` by mnemonic-story, ADR-0003; `FilmDialogue`, `WordGroup.dialogueId`,
@@ -44,7 +84,11 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    for share-formats; `SourceKind.subtitles` by side-panel-sources (owner, 2026-10-14); `WordResult` on Session by learn-kit (owner, 2026-10-14, H-05); `SessionSource.title`, `.description`, `.links`,
    `.tags` and `Session.tags` by notes-editing (owner, 2026-10-15); `Session` renamed `WordCollection` with `name`,
    `folderId`, `order`, `binnedAt`, `binnedFromFolderId`, `keep`, and the new Isar collection `CollectionFolder` by
-   collections-screen (owner, 2026-10-16, ADR-0003/0004/0005), no packages), no `packages/` folder — ask first.
+   collections-screen (owner, 2026-10-16, ADR-0003/0004/0005), no packages; `WordCollection.description`, `WordCollection.originTags`/`.topicTags`, `SessionSource.originTags`/`.topicTags`, the enum `TagKind` and the Isar collection `TagLibraryEntry` by collection-tags (owner via Fable 5.1 proxy, 2026-10-16), no packages; the OFL
+   font assets Comfortaa, JetBrains Mono, Manrope, Nunito and Unbounded by app-themes (owner,
+   2026-10-17), no packages; `WordCollection.nameKind` and the enum `NameKind` by collection-naming (owner,
+   2026-10-18) and `WordCollection.descriptionKind` (owner, 2026-10-18), no packages), no `packages/` folder —
+   ask first.
 6. If a step cannot be done as written, stop and write what you found under that step in
    `docs/refactoring-plan.md`. Do not improvise a different structure.
 7. Tests (`docs/testing.md`): while developing run `tool/test.sh smoke`; write tests for what you

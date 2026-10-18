@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../core/models/session_source.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/source_photo_store.dart';
@@ -163,9 +164,10 @@ class PhotoNotAvailable extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         label: 'Photo not available',
         child: ColoredBox(
-          color: Colors.grey.shade300,
-          child: const Center(
-            child: Icon(Icons.image_not_supported_outlined, color: Colors.black45),
+          color: AppDecor.of(context).placeholder,
+          child: Center(
+            child: Icon(Icons.image_not_supported_outlined,
+                color: AppDecor.of(context).onPlaceholder),
           ),
         ),
       );

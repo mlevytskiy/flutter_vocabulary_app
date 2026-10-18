@@ -7,11 +7,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/collection_folder.dart';
 import '../models/collection_name.dart';
+import '../models/effective_tags.dart';
+import '../models/name_kind.dart';
+import '../models/tag_library_entry.dart';
 import '../models/word_collection.dart';
 import '../models/session_source.dart';
 import '../models/story_run.dart';
+import '../models/tag_kind.dart';
 import '../models/word_result.dart';
 import 'collection_level.dart';
+import 'collection_search.dart' show CollectionSummary;
 import 'filing.dart'
     show
         canMoveFolderInto,
@@ -22,6 +27,8 @@ import 'filing.dart'
         placeInLevel,
         restoreTarget;
 import 'source_photo_store.dart' show SourcePhotoStore, uuidV4;
+import 'tag_rules.dart'
+    show canAddTag, mergeCaseDuplicates, sortLegacyTags, tagKey;
 
 /// Persists sessions in an Isar database (`vocab`), plus the one
 /// `shared_preferences` pointer saying which session is the current one — the
@@ -50,7 +57,12 @@ class CollectionStore {
         directory ?? (await getApplicationDocumentsDirectory()).path;
     final isar = Isar.getInstance('vocab') ??
         await Isar.open(
-            [WordCollectionSchema, StoryRunSchema, CollectionFolderSchema],
+            [
+              WordCollectionSchema,
+              StoryRunSchema,
+              CollectionFolderSchema,
+              TagLibraryEntrySchema,
+            ],
             directory: dir, name: 'vocab');
     final prefs = await SharedPreferences.getInstance();
     final store = CollectionStore._(isar, prefs);
@@ -59,6 +71,8 @@ class CollectionStore {
     }
     await store._fillRowIdsEverywhere();
     await store._backfillFiling();
+    await store._backfillTypedTags();
+    await store._sortNameKinds();
     return store;
   }
 
@@ -150,6 +164,251 @@ class CollectionStore {
     } catch (e) {
       debugPrint('VOCAB: backfill failed, retried on the next open: $e');
     }
+  }
+
+  // ---- Name kinds of records from before collection-naming ----
+
+  /// Sorts the names of records stored before collection-naming (owner,
+  /// 2026-10-18), which all read as `undefined`: a "Vocabulary N" name stays
+  /// undefined; a date name (the automatic name from before) stays undefined
+  /// and, with fewer than [minWordsForAutoName] words, becomes the next free
+  /// "Vocabulary N", while a bigger one keeps its date name until the AI
+  /// names it; any other name was typed by the learner. Times stay. Runs on
+  /// every open and finds nothing to do once sorted; nothing here throws.
+  Future<void> _sortNameKinds() async {
+    try {
+      await _isar.writeTxn(() async {
+        final unsorted = await _isar.wordCollections
+            .filter()
+            .nameKindEqualTo(NameKind.undefined)
+            .nameIsNotNull()
+            .findAll();
+        final changed = <WordCollection>[];
+        List<String?>? taken;
+        for (final c in unsorted) {
+          final name = c.name!;
+          if (isVocabularyName(name)) continue;
+          if (!isDateName(name)) {
+            changed.add(c..nameKind = NameKind.byUser);
+          } else if (wordCount(c) < minWordsForAutoName) {
+            taken ??= [
+              for (final o in await _isar.wordCollections.where().findAll())
+                o.name,
+            ];
+            final next = nextVocabularyName(taken);
+            taken.add(next);
+            changed.add(c..name = next);
+          }
+        }
+        if (changed.isNotEmpty) await _isar.wordCollections.putAll(changed);
+        // A description from before was written by the learner.
+        final described = await _isar.wordCollections
+            .filter()
+            .descriptionKindEqualTo(NameKind.undefined)
+            .descriptionIsNotNull()
+            .findAll();
+        if (described.isNotEmpty) {
+          await _isar.wordCollections.putAll(
+              [for (final c in described) c..descriptionKind = NameKind.byUser]);
+        }
+      });
+    } catch (e) {
+      debugPrint('VOCAB: name kinds not sorted, retried on the next open: $e');
+    }
+  }
+
+  /// "Replace all date names" (Collections settings, owner 2026-10-18): every
+  /// collection whose name looks like "17.10.2026 17:05", bin included,
+  /// goes by the naming rules in one transaction. With fewer than
+  /// [minWordsForAutoName] words it becomes the next free "Vocabulary N";
+  /// with more its name becomes undefined, keeping the date until the AI's
+  /// name replaces it. Returns how many became "Vocabulary N" and the ones
+  /// for the AI, each with whether it wants a description too. Nothing on a
+  /// failed write.
+  Future<
+      ({
+        int vocabulary,
+        List<({WordCollection collection, bool description})> forAi,
+      })> replaceDateNames() async {
+    try {
+      return await _isar.writeTxn(() async {
+        final all = await _isar.wordCollections.where().findAll();
+        final taken = [for (final c in all) c.name];
+        final changed = <WordCollection>[];
+        final forAi = <({WordCollection collection, bool description})>[];
+        for (final c in all) {
+          if (c.name == null || !isDateName(c.name!)) continue;
+          final words = wordCount(c);
+          c.nameKind = NameKind.undefined;
+          if (words < minWordsForAutoName) {
+            c.name = nextVocabularyName(taken);
+            taken.add(c.name);
+          } else {
+            forAi.add((
+              collection: c,
+              description: c.descriptionKind == NameKind.undefined &&
+                  c.description == null &&
+                  words >= minWordsForAutoDescription,
+            ));
+          }
+          changed.add(c);
+        }
+        if (changed.isNotEmpty) await _isar.wordCollections.putAll(changed);
+        return (vocabulary: changed.length - forAi.length, forAi: forAi);
+      });
+    } catch (_) {
+      return (
+        vocabulary: 0,
+        forAi: const <({WordCollection collection, bool description})>[]
+      );
+    }
+  }
+
+  /// Every collection outside the bin that AI should name or describe
+  /// (collection-naming): its name still undefined with at least
+  /// [minWordsForAutoName] words, or its description never written, still
+  /// empty, with at least [minWordsForAutoDescription] words. Newest first,
+  /// at most [limit]. The launch upgrade sends them in one request. Empty on
+  /// a failed read.
+  Future<List<({WordCollection collection, bool name, bool description})>>
+      pendingAutofill({int limit = 100}) async {
+    try {
+      final all = await _isar.wordCollections
+          .filter()
+          .binnedAtIsNull()
+          .group((q) => q
+              .nameKindEqualTo(NameKind.undefined)
+              .or()
+              .descriptionKindEqualTo(NameKind.undefined))
+          .sortByLastLocalModifiedAtDesc()
+          .findAll();
+      final pending =
+          <({WordCollection collection, bool name, bool description})>[];
+      for (final c in all) {
+        final words = wordCount(c);
+        final name =
+            c.nameKind == NameKind.undefined && words >= minWordsForAutoName;
+        final description = c.descriptionKind == NameKind.undefined &&
+            c.description == null &&
+            words >= minWordsForAutoDescription;
+        if (name || description) {
+          pending.add((collection: c, name: name, description: description));
+        }
+        if (pending.length == limit) break;
+      }
+      return pending;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// The words of [c] that are not blank, as the naming rule counts them.
+  static int wordCount(WordCollection c) =>
+      c.words.where((w) => w.word.trim().isNotEmpty).length;
+
+  // ---- One-time typed-tag migration (collection-tags T6, ADR-0003) ----
+
+  /// Sorts the untyped tags from before collection-tags into origin and
+  /// topic tags (data-model §Migration, AC-17, AC-17b, AC-31, AC-32), in one
+  /// transaction over every collection whose legacy tags, or a source's,
+  /// are not empty, oldest creation moment first. Each legacy list is sorted
+  /// and its case duplicates merged, appended to the typed lists without
+  /// repeating a key, each source's tags are copied up to the collection past
+  /// the 10 cap, the library gains each (kind, key) it lacks with the first
+  /// spelling met (never dated, never un-forgotten), and the legacy lists are
+  /// emptied. Times stay; `keep` only rises. A failure is logged and the
+  /// next open retries; nothing here throws.
+  Future<void> _backfillTypedTags() async {
+    try {
+      await _isar.writeTxn(() async {
+        final legacy = await _isar.wordCollections
+            .filter()
+            .tagsIsNotEmpty()
+            .or()
+            .sourcesElement((s) => s.tagsIsNotEmpty())
+            .findAll();
+        if (legacy.isEmpty) return;
+        final moments = {
+          for (final c in legacy)
+            c.id: creationMomentOf(c.collectionId) ?? c.updatedAt,
+        };
+        legacy.sort((a, b) {
+          final byMoment = moments[a.id]!.compareTo(moments[b.id]!);
+          return byMoment != 0 ? byMoment : a.id.compareTo(b.id);
+        });
+        final known = {
+          for (final e in await _isar.tagLibraryEntrys.where().findAll())
+            (e.kind, e.key),
+        };
+        final newEntries = <TagLibraryEntry>[];
+        void meet(TagKind kind, String text) {
+          final key = tagKey(text);
+          if (key.isEmpty || !known.add((kind, key))) return;
+          newEntries.add(TagLibraryEntry()
+            ..kind = kind
+            ..key = key
+            ..text = text.trim());
+        }
+
+        /// [tags] sorted and merged, appended to the typed lists read and
+        /// written through [get] / [set]; returns the sorted lists.
+        ({List<String> origin, List<String> topic}) migrate(
+          List<String> tags,
+          List<String> Function(TagKind) get,
+          void Function(TagKind, List<String>) set,
+        ) {
+          final sorted = sortLegacyTags(tags);
+          final byKind = {
+            TagKind.origin: mergeCaseDuplicates(sorted.origin),
+            TagKind.topic: mergeCaseDuplicates(sorted.topic),
+          };
+          for (final MapEntry(key: kind, value: list) in byKind.entries) {
+            for (final t in list) {
+              meet(kind, t);
+            }
+            set(kind, _appendMissing(get(kind), list));
+          }
+          return (
+            origin: byKind[TagKind.origin]!,
+            topic: byKind[TagKind.topic]!
+          );
+        }
+
+        for (final c in legacy) {
+          migrate(c.tags, (k) => _tagsOf(c, k), (k, l) => _setTagsOf(c, k, l));
+          c.tags = [];
+          for (final s in c.sources) {
+            if (s.tags.isEmpty) continue;
+            final moved = migrate(s.tags, (k) => _sourceTagsOf(s, k), (k, l) {
+              if (k == TagKind.origin) {
+                s.originTags = l;
+              } else {
+                s.topicTags = l;
+              }
+            });
+            s.tags = [];
+            c.originTags = _appendMissing(c.originTags, moved.origin);
+            c.topicTags = _appendMissing(c.topicTags, moved.topic);
+          }
+          if (c.originTags.isNotEmpty || c.topicTags.isNotEmpty) c.keep = true;
+        }
+        await _isar.wordCollections.putAll(legacy);
+        await _isar.tagLibraryEntrys.putAll(newEntries);
+      });
+    } catch (e) {
+      debugPrint('VOCAB: tag migration failed, retried on the next open: $e');
+    }
+  }
+
+  /// [list] followed by each of [tags] whose key it does not hold yet,
+  /// ignoring the 10 cap (migration only, AC-17b).
+  static List<String> _appendMissing(List<String> list, List<String> tags) {
+    final keys = {for (final t in list) tagKey(t)};
+    return [
+      ...list,
+      for (final t in tags)
+        if (tagKey(t).isNotEmpty && keys.add(tagKey(t))) t,
+    ];
   }
 
   /// The earliest of [c]'s times, for an id with no readable moment
@@ -254,22 +513,52 @@ class CollectionStore {
     }
   }
 
-  /// Inserts a new collection named after this moment
-  /// (`defaultCollectionName`), at the end of its level: [folderId], null
+  /// Inserts a new collection named "Vocabulary" (or the next free
+  /// "Vocabulary N", `nextVocabularyName`; collection-naming), at the end of its level: [folderId], null
   /// being the top level. The only way a collection comes into being
   /// (ADR-0003): first launch and the launch rule pass `keep: false`, New
   /// collection `keep: true` (AC-19). Returns the new collection, with no
   /// words; on a failed write it is returned unsaved, see the class doc.
-  Future<WordCollection> create({String? folderId, bool keep = false}) async {
+  ///
+  /// The Collection details sheet (collection-tags Flow 3, ADR-0004) also
+  /// passes a [name] (used when `collectionNameProblem` accepts it), a
+  /// [description] (blank is stored as null) and typed tags, written in the
+  /// same transaction. A non-empty description or any tag keeps the
+  /// collection (AC-28), and each tag touches the tag library.
+  Future<WordCollection> create({
+    String? folderId,
+    bool keep = false,
+    String? name,
+    String? description,
+    List<String> origin = const [],
+    List<String> topic = const [],
+  }) async {
     final collection = WordCollection.create();
+    final now = collection.updatedAt;
+    final named = name != null && collectionNameProblem(name) == null;
     collection
-      ..name = defaultCollectionName(collection.updatedAt)
+      ..name = named ? name : undefinedCollectionName
+      ..nameKind = named ? NameKind.byUser : NameKind.undefined
       ..folderId = folderId
-      ..keep = keep;
+      ..description = _blankAsNull(description)
+      ..descriptionKind = _blankAsNull(description) == null
+          ? NameKind.undefined
+          : NameKind.byUser
+      ..originTags = _cleanTags(origin)
+      ..topicTags = _cleanTags(topic);
+    collection.keep = keep || _hasDetails(collection);
     try {
       await _isar.writeTxn(() async {
+        if (!named) {
+          collection.name = nextVocabularyName([
+            for (final c in await _isar.wordCollections.where().findAll())
+              c.name,
+          ]);
+        }
         collection.id = await _isar.wordCollections.put(collection);
         await _renumberLevel(folderId, newCollection: collection);
+        await _touchTags(TagKind.origin, collection.originTags, now);
+        await _touchTags(TagKind.topic, collection.topicTags, now);
       });
     } catch (_) {
       // Losing the write is survivable; crashing the app is not.
@@ -329,7 +618,8 @@ class CollectionStore {
   ///
   /// [change] may not touch filing: name, folderId, order, binnedAt,
   /// binnedFromFolderId and keep are restored from the stored record after
-  /// it runs. Neither edit time moves unless [change] moves it. With no
+  /// it runs, and so are the description and the typed tags
+  /// (collection-tags ADR-0004). Neither edit time moves unless [change] moves it. With no
   /// stored record (erased) nothing runs or is written and the result is
   /// false (AC-27); false too when the write failed. Never throws.
   Future<bool> update(
@@ -343,21 +633,31 @@ class CollectionStore {
         if (stored == null) return false;
         final id = stored.id,
             name = stored.name,
+            nameKind = stored.nameKind,
             folderId = stored.folderId,
             order = stored.order,
             binnedAt = stored.binnedAt,
             binnedFromFolderId = stored.binnedFromFolderId,
-            keep = stored.keep;
+            keep = stored.keep,
+            description = stored.description,
+            descriptionKind = stored.descriptionKind,
+            originTags = [...stored.originTags],
+            topicTags = [...stored.topicTags];
         change(stored);
         stored
           ..id = id
           ..collectionId = collectionId
           ..name = name
+          ..nameKind = nameKind
           ..folderId = folderId
           ..order = order
           ..binnedAt = binnedAt
           ..binnedFromFolderId = binnedFromFolderId
-          ..keep = keep;
+          ..keep = keep
+          ..description = description
+          ..descriptionKind = descriptionKind
+          ..originTags = originTags
+          ..topicTags = topicTags;
         await _isar.wordCollections.put(stored);
         return true;
       });
@@ -380,6 +680,12 @@ class CollectionStore {
   /// (name, folderId, order, binnedAt, binnedFromFolderId, keep) come from
   /// the stored record, never from the caller; the one exception is that
   /// `keep` becomes true when the copy has a word, and it is never lowered.
+  ///
+  /// The description and the typed tags come from the stored record too
+  /// (collection-tags ADR-0004): only [setDetails], [addCollectionTags],
+  /// [saveSourceNote], [create] and the migration write them. Neither edit
+  /// time goes back: a copy older than the stored record keeps the stored
+  /// times, so a stale copy cannot undo a details save's edited time (AC-18).
   Future<void> put(WordCollection s) async {
     try {
       // A row keeps its id for good, so a new one gets it now, on the
@@ -396,8 +702,9 @@ class CollectionStore {
         final toWrite = WordCollection()
           ..id = existing.id
           ..collectionId = s.collectionId
-          ..updatedAt = s.updatedAt
-          ..lastLocalModifiedAt = s.lastLocalModifiedAt
+          ..updatedAt = _later(existing.updatedAt, s.updatedAt)
+          ..lastLocalModifiedAt =
+              _later(existing.lastLocalModifiedAt, s.lastLocalModifiedAt)
           ..isShared = s.isShared
           ..words = [
             for (final w in s.words)
@@ -411,10 +718,15 @@ class CollectionStore {
           ..groupedWordsKey = s.groupedWordsKey
           ..dialogues = [for (final d in s.dialogues) d.copy()]
           ..tags = [...s.tags]
+          ..description = existing.description
+          ..descriptionKind = existing.descriptionKind
+          ..originTags = existing.originTags
+          ..topicTags = existing.topicTags
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
           ..results = existing.results
           ..name = existing.name
+          ..nameKind = existing.nameKind
           ..folderId = existing.folderId
           ..order = existing.order
           ..binnedAt = existing.binnedAt
@@ -426,6 +738,288 @@ class CollectionStore {
       // Losing one debounced write is survivable; crashing the app is not.
     }
   }
+
+  static DateTime _later(DateTime a, DateTime b) => b.isAfter(a) ? b : a;
+
+  // ---- Details, typed tags and the tag library (collection-tags T5) ----
+  //
+  // ADR-0004: the description and the typed tags are written only here (and
+  // by create and the migration), each call one write transaction. ADR-0009:
+  // the tag library is written inside those same transactions.
+
+  static String? _blankAsNull(String? text) =>
+      text == null || text.trim().isEmpty ? null : text;
+
+  /// [tags] without blank entries and with case duplicates merged.
+  static List<String> _cleanTags(List<String> tags) =>
+      mergeCaseDuplicates([for (final t in tags) if (t.trim().isNotEmpty) t]);
+
+  static bool _hasDetails(WordCollection c) =>
+      c.description != null || c.originTags.isNotEmpty || c.topicTags.isNotEmpty;
+
+  static List<String> _tagsOf(WordCollection c, TagKind kind) =>
+      kind == TagKind.origin ? c.originTags : c.topicTags;
+
+  static void _setTagsOf(WordCollection c, TagKind kind, List<String> tags) {
+    if (kind == TagKind.origin) {
+      c.originTags = tags;
+    } else {
+      c.topicTags = tags;
+    }
+  }
+
+  static List<String> _sourceTagsOf(SessionSource s, TagKind kind) =>
+      kind == TagKind.origin ? s.originTags : s.topicTags;
+
+  static bool _sameList(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  /// The tags of [now] whose key is not in [before].
+  static List<String> _newlyAdded(List<String> before, List<String> now) {
+    final keys = {for (final t in before) tagKey(t)};
+    return [
+      for (final t in now)
+        if (!keys.contains(tagKey(t))) t,
+    ];
+  }
+
+  /// An explicit add of [tags] (typed, tapped or copied up): each library
+  /// entry of [kind] is marked used at [now] and un-forgotten, and a tag the
+  /// library does not hold yet goes in with this spelling (the first
+  /// spelling wins, AC-09). Inside a write transaction.
+  Future<void> _touchTags(TagKind kind, List<String> tags, DateTime now) async {
+    for (final text in tags) {
+      final key = tagKey(text);
+      if (key.isEmpty) continue;
+      final entry = await _isar.tagLibraryEntrys.getByKindKey(kind, key) ??
+          (TagLibraryEntry()
+            ..kind = kind
+            ..key = key
+            ..text = text.trim());
+      entry
+        ..lastUsedAt = now
+        ..forgotten = false;
+      await _isar.tagLibraryEntrys.put(entry);
+    }
+  }
+
+  /// Adds [tags] of [kind] to [c] (in memory) where its list misses them,
+  /// ignoring case, while it holds fewer than 10 of that kind. Every tag
+  /// touches the library, added or not. Returns whether a tag went in and
+  /// whether the cap refused one. Inside a write transaction.
+  Future<({bool added, bool refused})> _copyUp(
+      WordCollection c, TagKind kind, List<String> tags, DateTime now) async {
+    await _touchTags(kind, tags, now);
+    final list = [..._tagsOf(c, kind)];
+    var added = false, refused = false;
+    for (final tag in tags) {
+      if (list.any((t) => tagKey(t) == tagKey(tag))) continue;
+      if (!canAddTag(list)) {
+        refused = true;
+        continue;
+      }
+      list.add(tag.trim());
+      added = true;
+    }
+    if (added) _setTagsOf(c, kind, list);
+    return (added: added, refused: refused);
+  }
+
+  /// Saves the Collection details sheet (Flow 1) in one transaction: the
+  /// [name] (refused like [rename] when `collectionNameProblem` objects:
+  /// nothing is written and the answer is null), the [description] (blank is
+  /// stored as null) and the typed tags; a null argument keeps that field.
+  /// Both edit times move to [now] only when a value changed (AC-06). A
+  /// non-empty description or any typed tag sets `keep`, never cleared
+  /// (AC-28), and so does a new name, as [rename] does. Tags not in the
+  /// stored list, ignoring case, touch the tag library. Returns the stored
+  /// record, or null when it is gone or the write failed.
+  Future<WordCollection?> setDetails(
+    String collectionId, {
+    String? name,
+    String? description,
+    List<String>? origin,
+    List<String>? topic,
+    DateTime? now,
+  }) async {
+    if (name != null && collectionNameProblem(name) != null) return null;
+    final at = now ?? DateTime.now();
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(collectionId);
+        if (c == null) return null;
+        var changed = false, keep = c.keep;
+        if (name != null && name != c.name) {
+          c
+            ..name = name
+            ..nameKind = NameKind.byUser;
+          changed = keep = true;
+        }
+        if (description != null) {
+          final d = _blankAsNull(description);
+          if (d != c.description) {
+            c
+              ..description = d
+              ..descriptionKind = NameKind.byUser;
+            changed = true;
+          }
+        }
+        for (final (kind, given) in [
+          (TagKind.origin, origin),
+          (TagKind.topic, topic),
+        ]) {
+          if (given == null) continue;
+          final stored = _tagsOf(c, kind);
+          final tags = _cleanTags(given);
+          if (_sameList(stored, tags)) continue;
+          await _touchTags(kind, _newlyAdded(stored, tags), at);
+          _setTagsOf(c, kind, tags);
+          changed = true;
+        }
+        keep = keep || _hasDetails(c);
+        if (!changed && keep == c.keep) return c;
+        c.keep = keep;
+        if (changed) {
+          c
+            ..updatedAt = at
+            ..lastLocalModifiedAt = at;
+        }
+        await _isar.wordCollections.put(c);
+        return c;
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Adds [tags] of [kind] to collection [collectionId] in one transaction
+  /// (a tag copied up, sad Flow 7): a tag it already has, ignoring case, is
+  /// skipped; one past the 10 cap is refused (AC-29). Every tag touches the
+  /// library (an explicit add, un-forgetting it). Both edit times move to
+  /// [now] when a tag went in. Returns the kinds refused: `{kind}` or empty.
+  Future<Set<TagKind>> addCollectionTags(
+      String collectionId, TagKind kind, List<String> tags,
+      {DateTime? now}) async {
+    final at = now ?? DateTime.now();
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(collectionId);
+        if (c == null) return const <TagKind>{};
+        final r = await _copyUp(c, kind, _cleanTags(tags), at);
+        if (r.added) {
+          c
+            ..keep = true
+            ..updatedAt = at
+            ..lastLocalModifiedAt = at;
+          await _isar.wordCollections.put(c);
+        }
+        return {if (r.refused) kind};
+      });
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Saves the Notes page note of source [sourceId] in collection
+  /// [collectionId] in one transaction (Flow 7, ADR-0004); a null argument
+  /// keeps that field, a blank title or description is stored as null. Each
+  /// tag newly added to the source (not in the stored source's list, ignoring
+  /// case) touches the library and is copied up to the collection when it is
+  /// missing there and the collection holds fewer than 10 of that kind
+  /// (AC-15, AC-33). Removals touch only the source (AC-16). Both edit times
+  /// move to [now] when anything changed. Returns the kinds the cap refused,
+  /// each once (AC-29); empty also when nothing was found or written.
+  Future<Set<TagKind>> saveSourceNote(
+    String collectionId,
+    String sourceId, {
+    String? title,
+    String? description,
+    List<String>? links,
+    List<String>? origin,
+    List<String>? topic,
+    DateTime? now,
+  }) async {
+    final at = now ?? DateTime.now();
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(collectionId);
+        final source = c?.sources.where((s) => s.id == sourceId).firstOrNull;
+        if (c == null || source == null) return const <TagKind>{};
+        var changed = false;
+        if (title != null && _blankAsNull(title) != source.title) {
+          source.title = _blankAsNull(title);
+          changed = true;
+        }
+        if (description != null &&
+            _blankAsNull(description) != source.description) {
+          source.description = _blankAsNull(description);
+          changed = true;
+        }
+        if (links != null && !_sameList(links, source.links)) {
+          source.links = [...links];
+          changed = true;
+        }
+        final refused = <TagKind>{};
+        for (final (kind, given) in [
+          (TagKind.origin, origin),
+          (TagKind.topic, topic),
+        ]) {
+          if (given == null) continue;
+          final stored = _sourceTagsOf(source, kind);
+          final tags = _cleanTags(given);
+          if (_sameList(stored, tags)) continue;
+          final fresh = _newlyAdded(stored, tags);
+          if (kind == TagKind.origin) {
+            source.originTags = tags;
+          } else {
+            source.topicTags = tags;
+          }
+          changed = true;
+          final r = await _copyUp(c, kind, fresh, at);
+          if (r.added) c.keep = true;
+          if (r.refused) refused.add(kind);
+        }
+        if (!changed) return refused;
+        // The embedded list is written back whole.
+        c
+          ..sources = [...c.sources]
+          ..updatedAt = at
+          ..lastLocalModifiedAt = at;
+        await _isar.wordCollections.put(c);
+        return refused;
+      });
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// Forget this tag (AC-12): the library entry of [kind] with [text]'s key
+  /// is no longer suggested. Collections and sources keep the tag. Only an
+  /// explicit add brings it back. Unknown tags are ignored.
+  Future<void> forgetTag(TagKind kind, String text) async {
+    try {
+      await _isar.writeTxn(() async {
+        final entry =
+            await _isar.tagLibraryEntrys.getByKindKey(kind, tagKey(text));
+        if (entry == null || entry.forgotten) return;
+        await _isar.tagLibraryEntrys.put(entry..forgotten = true);
+      });
+    } catch (_) {
+      // ignored on purpose, see the class doc
+    }
+  }
+
+  /// The whole tag library, on listen and after every write to it
+  /// (ADR-0009). Unsorted; forgotten entries included.
+  Stream<List<TagLibraryEntry>> watchLibrary() =>
+      _isar.tagLibraryEntrys.where().watch(fireImmediately: true);
+
+  // ---- end of details, typed tags and the tag library ----
 
   // ---- Filing actions and streams (T8) ----
   //
@@ -528,6 +1122,7 @@ class CollectionStore {
       if (collection != null) {
         await _isar.wordCollections.put(collection
           ..name = name
+          ..nameKind = NameKind.byUser
           ..keep = true);
         return FilingResult.done;
       }
@@ -536,6 +1131,51 @@ class CollectionStore {
       await _isar.collectionFolders.put(folder..name = name);
       return FilingResult.done;
     });
+  }
+
+  /// Gives collection [id] the AI's [name] (collection-naming): only while
+  /// its name is still `undefined`, so a name the learner typed meanwhile
+  /// wins. Not an edit: neither time moves and `keep` stays. Returns the
+  /// stored record when the name went in, else null.
+  Future<WordCollection?> setAutoName(String id, String name) async {
+    if (collectionNameProblem(name) != null) return null;
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(id);
+        if (c == null || c.nameKind != NameKind.undefined) return null;
+        await _isar.wordCollections.put(c
+          ..name = name
+          ..nameKind = NameKind.auto);
+        return c;
+      });
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Gives collection [id] the AI's [description] (collection-naming): only
+  /// while nobody wrote one (`undefined`, still empty). Not an edit: neither
+  /// time moves. Returns the stored record when it went in, else null.
+  Future<WordCollection?> setAutoDescription(
+      String id, String description) async {
+    final d = _blankAsNull(description);
+    if (d == null || d.runes.length > maxAutoDescriptionLength) return null;
+    try {
+      return await _isar.writeTxn(() async {
+        final c = await _collectionById(id);
+        if (c == null ||
+            c.descriptionKind != NameKind.undefined ||
+            c.description != null) {
+          return null;
+        }
+        await _isar.wordCollections.put(c
+          ..description = d
+          ..descriptionKind = NameKind.auto);
+        return c;
+      });
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Makes a folder named [name] at the end of [parentId]'s level (AC-13),
@@ -621,10 +1261,15 @@ class CollectionStore {
 
   /// Emits [read] once on listen and again after every write to collections
   /// or folders, in order. A failed read is skipped, never an error event.
-  Stream<T> _watchFiling<T>(Future<T> Function() read) {
+  ///
+  /// With [debounce], a write only starts a timer and the read runs once,
+  /// that long after the last write of a burst; the first read on listen
+  /// is not delayed.
+  Stream<T> _watchFiling<T>(Future<T> Function() read, {Duration? debounce}) {
     late final StreamController<T> controller;
     final subscriptions = <StreamSubscription<void>>[];
     var pending = Future<void>.value();
+    Timer? timer;
     void emit() {
       pending = pending.then((_) async {
         try {
@@ -636,14 +1281,21 @@ class CollectionStore {
       });
     }
 
+    void onWrite() {
+      if (debounce == null) return emit();
+      timer?.cancel();
+      timer = Timer(debounce, emit);
+    }
+
     controller = StreamController<T>(
       onListen: () {
         subscriptions
-          ..add(_isar.wordCollections.watchLazy().listen((_) => emit()))
-          ..add(_isar.collectionFolders.watchLazy().listen((_) => emit()));
+          ..add(_isar.wordCollections.watchLazy().listen((_) => onWrite()))
+          ..add(_isar.collectionFolders.watchLazy().listen((_) => onWrite()));
         emit();
       },
       onCancel: () async {
+        timer?.cancel();
         for (final s in subscriptions) {
           await s.cancel();
         }
@@ -661,6 +1313,14 @@ class CollectionStore {
   /// it is gone), on listen and after every write (the main screen's title).
   Stream<String?> watchName(String id) =>
       _watchFiling(() async => (await _collectionById(id))?.name);
+
+  /// The name of collection [id] with where it came from (collection-naming),
+  /// read together so a change of both arrives as one; null when it is gone.
+  Stream<({String? name, NameKind kind})?> watchNaming(String id) =>
+      _watchFiling(() async {
+        final c = await _collectionById(id);
+        return c == null ? null : (name: c.name, kind: c.nameKind);
+      });
 
   /// Every folder, binned ones too, for the path and the tree; unsorted.
   Stream<List<CollectionFolder>> watchFolders() =>
@@ -693,6 +1353,98 @@ class CollectionStore {
               await _withRowIds(s),
         ];
       });
+
+  /// Every collection that is not in the bin, empty ones too, as the
+  /// Collections search sees it (collection-tags ADR-0006, AC-27): folder
+  /// path, My order index, created and edited moments, tags as shown (legacy
+  /// tags read as topic tags until migrated). Emits on listen and once,
+  /// [debounce] after the last write of a burst.
+  Stream<List<CollectionSummary>> watchSummaries(
+          {Duration debounce = const Duration(milliseconds: 300)}) =>
+      _watchFiling(_readSummaries, debounce: debounce);
+
+  Future<List<CollectionSummary>> _readSummaries() async {
+    final folders = await _isar.collectionFolders.where().findAll();
+    final all = await _isar.wordCollections.where().findAll();
+    final parentOf = {for (final f in folders) f.folderId: f.parentId};
+    final binnedFolderIds = {
+      for (final f in folders)
+        if (f.binnedAt != null) f.folderId,
+    };
+    bool binned(bool self, String? folderId) => isInBin(
+        binned: self,
+        folderId: folderId,
+        parentOf: parentOf,
+        binnedFolderIds: binnedFolderIds);
+
+    // The live items of each level, by order (as _readLevel sorts them).
+    final levels = <String?, List<LevelItem>>{};
+    for (final f in folders) {
+      if (!binned(f.binnedAt != null, f.parentId)) {
+        (levels[f.parentId] ??= []).add(LevelItem.folder(f));
+      }
+    }
+    for (final c in all) {
+      if (!binned(c.binnedAt != null, c.folderId)) {
+        (levels[c.folderId] ??= []).add(LevelItem.collection(c));
+      }
+    }
+    for (final items in levels.values) {
+      items.sort((a, b) {
+        final byOrder = a.order.compareTo(b.order);
+        if (byOrder != 0) return byOrder;
+        if (a.isFolder != b.isFolder) return a.isFolder ? -1 : 1;
+        return a.id.compareTo(b.id);
+      });
+    }
+
+    final names = {for (final f in folders) f.folderId: f.name};
+    String pathOf(String? folderId) {
+      final names_ = <String>[];
+      var at = folderId;
+      while (at != null && names_.length <= folders.length) {
+        names_.insert(0, names[at] ?? '');
+        at = parentOf[at];
+      }
+      return names_.isEmpty ? 'Top level' : names_.join(' / ');
+    }
+
+    final result = <CollectionSummary>[];
+    void walk(String? folderId) {
+      for (final item in levels[folderId] ?? const <LevelItem>[]) {
+        if (item.isFolder) {
+          walk(item.id);
+          continue;
+        }
+        final c = item.collection!;
+        final tags = effectiveTagsOf(c);
+        final originKeys = <String>{};
+        final topicKeys = <String>{};
+        for (final source in c.sources) {
+          final t = effectiveSourceTagsOf(source);
+          originKeys.addAll(t.origin.map(tagKey));
+          topicKeys.addAll(t.topic.map(tagKey));
+        }
+        result.add(CollectionSummary(
+          id: c.collectionId,
+          name: item.name,
+          description: c.description ?? '',
+          originTags: tags.origin,
+          topicTags: tags.topic,
+          sourceOriginKeys: originKeys,
+          sourceTopicKeys: topicKeys,
+          folderPath: pathOf(c.folderId),
+          folderId: c.folderId,
+          treeIndex: result.length,
+          created: creationMomentOf(c.collectionId) ?? c.updatedAt,
+          edited: c.updatedAt,
+        ));
+      }
+    }
+
+    walk(null);
+    return result;
+  }
 
   // ---- end of filing actions and streams (T8) ----
 

@@ -29,6 +29,20 @@ class _FakeInput extends WordInputNotifier {
 
   @override
   Future<void> newCollection(String? folderId) async => made.add(folderId);
+
+  final madeWith = <({String? folderId, String? name})>[];
+
+  @override
+  Future<void> newCollectionWithDetails(
+    String? folderId, {
+    String? name,
+    String? description,
+    List<String> origin = const [],
+    List<String> topic = const [],
+  }) async {
+    made.add(folderId);
+    madeWith.add((folderId: folderId, name: name));
+  }
 }
 
 class _FakeStore implements CollectionStore {
@@ -79,6 +93,8 @@ void main() {
     await t.pumpWidget(ProviderScope(
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
+        tagLibraryProvider.overrideWith((ref) => Stream.value([])),
+        collectionSummariesProvider.overrideWith((ref) => Stream.value([])),
         wordInputNotifierProvider.overrideWith(() => input),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
@@ -160,7 +176,17 @@ void main() {
       (t) async {
     await pump(t);
     await plus(t, 'New collection');
+    // collection-tags AC-01: the Collection details sheet comes first.
+    expect(find.text('New collection'), findsWidgets);
+    expect(input.made, isEmpty);
+    await t.enterText(find.byKey(const Key('details-name')), 'Friends');
+    await t.pump();
+    await t.ensureVisible(find.byKey(const Key('details-confirm')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('details-confirm')));
+    await t.pumpAndSettle();
     expect(input.made, [null]);
+    expect(input.madeWith.single.name, 'Friends');
     expect(find.text('MAIN SCREEN'), findsOneWidget);
   });
 
@@ -170,6 +196,12 @@ void main() {
     await t.tap(find.text('English course'));
     await t.pumpAndSettle();
     await plus(t, 'New collection');
+    await t.enterText(find.byKey(const Key('details-name')), 'Unit notes');
+    await t.pump();
+    await t.ensureVisible(find.byKey(const Key('details-confirm')));
+    await t.pump();
+    await t.tap(find.byKey(const Key('details-confirm')));
+    await t.pumpAndSettle();
     expect(input.made, ['f1']);
     expect(find.text('MAIN SCREEN'), findsOneWidget);
   });

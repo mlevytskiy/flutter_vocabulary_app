@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/collection_folder.dart';
 import 'package:flutter_vocabulary_app/core/models/collection_name.dart';
+import 'package:flutter_vocabulary_app/core/models/name_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
@@ -240,10 +241,11 @@ void main() {
       expect(stored.binnedAt, isNull);
       expect(stored.binnedFromFolderId, isNull);
       expect(stored.name, made.name);
-      expect(
-          stored.name,
-          anyOf(defaultCollectionName(before),
-              defaultCollectionName(DateTime.now())));
+      // collection-naming: an unnamed collection is the next free
+      // "Vocabulary N", its name undefined.
+      expect(isVocabularyName(stored.name!), isTrue);
+      expect(stored.nameKind, NameKind.undefined);
+      expect(stored.updatedAt.isBefore(before), isFalse);
     });
 
     test('create(keep: true, folderId:) inserts a kept collection there',

@@ -9,8 +9,11 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopup
 import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
+import '../../core/theme/app_theme.dart';
+
 import '../../core/models/collection_name.dart';
 import '../../core/models/definition_result.dart';
+import '../../core/models/name_kind.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
@@ -19,12 +22,13 @@ import '../../core/providers.dart';
 import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
-import '../collections/name_dialog.dart';
+import '../collections/collection_details_sheet.dart';
 import '../notes/notes_screen.dart';
+import 'collection_tag_line.dart';
 import 'lightning_rules.dart';
 import 'photo_panel/looks/look_a.dart';
 import 'photo_panel/photo_panel.dart';
-import 'photo_panel/photo_panel_controller.dart';
+import 'photo_panel/photo_panel_host.dart';
 import 'photo_panel/photos_with_words.dart';
 import 'photo_panel/row_jump.dart';
 import 'quizlet_import_flow.dart';
@@ -32,6 +36,7 @@ import 'subtitle_import_flow.dart';
 import 'widgets/photo_source_dialog.dart';
 import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
+import 'widgets/collection_title.dart';
 import 'widgets/word_input_speed_dial.dart';
 import 'widgets/word_row_item.dart';
 import 'widgets/anchored_scroll_controller.dart';
@@ -87,7 +92,11 @@ class WordInputScreen extends ConsumerStatefulWidget {
 }
 
 class _WordInputScreenState extends ConsumerState<WordInputScreen>
-    with WidgetsBindingObserver, _WordRows<WordInputScreen> {
+    with
+        WidgetsBindingObserver,
+        PhotoPanelHost<WordInputScreen>,
+        SingleTickerProviderStateMixin,
+        _WordRows<WordInputScreen> {
   @override
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
@@ -114,10 +123,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   GlobalKey? _rowKeyOrNull(int index) =>
       index < _wordPairs.length ? _rowKey(index) : null;
 
-  /// side-bar-for-main-screen: the photo panel's stop and selected photo
-  /// (sad §4 "State placement"); read for Back and the rows' highlight.
-  final PhotoPanelController _photoPanel = PhotoPanelController();
-
   /// The drawer is open: the photo tab hides behind it (ADR-0001).
   bool _drawerOpen = false;
 
@@ -125,16 +130,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// list's right side past its 16 px padding. Set in build from the look.
   double _compactEndInset = 0;
 
-  void _onPhotoPanelChanged() {
-    if (mounted) setState(() {});
-  }
-
   /// The rows morph while the panel is between closed and half-open; the
   /// list keeps the row on top in place from the first frame of a move until
   /// the panel rests (or the list is scrolled by hand).
   bool _rowsResting = true;
   void _onPhotoPanelOpenness() {
-    final t = _photoPanel.openness.value;
+    final t = photoPanel.openness.value;
     final resting = t <= 0 || t >= 0.5;
     if (resting == _rowsResting) return;
     _rowsResting = resting;
@@ -143,18 +144,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     } else {
       _listScroll.holdTopItem();
     }
-  }
-
-  /// While the photo panel is open the main screen is only for looking: a
-  /// touch on a row, the top bar or the floating buttons closes the panel
-  /// and does nothing else; the list still scrolls (spec AC-11). Closed,
-  /// [child] is exactly as before.
-  Widget _closesOpenPhotoPanel(Widget child) {
-    final open = _photoPanel.isOpen;
-    return GestureDetector(
-      onTap: open ? _photoPanel.close : null,
-      child: AbsorbPointer(absorbing: open, child: child),
-    );
   }
 
   /// A photo or a set was selected in the half-open panel: the list scrolls
@@ -180,12 +169,21 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// it once the element is torn down), yet it still has to stop speech.
   late final PronunciationService _pronunciation;
 
+  /// 0 with no collection tags, 1 with some: drives the tag line's height so
+  /// the app bar grows and shrinks over 200 ms instead of jumping (owner V8).
+  late final AnimationController _tagLine = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 200),
+  )..addListener(() {
+      if (mounted) setState(() {});
+    });
+  bool? _tagLineOpen;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _photoPanel.addListener(_onPhotoPanelChanged);
-    _photoPanel.openness.addListener(_onPhotoPanelOpenness);
+    photoPanel.openness.addListener(_onPhotoPanelOpenness);
     _pronunciation = ref.read(pronunciationServiceProvider);
     _addControllersForIndex(0);
     // Request focus on the first field after the first frame
@@ -193,6 +191,24 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       _wordFocusNodes[0].requestFocus();
     });
     _pollForLostPhoto();
+  }
+
+  /// words-photo-panel: Notes can also be opened from the Words screen above
+  /// this one. Once this screen is on top again, its rows are built again
+  /// from the collection if Notes changed its words, as after its own Notes.
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_restoredCollectionId == null ||
+        ModalRoute.isCurrentOf(context) != true) {
+      return;
+    }
+    final notifier = ref.read(wordInputNotifierProvider.notifier);
+    final collection = ref.read(wordInputNotifierProvider).valueOrNull;
+    if (collection == null || !notifier.takeEditedElsewhere()) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _restoreFromStore(collection.words, focusLast: false);
+    });
   }
 
   @override
@@ -646,26 +662,68 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   String _collectionTitle() {
     final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
     if (collection == null) return '';
-    final stored =
-        ref.watch(collectionNameProvider(collection.collectionId)).valueOrNull;
+    final stored = ref
+        .watch(collectionNamingProvider(collection.collectionId))
+        .valueOrNull
+        ?.name;
     return stored ??
         defaultCollectionName(
             creationMomentOf(collection.collectionId) ?? collection.updatedAt);
   }
 
-  /// The pencil button: asks for a new name and renames through the store; the
-  /// title follows the stored name (AC-02, AC-03).
+  /// The kind of name the title shows and the one it showed before
+  /// (collection-naming): the title animates when the AI's name replaces an
+  /// undefined one.
+  NameKind? _shownNameKind;
+  bool _titleReveals() {
+    final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final kind = collection == null
+        ? null
+        : ref
+            .watch(collectionNamingProvider(collection.collectionId))
+            .valueOrNull
+            ?.kind;
+    final reveals = kind == NameKind.auto && _shownNameKind == NameKind.undefined;
+    _shownNameKind = kind;
+    return reveals;
+  }
+
+  /// The pencil button: opens the Collection details sheet (name, description,
+  /// tags) and saves through the store; the title follows the stored name
+  /// (collection-tags AC-05).
   Future<void> _renameCollection() async {
     final collection = ref.read(wordInputNotifierProvider).valueOrNull;
     if (collection == null) return;
-    final name = await showNameDialog(
+    // A name or description nobody gave is still AI's to fill: the field
+    // starts empty with New collection's AI hint and note (owner, 2026-10-18).
+    final naming = ref
+        .read(collectionNamingProvider(collection.collectionId))
+        .valueOrNull;
+    final title = _collectionTitle();
+    final aiName = naming?.kind == NameKind.undefined;
+    final description = collection.description ?? '';
+    final aiDescription = collection.descriptionKind == NameKind.undefined &&
+        description.trim().isEmpty;
+    final details = await showCollectionDetailsSheet(
       context,
-      mode: NameDialogMode.renameCollection,
-      initial: _collectionTitle(),
+      mode: DetailsMode.edit,
+      aiNameUntil: aiName ? title : null,
+      aiDescription: aiDescription,
+      initial: (
+        name: aiName ? '' : title,
+        description: description,
+        origin: [...collection.originTags],
+        topic: [...collection.topicTags],
+      ),
     );
-    if (name == null) return;
-    final store = await ref.read(collectionStoreProvider.future);
-    await store.rename(collection.collectionId, name);
+    if (details == null) return;
+    await ref.read(wordInputNotifierProvider.notifier).saveDetails(
+          // Left blank: the name stays AI's to give.
+          name: details.name.trim().isEmpty ? null : details.name,
+          description: details.description,
+          origin: details.origin,
+          topic: details.topic,
+        );
   }
 
   /// words-from-subtitles: the "From subtitles" speed-dial item. Kept words
@@ -858,6 +916,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
 
   @override
   void dispose() {
+    _tagLine.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _pronunciation.stop();
     for (var controller in _wordControllers) {
@@ -879,8 +938,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       node.dispose();
     }
     _listScroll.dispose();
-    _photoPanel.openness.removeListener(_onPhotoPanelOpenness);
-    _photoPanel.dispose();
+    photoPanel.openness.removeListener(_onPhotoPanelOpenness);
     super.dispose();
   }
 
@@ -891,13 +949,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // While the photo panel is open the rows ignore touches (spec AC-11),
     // and each one turns into its one line, "word — translation", as the
     // panel slides in.
-    final compact = _photoPanel.isOpen;
+    final compact = photoPanel.isOpen;
     return IgnorePointer(
       key: _rowKey(index),
       ignoring: compact,
       child: WordRowMorph(
       index: index,
-      openness: _photoPanel.openness,
+      openness: photoPanel.openness,
       // The word and the translation fly between their fields and the line;
       // a definition (usually several lines) only fades.
       word: _wordControllers[index],
@@ -924,16 +982,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     );
   }
 
-  /// The selected photo's rows and the look's highlight for them (spec AC-04);
-  /// with nothing selected every row is today's row.
-  (Set<int>, Decoration?) _photoHighlight(List<SourceWithWords> photos) {
-    final id = _photoPanel.selectedId;
-    if (id == null) return (const {}, null);
-    final rows = photos.where((p) => p.source.id == id).firstOrNull?.rows;
-    if (rows == null) return (const {}, null);
-    return (rows.toSet(), const LookA().rowHighlight(context));
-  }
-
   @override
   Widget build(BuildContext context) {
     _ensureRowStateSynced(); // hot-reload safety net, see method doc above
@@ -949,7 +997,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         _restoredCollectionId = collection.collectionId;
         // Another session: the photo panel closes and nothing stays
         // selected (side-bar-for-main-screen, spec AC-15b).
-        _photoPanel.close();
+        photoPanel.close();
         if (collection.words.isNotEmpty) _restoreFromStore(collection.words);
         debugPrint('VOCAB: session ${collection.collectionId} on screen');
       });
@@ -964,41 +1012,74 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // (photos and sets); a vanished selected one is unselected, none left
     // closes it (AC-15, AC-21).
     ref.listen(sourcesWithWordsProvider, (_, photos) {
-      _photoPanel.retain([for (final p in photos) p.source.id]);
+      photoPanel.retain([for (final p in photos) p.source.id]);
     });
     _compactEndInset = const LookA().halfOpenWidth - 16;
     final (highlightedRows, highlight) =
-        _photoHighlight(ref.watch(sourcesWithWordsProvider));
+        photoHighlight(ref.watch(sourcesWithWordsProvider));
     Decoration? highlightFor(int index) =>
         highlightedRows.contains(index) ? highlight : null;
+
+    final originTags = _originTags(), topicTags = _topicTags();
+    final hasTags = originTags.isNotEmpty || topicTags.isNotEmpty;
+    if (_tagLineOpen == null) {
+      _tagLine.value = hasTags ? 1 : 0;
+    } else if (_tagLineOpen != hasTags) {
+      _tagLine.animateTo(hasTags ? 1 : 0, curve: Curves.easeInOut);
+    }
+    _tagLineOpen = hasTags;
 
     // Back steps the open photo panel back one stop and never leaves the
     // screen while it is open (spec AC-10). Closed, Back is as before.
     return PopScope(
-      canPop: !_photoPanel.isOpen,
+      canPop: !photoPanel.isOpen,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _photoPanel.stepBack();
+        if (!didPop) photoPanel.stepBack();
       },
       child: Scaffold(
-      appBar: _photoPanelGuardedAppBar(AppBar(
+      appBar: photoPanelGuardedAppBar(AppBar(
         automaticallyImplyLeading: true,
-        title: Text(_collectionTitle(), maxLines: 1, overflow: TextOverflow.ellipsis),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: Tooltip(
-              message: 'Rename collection',
-              child: ElevatedButton(
-                onPressed: _renameCollection,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Theme.of(context).colorScheme.primary,
-                ),
-                child: const Icon(Icons.edit),
+        // The title starts right after the menu button, the edit button right
+        // after the title; the free space goes before Next.
+        centerTitle: false,
+        leadingWidth: 48,
+        // The menu button takes the edit icon's colour.
+        iconTheme: IconThemeData(color: AppDecor.of(context).onBarButtonOf(context)),
+        titleSpacing: 0,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: CollectionTitle(
+                text: _collectionTitle(),
+                collectionId: ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId,
+                animate: _titleReveals(),
               ),
             ),
-          ),
+            const SizedBox(width: 2),
+            IconButton(
+              tooltip: 'Rename collection',
+              onPressed: _renameCollection,
+              // Narrow, so the pencil sits right after the title; the tap
+              // area keeps the full bar height.
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 48),
+              style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              color: AppDecor.of(context).onBarButtonOf(context),
+              icon: const Icon(Icons.edit, size: 20),
+            ),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        bottom: CollectionTagLine(
+          originTags: originTags,
+          topicTags: topicTags,
+          height: CollectionTagLine.lineHeight * _tagLine.value,
+          onTap: (kind, text) =>
+              CollectionsRoute(tagKind: kind, tag: text).push(context),
+        ),
+        actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: ElevatedButton.icon(
@@ -1006,18 +1087,18 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               icon: const Icon(Icons.arrow_forward),
               label: const Text('Next'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Theme.of(context).colorScheme.primary,
+                backgroundColor: AppDecor.of(context).barButton,
+                foregroundColor: AppDecor.of(context).onBarButtonOf(context),
               ),
             ),
           ),
         ],
       )),
       // The drawer's edge swipe is off while the photo panel is open (AC-11).
-      drawerEnableOpenDragGesture: !_photoPanel.isOpen,
+      drawerEnableOpenDragGesture: !photoPanel.isOpen,
       onDrawerChanged: (open) {
         setState(() => _drawerOpen = open);
-        if (open) _photoPanel.close();
+        if (open) photoPanel.close();
       },
       drawer: Drawer(
               child: ListView(
@@ -1054,19 +1135,32 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                       const HistoryRoute().go(context);
                     },
                   ),
+              ListTile(
+                key: const Key('drawer-app-settings'),
+                leading: const Icon(Icons.palette_outlined),
+                title: const Text('App settings'),
+                onTap: () {
+                  Navigator.pop(context);
+                  const AppSettingsRoute().go(context);
+                },
+              ),
                 ],
               ),
             ),
-      body: Stack(
+        // The theme's backdrop, behind the list (app-themes).
+      body: AppBackdrop(
+            child: Stack(
         children: [
       Stack(
         children: [
           // Open photo panel: a tap or a sideways swipe on the list closes it
           // and does nothing else; a vertical drag still scrolls (AC-06, AC-11).
-          GestureDetector(
-            onTap: _photoPanel.isOpen ? _photoPanel.close : null,
+          // The rows' blurs share one backdrop read (see DecorSurface).
+          BackdropGroup(
+            child: GestureDetector(
+            onTap: photoPanel.isOpen ? photoPanel.close : null,
             onHorizontalDragStart:
-                _photoPanel.isOpen ? (_) => _photoPanel.close() : null,
+                photoPanel.isOpen ? (_) => photoPanel.close() : null,
             child: isDragMode
             ? ReorderableListView.builder(
                 scrollController: _listScroll,
@@ -1089,6 +1183,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                 itemBuilder: (context, index) => _buildRowItem(index,
                     isDragMode: false, detailMode: detailMode, highlight: highlightFor(index)),
               ),
+            ),
           ),
           if (_isAnalyzingPhoto)
             Container(
@@ -1115,7 +1210,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
           // this child only marks the main screen's place (ADR-0001).
           Positioned.fill(
             child: PhotoPanel(
-              controller: _photoPanel,
+              controller: photoPanel,
               busy: _isAnalyzingPhoto,
               hidden: _drawerOpen,
               // Kept free for the floating-button row (spec AC-01).
@@ -1127,7 +1222,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             ),
           ),
         ],
-      ),
+        )),
       // Both round buttons share the Scaffold's FAB slot, so the Scaffold moves
       // them together: above a snackbar, above the keyboard, above the bottom
       // safe area -- always on one line. A full-width row, centred, puts the
@@ -1135,7 +1230,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       // docs/roadmap.md), each 16px from its edge like endFloat's margin. The
       // gap between them is not hit-testable, so rows underneath stay tappable.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _closesOpenPhotoPanel(Padding(
+      floatingActionButton: closesOpenPhotoPanel(Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1151,8 +1246,8 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               tooltip: 'Settings',
               elevation: 8.0,
               shape: const CircleBorder(),
-              backgroundColor: const Color(0xff954ef3), //const Color(0xff904ae6),
-              foregroundColor: Colors.white,
+              backgroundColor: AppDecor.of(context).fabAlt,
+              foregroundColor: AppDecor.of(context).onFabAlt,
               child: const Icon(Icons.settings),
             ),
             WordInputSpeedDial(
@@ -1179,10 +1274,22 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     _restoreFromStore(collection.words, focusLast: false);
   }
 
-  /// The top bar, which an open photo panel owns like the rest of the screen
-  /// (spec AC-11).
-  PreferredSizeWidget _photoPanelGuardedAppBar(AppBar appBar) => PreferredSize(
-        preferredSize: appBar.preferredSize,
-        child: _closesOpenPhotoPanel(appBar),
-      );
+  /// The current collection's typed tags; a collection from before the typed
+  /// tags shows its legacy tags as topic tags.
+  bool get _legacyOnly {
+    final c = ref.watch(wordInputNotifierProvider).valueOrNull;
+    return c != null &&
+        c.originTags.isEmpty &&
+        c.topicTags.isEmpty &&
+        c.tags.isNotEmpty;
+  }
+
+  List<String> _originTags() =>
+      ref.watch(wordInputNotifierProvider).valueOrNull?.originTags ?? const [];
+
+  List<String> _topicTags() {
+    final c = ref.watch(wordInputNotifierProvider).valueOrNull;
+    if (c == null) return const [];
+    return _legacyOnly ? c.tags : c.topicTags;
+  }
 }

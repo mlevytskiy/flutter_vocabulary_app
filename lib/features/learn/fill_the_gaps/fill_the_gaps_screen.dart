@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_scaffold.dart';
 import '../kit/gap_question.dart';
@@ -48,7 +49,9 @@ class FillTheGapsScreen extends ConsumerWidget {
                   result.match.isRight ? 'Right' : 'Missed',
                   key: const ValueKey('gap-verdict'),
                   style: TextStyle(
-                    color: result.match.isRight ? Colors.green : Colors.red,
+                    color: result.match.isRight
+                        ? AppDecor.of(context).right
+                        : AppDecor.of(context).wrong,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/dialogues/dialogue_rules.dart' show afterPublish;
+import '../../core/theme/app_theme.dart';
 import '../../core/models/collection_name.dart';
 import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
@@ -16,8 +16,15 @@ import '../../core/providers.dart';
 import '../../core/services/collection_publish_service.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
+import '../notes/notes_screen.dart';
+import '../word_input/photo_panel/looks/look_a.dart';
+import '../word_input/photo_panel/photo_panel.dart';
+import '../word_input/photo_panel/photo_panel_host.dart';
+import '../word_input/photo_panel/photos_with_words.dart';
+import '../word_input/photo_panel/row_jump.dart';
+import '../word_input/widgets/word_row_morph.dart';
 import '../word_input/word_input_notifier.dart';
-import 'photo_viewer.dart';
+import 'include_photos.dart';
 import 'safe_file_name.dart';
 import 'share_formats.dart';
 import 'widgets/learn_share_bar.dart';
@@ -34,14 +41,55 @@ class WordsTableScreen extends ConsumerStatefulWidget {
   ConsumerState<WordsTableScreen> createState() => _WordsTableScreenState();
 }
 
-class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
+class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
+    with PhotoPanelHost<WordsTableScreen> {
   /// True while `POST /sessions` is in flight. Disables the Share button so a
   /// double tap cannot publish twice; the request itself times out (AC-16).
   bool _isPublishing = false;
 
-  /// The "Include photos (N)" switch above the table; on until switched off.
-  /// Sets (import-from-quizlet) are not behind it: they are always sent.
-  bool _includePhotos = true;
+  /// words-photo-panel: the table's vertical scrolling, and the one-line rows
+  /// shown while the photo panel is open, with one key per line so the list
+  /// can jump to a source's first row (side-bar-for-main-screen AC-04).
+  final ScrollController _tableScroll = ScrollController();
+  final ScrollController _lineScroll = ScrollController();
+  final List<GlobalKey> _lineKeys = [];
+  int _lineCount = 0;
+
+  GlobalKey _lineKey(int index) {
+    while (_lineKeys.length <= index) {
+      _lineKeys.add(GlobalKey(debugLabel: 'word line ${_lineKeys.length}'));
+    }
+    return _lineKeys[index];
+  }
+
+  GlobalKey? _lineKeyOrNull(int index) =>
+      index < _lineCount ? _lineKey(index) : null;
+
+  /// The table's sources with words, each with its rows as table rows: the
+  /// table lists only the filled rows. Set in build.
+  List<SourceWithWords> _tableSources = const [];
+
+  /// A source was selected in the half-open panel: the one-line list scrolls
+  /// its first row to the top, as on the main screen (spec AC-04).
+  void _onPhotoSelected(String? id) {
+    if (id == null) return;
+    final source =
+        _tableSources.where((p) => p.source.id == id).firstOrNull;
+    if (source == null || source.rows.isEmpty) return;
+    jumpToRow(_lineScroll, source.rows.first, _lineKeyOrNull);
+  }
+
+  /// Notes edits the current collection, so it opens only for that one; a
+  /// History collection's panel expands to its large photos instead.
+  Future<void> _openNotes(String? id) =>
+      NotesRoute(selectedId: id).push<void>(context);
+
+  @override
+  void dispose() {
+    _tableScroll.dispose();
+    _lineScroll.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -157,8 +205,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     FocusManager.instance.primaryFocus?.unfocus();
     SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     final collection = _collection();
-    final includePhotos = _includePhotos &&
-        _linkedPhotos(_linkedSources(collection, wordPairs)).isNotEmpty;
+    final includePhotos =
+        ref.read(includePhotosProvider(widget.collectionId)) &&
+            linkedPhotos(linkedSources(collection, wordPairs)).isNotEmpty;
     final publishedBefore = collection?.publishedId != null;
     // The warning names what sharing again does: replacing the partner's
     // edits (ADR-0008) and, with photos, putting them on a public page.
@@ -225,23 +274,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         await _shareLink(wordPairs, includePhotos: includePhotos);
     }
   }
-
-  /// The sources a link may carry: photos and sets with a linked row that
-  /// will be published (AC-15, AC-23).
-  List<SessionSource> _linkedSources(
-      WordCollection? collection, List<WordPair> wordPairs) {
-    final linkedIds = {for (final pair in wordPairs) pair.sourceId};
-    return (collection?.sources ?? const <SessionSource>[])
-        .where((source) => linkedIds.contains(source.id))
-        .toList();
-  }
-
-  /// The photos among [sources]: "Include photos (N)" counts them; with none
-  /// the switch is not shown. Sets are always published (AC-15).
-  List<SessionSource> _linkedPhotos(List<SessionSource> sources) => [
-        for (final source in sources)
-          if (source.kind == SourceKind.photo) source,
-      ];
 
   Future<void> _shareLink(List<WordPair> wordPairs,
       {required bool includePhotos}) async {
@@ -471,10 +503,10 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         : ref.watch(collectionByIdProvider(collectionId)).valueOrNull;
     // definition-mode: every filled row -- a word plus a translation or a
     // definition -- whatever the mode (spec AC-12); the mode picks columns.
-    final wordPairs = (collection?.words ?? const <WordPair>[])
-        .where((pair) => pair.isFilled)
-        .toList();
-    final photos = _linkedPhotos(_linkedSources(collection, wordPairs));
+    final wordPairs = filledPairs(collection);
+    // words-photo-panel: the switch lives in the Words settings now; watched
+    // here so it lasts as long as this screen, as it did in its State.
+    ref.watch(includePhotosProvider(collectionId));
     final detailMode = ref.watch(wordDetailModeProvider);
     final showTranslation = detailMode != WordDetailMode.definition;
     final showDefinition = detailMode != WordDetailMode.translation;
@@ -484,23 +516,45 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
         ? ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId
         : null;
     final canEdit = collectionId != null && collectionId != currentId;
-    return Scaffold(
+
+    // words-photo-panel: the photo panel lists this collection's sources with
+    // words, as on the main screen; a vanished selected one is unselected,
+    // none left closes it (side-bar-for-main-screen AC-15, AC-21).
+    final sourcesProvider = collectionId == null
+        ? sourcesWithWordsProvider
+        : storedSourcesWithWordsProvider(collectionId);
+    ref.listen(sourcesProvider, (_, sources) {
+      photoPanel.retain([for (final s in sources) s.source.id]);
+    });
+    _tableSources = _asTableRows(ref.watch(sourcesProvider), collection);
+    _lineCount = wordPairs.length;
+    final (highlightedRows, highlight) = photoHighlight(_tableSources);
+
+    // Back steps the open photo panel back one stop and never leaves the
+    // screen while it is open (spec AC-10). Closed, Back is as before.
+    return PopScope(
+      canPop: !photoPanel.isOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) photoPanel.stepBack();
+      },
+      child: Scaffold(
       // Settings bottom-left, like the main screen's settings button (same
       // size, elevation and colours); Edit, when there is one, stays bottom-right.
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
+      floatingActionButton: closesOpenPhotoPanel(Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             FloatingActionButton(
               heroTag: null,
-              onPressed: () => const WordsSettingsRoute().push(context),
+              onPressed: () =>
+                  WordsSettingsRoute(collectionId: collectionId).push(context),
               tooltip: 'Settings',
               elevation: 8.0,
               shape: const CircleBorder(),
-              backgroundColor: const Color(0xff954ef3),
-              foregroundColor: Colors.white,
+              backgroundColor: AppDecor.of(context).fabAlt,
+              foregroundColor: AppDecor.of(context).onFabAlt,
               child: const Icon(Icons.settings),
             ),
             if (canEdit)
@@ -508,52 +562,146 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
                 heroTag: null,
                 onPressed: () => _confirmEdit(collectionId),
                 tooltip: 'Edit',
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+                backgroundColor: AppDecor.of(context).fab,
+                foregroundColor: AppDecor.of(context).onFab,
                 shape: const CircleBorder(),
                 child: const Icon(Icons.edit),
               ),
           ],
         ),
-      ),
-      appBar: LearnShareBar(
+      )),
+      appBar: photoPanelGuardedAppBar(LearnShareBar(
         title: 'Words',
         onLearn: () => _learn(wordPairs),
         onShare: _isPublishing ? null : () => _showShareOptions(wordPairs),
         isSharing: _isPublishing,
-      ),
+      )),
       body: wordPairs.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'No words added yet',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
+                style: TextStyle(fontSize: 18, color: AppDecor.of(context).muted),
               ),
             )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          : Stack(
               children: [
-                if (photos.isNotEmpty)
-                  SwitchListTile(
-                    // Tapping the stack opens the photos, as on the page.
-                    secondary: Semantics(
-                      button: true,
-                      label: 'Show photos',
-                      child: GestureDetector(
-                        onTap: () => showPhotoViewer(context, photos),
-                        child: _PhotoStack(photos: photos),
+                // Open photo panel: a tap or a sideways swipe on the words
+                // closes it and does nothing else (AC-06, AC-11).
+                Positioned.fill(
+                  child: GestureDetector(
+                    onTap: photoPanel.isOpen ? photoPanel.close : null,
+                    onHorizontalDragStart:
+                        photoPanel.isOpen ? (_) => photoPanel.close() : null,
+                    child: AnimatedBuilder(
+                      animation: photoPanel.openness,
+                      builder: (context, _) => _tableOrLines(
+                        wordPairs,
+                        detailMode: detailMode,
+                        showTranslation: showTranslation,
+                        showDefinition: showDefinition,
+                        highlightFor: (index) =>
+                            highlightedRows.contains(index) ? highlight : null,
                       ),
                     ),
-                    title: Text('Include photos (${photos.length})'),
-                    value: _includePhotos,
-                    onChanged: (value) =>
-                        setState(() => _includePhotos = value),
                   ),
-                Expanded(
-                    child: _table(wordPairs,
-                        showTranslation: showTranslation,
-                        showDefinition: showDefinition)),
+                ),
+                // The photo tab and panel paint above the route through an
+                // overlay; this child only marks the words' place (ADR-0001).
+                Positioned.fill(
+                  child: PhotoPanel(
+                    controller: photoPanel,
+                    // Kept free for the floating-button row (spec AC-01).
+                    bottomReserve: 80,
+                    scrollController:
+                        photoPanel.isOpen ? _lineScroll : _tableScroll,
+                    onSelected: _onPhotoSelected,
+                    collectionId: collectionId,
+                    onOpenNotes: collectionId == null || collectionId == currentId
+                        ? _openNotes
+                        : null,
+                    notesPage: collectionId == null || collectionId == currentId
+                        ? (id) => NotesScreen(selectedId: id, preview: true)
+                        : null,
+                  ),
+                ),
               ],
             ),
+      ),
+    );
+  }
+
+  /// [sources] with their rows as rows of the table, which lists only the
+  /// filled rows of [collection]; a row the table does not list is dropped.
+  static List<SourceWithWords> _asTableRows(
+      List<SourceWithWords> sources, WordCollection? collection) {
+    final tableRow = <int, int>{};
+    var n = 0;
+    for (final (i, pair)
+        in (collection?.words ?? const <WordPair>[]).indexed) {
+      if (pair.isFilled) tableRow[i] = n++;
+    }
+    return [
+      for (final s in sources)
+        (
+          source: s.source,
+          rows: [
+            for (final r in s.rows)
+              if (tableRow[r] != null) tableRow[r]!,
+          ],
+        ),
+    ];
+  }
+
+  /// The table, which turns into one line per row, "word — translation", as
+  /// the photo panel opens, and back as it closes (photo-panel-glass, on the
+  /// Words screen): the two cross-fade with the panel's openness.
+  Widget _tableOrLines(
+    List<WordPair> wordPairs, {
+    required WordDetailMode detailMode,
+    required bool showTranslation,
+    required bool showDefinition,
+    required Decoration? Function(int index) highlightFor,
+  }) {
+    final t = (photoPanel.openness.value * 2).clamp(0.0, 1.0);
+    final table = _table(wordPairs,
+        showTranslation: showTranslation, showDefinition: showDefinition);
+    return Stack(
+      children: [
+        // The same place in the tree whether the panel is open or not, so
+        // the table keeps its scroll position.
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: t > 0,
+            child: Opacity(opacity: 1 - t, child: table),
+          ),
+        ),
+        // The lines are only for looking (spec AC-11); the list scrolls.
+        if (t > 0)
+          Positioned.fill(
+            child: Opacity(
+              opacity: t,
+              child: ListView.builder(
+                controller: _lineScroll,
+                padding: const EdgeInsets.all(16.0),
+                itemCount: wordPairs.length,
+                itemBuilder: (context, index) => KeyedSubtree(
+                  key: _lineKey(index),
+                  child: CompactWordLine(
+                    index: index,
+                    word: wordPairs[index].word,
+                    detail: compactDetail(
+                      mode: detailMode,
+                      translation: wordPairs[index].translation,
+                      definition: wordPairs[index].definition,
+                    ),
+                    highlight: highlightFor(index),
+                    endInset: const LookA().halfOpenWidth - 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -562,6 +710,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
+        controller: _tableScroll,
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: DataTable(
@@ -572,7 +721,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
               Theme.of(context).colorScheme.primaryContainer,
             ),
             border: TableBorder.all(
-              color: Colors.grey.shade300,
+              color: AppDecor.of(context).placeholder,
               width: 1,
             ),
             columns: [
@@ -629,87 +778,3 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen> {
 }
 
 enum _ShareChoice { file, link }
-
-/// Up to three of the kept photos as small stacked thumbnails, the way the
-/// shared page's photo button shows them.
-class _PhotoStack extends ConsumerStatefulWidget {
-  const _PhotoStack({required this.photos});
-
-  final List<SessionSource> photos;
-
-  @override
-  ConsumerState<_PhotoStack> createState() => _PhotoStackState();
-}
-
-class _PhotoStackState extends ConsumerState<_PhotoStack> {
-  static const _size = 40.0;
-  static const _turns = [-7.0, 5.0, 0.0];
-
-  late List<Future<Uint8List?>> _bytes;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void didUpdateWidget(_PhotoStack oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final ids = widget.photos.map((p) => p.id).join(',');
-    if (ids != oldWidget.photos.map((p) => p.id).join(',')) _load();
-  }
-
-  void _load() {
-    final store = ref.read(sourcePhotoStoreProvider);
-    _bytes = widget.photos.take(3).map(store.read).toList();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final stacked = _bytes.length > 1;
-    return SizedBox(
-      width: _size,
-      height: _size,
-      child: Stack(
-        children: [
-          for (final (i, bytes) in _bytes.indexed)
-            Transform.rotate(
-              angle: stacked ? _turns[i] * math.pi / 180 : 0,
-              child: _thumb(bytes),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _thumb(Future<Uint8List?> bytes) => Container(
-        width: _size,
-        height: _size,
-        decoration: BoxDecoration(
-          color: Colors.grey.shade400,
-          border: Border.all(color: Colors.white, width: 2),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: const [
-            BoxShadow(
-                color: Colors.black38, blurRadius: 4, offset: Offset(0, 1)),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: FutureBuilder<Uint8List?>(
-            future: bytes,
-            builder: (context, snapshot) {
-              final data = snapshot.data;
-              return data == null
-                  ? const SizedBox.expand()
-                  : Image.memory(data,
-                      fit: BoxFit.cover,
-                      cacheWidth: 120,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, __, ___) => const SizedBox.expand());
-            },
-          ),
-        ),
-      );
-}

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
+import '../../../../core/theme/app_theme.dart';
 import '../photos_with_words.dart';
 import 'edge_glass.dart';
 import 'photo_panel_look.dart';
@@ -65,7 +66,7 @@ class LookA extends PhotoPanelLook {
   }) {
     final scheme = Theme.of(context).colorScheme;
     return EdgeGlass(
-      settings: _tabGlass,
+      settings: _tabGlass.copyWith(glassColor: AppDecor.of(context).glassTab),
       radius: _tabRadius,
       flare: _tabFlare,
       child: Padding(
@@ -174,8 +175,9 @@ class LookA extends PhotoPanelLook {
               top: halfOpenAt.dy,
               width: halfOpenSize.width,
               height: halfOpenSize.height,
-              child: const EdgeGlass(
-                settings: _panelGlass,
+              child: EdgeGlass(
+                settings: _panelGlass.copyWith(
+                    glassColor: AppDecor.of(context).glassPanel),
                 radius: _panelRadius,
                 flare: _panelFlare,
               ),
@@ -257,10 +259,10 @@ class LookA extends PhotoPanelLook {
   Widget buildPlaceholder(BuildContext context) => Semantics(
         label: 'Photo not available',
         child: ColoredBox(
-          color: Colors.grey.shade300,
-          child: const Center(
-            child:
-                Icon(Icons.image_not_supported_outlined, color: Colors.black45),
+          color: AppDecor.of(context).placeholder,
+          child: Center(
+            child: Icon(Icons.image_not_supported_outlined,
+                color: AppDecor.of(context).onPlaceholder),
           ),
         ),
       );
