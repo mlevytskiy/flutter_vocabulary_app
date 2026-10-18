@@ -67,6 +67,8 @@ void main() {
     WidgetTester t, {
     DetailsMode mode = DetailsMode.create,
     CollectionDetails? initial,
+    String? aiNameUntil,
+    bool aiDescription = false,
   }) async {
     await t.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -76,7 +78,10 @@ void main() {
             body: TextButton(
               onPressed: () async {
                 result = await showCollectionDetailsSheet(context,
-                    mode: mode, initial: initial);
+                    mode: mode,
+                    initial: initial,
+                    aiNameUntil: aiNameUntil,
+                    aiDescription: aiDescription);
                 closed = true;
               },
               child: const Text('open'),
@@ -195,6 +200,33 @@ void main() {
     await t.enterText(find.byKey(const Key('details-name')), '');
     await t.pump();
     expect(enabled(t), isFalse);
+  });
+
+  testWidgets('edit: a name and description nobody gave show the AI notes',
+      (t) async {
+    await setUpStore(t);
+    addTearDown(() => tearDownStore(t));
+    await openSheet(t,
+        mode: DetailsMode.edit,
+        initial: (name: '', description: '', origin: [], topic: []),
+        aiNameUntil: 'Vocabulary 2',
+        aiDescription: true);
+    expect(find.text('Name (optional)'), findsOneWidget);
+    expect(find.text('Leave empty to let AI name it'), findsOneWidget);
+    expect(find.text('Leave empty to let AI write it'), findsOneWidget);
+    expect(find.byKey(const Key('details-ai-name-note')), findsOneWidget);
+    expect(find.textContaining('"Vocabulary 2"'), findsOneWidget);
+    expect(
+        find.byKey(const Key('details-ai-description-note')), findsOneWidget);
+    expect(enabled(t), isTrue);
+    await t.enterText(find.byKey(const Key('details-name')), 'Trip');
+    await t.pump();
+    expect(find.byKey(const Key('details-ai-name-note')), findsNothing);
+    await t.enterText(find.byKey(const Key('details-name')), '');
+    await t.pump();
+    await t.tap(confirm());
+    await t.pumpAndSettle();
+    expect(result?.name, '');
   });
 
   testWidgets('invalid name disables the button with the message', (t) async {

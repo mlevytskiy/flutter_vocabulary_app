@@ -290,6 +290,9 @@ class DecorSurface extends StatelessWidget {
         child: BackdropFilter(
           enabled: blur > 0,
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+          // Rows under one BackdropGroup share a single backdrop read: one
+          // per row made the Android drawer lag in Aurora (owner, 2026-10-18).
+          backdropGroupKey: BackdropGroup.of(context)?.backdropKey,
           child: Container(
             padding: padding,
             decoration: BoxDecoration(

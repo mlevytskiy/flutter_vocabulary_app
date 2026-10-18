@@ -694,19 +694,32 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   Future<void> _renameCollection() async {
     final collection = ref.read(wordInputNotifierProvider).valueOrNull;
     if (collection == null) return;
+    // A name or description nobody gave is still AI's to fill: the field
+    // starts empty with New collection's AI hint and note (owner, 2026-10-18).
+    final naming = ref
+        .read(collectionNamingProvider(collection.collectionId))
+        .valueOrNull;
+    final title = _collectionTitle();
+    final aiName = naming?.kind == NameKind.undefined;
+    final description = collection.description ?? '';
+    final aiDescription = collection.descriptionKind == NameKind.undefined &&
+        description.trim().isEmpty;
     final details = await showCollectionDetailsSheet(
       context,
       mode: DetailsMode.edit,
+      aiNameUntil: aiName ? title : null,
+      aiDescription: aiDescription,
       initial: (
-        name: _collectionTitle(),
-        description: collection.description ?? '',
+        name: aiName ? '' : title,
+        description: description,
         origin: [...collection.originTags],
         topic: [...collection.topicTags],
       ),
     );
     if (details == null) return;
     await ref.read(wordInputNotifierProvider.notifier).saveDetails(
-          name: details.name,
+          // Left blank: the name stays AI's to give.
+          name: details.name.trim().isEmpty ? null : details.name,
           description: details.description,
           origin: details.origin,
           topic: details.topic,
@@ -1142,7 +1155,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         children: [
           // Open photo panel: a tap or a sideways swipe on the list closes it
           // and does nothing else; a vertical drag still scrolls (AC-06, AC-11).
-          GestureDetector(
+          // The rows' blurs share one backdrop read (see DecorSurface).
+          BackdropGroup(
+            child: GestureDetector(
             onTap: photoPanel.isOpen ? photoPanel.close : null,
             onHorizontalDragStart:
                 photoPanel.isOpen ? (_) => photoPanel.close() : null,
@@ -1168,6 +1183,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
                 itemBuilder: (context, index) => _buildRowItem(index,
                     isDragMode: false, detailMode: detailMode, highlight: highlightFor(index)),
               ),
+            ),
           ),
           if (_isAnalyzingPhoto)
             Container(

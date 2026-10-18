@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/collection_name.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
+import 'package:flutter_vocabulary_app/core/models/name_kind.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
@@ -72,6 +73,10 @@ void main() {
       final at = DateTime.now();
       current = WordCollection.create()
         ..name = name
+        // A typed name is the learner's; "Vocabulary" is still AI's to give.
+        ..nameKind = name == null || name == undefinedCollectionName
+            ? NameKind.undefined
+            : NameKind.byUser
         ..updatedAt = at
         ..lastLocalModifiedAt = at
         ..words = [WordPair(word: 'apple')];
@@ -212,6 +217,24 @@ void main() {
     expect(find.text('Collection details'), findsOneWidget);
     final field = tester.widget<TextField>(nameField());
     expect(field.controller!.text, 'Kitchen words');
+    await tearDownMain(tester);
+  });
+
+  testWidgets(
+      'collection-naming: edit leaves a name nobody gave empty with the AI note',
+      (tester) async {
+    await pumpMain(tester, name: 'Vocabulary');
+    await openDialog(tester);
+    expect(tester.widget<TextField>(nameField()).controller!.text, '');
+    expect(find.text('Name (optional)'), findsOneWidget);
+    expect(find.byKey(const Key('details-ai-name-note')), findsOneWidget);
+    expect(
+        find.byKey(const Key('details-ai-description-note')), findsOneWidget);
+    expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('details-confirm')))
+            .onPressed,
+        isNotNull);
     await tearDownMain(tester);
   });
 

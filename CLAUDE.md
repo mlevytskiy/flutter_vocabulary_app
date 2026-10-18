@@ -59,7 +59,8 @@ restructuring, follow `docs/refactoring-plan.md` one step at a time. Behaviour s
    by letter; a name the learner typed is never replaced; New collection's name is optional, labelled
    "Name (optional)" with a pale grey hint "Leave empty to let AI name it" and, while empty, a sparkle note
    under it; likewise a description nobody wrote stays empty until 20 words, then AI writes it (Worker
-   `POST /collections/description`), with the hint "Leave empty to let AI write it" and its note in New collection;
+   `POST /collections/description`), with the hint "Leave empty to let AI write it" and its note in New collection; the main screen's edit button
+   shows the same optional name, hints and notes for a name or description nobody gave (owner, 2026-10-18);
    the Collection details sheet's Create/Save is a full-width button in a bar pinned at the bottom, above the
    keyboard, and the AI notes are helper lines (the description's beside its counter) in a per-theme
    `AppDecor.aiAccent` with no box (owner, 2026-10-18); at launch the collections from before, and any still

@@ -25,8 +25,8 @@ enum DetailsMode {
   final String confirmLabel;
 }
 
-/// What the sheet hands back: the name as typed (in [DetailsMode.create]
-/// blank means "let AI name it", collection-naming), the description as
+/// What the sheet hands back: the name as typed (blank means "let AI name
+/// it" when the sheet left the name to AI, collection-naming), the description as
 /// typed (blank means none) and the tags of each kind.
 typedef CollectionDetails = ({
   String name,
@@ -44,10 +44,17 @@ const descriptionProblemMessage =
 /// Opens the Collection details sheet (SCR-02). Resolves with the details on
 /// Create/Save, or null when it was dismissed. A dismiss after a change asks
 /// "Discard changes?" first (AC-36, SCR-03); with no change it closes silently.
+///
+/// In [DetailsMode.edit], [aiNameUntil] is the name a collection nobody named
+/// shows until AI names it ("Vocabulary 1"), and [aiDescription] says nobody
+/// wrote its description yet: the field then starts empty and shows the same
+/// AI hint and note as New collection (owner, 2026-10-18).
 Future<CollectionDetails?> showCollectionDetailsSheet(
   BuildContext context, {
   required DetailsMode mode,
   CollectionDetails? initial,
+  String? aiNameUntil,
+  bool aiDescription = false,
 }) {
   return showModalBottomSheet<CollectionDetails>(
     context: context,
@@ -55,15 +62,29 @@ Future<CollectionDetails?> showCollectionDetailsSheet(
     useSafeArea: true,
     // Swipe-down is handled by the sheet's own handle so it can ask first.
     enableDrag: false,
-    builder: (context) => _DetailsSheet(mode: mode, initial: initial),
+    builder: (context) => _DetailsSheet(
+      mode: mode,
+      initial: initial,
+      aiNameUntil: mode == DetailsMode.create
+          ? undefinedCollectionName
+          : aiNameUntil,
+      aiDescription: mode == DetailsMode.create || aiDescription,
+    ),
   );
 }
 
 class _DetailsSheet extends ConsumerStatefulWidget {
-  const _DetailsSheet({required this.mode, this.initial});
+  const _DetailsSheet({
+    required this.mode,
+    this.initial,
+    this.aiNameUntil,
+    this.aiDescription = false,
+  });
 
   final DetailsMode mode;
   final CollectionDetails? initial;
+  final String? aiNameUntil;
+  final bool aiDescription;
 
   @override
   ConsumerState<_DetailsSheet> createState() => _DetailsSheetState();
@@ -103,15 +124,15 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
       a.length == b.length &&
       [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
 
-  /// New collection may leave the name blank: AI names it once it has
-  /// [minWordsForAutoName] words (collection-naming, owner 2026-10-18).
-  bool get _nameLeftToAi =>
-      widget.mode == DetailsMode.create && _name.text.trim().isEmpty;
+  /// A collection nobody named may keep a blank name: AI names it once it
+  /// has [minWordsForAutoName] words (collection-naming, owner 2026-10-18).
+  bool get _aiName => widget.aiNameUntil != null;
+  bool get _nameLeftToAi => _aiName && _name.text.trim().isEmpty;
 
-  /// New collection's empty description is left to AI too, from
+  /// A description nobody wrote is left to AI too, from
   /// [minWordsForAutoDescription] words on (owner, 2026-10-18).
   bool get _descriptionLeftToAi =>
-      widget.mode == DetailsMode.create && _description.text.trim().isEmpty;
+      widget.aiDescription && _description.text.trim().isEmpty;
   bool get _nameOk =>
       _nameLeftToAi || collectionNameProblem(_name.text) == null;
   bool get _descriptionOk =>
@@ -250,19 +271,19 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
                       textInputAction: TextInputAction.next,
                       onChanged: (_) => _nameTouched = true,
                       decoration: InputDecoration(
-                        labelText: create ? 'Name (optional)' : 'Name',
+                        labelText: _aiName ? 'Name (optional)' : 'Name',
                         hintText:
-                            create ? 'Leave empty to let AI name it' : null,
+                            _aiName ? 'Leave empty to let AI name it' : null,
                         hintStyle: aiHintStyle,
                         border: const OutlineInputBorder(),
                         errorText: nameError,
-                        helper: create && _nameLeftToAi
+                        helper: _nameLeftToAi
                             ? _AiHelper(
                                 key: const Key('details-ai-name-note'),
                                 color: ai,
                                 text: 'AI names it at $minWordsForAutoName '
                                     'words. Until then it is '
-                                    '"$undefinedCollectionName".',
+                                    '"${widget.aiNameUntil}".',
                               )
                             : null,
                       ),
@@ -277,14 +298,15 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
                       maxLengthEnforcement: MaxLengthEnforcement.none,
                       decoration: InputDecoration(
                         labelText: 'Description',
-                        hintText:
-                            create ? 'Leave empty to let AI write it' : null,
+                        hintText: widget.aiDescription
+                            ? 'Leave empty to let AI write it'
+                            : null,
                         hintStyle: aiHintStyle,
                         border: const OutlineInputBorder(),
                         errorText:
                             _descriptionOk ? null : descriptionProblemMessage,
                         // On the counter's line, left of "0/500".
-                        helper: create && _descriptionLeftToAi
+                        helper: _descriptionLeftToAi
                             ? _AiHelper(
                                 key: const Key('details-ai-description-note'),
                                 color: ai,
