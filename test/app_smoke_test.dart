@@ -15,19 +15,20 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
+import 'package:flutter_vocabulary_app/features/app_menu/app_drawer.dart';
 import 'package:flutter_vocabulary_app/features/app_settings/app_settings_screen.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
-import 'package:flutter_vocabulary_app/features/history/history_screen.dart';
 import 'package:flutter_vocabulary_app/features/settings/settings_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 import 'seed_collections.dart';
 
 /// The app smoke test (docs/testing.md): the real `App` with its router and
-/// providers starts on a stored session and reaches every screen -- the words
-/// table, History, a past session's table and Settings. It checks the wiring,
+/// providers starts on Collections and reaches every screen -- through the
+/// side menu Words and App settings, from Words the words table and Settings.
+/// It checks the wiring,
 /// not the behaviour of each screen; that is the other test files' job.
 void main() {
   setUpAll(() async {
@@ -40,7 +41,7 @@ void main() {
     }
   });
 
-  testWidgets('the app starts on the current session and reaches every screen',
+  testWidgets('the app starts on Collections and reaches every screen',
       (tester) async {
     SharedPreferences.setMockInitialValues({'word_detail_mode': 'translation'});
     // The store stays open: closing an Isar the screens watched under the fake
@@ -64,11 +65,9 @@ void main() {
       await store.setCurrentCollectionId(now.collectionId);
     });
     // Isar's watch and reads never complete under the test's fake clock, so
-    // the History list is the stored sessions as one emission, and the past
-    // session is read up front in the real zone and kept.
+    // the Collections level is the stored sessions as one emission.
     final container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
-      nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value([now, past])),
       // Isar's watch never completes under the fake clock either.
       collectionLevelProvider(null).overrideWith(
           (ref) => Stream.value([LevelItem.collection(now), LevelItem.collection(past)])),
@@ -76,9 +75,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      container.listen(collectionByIdProvider(past.collectionId), (_, __) {});
-      await container.read(collectionByIdProvider(past.collectionId).future);
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -90,11 +87,37 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    // The main screen, on the current session; no new-user trial line.
-    expect(find.byType(WordInputScreen), findsOneWidget);
+    // Collections is the start screen: the menu button, no Back; no
+    // new-user trial line.
+    expect(find.byType(CollectionsScreen), findsOneWidget);
+    expect(find.byTooltip('Recycle bin'), findsOneWidget);
+    expect(find.byType(BackButton), findsNothing);
     expect(find.byKey(TrialFrame.lineKey), findsNothing);
-    expect(container.read(wordInputNotifierProvider).value!.words.first.word,
+
+    // The side menu: Collections, Words, App settings, in that order.
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    double top(Key key) => tester.getTopLeft(find.byKey(key)).dy;
+    expect(top(AppDrawer.collectionsKey), lessThan(top(AppDrawer.wordsKey)));
+    expect(top(AppDrawer.wordsKey), lessThan(top(AppDrawer.appSettingsKey)));
+    expect(find.text('History'), findsNothing);
+    expect(find.text('Main'), findsNothing);
+
+    // Words: the current session, with the menu button, not Back.
+    await tester.tap(find.byKey(AppDrawer.wordsKey));
+    await tester.pumpAndSettle();
+    expect(find.byType(WordsScreen), findsOneWidget);
+    expect(find.byType(BackButton), findsNothing);
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+    expect(container.read(wordsNotifierProvider).value!.words.first.word,
         'apple');
+    // The rows show the collection's words, not an empty placeholder row.
+    final appleRow = find.byWidgetPredicate(
+        (w) => w is EditableText && w.controller.text == 'apple');
+    expect(appleRow, findsOneWidget);
+    // Opens without the keyboard: no row has focus (owner, 2026-10-18).
+    expect(FocusManager.instance.primaryFocus?.context?.widget,
+        isNot(isA<EditableText>()));
 
     // Next -> the words table of the current session.
     await tester.tap(find.text('Next'));
@@ -104,58 +127,53 @@ void main() {
     expect(find.text('яблуко'), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    expect(find.byType(WordInputScreen), findsOneWidget);
-
-    // The side menu always holds Main, Collections, History; Collections opens.
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    expect(find.text('Main'), findsOneWidget);
-    await tester.tap(find.text('Collections'));
-    await tester.pumpAndSettle();
-    expect(find.byType(CollectionsScreen), findsOneWidget);
-    expect(find.byTooltip('Recycle bin'), findsOneWidget);
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-    expect(find.byType(WordInputScreen), findsOneWidget);
-
-    // The side menu -> History -> the past session's table.
-    await tester.tap(find.byTooltip('Open navigation menu'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('History'));
-    await tester.pumpAndSettle();
-    expect(find.byType(HistoryScreen), findsOneWidget);
-    expect(find.text('1 word'), findsNWidgets(2));
-    await tester.tap(find.text('01.09.2026 12:00'));
-    await tester.pumpAndSettle();
-    expect(find.byType(WordsTableScreen), findsOneWidget);
-    expect(find.text('tea'), findsOneWidget);
-    expect(find.text('чай'), findsOneWidget);
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
+    expect(find.byType(WordsScreen), findsOneWidget);
 
     // The settings button -> Settings.
-    expect(find.byType(WordInputScreen), findsOneWidget);
     await tester.tap(find.byTooltip('Settings'));
     await tester.pumpAndSettle();
     expect(find.byType(SettingsScreen), findsOneWidget);
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
-    expect(find.byType(WordInputScreen), findsOneWidget);
+    expect(find.byType(WordsScreen), findsOneWidget);
 
-    // The side menu -> App settings, below History.
+    // Back on Words goes to Collections, the start screen.
+    final wordsState = tester.state(find.byType(WordsScreen));
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(CollectionsScreen), findsOneWidget);
+
+    // Back to Words through the side menu: the drawer slides shut over
+    // Collections first, then the same Words screen shows again (the menu
+    // screens stay alive in one shell), its rows still there.
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
-    expect(
-        tester.getTopLeft(find.byKey(const Key('drawer-app-settings'))).dy,
-        greaterThan(tester.getTopLeft(find.text('History')).dy));
-    await tester.tap(find.text('App settings'));
+    await tester.tap(find.byKey(AppDrawer.wordsKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(Drawer), findsOneWidget);
+    expect(find.byType(CollectionsScreen), findsOneWidget);
+    expect(find.byType(WordsScreen), findsNothing);
+    await tester.pumpAndSettle();
+    expect(find.byType(Drawer), findsNothing);
+    expect(find.byType(WordsScreen), findsOneWidget);
+    expect(tester.state(find.byType(WordsScreen)), same(wordsState));
+    expect(appleRow, findsOneWidget);
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(CollectionsScreen), findsOneWidget);
+
+    // The side menu -> App settings, with the menu button; Back -> Collections.
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(AppDrawer.appSettingsKey));
     await tester.pumpAndSettle();
     expect(find.byType(AppSettingsScreen), findsOneWidget);
-    await tester.tap(find.byType(BackButton));
+    expect(find.byType(BackButton), findsNothing);
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+    await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    expect(find.byType(WordInputScreen), findsOneWidget);
+    expect(find.byType(CollectionsScreen), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
   });

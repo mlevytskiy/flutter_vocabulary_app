@@ -24,7 +24,11 @@ ThemeData classicTheme() {
       // Matcha's dark olive gave way to a purple grey (owner, 2026-10-18).
       onSurfaceVariant: const Color(0xFF49454E),
     ),
-    appBarTheme: const AppBarTheme(backgroundColor: classicTopBarColor),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: classicTopBarColor,
+      leadingWidth: barLeadingWidth,
+      titleSpacing: barTitleSpacing,
+    ),
     useMaterial3: true,
     fontFamily: matchaBodyFont,
     extensions: const [AppDecor.classic],

@@ -17,11 +17,11 @@ import 'package:flutter_vocabulary_app/features/learn/explain_to_friend/explain_
 import 'package:flutter_vocabulary_app/features/learn/kit/exam_countdown.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-explain-to-friend: the screen in both modes (AC-01, AC-02, AC-04 –
 /// AC-30, AC-33, AC-34, AC-36 – AC-38; §6 call counts, countdown, timing).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -105,7 +105,7 @@ void main() {
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
       if (read != null)
         exerciseWordsProvider(collectionId, 'g').overrideWith((ref) async => (group: await read(), others: const <WordPair>[])),

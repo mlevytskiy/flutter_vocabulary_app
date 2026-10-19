@@ -20,11 +20,11 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_logo_icon.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_input_speed_dial.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/quizlet_read_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/quizlet_logo_icon.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/words_speed_dial.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -86,7 +86,7 @@ void main() {
     Future<void> pumpDial(WidgetTester tester, VoidCallback onQuizlet) =>
         tester.pumpWidget(MaterialApp(
           home: Scaffold(
-            floatingActionButton: WordInputSpeedDial(
+            floatingActionButton: WordsSpeedDial(
               onTakePhoto: () {},
               onFromSubtitles: () {},
               onImportFromQuizlet: onQuizlet,
@@ -107,8 +107,8 @@ void main() {
       expect(children.last.foregroundColor, Colors.white);
       // A white Quizlet-like "Q", not a Material icon.
       expect(children.last.child, isA<QuizletLogoIcon>());
-      // "From subtitles" is dark grey with the captions icon.
-      expect(children[1].backgroundColor, Colors.grey[800]);
+      // "From subtitles" is purple with the captions icon (owner, 2026-10-18).
+      expect(children[1].backgroundColor, const Color(0xFF7E57C2));
       expect((children[1].child! as Icon).icon, Icons.closed_caption);
     });
 
@@ -160,8 +160,8 @@ void main() {
 
     test('adds the set after the existing sources, then renames it in place',
         () async {
-      await container.read(wordInputNotifierProvider.future);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
+      await container.read(wordsNotifierProvider.future);
+      final notifier = container.read(wordsNotifierProvider.notifier);
 
       final id = notifier.upsertSetSource(
           '123456', 'Animals', 'https://quizlet.com/123456/animals/');
@@ -171,7 +171,7 @@ void main() {
           '123456', 'Wild animals', 'https://quizlet.com/123456/wild/');
       expect(again, 'quizlet-123456');
 
-      final sources = container.read(wordInputNotifierProvider).value!.sources;
+      final sources = container.read(wordsNotifierProvider).value!.sources;
       expect(sources.map((s) => s.id),
           ['photo-a', 'photo-b', 'quizlet-123456', 'photo-c']);
       final set = sources[2];
@@ -222,11 +222,11 @@ void main() {
         googleTranslateServiceProvider.overrideWithValue(FakeTranslate()),
       ]);
       await tester
-          .runAsync(() => container.read(wordInputNotifierProvider.future));
+          .runAsync(() => container.read(wordsNotifierProvider.future));
       await tester.pumpWidget(UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          home: WordInputScreen(
+          home: WordsScreen(
               quizletDriverFactory: (_) => FakePageDriver(reply)),
         ),
       ));
@@ -239,7 +239,7 @@ void main() {
       await importFrom(tester,
           'Check out this set: https://quizlet.com/ua/123456/animals/?x=1');
 
-      WordCollection collection() => container.read(wordInputNotifierProvider).value!;
+      WordCollection collection() => container.read(wordsNotifierProvider).value!;
       List<WordPair> rows() =>
           collection().words.where((p) => !p.isEmpty).toList();
 

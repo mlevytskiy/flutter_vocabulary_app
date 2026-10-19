@@ -4,7 +4,7 @@ import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import '../../core/theme/app_theme.dart';
 
 /// The Collections screen's plus button, styled like the main screen's
-/// `WordInputSpeedDial`: New folder and New collection.
+/// `WordsSpeedDial`: New folder and New collection.
 class CollectionsSpeedDial extends StatelessWidget {
   const CollectionsSpeedDial({
     super.key,

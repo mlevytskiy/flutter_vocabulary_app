@@ -47,7 +47,7 @@ final matcha = AppThemeSpec(
         fabAlt: leaf,
         onFabAlt: Colors.white,
         dialPhoto: leaf,
-        dialSubtitles: Color(0xFF5B6651),
+        dialSubtitles: Color(0xFFC0564B),
         dialQuizlet: Color(0xFF4F8A8B),
         dialFolder: honey,
         onDial: Colors.white,

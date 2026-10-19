@@ -1,6 +1,6 @@
 ---
 status: living
-updated_at: "2026-10-15"
+updated_at: "2026-10-18"
 ---
 
 # Architecture — flutter_vocabulary_app (simplified)
@@ -22,6 +22,9 @@ lib/
                                 new-user trial's red line over every screen
   router/
     routes.dart (+ routes.g.dart)   the ONLY place routes are declared (go_router_builder)
+    start_location.dart         the start screen: Words when left < 5 min ago or the only
+                                collection is empty, else Collections; `main` sets it before
+                                the first frame (start-screen, owner 2026-10-18)
   config/
     vocab_api_config.dart       the Worker URL + secret as constants — kept, gitignored, as today
     azure_config.dart           pre-existing, untouched by this plan
@@ -150,7 +153,7 @@ lib/
                                 collects stories and pictures onto the phone; read once in app.dart;
                                 startScene for a dialogue group's scene picture)
     dialogues/                  film dialogues (get-words-from-subtitles-improvment), shared by
-                                word_input, learn, dialogue and words_table:
+                                words, learn, dialogue and words_table:
                                 dialogue_match.dart (pure AC-05 rule: does a word appear, and where;
                                 tested against the Worker's match-cases.json)
                                 dialogue_rules.dart (pure: atDone, afterEdit, afterPublish, cardName)
@@ -159,13 +162,13 @@ lib/
                                 read once in app.dart)
     widgets/                    synced_text_field_row.dart — moved, unchanged
   features/
-    word_input/
-      word_input_screen.dart          the screen: composes widgets below, owns controllers/focus as today
-      word_rows.dart                  (notes-editing) part of word_input_screen.dart: mixin _WordRows,
+    words/                            the Words screen (word_input until 2026-10-18; route /words)
+      words_screen.dart          the screen: composes widgets below, owns controllers/focus as today
+      word_rows.dart                  (notes-editing) part of words_screen.dart: mixin _WordRows,
                                       the per-row lists, lightning rules, translate / definition /
                                       pronunciation actions and the row widget, CUT unchanged from the
                                       screen so the Notes words dialog edits rows the same way
-      source_words_dialog.dart        (notes-editing) part of word_input_screen.dart: a source's words
+      source_words_dialog.dart        (notes-editing) part of words_screen.dart: a source's words
                                       as main-screen rows + a dashed "+ Add a word"; writes straight
                                       into the session, and the main screen rebuilds its rows from it
                                       when Notes closes (markEditedElsewhere / takeEditedElsewhere)
@@ -174,7 +177,7 @@ lib/
       quizlet_import_flow.dart        runQuizletImport: link dialog → progress dialog (reads, shows
                                       the cards, Cancel still works; no machine translation) → results
                                       dialog → addWords on Done; a result for another session is dropped
-      word_input_notifier.dart (+.g)  AsyncNotifier<WordCollection> + the launch rule + debounced save()
+      words_notifier.dart (+.g)  AsyncNotifier<WordCollection> + the launch rule + debounced save()
                                       + switchTo(id): makes a History session current without
                                       stamping it (edit-session-from-history); every save runs the
                                       dialogue edit rule; addImportDialogues keeps an import's
@@ -195,7 +198,7 @@ lib/
                                       PhotoPanel(collectionId:) lists a stored collection's sources
                                       (storedSourcesWithWordsProvider) instead of the current one's
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
-      widgets/                        pieces CUT from word_input_screen.dart, code unchanged:
+      widgets/                        pieces CUT from words_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
         word_row_morph.dart             (photo-panel-glass) while the photo panel is open each row
                                         glides, top to bottom, into CompactWordLine — one line,
@@ -229,7 +232,7 @@ lib/
                                         of the set page (webview_flutter); the page is shown full
                                         size only while Quizlet's robot check is on screen
         translation_options_content.dart  the dots popup's body: dictionary chips by part of speech
-        word_input_speed_dial.dart      the FAB (flutter_speed_dial stays); "From subtitles" dark grey
+        words_speed_dial.dart      the FAB (flutter_speed_dial stays); "From subtitles" dark grey
                                         with the captions icon; it shares the Scaffold's floating-button
                                         slot with the Settings button, so both rise above a SnackBar
     words_table/
@@ -342,9 +345,14 @@ lib/
                                       average price of past runs and the list price; "Story runs"
       story_runs_screen.dart          every story run on the phone, newest first, with totals
       story_run_screen.dart           one run in full: each step's AI, result, price, time
-    history/
-      history_screen.dart             all non-empty sessions, newest lastLocalModifiedAt first;
-                                      a row opens WordsTableScreen for that sessionId
+    app_menu/
+      app_drawer.dart                 (navigation, owner 2026-10-18) the side menu every menu screen
+                                      shares — Collections, Words, App settings; the three are the
+                                      branches of one `MenuShellRoute` (StatefulShellRoute, indexed
+                                      stack), kept alive; a tap lets the drawer close, then `go`es to
+                                      the other branch, alone on it, so its bar shows the menu button;
+                                      BackToCollections: Back on Words or App settings goes to
+                                      Collections, the start screen
     settings/
       settings_screen.dart            the drag-and-drop mode switch (task-13) and the word
                                       detail mode — translation / definition / both
@@ -407,7 +415,7 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
 
 ```mermaid
 flowchart LR
-  S[WordInputScreen] -->|ref.watch| N[WordInputNotifier<br/>WordCollection]
+  S[WordsScreen] -->|ref.watch| N[WordsNotifier<br/>WordCollection]
   S -->|ref.read| P[vocabPhotoServiceProvider<br/>photoScalerProvider]
   N -->|put/byId/newest| W[sessionStoreProvider<br/>CollectionStore: Isar 'vocab'<br/>+ current_session_id pointer]
   S -->|WordsTableRoute().go| T[WordsTableScreen]
@@ -427,9 +435,6 @@ flowchart LR
   T -->|WordsSettingsRoute push| WS[WordsSettingsScreen]
   WS -->|StoryRunsRoute / StoryRunRoute push| SR2[Story runs screens]
   SR2 -->|watch| SR
-  S -->|HistoryRoute().go| H[HistoryScreen]
-  H -->|watchNonEmpty| W
-  H -->|WordsTableRoute sessionId| T
   T -->|sessionByIdProvider| W
   S -->|SettingsRoute push| G[SettingsScreen]
   G -->|toggle| D[dragModeProvider]
@@ -447,7 +452,7 @@ flowchart LR
 - The shared page itself (editing, photos, autofill) is served by the Worker, not the app: see
   `vocab-photo-api/README.md` and `docs/features/good-looking-web/sad.md`.
 
-- `WordInputNotifier` owns the current `WordCollection` — add/remove/reorder/update plus a
+- `WordsNotifier` owns the current `WordCollection` — add/remove/reorder/update plus a
   debounced save. Its `build()` runs the **launch rule** (collections-screen ADR-0007): after any
   pause it reopens the collection the current-collection pointer names; a missing or binned
   pointer falls back to the newest collection outside the recycle bin, and only an empty store

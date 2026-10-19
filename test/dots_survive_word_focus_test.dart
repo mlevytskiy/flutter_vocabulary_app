@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/translation_dots_button.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/translation_dots_button.dart';
 
 /// Regression for the reported bug: after the popup fix, tapping the Word field
 /// just to raise the keyboard emptied the 3-dots button, even though the word
 /// had not changed. The screen no longer drops its cached dictionary on a
 /// keystroke; instead it keeps the block keyed to the word it was fetched for
 /// and passes the dots button `_effectiveOptions(index)` -- the block while the
-/// current Word still matches, null while it differs (word_input_screen.dart).
+/// current Word still matches, null while it differs (words_screen.dart).
 ///
 /// This test drives TranslationDotsButton the same way the screen does and
 /// pins the visible contract it relies on: a block -> solid dots (Icons.circle),
@@ -17,7 +17,7 @@ import 'package:flutter_vocabulary_app/features/word_input/widgets/translation_d
 /// pure word-equality check; here we feed it the same inputs a focus change,
 /// an edit, and a revert produce, and confirm the icon follows.
 void main() {
-  // The exact shape word_input_screen.dart caches: Google's dictionary block.
+  // The exact shape words_screen.dart caches: Google's dictionary block.
   final block = TranslationResult(
     text: 'яблуко',
     dictionary: const [

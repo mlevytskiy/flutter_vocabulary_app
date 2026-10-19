@@ -8,8 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 /// The settings button sits on the same horizontal line as the speed dial's
 /// plus button, also on a phone with a bottom safe area (the home indicator).
@@ -51,10 +51,10 @@ void main() {
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
     await tester
-        .runAsync(() => container.read(wordInputNotifierProvider.future));
+        .runAsync(() => container.read(wordsNotifierProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: const MaterialApp(home: WordsScreen()),
     ));
     await tester.pump();
 
@@ -80,7 +80,7 @@ void main() {
     tester.view.viewInsets = FakeViewPadding.zero;
     tester.view.padding = const FakeViewPadding(bottom: 102);
     await tester.pump();
-    ScaffoldMessenger.of(tester.element(find.byType(WordInputScreen)))
+    ScaffoldMessenger.of(tester.element(find.byType(WordsScreen)))
         .showSnackBar(const SnackBar(content: Text('hello')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 750));
@@ -94,7 +94,7 @@ void main() {
     expect(settingsSnack.bottom, lessThanOrEqualTo(snack.top));
     expect(settingsSnack.left, 16.0);
     expect(plusSnack.right, moreOrLessEquals(390.0 - 16.0, epsilon: 0.5));
-    ScaffoldMessenger.of(tester.element(find.byType(WordInputScreen)))
+    ScaffoldMessenger.of(tester.element(find.byType(WordsScreen)))
         .removeCurrentSnackBar();
     await tester.pump(const Duration(seconds: 1));
 

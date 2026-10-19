@@ -214,16 +214,6 @@ Future<WordCollection?> collectionById(Ref ref, String collectionId) async {
   return store.byId(collectionId);
 }
 
-/// History (collections-screen F11): every collection that has at least one
-/// non-blank word and is not in the recycle bin, directly or through a folder
-/// above it, newest first, re-emitted after every write. The drawer rule on
-/// the input screen, the History screen and the tag suggestions read this.
-@riverpod
-Stream<List<WordCollection>> nonEmptyCollections(Ref ref) async* {
-  final store = await ref.watch(collectionStoreProvider.future);
-  yield* store.watchHistory();
-}
-
 /// One level of the Collections screen (collections-screen T8): the folders
 /// and collections in [folderId], null being the top level, that are not in
 /// the bin, by order, re-emitted after every write.
@@ -565,6 +555,78 @@ class PhotoTabTopNotifier extends _$PhotoTabTopNotifier {
   /// ([max]); when the screen is too short for both, the top bar wins.
   static double clamp(double top, {required double min, required double max}) =>
       max < min ? min : top.clamp(min, max);
+}
+
+/// How strong the photo panel's liquid glass is, as fractions of the
+/// looks' own values (1 = 100% = as designed): [thickness] widens the band
+/// along the edge that bends, [bending] scales how far it bends (the
+/// refractive index above 1), [blur] scales the blur (liquid-glass-tuning,
+/// owner 2026-10-19).
+typedef LiquidGlassTuning = ({double thickness, double bending, double blur});
+
+/// Short name used across the app and the design docs.
+final liquidGlassTuningProvider = liquidGlassTuningNotifierProvider;
+
+/// The Words settings' Liquid glass sliders (liquid-glass-tuning, owner
+/// 2026-10-19), for the photo tab and the half-open panel. Persisted like
+/// [WordDetailModeNotifier], one preferences key per slider; a display
+/// preference, never on `WordCollection`. Starts at 100% and switches once
+/// the stored values are read ([loaded]).
+@Riverpod(keepAlive: true)
+class LiquidGlassTuningNotifier extends _$LiquidGlassTuningNotifier {
+  static const thicknessKey = 'liquid_glass_thickness';
+  static const bendingKey = 'liquid_glass_bending';
+  static const blurKey = 'liquid_glass_blur';
+
+  static const LiquidGlassTuning asDesigned =
+      (thickness: 1.0, bending: 1.0, blur: 1.0);
+
+  /// The sliders' ranges, as fractions.
+  static const thicknessRange = (min: 0.5, max: 3.0);
+  static const bendingRange = (min: 0.0, max: 3.0);
+  static const blurRange = (min: 0.0, max: 2.0);
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  LiquidGlassTuning build() {
+    loaded;
+    return asDesigned;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    // A change made before the stored values arrived wins over them.
+    if (_setByLearner) return;
+    state = _clamped((
+      thickness: prefs.getDouble(thicknessKey) ?? 1.0,
+      bending: prefs.getDouble(bendingKey) ?? 1.0,
+      blur: prefs.getDouble(blurKey) ?? 1.0,
+    ));
+  }
+
+  static LiquidGlassTuning _clamped(LiquidGlassTuning t) => (
+        thickness: t.thickness.clamp(thicknessRange.min, thicknessRange.max),
+        bending: t.bending.clamp(bendingRange.min, bendingRange.max),
+        blur: t.blur.clamp(blurRange.min, blurRange.max),
+      );
+
+  /// A failed write keeps the in-memory values.
+  Future<void> set(LiquidGlassTuning tuning) async {
+    _setByLearner = true;
+    state = _clamped(tuning);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(thicknessKey, state.thickness);
+      await prefs.setDouble(bendingKey, state.bending);
+      await prefs.setDouble(blurKey, state.blur);
+    } catch (e) {
+      debugPrint('VOCAB: liquid glass tuning not saved: $e');
+    }
+  }
+
+  Future<void> reset() => set(asDesigned);
 }
 
 /// Short name for [RecentFilterTagsNotifier].

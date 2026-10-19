@@ -11,11 +11,11 @@ import 'package:flutter_vocabulary_app/features/learn/kit/exercise_phase.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_scaffold.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/result_summary.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-remember-or-not: kit additions S-31 (example lines, dialogues provider)
 /// and S-33 (summary heading); AC-06, AC-14.
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -63,7 +63,7 @@ void main() {
       final cur = WordCollection.create()..dialogues = [_d(['cur'], ['b'])];
       final hist = WordCollection.create()..dialogues = [_d(['hist'], ['b'])];
       final c = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(cur)),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(cur)),
         collectionByIdProvider('h').overrideWith((ref) async => hist),
       ]);
       addTearDown(c.dispose);

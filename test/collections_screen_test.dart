@@ -7,9 +7,9 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -47,7 +47,7 @@ void main() {
     };
     await t.pumpWidget(ProviderScope(
       overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english, unit3, empty])),
         for (final e in levels.entries)
@@ -78,9 +78,10 @@ void main() {
   });
 
   testWidgets(
-      'round buttons: Settings, Recycle bin, plus; top bar has only search '
-      '(collection-tags SCR-04; the filter comes with the search field, '
-      'collections-search AC-01)', (t) async {
+      'round buttons: Settings, Recycle bin, plus; top bar has the menu and '
+      'search only (collection-tags SCR-04; the filter comes with the search '
+      'field, collections-search AC-01; the menu, navigation 2026-10-18)',
+      (t) async {
     await pump(t);
     expect(find.byTooltip('Settings'), findsOneWidget);
     expect(find.byTooltip('Recycle bin'), findsOneWidget);
@@ -88,7 +89,8 @@ void main() {
     expect(
         find.descendant(
             of: find.byType(AppBar), matching: find.byType(IconButton)),
-        findsNWidgets(1));
+        findsNWidgets(2));
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
     expect(find.byIcon(Icons.search), findsOneWidget);
     expect(find.byIcon(Icons.tune), findsNothing);
   });

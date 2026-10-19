@@ -21,9 +21,9 @@ void main() {
     ..dialogueId = dialogueId;
 
   test('ExerciseRoute sits under learn at exercise and carries ids only, as query parameters', () {
-    expect(const ExerciseRoute(exercise: 'quiz', groupId: 'g1').location, '/table/learn/exercise?exercise=quiz&group-id=g1');
+    expect(const ExerciseRoute(exercise: 'quiz', groupId: 'g1').location, '/words/table/learn/exercise?exercise=quiz&group-id=g1');
     expect(const ExerciseRoute(collectionId: 's1', exercise: 'quiz', groupId: 'g1').location,
-        '/table/learn/exercise?collection-id=s1&exercise=quiz&group-id=g1');
+        '/words/table/learn/exercise?collection-id=s1&exercise=quiz&group-id=g1');
   });
 
   group('startRouteFor (S-04)', () {

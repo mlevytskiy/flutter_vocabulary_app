@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/offered_ai.dart';
 import '../../core/models/story_run.dart';
 import '../../core/providers.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/words_notifier.dart';
 import '../words_table/include_photos.dart';
 import '../words_table/photo_viewer.dart';
 import '../words_table/widgets/photo_stack.dart';
@@ -167,7 +167,7 @@ class WordsSettingsScreen extends ConsumerWidget {
   Widget? _includePhotosTile(BuildContext context, WidgetRef ref) {
     final id = collectionId;
     final collection = id == null
-        ? ref.watch(wordInputNotifierProvider).valueOrNull
+        ? ref.watch(wordsNotifierProvider).valueOrNull
         : ref.watch(collectionByIdProvider(id)).valueOrNull;
     final photos =
         linkedPhotos(linkedSources(collection, filledPairs(collection)));

@@ -9,13 +9,13 @@ import '../../core/models/tag_kind.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
-import '../word_input/photo_panel/photo_preview.dart';
-import '../word_input/photo_panel/photos_with_words.dart';
-import '../word_input/photo_panel/source_hero.dart';
-import '../word_input/photo_panel/source_tile.dart';
-import '../word_input/widgets/word_row_morph.dart';
-import '../word_input/word_input_notifier.dart';
-import '../word_input/word_input_screen.dart' show showSourceWordsDialog;
+import '../words/photo_panel/photo_preview.dart';
+import '../words/photo_panel/photos_with_words.dart';
+import '../words/photo_panel/source_hero.dart';
+import '../words/photo_panel/source_tile.dart';
+import '../words/widgets/word_row_morph.dart';
+import '../words/words_notifier.dart';
+import '../words/words_screen.dart' show showSourceWordsDialog;
 import '../../router/routes.dart';
 import 'photo_viewer_screen.dart';
 import '../../core/models/effective_tags.dart';
@@ -108,15 +108,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   @override
   Widget build(BuildContext context) {
     final sources = ref.watch(sourcesWithWordsProvider);
-    final words = ref.watch(wordInputNotifierProvider).valueOrNull?.words ??
+    final words = ref.watch(wordsNotifierProvider).valueOrNull?.words ??
         const <WordPair>[];
     final mode = ref.watch(wordDetailModeProvider);
     final preloader = ref.watch(photoPreloaderProvider);
-    final current = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final current = ref.watch(wordsNotifierProvider).valueOrNull;
     final collectionTags = current == null
         ? (origin: const <String>[], topic: const <String>[])
         : effectiveTagsOf(current);
-    final notifier = ref.read(wordInputNotifierProvider.notifier);
+    final notifier = ref.read(wordsNotifierProvider.notifier);
     return Scaffold(
       backgroundColor: AppDecor.of(context).paper,
       appBar: AppBar(
@@ -283,8 +283,8 @@ class _NoteItemState extends ConsumerState<_NoteItem>
 
   String get _id => widget.item.source.id;
 
-  WordInputNotifier get _notifier =>
-      ref.read(wordInputNotifierProvider.notifier);
+  WordsNotifier get _notifier =>
+      ref.read(wordsNotifierProvider.notifier);
 
   @override
   void initState() {

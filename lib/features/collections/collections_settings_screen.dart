@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_decor.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/words_notifier.dart';
 
 /// Collections settings (owner, 2026-10-18): opened from the Collections
 /// screen's Settings button. "Replace all date names" gives every collection
@@ -25,7 +25,7 @@ class _CollectionsSettingsScreenState
   Future<void> _replaceDateNames() async {
     setState(() => _replacing = true);
     final result =
-        await ref.read(wordInputNotifierProvider.notifier).replaceDateNames();
+        await ref.read(wordsNotifierProvider.notifier).replaceDateNames();
     if (!mounted) return;
     setState(() => _replacing = false);
     ScaffoldMessenger.of(context)

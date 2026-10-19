@@ -12,14 +12,14 @@ import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
 import 'fake_story_groups.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/widgets/group_pager.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 /// mnemonic-story T16 (AC-01 – AC-05, AC-19): the group line, the group pager
 /// and the grouping messages on the learn page, and quiet grouping from the
 /// Words screen.
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -63,14 +63,14 @@ void main() {
     addTearDown(tester.view.reset);
     groups = FakeGroups(state);
     container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(() => groups),
       storyRunTrackerProvider.overrideWith(
           () => FakeTracker(StoryTrackerState(refusals: refusals))),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,

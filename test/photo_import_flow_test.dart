@@ -1,5 +1,5 @@
 // photo-from-gallery: the "Get words from photo" flow on the real
-// WordInputScreen, with the image picker, the photo scaler, the Worker call
+// WordsScreen, with the image picker, the photo scaler, the Worker call
 // and the kept-photo store faked (sad §6 flow 1).
 //
 // T4: the one-import-at-a-time guard, the source choice, Camera, and a closed
@@ -25,8 +25,8 @@ import 'package:flutter_vocabulary_app/core/services/photo_scaler.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
 import 'package:flutter_vocabulary_app/core/services/vocab_photo_service.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -178,10 +178,10 @@ void main() {
       sourcePhotoStoreProvider.overrideWithValue(photos),
     ]);
     await tester
-        .runAsync(() => container.read(wordInputNotifierProvider.future));
+        .runAsync(() => container.read(wordsNotifierProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: const MaterialApp(home: WordsScreen()),
     ));
     await tester.pump();
   }
@@ -194,7 +194,7 @@ void main() {
   }
 
   List<String> collectionWords() => [
-        for (final p in container.read(wordInputNotifierProvider).value!.words)
+        for (final p in container.read(wordsNotifierProvider).value!.words)
           p.word
       ];
 
@@ -220,7 +220,7 @@ void main() {
   final resultsDialog = find.byType(AlertDialog);
 
   CollectionSnapshot snapshot() {
-    final s = container.read(wordInputNotifierProvider).value!;
+    final s = container.read(wordsNotifierProvider).value!;
     return CollectionSnapshot(
       [for (final p in s.words) p.word],
       [for (final p in s.words) p.sourceId],

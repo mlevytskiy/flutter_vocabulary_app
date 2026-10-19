@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/services/quizlet_cards.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/vocab_result_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/vocab_result_dialog.dart';
 
 /// words-from-subtitles T9: the results dialog after a photo or a subtitle
 /// import (AC-18, AC-20, AC-21).

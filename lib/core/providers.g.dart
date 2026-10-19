@@ -601,31 +601,6 @@ class _CollectionByIdProviderElement
   String get collectionId => (origin as CollectionByIdProvider).collectionId;
 }
 
-String _$nonEmptyCollectionsHash() =>
-    r'0736779d8ae8680bceb1731f22ddacf9be9bdec6';
-
-/// History (collections-screen F11): every collection that has at least one
-/// non-blank word and is not in the recycle bin, directly or through a folder
-/// above it, newest first, re-emitted after every write. The drawer rule on
-/// the input screen, the History screen and the tag suggestions read this.
-///
-/// Copied from [nonEmptyCollections].
-@ProviderFor(nonEmptyCollections)
-final nonEmptyCollectionsProvider =
-    AutoDisposeStreamProvider<List<WordCollection>>.internal(
-  nonEmptyCollections,
-  name: r'nonEmptyCollectionsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$nonEmptyCollectionsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef NonEmptyCollectionsRef
-    = AutoDisposeStreamProviderRef<List<WordCollection>>;
 String _$collectionLevelHash() => r'35c09f3e0dc5b9ca13c5d35021e6ce1ef3d65d15';
 
 /// One level of the Collections screen (collections-screen T8): the folders
@@ -1323,6 +1298,29 @@ final photoTabTopNotifierProvider =
 );
 
 typedef _$PhotoTabTopNotifier = Notifier<double>;
+String _$liquidGlassTuningNotifierHash() =>
+    r'e3ec385b28a7cd33dd2c48d21cc9669fe6cae99a';
+
+/// The Words settings' Liquid glass sliders (liquid-glass-tuning, owner
+/// 2026-10-19), for the photo tab and the half-open panel. Persisted like
+/// [WordDetailModeNotifier], one preferences key per slider; a display
+/// preference, never on `WordCollection`. Starts at 100% and switches once
+/// the stored values are read ([loaded]).
+///
+/// Copied from [LiquidGlassTuningNotifier].
+@ProviderFor(LiquidGlassTuningNotifier)
+final liquidGlassTuningNotifierProvider =
+    NotifierProvider<LiquidGlassTuningNotifier, LiquidGlassTuning>.internal(
+  LiquidGlassTuningNotifier.new,
+  name: r'liquidGlassTuningNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$liquidGlassTuningNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$LiquidGlassTuningNotifier = Notifier<LiquidGlassTuning>;
 String _$recentFilterTagsNotifierHash() =>
     r'77536d2475125cb27b9f63ec9d2caef380839c1d';
 

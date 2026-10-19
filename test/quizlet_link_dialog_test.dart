@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/services/quizlet_link.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_link_dialog.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_link_how_to.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/quizlet_link_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/quizlet_link_how_to.dart';
 
 /// import-from-quizlet T9: the Quizlet link dialog (SCR-02) — ux-flows;
 /// sad §6 F1; AC-01, AC-06.

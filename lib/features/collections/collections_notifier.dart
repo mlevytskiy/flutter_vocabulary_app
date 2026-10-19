@@ -4,7 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../core/models/session_source.dart';
 import '../../core/providers.dart';
 import '../../core/services/filing.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/words_notifier.dart';
 import 'collection_pictures.dart';
 import 'collections_view.dart';
 
@@ -42,7 +42,7 @@ class CollectionsNotifier extends _$CollectionsNotifier {
         ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
     final level = ref.watch(collectionLevelProvider(_folderId)).valueOrNull;
     final currentId =
-        ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId;
+        ref.watch(wordsNotifierProvider).valueOrNull?.collectionId;
 
     final byId = {for (final f in folders) f.folderId: f};
     final parentOf = {for (final f in folders) f.folderId: f.parentId};

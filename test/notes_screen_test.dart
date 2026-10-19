@@ -12,11 +12,11 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/source_hero.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/source_hero.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 
@@ -25,7 +25,7 @@ import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 /// the right and its note to the left (kept since notes-editing; see
 /// notes_editing_test.dart).
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -115,7 +115,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     controller = PhotoPanelController();
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider
+      wordsNotifierProvider
           .overrideWith(() => _FakeInput(collection ?? _collection())),
       sourcePhotoStoreProvider.overrideWithValue(photos),
       // A note's debounced write waits for a store that never opens.
@@ -124,7 +124,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester
-        .runAsync(() => container.read(wordInputNotifierProvider.future));
+        .runAsync(() => container.read(wordsNotifierProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: MaterialApp(

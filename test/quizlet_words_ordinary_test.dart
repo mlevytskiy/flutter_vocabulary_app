@@ -19,10 +19,9 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
-import 'package:flutter_vocabulary_app/features/history/history_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/quizlet_read_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 import 'package:flutter_vocabulary_app/features/words_table/anki_export.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
@@ -108,7 +107,7 @@ void main() {
       googleTranslateServiceProvider.overrideWithValue(translate),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -126,7 +125,7 @@ void main() {
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
-        home: WordInputScreen(
+        home: WordsScreen(
             quizletDriverFactory: (_) => FakePageDriver(reply)),
       ),
     ));
@@ -153,7 +152,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await settle();
 
-    WordCollection collection() => container.read(wordInputNotifierProvider).value!;
+    WordCollection collection() => container.read(wordsNotifierProvider).value!;
     // Blank rows may sit between batches, as after a photo import; they are
     // not words.
     final rows = collection().words.where((p) => !p.isEmpty).toList();
@@ -212,12 +211,11 @@ void main() {
       ];
     container.dispose();
 
-    // Words table, opened on a stored session as History does.
+    // Words table, opened on a stored session.
     final photoDir = Directory.systemTemp.createTempSync('ordinary_photos');
     addTearDown(() => photoDir.deleteSync(recursive: true));
     final tableContainer = ProviderContainer(overrides: [
       collectionByIdProvider(kept.collectionId).overrideWith((ref) async => kept),
-      nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value([kept])),
       sourcePhotoStoreProvider
           .overrideWithValue(SourcePhotoStore(directory: photoDir.path)),
     ]);
@@ -236,15 +234,6 @@ void main() {
     expect(find.text('a small animal'), findsOneWidget);
     expect(find.text('dog'), findsOneWidget);
     expect(find.text('пес'), findsOneWidget);
-
-    // History lists the session with its set words counted.
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: tableContainer,
-      child: const MaterialApp(home: HistoryScreen()),
-    ));
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('2 words'), findsOneWidget);
 
     // AnkiDroid export: set words are ordinary records.
     expect(

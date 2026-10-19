@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -8,10 +9,9 @@ import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
@@ -45,10 +45,12 @@ void main() {
   late GoRouter router;
 
   Future<void> pumpWords(WidgetTester tester,
-      {required WordCollection main, WordCollection? shown}) async {
+      {required WordCollection main,
+      WordCollection? shown,
+      bool startOnMain = false}) async {
     SharedPreferences.setMockInitialValues({});
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeWordInput(main)),
+      wordsNotifierProvider.overrideWith(() => _FakeWords(main)),
       if (shown != null)
         collectionByIdProvider(shown.collectionId)
             .overrideWith((ref) async => shown),
@@ -57,13 +59,15 @@ void main() {
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       if (shown != null) {
         await container.read(collectionByIdProvider(shown.collectionId).future);
       }
     });
     router = GoRouter(
-      initialLocation: shown == null
+      initialLocation: startOnMain
+          ? '/'
+          : shown == null
           ? '/table'
           : '/table?collection-id=${shown.collectionId}',
       routes: [
@@ -93,9 +97,9 @@ void main() {
       tester.widget<PhotoPanel>(find.byType(PhotoPanel, skipOffstage: false));
 
   Set<int> highlighted(WidgetTester tester) => {
-        for (final line
-            in tester.widgetList<CompactWordLine>(find.byType(CompactWordLine)))
-          if (line.highlight != null) line.index,
+        for (final (index, row)
+            in tester.widget<DataTable>(find.byType(DataTable)).rows.indexed)
+          if (row.color != null) index,
       };
 
   Future<void> openHalf(WidgetTester tester) async {
@@ -104,20 +108,17 @@ void main() {
     expect(panel(tester).controller.stop, PanelStop.halfOpen);
   }
 
-  testWidgets('the current collection: the tab, one-line rows while open, '
-      'a photo highlights its rows, closed the table is back', (tester) async {
+  testWidgets('the current collection: the tab, the table stays while open, '
+      'a photo highlights its rows', (tester) async {
     await pumpWords(tester, main: current());
     expect(find.byKey(PhotoPanel.tabKey), findsOneWidget);
     expect(find.byType(DataTable), findsOneWidget);
-    expect(find.byType(CompactWordLine), findsNothing);
 
     await openHalf(tester);
-    final lines = [
-      for (final line
-          in tester.widgetList<CompactWordLine>(find.byType(CompactWordLine)))
-        line.text,
-    ];
-    expect(lines, ['claim — заява', 'curse — прокляття', 'gated — з воротами']);
+    expect(find.byType(DataTable), findsOneWidget,
+        reason: 'the table keeps its layout (owner, 2026-10-19)');
+    expect(find.text('claim'), findsOneWidget);
+    expect(find.text('заява'), findsOneWidget);
     expect(highlighted(tester), isEmpty);
 
     // p1's rows in the table are 0 and 2 (its row with no translation is
@@ -134,8 +135,7 @@ void main() {
     await tester.tap(find.byKey(PhotoPanel.closeKey));
     await tester.pumpAndSettle();
     expect(panel(tester).controller.stop, PanelStop.closed);
-    expect(find.byType(CompactWordLine), findsNothing);
-    expect(find.text('claim'), findsOneWidget, reason: 'the table again');
+    expect(find.byType(DataTable), findsOneWidget);
   });
 
   testWidgets('selecting a source scrolls its first row to the top',
@@ -146,21 +146,58 @@ void main() {
           WordPair(
               word: 'word$i',
               translation: 'слово$i',
-              sourceId: i == 0 ? 'p1' : (i >= 30 ? 'p2' : null)),
+              sourceId: i == 0 ? 'p1' : (i >= 20 && i < 22 ? 'p2' : null)),
       ]
       ..sources = [photo('p1', 1), photo('p2', 2)];
     await pumpWords(tester, main: long);
     await openHalf(tester);
-    final line30 =
-        find.byWidgetPredicate((w) => w is CompactWordLine && w.index == 30);
-    expect(line30, findsNothing, reason: 'far below the screen');
+    final scroll = find
+        .ancestor(of: find.byType(DataTable), matching: find.byType(Scrollable))
+        .first;
+    final top = tester.getRect(scroll).top;
+    final word20 = find.text('word20');
+    expect(tester.getTopLeft(word20).dy,
+        greaterThan(tester.getRect(scroll).bottom),
+        reason: 'far below the screen');
 
     await tester.tap(find.byKey(PhotoPanel.smallPhotoKey('p2')));
     await tester.pumpAndSettle();
-    final list = tester.getRect(find.byType(ListView).first);
-    expect(tester.getTopLeft(line30).dy, closeTo(list.top, 1),
-        reason: "p2's first row at the top of the list");
+    final table = tester.renderObject<RenderTable>(find.descendant(
+        of: find.byType(DataTable), matching: find.byType(Table)));
+    final rowTop = table
+        .localToGlobal(table.getRowBox(21).topLeft) // 0 is the heading
+        .dy;
+    expect(rowTop, closeTo(top, 1),
+        reason: "p2's first row at the top of the table");
+    expect(highlighted(tester), {20, 21});
   });
+
+  testWidgets('the tab stays where it stands while the Words screen slides '
+      'in and out (owner, 2026-10-19)', (tester) async {
+    await pumpWords(tester, main: current(), startOnMain: true);
+    router.push('/table');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    final tab = find.byKey(PhotoPanel.tabKey);
+    expect(tab, findsOneWidget, reason: 'on screen from the first frame');
+    final during = <Rect>[tester.getRect(tab)];
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+      during.add(tester.getRect(tab));
+    }
+    await tester.pumpAndSettle();
+    final settled = tester.getRect(tab);
+    for (final rect in during) {
+      expect(rect, settled);
+    }
+
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(tester.getRect(find.byKey(PhotoPanel.tabKey)), settled,
+        reason: 'the leaving screen keeps it in place');
+    await tester.pumpAndSettle();
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('the current collection opens Notes from the panel',
       (tester) async {
@@ -219,8 +256,8 @@ void main() {
   });
 }
 
-class _FakeWordInput extends WordInputNotifier {
-  _FakeWordInput(this._current);
+class _FakeWords extends WordsNotifier {
+  _FakeWords(this._current);
 
   final WordCollection _current;
 

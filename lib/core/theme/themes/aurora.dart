@@ -46,7 +46,7 @@ final aurora = AppThemeSpec(
         fabAlt: violet,
         onFabAlt: const Color(0xFF1A0F33),
         dialPhoto: const Color(0xFF1DE9B6),
-        dialSubtitles: const Color(0xFF2A3350),
+        dialSubtitles: const Color(0xFFB388FF),
         dialQuizlet: const Color(0xFF448AFF),
         dialFolder: const Color(0xFFFFD166),
         onDial: const Color(0xFF07131A),

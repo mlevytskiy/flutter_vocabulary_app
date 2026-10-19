@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/features/word_input/widgets/still_body.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/still_body.dart';
 
 /// The main screen's body holds still (one picture) exactly while the side
 /// menu is on screen, on Android only.

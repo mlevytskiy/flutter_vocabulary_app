@@ -12,7 +12,7 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -37,7 +37,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    dir = Directory.systemTemp.createTempSync('word_input_notifier_test');
+    dir = Directory.systemTemp.createTempSync('words_notifier_test');
     store = await CollectionStore.open(directory: dir.path);
     container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
@@ -50,15 +50,15 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  Future<WordInputNotifier> seeded(List<WordPair> pairs) async {
-    await container.read(wordInputNotifierProvider.future);
-    final notifier = container.read(wordInputNotifierProvider.notifier);
+  Future<WordsNotifier> seeded(List<WordPair> pairs) async {
+    await container.read(wordsNotifierProvider.future);
+    final notifier = container.read(wordsNotifierProvider.notifier);
     notifier.setPairs(pairs);
     return notifier;
   }
 
   List<WordPair> words() =>
-      container.read(wordInputNotifierProvider).value!.words;
+      container.read(wordsNotifierProvider).value!.words;
 
   test('updating the translation keeps the definition and its senses',
       () async {
@@ -119,7 +119,7 @@ void main() {
     await notifier.flush();
 
     final collectionId =
-        container.read(wordInputNotifierProvider).value!.collectionId;
+        container.read(wordsNotifierProvider).value!.collectionId;
     final back = await store.byId(collectionId);
     expect(back!.words[0].definition, 'a prayer for harm');
     expect(back.words[0].translation, 'прокляття');
@@ -134,10 +134,10 @@ void main() {
     await seedCollection(store, warm);
     await store.setCurrentCollectionId(warm.collectionId);
 
-    final collection = await container.read(wordInputNotifierProvider.future);
+    final collection = await container.read(wordsNotifierProvider.future);
     expect(collection.collectionId, warm.collectionId);
 
-    container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
     expect(words(), hasLength(2));
   });
 
@@ -146,7 +146,7 @@ void main() {
   test('markShared stores the published id and edit token', () async {
     final notifier = await seeded([WordPair(word: 'tea', translation: 'чай')]);
     await notifier.flush();
-    final collection = container.read(wordInputNotifierProvider).value!;
+    final collection = container.read(wordsNotifierProvider).value!;
     final touched = collection.lastLocalModifiedAt;
 
     await notifier.markShared(publishedId: 'pub-1', editToken: 'tok-1');
@@ -180,12 +180,12 @@ void main() {
     test('makes the picked session current without stamping its edit times',
         () async {
       final picked = await past('tea');
-      await container.read(wordInputNotifierProvider.future);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
+      await container.read(wordsNotifierProvider.future);
+      final notifier = container.read(wordsNotifierProvider.notifier);
 
       expect(await notifier.switchTo(picked.collectionId), isTrue);
 
-      final now = container.read(wordInputNotifierProvider).value!;
+      final now = container.read(wordsNotifierProvider).value!;
       expect(now.collectionId, picked.collectionId);
       expect(now.words.map((w) => w.word), ['tea']);
       expect(now.lastLocalModifiedAt, DateTime(2026, 9, 1, 12));
@@ -205,7 +205,7 @@ void main() {
       await leftCurrent();
       final notifier = await seeded([WordPair(word: 'coffee')]);
       final leftId =
-          container.read(wordInputNotifierProvider).value!.collectionId;
+          container.read(wordsNotifierProvider).value!.collectionId;
       notifier.updateAt(0, translation: 'кава');
 
       await notifier.switchTo(picked.collectionId);
@@ -222,11 +222,11 @@ void main() {
     test('an empty left session is deleted', () async {
       final picked = await past('tea');
       await leftCurrent();
-      final left = await container.read(wordInputNotifierProvider.future);
+      final left = await container.read(wordsNotifierProvider.future);
       expect(left.isEmpty, isTrue);
 
       await container
-          .read(wordInputNotifierProvider.notifier)
+          .read(wordsNotifierProvider.notifier)
           .switchTo(picked.collectionId);
 
       expect(await store.byId(left.collectionId), isNull);
@@ -235,12 +235,12 @@ void main() {
     test('an unknown id returns false and changes nothing', () async {
       final notifier = await seeded([WordPair(word: 'coffee')]);
       await notifier.flush();
-      final current = container.read(wordInputNotifierProvider).value!;
+      final current = container.read(wordsNotifierProvider).value!;
       final collectionsBefore = (await store.nonEmpty()).length;
 
       expect(await notifier.switchTo('gone'), isFalse);
 
-      final after = container.read(wordInputNotifierProvider).value!;
+      final after = container.read(wordsNotifierProvider).value!;
       expect(after.collectionId, current.collectionId);
       expect(after.words.single.word, 'coffee');
       expect(await store.currentCollectionId(), current.collectionId);

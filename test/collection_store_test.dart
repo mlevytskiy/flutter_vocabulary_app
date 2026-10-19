@@ -163,26 +163,10 @@ void main() {
     });
 
     // AC-5
-    test('nonEmpty() skips all-blank sessions; watchHistory() emits on write',
-        () async {
+    test('nonEmpty() skips all-blank sessions', () async {
       final blank = WordCollection.create()..words = [WordPair()];
       await seedCollection(store, blank);
       expect(await store.nonEmpty(), isEmpty);
-
-      final emissions = <List<WordCollection>>[];
-      final sub = store.watchHistory().listen(emissions.add);
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(emissions.length, 1, reason: 'fireImmediately');
-      expect(emissions.first, isEmpty);
-
-      final filled = WordCollection.create()
-        ..words = [WordPair(word: 'a', translation: 'а')];
-      await seedCollection(store, filled);
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-
-      expect(emissions.length, greaterThan(1));
-      expect(emissions.last.map((s) => s.collectionId), [filled.collectionId]);
-      await sub.cancel();
     });
 
     test('newest() is the session this device touched last', () async {

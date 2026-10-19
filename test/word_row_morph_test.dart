@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart' show WordDetailMode;
 import 'package:flutter_vocabulary_app/core/widgets/synced_text_field_row.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_morph.dart';
 
 /// While the photo panel is open each word row turns into one line,
 /// "word — translation" (or the definition), and back when it closes.

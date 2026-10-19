@@ -73,7 +73,7 @@ ThemeData windows95Theme() {
       fabAlt: navy,
       onFabAlt: white,
       dialPhoto: Color(0xFF008000),
-      dialSubtitles: Color(0xFF404040),
+      dialSubtitles: Color(0xFF800080),
       dialQuizlet: Color(0xFF0000FF),
       dialFolder: Color(0xFF808000),
       onDial: white,

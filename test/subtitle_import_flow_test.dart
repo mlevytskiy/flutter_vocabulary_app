@@ -14,10 +14,10 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_google_words.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_search_service.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_search_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/subtitle_search_dialog.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_words_service.dart';
-import 'package:flutter_vocabulary_app/features/word_input/subtitle_import_flow.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_input_speed_dial.dart';
+import 'package:flutter_vocabulary_app/features/words/subtitle_import_flow.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/words_speed_dial.dart';
 
 /// words-from-subtitles T11: the From subtitles flow — speed dial, import
 /// dialog, parse, request, loading, results, Done (sad §6 F3 and F4).
@@ -464,7 +464,7 @@ void main() {
     var tapped = false;
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        floatingActionButton: WordInputSpeedDial(
+        floatingActionButton: WordsSpeedDial(
           onTakePhoto: () {},
           onFromSubtitles: () => tapped = true,
           onImportFromQuizlet: () {},

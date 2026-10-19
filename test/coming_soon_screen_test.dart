@@ -9,13 +9,13 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/mnemonic_story/story_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 import 'fake_story_groups.dart';
 
 /// learn-part-step-1 T7 (AC-05, AC-05b): Start opens an exercise screen. Since
 /// mnemonic-story T17 that is the story screen for Mnemonic story (AC-06).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   @override
   Future<WordCollection> build() async => WordCollection.create()
     ..words = [WordPair(word: 'a', translation: 'b')];
@@ -34,12 +34,12 @@ void main() {
     final container = ProviderContainer(overrides: [
       ...fakeGroupOverrides(),
       ...fakeGroupOverrides(),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput()),
+      wordsNotifierProvider.overrideWith(() => _FakeInput()),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(
-        () => container.read(wordInputNotifierProvider.future));
-    final router = GoRouter(initialLocation: '/table', routes: $appRoutes);
+        () => container.read(wordsNotifierProvider.future));
+    final router = GoRouter(initialLocation: '/words/table', routes: $appRoutes);
     addTearDown(router.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -107,6 +107,6 @@ void main() {
   test('ComingSoonRoute sits under learn at soon and carries the exercise id',
       () {
     expect(const ComingSoonRoute(exercise: 'mnemonic-story').location,
-        '/table/learn/soon?exercise=mnemonic-story');
+        '/words/table/learn/soon?exercise=mnemonic-story');
   });
 }

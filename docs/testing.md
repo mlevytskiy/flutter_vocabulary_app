@@ -29,8 +29,8 @@ test is 15 minutes by design.
 ### Smoke — "does it still start and talk?"
 
 - **App:** `test/app_smoke_test.dart` starts the real `App()` (router + providers) on a stored
-  session and walks Main → words table → back → drawer → History → a past session's table →
-  Settings. Plus the core files tagged `@Tags(['smoke'])`: session store, word input notifier,
+  session, starts on Collections and walks the side menu (Collections, Words, App settings) →
+  Words → words table → back → Settings → Back to Collections. Plus the core files tagged `@Tags(['smoke'])`: session store, word input notifier,
   the Worker clients (`session_publish_service`, `dictionary_service`) and the Google Translate
   parser.
 - **Worker:** `vocab-photo-api/test/smoke.test.mjs`: the secret gate, then one session through

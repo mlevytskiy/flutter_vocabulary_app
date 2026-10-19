@@ -15,7 +15,7 @@ import 'package:flutter_vocabulary_app/core/services/story_picture_store.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
 import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
 import 'package:flutter_vocabulary_app/features/mnemonic_story/story_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 import 'fake_story_groups.dart';
 
@@ -23,7 +23,7 @@ import 'fake_story_groups.dart';
 /// shows a saved story, the running step, each failure with its button, the
 /// "Words changed" mark and "Make a new story".
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -166,7 +166,7 @@ void main() {
     tracker = _Tracker(StoryTrackerState(refusals: refusals));
     pictures = _Pictures();
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(() => FakeGroups(
           WordGroupsState(groups: [theGroup], selectedGroupId: 'g1'))),
       storyRunTrackerProvider.overrideWith(() => tracker),
@@ -175,7 +175,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -467,8 +467,8 @@ void main() {
 
   test('StoryRoute sits under learn at story and carries the group', () {
     expect(const StoryRoute(groupId: 'g1').location,
-        '/table/learn/story?group-id=g1');
+        '/words/table/learn/story?group-id=g1');
     expect(const StoryRoute(collectionId: 's9', groupId: 'g1').location,
-        '/table/learn/story?collection-id=s9&group-id=g1');
+        '/words/table/learn/story?collection-id=s9&group-id=g1');
   });
 }

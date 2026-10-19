@@ -14,14 +14,14 @@ import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
 import 'package:flutter_vocabulary_app/features/dialogue/dialogue_screen.dart';
 import 'package:flutter_vocabulary_app/features/mnemonic_story/story_screen.dart';
 import 'package:flutter_vocabulary_app/features/mnemonic_story/widgets/story_picture.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'fake_story_groups.dart';
 
 /// get-words-from-subtitles-improvment T22: the dialogue screen (SCR-07) shows
 /// the dialogue and its scene picture: drawn, drawing, or why not (AC-13,
 /// AC-14, AC-18, AC-19).
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -99,14 +99,14 @@ void main() {
     addTearDown(tester.view.reset);
     tracker = SceneTracker(StoryTrackerState(refusals: refusals));
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(
           () => FakeGroups(WordGroupsState(groups: [group], selectedGroupId: group.id))),
       storyRunTrackerProvider.overrideWith(() => tracker),
       groupStoryRunsProvider(group.id).overrideWith((ref) => Stream.value(runs)),
     ]);
     addTearDown(container.dispose);
-    await tester.runAsync(() => container.read(wordInputNotifierProvider.future));
+    await tester.runAsync(() => container.read(wordsNotifierProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: const MaterialApp(home: DialogueScreen(groupId: 'dialogue-d1')),

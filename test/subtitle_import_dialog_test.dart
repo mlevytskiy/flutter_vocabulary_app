@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_import_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/subtitle_import_dialog.dart';
 
 /// words-from-subtitles T10: the import dialog (SCR-02) — ux-flows; sad §6 F1;
 /// AC-01, AC-09, AC-11.

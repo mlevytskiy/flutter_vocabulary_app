@@ -16,9 +16,10 @@ import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_search.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_drag.dart';
+import 'package:flutter_vocabulary_app/features/collections/collection_icon.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_results_view.dart';
 import 'package:flutter_vocabulary_app/features/collections/match_outside_sheet.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 /// collection-tags T13 (SCR-05; AC-14, AC-19, AC-22, AC-23, AC-24, AC-27,
@@ -26,7 +27,7 @@ import 'package:flutter_vocabulary_app/router/routes.dart';
 /// collections-search (AC-01 – AC-08, AC-10) the list is the open folder's
 /// level and Match outside holds the rest.
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
   final opened = <String>[];
@@ -108,7 +109,7 @@ void main() {
     input = _FakeInput(current);
     await t.pumpWidget(ProviderScope(
       overrides: [
-        wordInputNotifierProvider.overrideWith(() => input),
+        wordsNotifierProvider.overrideWith(() => input),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([films, podcasts])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([
@@ -124,9 +125,9 @@ void main() {
             .overrideWith((ref) => Stream.value(summaries)),
       ],
       child: MaterialApp.router(
-        routerConfig: GoRouter(initialLocation: '/c', routes: [
+        routerConfig: GoRouter(initialLocation: '/words/c', routes: [
           GoRoute(
-            path: '/',
+            path: '/words',
             builder: (_, __) => const Text('MAIN SCREEN'),
             routes: [
               GoRoute(
@@ -154,8 +155,15 @@ void main() {
     await t.pump();
   }
 
+  /// The system Back (while searching the bar's leading is ← Close search).
+  Future<void> openSearchText(WidgetTester t, String query) async {
+    await t.enterText(find.byType(TextField), query);
+    await t.pump();
+    await t.pump();
+  }
+
   Future<void> back(WidgetTester t) async {
-    await t.tap(find.byType(BackButton));
+    await t.binding.handlePopRoute();
     await t.pumpAndSettle();
   }
 
@@ -178,6 +186,50 @@ void main() {
     await t.tap(find.byIcon(Icons.search));
     await t.pump();
     expect(find.byIcon(Icons.tune), findsOneWidget);
+  });
+
+  testWidgets(
+      'owner 2026-10-18: ← Close search ends the search and brings the folder '
+      'view back', (t) async {
+    await pump(t);
+    await openSearch(t, 'cook');
+    expect(resultTile('Cooking club'), findsOneWidget);
+    await t.tap(find.byTooltip('Close search'));
+    await t.pumpAndSettle();
+    expect(find.byType(TextField), findsNothing);
+    expect(find.byTooltip('Close search'), findsNothing);
+    expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(find.text('Films'), findsOneWidget); // the folder view
+    expect(find.text('MAIN SCREEN'), findsNothing); // did not leave the screen
+  });
+
+  testWidgets(
+      'owner 2026-10-18: ✕ shows only with text and clears the text, the '
+      'field stays', (t) async {
+    await pump(t);
+    await t.tap(find.byIcon(Icons.search));
+    await t.pump();
+    expect(find.byTooltip('Clear text'), findsNothing);
+    await openSearchText(t, 'cook');
+    expect(find.byTooltip('Clear text'), findsOneWidget);
+    await t.tap(find.byTooltip('Clear text'));
+    await t.pump();
+    await t.pump();
+    expect(find.byType(TextField), findsOneWidget);
+    expect(t.widget<TextField>(find.byType(TextField)).controller!.text, '');
+    expect(find.byTooltip('Clear text'), findsNothing);
+    expect(resultTile('Cooking club'), findsNothing);
+    expect(find.text('Films'), findsOneWidget);
+  });
+
+  testWidgets(
+      'owner 2026-10-18: opening search does not move the icons', (t) async {
+    await pump(t);
+    final icon = find.widgetWithText(CollectionIcon, 'Films');
+    final before = t.getRect(icon);
+    await t.tap(find.byIcon(Icons.search));
+    await t.pump();
+    expect(t.getRect(icon), before);
   });
 
   testWidgets('AC-01: a filter from a tag tap shows the filter icon too',

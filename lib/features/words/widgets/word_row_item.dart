@@ -15,7 +15,7 @@ import 'translation_dots_button.dart';
 /// lightning icons, the drag handle (in drag mode), the remove button, and
 /// the translation dots button. The screen still owns every parallel
 /// per-row list (controllers, focus nodes, flags) and passes this widget
-/// the index-th entry of each -- see word_input_screen.dart's `_buildItem`
+/// the index-th entry of each -- see words_screen.dart's `_buildItem`
 /// call sites.
 class WordRowItem extends StatelessWidget {
   final int index;

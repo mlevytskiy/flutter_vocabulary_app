@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/services/pronunciation_service.dart';
-import '../../word_input/widgets/pronunciation_buttons.dart';
+import '../../words/widgets/pronunciation_buttons.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_scaffold.dart';
 import '../kit/word_marks.dart';

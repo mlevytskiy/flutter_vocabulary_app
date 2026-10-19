@@ -15,11 +15,11 @@ import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/result_summary.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/typed_answer_field.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/typed_match.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-kit: the shared frame and widgets (S-06, S-08, S-11; AC-06 – AC-08,
 /// AC-10, AC-13, AC-14, AC-28 – AC-30, AC-34, AC-34c).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -337,7 +337,7 @@ void main() {
       final current = collection();
       final history = collection()..words.add(w('h', 'horse'));
       final container = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(current)),
         collectionByIdProvider(history.collectionId).overrideWith((ref) async => history),
       ]);
       addTearDown(container.dispose);

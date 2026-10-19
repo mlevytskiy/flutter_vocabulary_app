@@ -220,6 +220,29 @@ void main() {
       )));
       expect(find.text('F0'), findsOneWidget);
     });
+    testWidgets('pictures line up whatever the name and badges', (t) async {
+      await t.pumpWidget(_wrap(CollectionsGrid(
+        items: const [
+          CollectionItemView(id: 'a', isFolder: false, name: 'A'),
+          CollectionItemView(
+              id: 'b',
+              isFolder: false,
+              name: 'A rather long collection name',
+              badges: [SourceBadge.quizlet, SourceBadge.movie]),
+        ],
+        onTap: (_) {},
+        // As the screen's locked wrapper: loose constraints.
+        itemWrapper: (context, item, icon) =>
+            Align(alignment: AlignmentDirectional.topStart, child: icon),
+      )));
+      final tiles = find.byType(CollectionIcon);
+      expect(t.getSize(tiles.at(0)).width, t.getSize(tiles.at(1)).width);
+      for (var i = 0; i < 2; i++) {
+        final picture = find.descendant(
+            of: tiles.at(i), matching: find.byType(CollectionPicture));
+        expect(t.getCenter(picture).dx, t.getCenter(tiles.at(i)).dx);
+      }
+    });
   });
 
   group('badgesOf', () {

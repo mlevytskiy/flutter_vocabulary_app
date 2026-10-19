@@ -6,7 +6,7 @@ part of 'exercise_words.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$exerciseWordsHash() => r'02f5249336c3cf54cb68d5a2a6ce2ba4a25661d9';
+String _$exerciseWordsHash() => r'9347555cd130b5a18546070c7ee7f0956af0da7c';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -216,7 +216,7 @@ class _ExerciseWordsProviderElement extends AutoDisposeFutureProviderElement<
   String get groupId => (origin as ExerciseWordsProvider).groupId;
 }
 
-String _$exerciseDialoguesHash() => r'2a3c7f7820f9eed8a907315c53ae9a9499bbe436';
+String _$exerciseDialoguesHash() => r'2f542602f57c5e6523141cbb0c89674d75b4c1c0';
 
 /// The film dialogues of the session an exercise reads, same session choice as
 /// [exerciseWords] (null = current, id = History). S-31.

@@ -8,12 +8,12 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/widgets/learn_share_bar.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 /// learn-part-step-1 T9 (AC-01, AC-02, AC-03, AC-13): Learn on the Words screen.
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -37,21 +37,21 @@ void main() {
         WordPair(word: 'bare'),
       ];
     container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(current)),
       collectionByIdProvider(past.collectionId).overrideWith((ref) async => past),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       await container.read(collectionByIdProvider(past.collectionId).future);
     });
     final router = GoRouter(
       initialLocation:
-          shownId == null ? '/table' : '/table?collection-id=${past.collectionId}',
+          shownId == null ? '/words/table' : '/words/table?collection-id=${past.collectionId}',
       routes: [
         GoRoute(
-          path: '/table',
+          path: '/words/table',
           builder: (context, state) => WordsTableScreen(
               collectionId: state.uri.queryParameters['collection-id']),
           routes: [
@@ -116,7 +116,7 @@ void main() {
   testWidgets('AC-13: a History session opens learn for it, current untouched',
       (tester) async {
     await pump(tester, shownId: 'past');
-    final before = container.read(wordInputNotifierProvider).value!;
+    final before = container.read(wordsNotifierProvider).value!;
     final beforeId = before.collectionId;
     final beforeWords = before.words.length;
     await tester.tap(learn);
@@ -124,7 +124,7 @@ void main() {
     expect(find.byType(LearnScreen), findsOneWidget);
     expect(tester.widget<LearnScreen>(find.byType(LearnScreen)).collectionId,
         past.collectionId);
-    final after = container.read(wordInputNotifierProvider).value!;
+    final after = container.read(wordsNotifierProvider).value!;
     expect(after.collectionId, beforeId);
     expect(after.words.length, beforeWords);
     await tester.pageBack();

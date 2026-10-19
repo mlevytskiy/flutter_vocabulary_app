@@ -9,9 +9,9 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_level.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -95,7 +95,7 @@ void main() {
         collectionStoreProvider.overrideWith((ref) async => store),
         tagLibraryProvider.overrideWith((ref) => Stream.value([])),
         collectionSummariesProvider.overrideWith((ref) => Stream.value([])),
-        wordInputNotifierProvider.overrideWith(() => input),
+        wordsNotifierProvider.overrideWith(() => input),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
         collectionLevelProvider('f1').overrideWith((ref) => Stream.value([])),
@@ -107,7 +107,7 @@ void main() {
       ],
       child: MaterialApp.router(
         routerConfig: GoRouter(initialLocation: '/c', routes: [
-          GoRoute(path: '/', builder: (_, __) => const Text('MAIN SCREEN')),
+          GoRoute(path: '/words', builder: (_, __) => const Text('MAIN SCREEN')),
           GoRoute(path: '/c', builder: (_, __) => const CollectionsScreen()),
         ]),
       ),

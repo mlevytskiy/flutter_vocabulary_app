@@ -4,7 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/models/session_source.dart';
 import '../../../core/models/word_collection.dart';
 import '../../../core/providers.dart';
-import '../word_input_notifier.dart';
+import '../words_notifier.dart';
 
 part 'photos_with_words.g.dart';
 
@@ -37,7 +37,7 @@ extension SourceWithWordsKind on SourceWithWords {
 /// count (spec AC-15).
 @riverpod
 List<SourceWithWords> sourcesWithWords(Ref ref) =>
-    sourcesWithWordsOf(ref.watch(wordInputNotifierProvider).valueOrNull);
+    sourcesWithWordsOf(ref.watch(wordsNotifierProvider).valueOrNull);
 
 /// The sources with words of a stored collection, e.g. one the Words screen
 /// shows from History, read-only (words-photo-panel).

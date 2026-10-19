@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_progress_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/subtitle_progress_dialog.dart';
 
 /// The subtitle import's progress dialog: the picked words with their context
 /// lines, swipeable, translations as skeletons until they arrive, then filled

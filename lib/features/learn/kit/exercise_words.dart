@@ -6,7 +6,7 @@ import '../../../core/models/word_collection.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../../../core/story/word_grouping.dart';
-import '../../word_input/word_input_notifier.dart';
+import '../../words/words_notifier.dart';
 
 part 'exercise_words.g.dart';
 
@@ -19,7 +19,7 @@ part 'exercise_words.g.dart';
 Future<({List<WordPair> group, List<WordPair> others})> exerciseWords(
     Ref ref, String? collectionId, String groupId) async {
   final WordCollection? collection = collectionId == null
-      ? await ref.watch(wordInputNotifierProvider.future)
+      ? await ref.watch(wordsNotifierProvider.future)
       : await ref.watch(collectionByIdProvider(collectionId).future);
   if (collection == null) return (group: const <WordPair>[], others: const <WordPair>[]);
   final group = collection.groups.where((g) => g.id == groupId).firstOrNull;
@@ -36,7 +36,7 @@ Future<({List<WordPair> group, List<WordPair> others})> exerciseWords(
 @riverpod
 Future<List<FilmDialogue>> exerciseDialogues(Ref ref, String? collectionId) async {
   final WordCollection? collection = collectionId == null
-      ? await ref.watch(wordInputNotifierProvider.future)
+      ? await ref.watch(wordsNotifierProvider.future)
       : await ref.watch(collectionByIdProvider(collectionId).future);
   return collection?.dialogues ?? const <FilmDialogue>[];
 }

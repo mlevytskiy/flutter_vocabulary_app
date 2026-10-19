@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
-import 'package:flutter_vocabulary_app/features/word_input/widgets/photo_source_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/photo_source_dialog.dart';
 
 /// photo-from-gallery T3: the Camera/Gallery source choice — spec AC-01,
 /// AC-05; sad §4 "Source choice".

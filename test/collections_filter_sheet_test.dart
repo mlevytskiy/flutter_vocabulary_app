@@ -14,7 +14,7 @@ import 'package:flutter_vocabulary_app/core/services/collection_search.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_filter_sheet.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_results_view.dart';
 import 'package:flutter_vocabulary_app/features/collections/filter_tag_field.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 /// collection-tags T14 (SCR-06, SCR-07; AC-20, AC-20b, AC-21, AC-37, AC-38):
@@ -42,7 +42,7 @@ CollectionSummary _s(
       edited: DateTime.now(),
     );
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   @override
   Future<WordCollection> build() async => WordCollection.create()
     ..name = 'Cur'
@@ -281,7 +281,7 @@ void main() {
   testWidgets('apply shows the chips on the results', (t) async {
     await t.pumpWidget(ProviderScope(
       overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput()),
+        wordsNotifierProvider.overrideWith(() => _FakeInput()),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value(<CollectionFolder>[])),
         collectionLevelProvider(null)

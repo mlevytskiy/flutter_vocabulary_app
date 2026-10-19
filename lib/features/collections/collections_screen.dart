@@ -10,7 +10,8 @@ import '../../core/services/collection_search.dart';
 import '../../core/services/collection_search_scope.dart';
 import '../../core/services/filing.dart';
 import '../../router/routes.dart';
-import '../word_input/word_input_notifier.dart';
+import '../app_menu/app_drawer.dart';
+import '../words/words_notifier.dart';
 import 'bin_dialogs.dart';
 import 'collection_drag.dart';
 import 'collection_icon.dart';
@@ -54,6 +55,9 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   /// Delete mode: every icon but the current collection has a small bin
   /// button. A screen-only switch; it is off whenever the screen opens.
   bool _deleteMode = false;
+
+  /// The side menu is open.
+  bool _drawerOpen = false;
 
   /// Items whose picture is flying to the recycle bin; drawn invisible.
   final _flying = <String>{};
@@ -274,8 +278,8 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   /// A tap on a collection (AC-09, AC-18): open it with no question and go to
   /// the main screen; opening the current one changes nothing.
   Future<void> _openCollection(String id) async {
-    await ref.read(wordInputNotifierProvider.notifier).open(id);
-    if (mounted) const WordInputRoute().go(context);
+    await ref.read(wordsNotifierProvider.notifier).open(id);
+    if (mounted) const WordsRoute().go(context);
   }
 
   /// New collection (AC-10): made at the end of the open folder, then shown.
@@ -283,14 +287,14 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     final details =
         await showCollectionDetailsSheet(context, mode: DetailsMode.create);
     if (details == null || !mounted) return;
-    await ref.read(wordInputNotifierProvider.notifier).newCollectionWithDetails(
+    await ref.read(wordsNotifierProvider.notifier).newCollectionWithDetails(
           folderId,
           name: details.name,
           description: details.description,
           origin: details.origin,
           topic: details.topic,
         );
-    if (mounted) const WordInputRoute().go(context);
+    if (mounted) const WordsRoute().go(context);
   }
 
   @override
@@ -361,8 +365,9 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
         );
     // Back from a search started here clears it first; from a tag tap it
     // pops straight to the main screen (ux-flows, "Back from SCR-05").
+    // While the side menu is open Back only closes it.
     return PopScope(
-      canPop: !locked || search.enteredFromTag,
+      canPop: _drawerOpen || !locked || search.enteredFromTag,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) _clearSearch();
       },
@@ -373,6 +378,10 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
         child: BinZoneScope(
           zone: _binZone,
           child: Scaffold(
+            // The side menu while this is the start of the stack; pushed from
+            // a tag tap the bar keeps Back (navigation, owner 2026-10-18).
+            drawer: appDrawerIfRoot(context, AppMenuItem.collections),
+            onDrawerChanged: (open) => setState(() => _drawerOpen = open),
             appBar: AppBar(
               title: search.searching
                   ? TextField(
@@ -385,6 +394,21 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                             ? 'Search collections'
                             : 'Search in $folderName',
                         border: InputBorder.none,
+                        // ✕ while there is text: clears the text only; the
+                        // field and the keyboard stay (owner, 2026-10-18).
+                        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _query,
+                          builder: (context, value, _) => value.text.isEmpty
+                              ? const SizedBox.shrink()
+                              : IconButton(
+                                  icon: const Icon(Icons.close),
+                                  tooltip: 'Clear text',
+                                  onPressed: () {
+                                    _query.clear();
+                                    searchNotifier.setQuery('');
+                                  },
+                                ),
+                        ),
                       ),
                       onChanged: searchNotifier.setQuery,
                     )
@@ -404,15 +428,23 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                           ),
                         )
                       : const Text('Collections'),
-              leading: inFolder
-                  ? CollectionsUpButton(
-                      enabled: true,
-                      onUp: notifier.up,
-                      wrapper: (context, up) => UpDropTarget(
-                          level: level(), onDecision: _decide, child: up),
+              // While searching, ← closes the search as Back does: the text
+              // and filters go and the folder view comes back (owner,
+              // 2026-10-18).
+              leading: search.searching
+                  ? IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      tooltip: 'Close search',
+                      onPressed: _clearSearch,
                     )
-                  : null,
-              titleSpacing: inFolder ? 0 : null,
+                  : inFolder
+                      ? CollectionsUpButton(
+                          enabled: true,
+                          onUp: notifier.up,
+                          wrapper: (context, up) => UpDropTarget(
+                              level: level(), onDecision: _decide, child: up),
+                        )
+                      : null,
               backgroundColor: Theme.of(context).colorScheme.inversePrimary,
               actions: [
                 if (!search.searching)
@@ -551,8 +583,14 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                             }
                           },
                           // No drag or reorder while the search field is open (AC-22).
+                          // The icon keeps its own size at the cell's top
+                          // left, as inside the drag wrapper's Stack, so it
+                          // does not move when search opens (owner, 2026-10-18).
                           itemWrapper: locked
-                              ? null
+                              ? (context, item, icon) => Align(
+                                    alignment: AlignmentDirectional.topStart,
+                                    child: icon,
+                                  )
                               : (context, item, icon) {
                                   final ids = [
                                     for (final i in state.items ?? const [])

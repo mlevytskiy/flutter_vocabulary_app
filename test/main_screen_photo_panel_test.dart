@@ -11,16 +11,16 @@ import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/edge_glass.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/looks/edge_glass.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_morph.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
-import 'photo_panel_test_host.dart' show mainScreenRouter;
+import 'photo_panel_test_host.dart' show collectionsStub, mainScreenRouter;
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
 
 import 'seed_collections.dart';
@@ -91,17 +91,15 @@ void main() {
     container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
       sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
-      if (otherCollection != null)
-        nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value([current, otherCollection])),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: MaterialApp.router(routerConfig: mainScreenRouter()),
     ));
-    container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -401,17 +399,21 @@ void main() {
     expect(stop(tester), PanelStop.closed);
     expect(selected(tester), isNull);
     expect(highlighted(tester), isEmpty);
-    expect(find.byType(WordInputScreen), findsOneWidget);
+    expect(find.byType(WordsScreen), findsOneWidget);
 
-    // Closed: Back is no longer the panel's (the app may leave).
-    expect(await tester.binding.handlePopRoute(), isFalse);
+    // Closed: Back is no longer the panel's; it goes to Collections.
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text(collectionsStub), findsOneWidget);
     await tearDownMain(tester);
   });
 
-  testWidgets('no photo with words: no tab and no Back interception (AC-02)', (tester) async {
+  testWidgets('no photo with words: no tab; Back goes to Collections (AC-02)', (tester) async {
     await pumpMain(tester, photos: false, words: [WordPair(word: 'typed')]);
     expect(find.byKey(PhotoPanel.tabKey), findsNothing);
-    expect(await tester.binding.handlePopRoute(), isFalse);
+    expect(await tester.binding.handlePopRoute(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text(collectionsStub), findsOneWidget);
     await tearDownMain(tester);
   });
 
@@ -458,7 +460,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(selected(tester), 'p2');
 
-    container.read(wordInputNotifierProvider.notifier).updateAt(18, word: '');
+    container.read(wordsNotifierProvider.notifier).updateAt(18, word: '');
     await tester.pumpAndSettle();
     expect(selected(tester), isNull);
     expect(find.byKey(PhotoPanel.smallPhotoKey('p2')), findsNothing);
@@ -473,7 +475,7 @@ void main() {
     await pumpMain(tester);
     FocusManager.instance.primaryFocus?.unfocus();
     await openHalf(tester);
-    final rows = container.read(wordInputNotifierProvider).value!.words.length;
+    final rows = container.read(wordsNotifierProvider).value!.words.length;
 
     await tester.tap(line(1), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -490,7 +492,7 @@ void main() {
     await openHalf(tester);
     await tester.tapAt(delete);
     await tester.pumpAndSettle();
-    expect(container.read(wordInputNotifierProvider).value!.words.length, rows);
+    expect(container.read(wordsNotifierProvider).value!.words.length, rows);
 
     // Another row's one line: only closes the panel. (The tap above may have
     // selected a source, whose first row then went to the top.)
@@ -498,7 +500,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
     expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
-    expect(container.read(wordInputNotifierProvider).value!.words.length, rows);
+    expect(container.read(wordsNotifierProvider).value!.words.length, rows);
     await tearDownMain(tester);
   });
 
@@ -509,7 +511,7 @@ void main() {
     await tester.tap(find.text('Next'), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
-    expect(find.byType(WordInputScreen), findsOneWidget);
+    expect(find.byType(WordsScreen), findsOneWidget);
     expect(find.text('Next').hitTestable(), findsOneWidget, reason: 'still on the main screen');
 
     await openHalf(tester);
@@ -561,7 +563,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.runAsync(() =>
-        container.read(wordInputNotifierProvider.notifier).switchTo(other.collectionId));
+        container.read(wordsNotifierProvider.notifier).switchTo(other.collectionId));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
@@ -605,7 +607,7 @@ void main() {
     // Written now, outside the fake clock: a debounced Isar write begun
     // inside it never finishes and holds up the next tests' writes.
     await tester.runAsync(
-        () => container.read(wordInputNotifierProvider.notifier).flush());
+        () => container.read(wordsNotifierProvider.notifier).flush());
     await tester.pump();
     await tester.tap(find.byKey(SourceWordsDialog.closeKey));
     await tester.pumpAndSettle();
@@ -614,7 +616,7 @@ void main() {
 
     expect(tester.widget<WordRowMorph>(row(3)).word!.text, 'teapot');
     expect(
-        container.read(wordInputNotifierProvider).value!.words[3].word, 'teapot');
+        container.read(wordsNotifierProvider).value!.words[3].word, 'teapot');
     await tearDownMain(tester);
   });
 

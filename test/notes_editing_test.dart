@@ -15,10 +15,10 @@ import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/notes/photo_viewer_screen.dart';
 import 'package:flutter_vocabulary_app/features/tags/typed_tag_field.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_preview.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_preview.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 
@@ -27,7 +27,7 @@ import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 /// tags already used, opens a photo full screen and zooms it in place, and
 /// opens a source's words as on the main screen, with "+ Add a word".
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -121,18 +121,18 @@ void main() {
     testWidgets('the notifier inserts a word and tracks edits made elsewhere',
         (tester) async {
       final container = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(_collection())),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(_collection())),
         collectionStoreProvider
             .overrideWith((ref) => Completer<CollectionStore>().future),
       ]);
       addTearDown(container.dispose);
-      await container.read(wordInputNotifierProvider.future);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
+      await container.read(wordsNotifierProvider.future);
+      final notifier = container.read(wordsNotifierProvider.notifier);
 
       notifier.insertAt(
           2, WordPair(word: 'jug', translation: '', sourceId: 'p1'));
       expect([
-        for (final w in container.read(wordInputNotifierProvider).value!.words)
+        for (final w in container.read(wordsNotifierProvider).value!.words)
           w.word
       ], [
         'cup',
@@ -162,20 +162,19 @@ void main() {
       tester.view.devicePixelRatio = 2.7;
       addTearDown(tester.view.reset);
       container = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(_collection())),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(_collection())),
         // The debounced write waits for a store that never opens.
         collectionStoreProvider
             .overrideWith((ref) => Completer<CollectionStore>().future),
-        nonEmptyCollectionsProvider.overrideWith((ref) => Stream.value(stored)),
         sourcePhotoStoreProvider
             .overrideWithValue(photos = MapSourcePhotoStore({'p1': kPng})),
       ]);
       addTearDown(container.dispose);
       await tester
-          .runAsync(() => container.read(wordInputNotifierProvider.future));
-      final router = GoRouter(routes: [
+          .runAsync(() => container.read(wordsNotifierProvider.future));
+      final router = GoRouter(initialLocation: '/words', routes: [
         GoRoute(
-          path: '/',
+          path: '/words',
           builder: (_, __) => const NotesScreen(selectedId: 'p1'),
           routes: [
             GoRoute(
@@ -203,7 +202,7 @@ void main() {
         });
 
     WordCollection collection() =>
-        container.read(wordInputNotifierProvider).value!;
+        container.read(wordsNotifierProvider).value!;
     SessionSource source(String id) =>
         collection().sources.firstWhere((s) => s.id == id);
     Finder pager(String id) => find.byKey(NotesScreen.pagerKey(id));
@@ -483,7 +482,7 @@ void main() {
       expect(dialog, findsNothing);
       expect([for (final w in collection().words) w.word],
           ['cup', 'spoon', 'jug', 'pan', '']);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
+      final notifier = container.read(wordsNotifierProvider.notifier);
       expect(notifier.takeEditedElsewhere(), isTrue,
           reason: 'the main screen builds its rows again');
       // The page's words follow.

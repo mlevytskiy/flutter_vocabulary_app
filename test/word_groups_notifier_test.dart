@@ -16,7 +16,7 @@ import 'package:flutter_vocabulary_app/core/services/story_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/story/word_grouping.dart';
 import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -102,7 +102,7 @@ void main() {
     s.lastLocalModifiedAt = DateTime.now();
     await seedCollection(store, s);
     await store.setCurrentCollectionId(s.collectionId);
-    return (await container.read(wordInputNotifierProvider.future));
+    return (await container.read(wordsNotifierProvider.future));
   }
 
   WordGroupsNotifier current() =>
@@ -121,7 +121,7 @@ void main() {
     expect(stateOf().groups.map((g) => g.name), [allWordsName]);
     expect(stateOf().groups.single.rowIds, ids(1, 10));
     final saved = await store.byId(
-        (await container.read(wordInputNotifierProvider.future)).collectionId);
+        (await container.read(wordsNotifierProvider.future)).collectionId);
     expect(saved!.groups.single.name, allWordsName);
     expect(saved.groupedWordsKey, isNotEmpty);
   });
@@ -350,8 +350,8 @@ void main() {
     expect(savedCurrent!.groups, isEmpty);
     expect(savedCurrent.groupedWordsKey, isNull);
     expect(await store.currentCollectionId(), cur.collectionId);
-    expect(container.read(wordInputNotifierProvider).value!.collectionId, cur.collectionId);
-    expect(container.read(wordInputNotifierProvider).value!.groups, isEmpty);
+    expect(container.read(wordsNotifierProvider).value!.collectionId, cur.collectionId);
+    expect(container.read(wordsNotifierProvider).value!.groups, isEmpty);
   });
 
   group('dialogue groups (get-words-from-subtitles-improvment AC-24, AC-25)',

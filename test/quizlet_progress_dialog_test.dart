@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/services/quizlet_link.dart';
-import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_progress_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/quizlet_read_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/quizlet_progress_dialog.dart';
 
 /// A page driver standing in for the web view: the test decides when the
 /// page finishes loading, fails, and what the reader script returns.

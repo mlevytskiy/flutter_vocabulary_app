@@ -10,7 +10,7 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -52,7 +52,7 @@ void main() {
 
   /// A current session with rows attic (r1), stairs (r2), fog (r3) and one
   /// dialogue holding attic and stairs.
-  Future<(WordInputNotifier, String)> current(
+  Future<(WordsNotifier, String)> current(
       {PushState push = PushState.none}) async {
     final s = WordCollection.create()
       ..words = [pair('r1', 'attic'), pair('r2', 'stairs'), pair('r3', 'fog')]
@@ -66,11 +66,11 @@ void main() {
       ..lastLocalModifiedAt = DateTime.now();
     await seedCollection(store, s);
     await store.setCurrentCollectionId(s.collectionId);
-    await container.read(wordInputNotifierProvider.future);
-    return (container.read(wordInputNotifierProvider.notifier), s.collectionId);
+    await container.read(wordsNotifierProvider.future);
+    return (container.read(wordsNotifierProvider.notifier), s.collectionId);
   }
 
-  Future<List<FilmDialogue>> saved(WordInputNotifier n, String id) async {
+  Future<List<FilmDialogue>> saved(WordsNotifier n, String id) async {
     await n.flush();
     return (await store.byId(id))!.dialogues;
   }
@@ -125,7 +125,7 @@ void main() {
     n.removeAt(0);
     n.addAll([WordPair(word: 'attic', translation: 'т')]);
     n.setPairs([
-      ...container.read(wordInputNotifierProvider).value!.words,
+      ...container.read(wordsNotifierProvider).value!.words,
       WordPair(word: 'stairs', translation: 'т'),
     ]);
     expect((await saved(n, id)).single.wordRowIds, ['r2']);

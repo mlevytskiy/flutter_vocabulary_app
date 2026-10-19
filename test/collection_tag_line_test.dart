@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/tag_kind.dart';
-import 'package:flutter_vocabulary_app/features/word_input/collection_tag_line.dart';
+import 'package:flutter_vocabulary_app/features/words/collection_tag_line.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
 Widget _host(CollectionTagLine line) => MaterialApp(

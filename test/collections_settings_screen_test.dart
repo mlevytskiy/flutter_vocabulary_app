@@ -9,10 +9,10 @@ import 'package:go_router/go_router.dart';
 
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_settings_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   final done = Completer<({int vocabulary, int ai, int kept})>();
   int calls = 0;
 
@@ -42,7 +42,7 @@ void main() {
       (t) async {
     final input = _FakeInput();
     await t.pumpWidget(ProviderScope(
-      overrides: [wordInputNotifierProvider.overrideWith(() => input)],
+      overrides: [wordsNotifierProvider.overrideWith(() => input)],
       child: MaterialApp.router(
         routerConfig: GoRouter(
           routes: $appRoutes,

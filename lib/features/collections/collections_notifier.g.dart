@@ -7,7 +7,7 @@ part of 'collections_notifier.dart';
 // **************************************************************************
 
 String _$collectionsNotifierHash() =>
-    r'c40d7a8781057cb759b4b12ed634aea16de7a3a6';
+    r'4236aaf5550a18ba9b2893c5bfff6d5875823110';
 
 /// Holds the open folder of the Collections screen (collections-screen T15).
 ///

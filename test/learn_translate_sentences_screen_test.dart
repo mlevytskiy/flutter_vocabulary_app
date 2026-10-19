@@ -14,13 +14,13 @@ import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/translate_sentences/translate_sentences_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/pronunciation_buttons.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/pronunciation_buttons.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'dart:math';
 
 /// learn-translate-sentences: the screen (AC-01, AC-04 – AC-07, AC-09 – AC-20,
 /// AC-22, AC-24, AC-25, AC-27, AC-28; §6 call counts and feedback timing).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -111,7 +111,7 @@ void main() {
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);

@@ -11,7 +11,7 @@ import '../../core/story/story_run_tracker.dart';
 import '../../core/story/word_grouping.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../learn/learn_screen.dart' show storyDayLimitMessage;
-import '../word_input/word_input_notifier.dart';
+import '../words/words_notifier.dart';
 import 'widgets/new_story_dialog.dart';
 import 'widgets/story_parts.dart';
 import 'widgets/story_picture.dart';
@@ -64,7 +64,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   StoryRunTracker get _tracker => ref.read(storyRunTrackerProvider.notifier);
 
   WordCollection? get _collection => widget.collectionId == null
-      ? ref.watch(wordInputNotifierProvider).valueOrNull
+      ? ref.watch(wordsNotifierProvider).valueOrNull
       : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
 
   /// A new run for [group], replacing what it shows only once it has a picture

@@ -9,7 +9,7 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/story_run.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_settings/words_settings_screen.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
@@ -93,7 +93,7 @@ StoryRun _run(String id, List<StoryStep> steps) => StoryRun()
   ..startedAt = DateTime(2026, 10, 7)
   ..steps = steps;
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -350,15 +350,15 @@ void main() {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'coffee', translation: 'кава')];
       final container = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
         offeredAisProvider.overrideWith((ref) async => _offered),
         storyRunsProvider.overrideWith((ref) => Stream.value(const [])),
       ]);
       addTearDown(container.dispose);
-      await tester.runAsync(() => container.read(wordInputNotifierProvider.future));
-      final router = GoRouter(initialLocation: '/table', routes: [
+      await tester.runAsync(() => container.read(wordsNotifierProvider.future));
+      final router = GoRouter(initialLocation: '/words/table', routes: [
         GoRoute(
-          path: '/table',
+          path: '/words/table',
           builder: (context, state) => const WordsTableScreen(),
           routes: [
             GoRoute(

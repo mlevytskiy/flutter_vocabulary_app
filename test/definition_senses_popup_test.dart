@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/definition_dots_button.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/definition_dots_button.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_item.dart';
 
 /// definition-mode T13: the definition dots popup lists the dictionary's
 /// senses and a tap picks one (spec AC-08).

@@ -12,7 +12,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/theme/app_decor.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_details_sheet.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -335,15 +335,15 @@ void main() {
     await setUpStore(t);
     addTearDown(() => tearDownStore(t));
     await t.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       await container
-          .read(wordInputNotifierProvider.notifier)
+          .read(wordsNotifierProvider.notifier)
           .newCollectionWithDetails(null,
               name: 'Kitchen talk',
               description: 'Season 1 phrases',
               origin: ['Podcast'],
               topic: ['Food']);
-      final current = container.read(wordInputNotifierProvider).value!;
+      final current = container.read(wordsNotifierProvider).value!;
       final stored = (await store.byId(current.collectionId))!;
       expect(stored.name, 'Kitchen talk');
       expect(stored.description, 'Season 1 phrases');
@@ -364,7 +364,7 @@ void main() {
         ..words = [WordPair(word: 'apple', translation: 'яблуко')];
       await seedCollection(store, seeded);
       await store.setCurrentCollectionId(seeded.collectionId);
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
     });
     await openSheet(t,
         mode: DetailsMode.edit,
@@ -380,14 +380,14 @@ void main() {
     expect(result!.name, 'Dining room');
     await t.runAsync(() async {
       final saved =
-          await container.read(wordInputNotifierProvider.notifier).saveDetails(
+          await container.read(wordsNotifierProvider.notifier).saveDetails(
                 name: result!.name,
                 description: result!.description,
                 origin: result!.origin,
                 topic: result!.topic,
               );
       expect(saved, isTrue);
-      final now = container.read(wordInputNotifierProvider).value!;
+      final now = container.read(wordsNotifierProvider).value!;
       expect(now.name, 'Dining room');
       expect(now.topicTags, ['Food']);
       expect((await store.byId(seeded.collectionId))!.name, 'Dining room');

@@ -9,7 +9,7 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -49,7 +49,7 @@ void main() {
   });
 
   Future<WordCollection> launch() =>
-      container.read(wordInputNotifierProvider.future);
+      container.read(wordsNotifierProvider.future);
 
   Future<WordCollection> seed({
     required Duration ago,
@@ -242,7 +242,7 @@ void main() {
             c!..binnedAt = DateTime.now().subtract(const Duration(days: 31)));
       });
 
-      await container.read(wordInputNotifierProvider.notifier).resume();
+      await container.read(wordsNotifierProvider.notifier).resume();
 
       expect(await store.byId(old.collectionId), isNull);
     });
@@ -251,9 +251,9 @@ void main() {
       final prev = await seed(ago: const Duration(days: 2));
       await launch();
 
-      await container.read(wordInputNotifierProvider.notifier).resume();
+      await container.read(wordsNotifierProvider.notifier).resume();
 
-      expect(container.read(wordInputNotifierProvider).value!.collectionId,
+      expect(container.read(wordsNotifierProvider).value!.collectionId,
           prev.collectionId);
       expect(await count(), 1);
     });
@@ -273,9 +273,9 @@ void main() {
         await isar.wordCollections.put(c!..binnedAt = DateTime.now());
       });
 
-      await container.read(wordInputNotifierProvider.notifier).resume();
+      await container.read(wordsNotifierProvider.notifier).resume();
 
-      expect(container.read(wordInputNotifierProvider).value!.collectionId,
+      expect(container.read(wordsNotifierProvider).value!.collectionId,
           ok.collectionId);
       expect(await store.currentCollectionId(), ok.collectionId);
     });
@@ -302,7 +302,7 @@ void main() {
       }
       expect(prefs.getString('current_session_id'), 'keep');
 
-      final c = container.read(wordInputNotifierProvider.notifier);
+      final c = container.read(wordsNotifierProvider.notifier);
       await seed(ago: const Duration(minutes: 1));
       await c.future;
       await c.resume();

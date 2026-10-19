@@ -15,7 +15,7 @@ String _formatDuration(Duration d) {
 /// words (each removable before accepting), and a Done button. Resolves
 /// with whatever words are left un-removed when the user taps Done, or
 /// `null`/an empty list if none should be added -- the caller decides what
-/// to do with that (see `_addWordsFromPhoto` at the word_input_screen.dart
+/// to do with that (see `_addWordsFromPhoto` at the words_screen.dart
 /// call site).
 Future<List<VocabWord>?> showVocabResultDialog(
   BuildContext context,

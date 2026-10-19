@@ -12,9 +12,9 @@ import 'package:flutter_vocabulary_app/features/collections/bin_dialogs.dart';
 import 'package:flutter_vocabulary_app/features/collections/bin_drop_zone.dart';
 import 'package:flutter_vocabulary_app/features/collections/collection_drag.dart';
 import 'package:flutter_vocabulary_app/features/collections/collections_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
   @override
@@ -94,7 +94,7 @@ void main() {
     await t.pumpWidget(ProviderScope(
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([

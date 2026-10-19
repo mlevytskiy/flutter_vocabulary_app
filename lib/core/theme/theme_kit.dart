@@ -37,6 +37,13 @@ TextTheme withDisplayFont(TextTheme text, String display) {
   );
 }
 
+/// Every top bar's room for the menu or Back button and its gap before the
+/// title: the Words screen's, so the title starts right after the button on
+/// every screen (owner, 2026-10-18). A bar with no leading button sets its
+/// own titleSpacing.
+const barLeadingWidth = 48.0;
+const barTitleSpacing = 0.0;
+
 /// A themed [ThemeData]: [scheme] and [decor], [bodyFont] for text and
 /// [displayFont] for titles, [radius] for buttons, fields, cards and sheets.
 /// A null [bodyFont] is the platform's own sans; [scaffold] is the page colour
@@ -70,6 +77,8 @@ ThemeData buildTheme({
       foregroundColor: barText,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: textTheme.titleLarge?.copyWith(color: barText),
+      leadingWidth: barLeadingWidth,
+      titleSpacing: barTitleSpacing,
     ),
     cardTheme: CardThemeData(shape: shape),
     dialogTheme: DialogThemeData(shape: shape),

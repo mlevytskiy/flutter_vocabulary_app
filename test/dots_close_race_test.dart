@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/translation_dots_button.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/translation_dots_button.dart';
 
 /// Reproduces the device sequence: keyboard up, tap the dots (the app unfocuses
 /// -> the keyboard goes away), then let the inset change settle. The popup must

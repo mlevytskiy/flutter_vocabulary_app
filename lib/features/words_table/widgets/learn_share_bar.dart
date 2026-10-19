@@ -83,6 +83,8 @@ class LearnShareBar extends StatelessWidget implements PreferredSizeWidget {
 
       return AppBar(
         centerTitle: true,
+        // Its own Back room, which the layout above counts on.
+        leadingWidth: _leadingWidth,
         titleSpacing: 0,
         title: Row(
           children: [

@@ -7,8 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_search_service.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_import_dialog.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/subtitle_search_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/subtitle_import_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/subtitle_search_dialog.dart';
 
 class FakeSearch extends SubtitleSearchService {
   final searched = <String>[];

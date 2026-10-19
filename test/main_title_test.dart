@@ -14,9 +14,9 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/collections/name_dialog.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/collection_title.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/collection_title.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -87,13 +87,13 @@ void main() {
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: const MaterialApp(home: WordsScreen()),
     ));
     if (name != null) await titleBecomes(tester, name);
   }
@@ -190,9 +190,10 @@ void main() {
     var revealed = false;
     for (var i = 0; i < 60 && !revealed; i++) {
       await tester.pump(const Duration(milliseconds: 16));
+      // Mid-reveal the title is single animated letters.
       revealed = find
           .descendant(
-              of: find.byType(AppBar), matching: find.byType(ImageFiltered))
+              of: find.byType(CollectionTitle), matching: find.byType(Opacity))
           .evaluate()
           .isNotEmpty;
       if (!revealed) {
@@ -274,9 +275,9 @@ void main() {
       expect((await store.byId(current.collectionId))!.name, 'Garden');
       // The next autosave must not bring the old name back.
       container
-          .read(wordInputNotifierProvider.notifier)
+          .read(wordsNotifierProvider.notifier)
           .addAll([WordPair(word: 'pear')]);
-      await container.read(wordInputNotifierProvider.notifier).flush();
+      await container.read(wordsNotifierProvider.notifier).flush();
       expect((await store.byId(current.collectionId))!.name, 'Garden');
     });
     await tearDownMain(tester);

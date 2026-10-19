@@ -11,7 +11,7 @@ import '../../core/story/story_run_tracker.dart';
 import '../../core/story/word_grouping.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/words_notifier.dart';
 import 'exercises.dart';
 import 'widgets/group_pager.dart';
 import 'widgets/step_progress.dart';
@@ -170,7 +170,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
 
   /// The session whose words the groups name.
   WordCollection? get _collection => widget.collectionId == null
-      ? ref.watch(wordInputNotifierProvider).valueOrNull
+      ? ref.watch(wordsNotifierProvider).valueOrNull
       : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
 
   /// The group line, the group pager and the grouping messages above the

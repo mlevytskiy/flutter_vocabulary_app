@@ -15,7 +15,7 @@ import '../learn/learn_screen.dart' show storyDayLimitMessage;
 import '../mnemonic_story/story_screen.dart' show groupStoryRunsProvider;
 import '../mnemonic_story/widgets/story_parts.dart';
 import '../mnemonic_story/widgets/story_picture.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/words_notifier.dart';
 
 /// "Dialogs from movie" for one dialogue group (get-words-from-subtitles-
 /// improvment SCR-07): the scene picture over the dialogue, its words in bold.
@@ -53,7 +53,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
   StoryRunTracker get _tracker => ref.read(storyRunTrackerProvider.notifier);
 
   WordCollection? get _collection => widget.collectionId == null
-      ? ref.watch(wordInputNotifierProvider).valueOrNull
+      ? ref.watch(wordsNotifierProvider).valueOrNull
       : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
 
   @override

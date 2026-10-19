@@ -45,7 +45,7 @@ final amberTerminal = AppThemeSpec(
         fabAlt: const Color(0xFFFF7A3D),
         onFabAlt: dark,
         dialPhoto: amber,
-        dialSubtitles: const Color(0xFF5C4310),
+        dialSubtitles: const Color(0xFF8AE234),
         dialQuizlet: const Color(0xFFFF7A3D),
         dialFolder: glow,
         onDial: dark,

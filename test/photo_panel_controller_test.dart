@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
 
 /// side-bar-for-main-screen T1: the panel's stop and its one selected photo
 /// (spec AC-05, AC-15). Nothing is saved.

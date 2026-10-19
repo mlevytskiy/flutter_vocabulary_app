@@ -8,8 +8,10 @@ import 'package:image_picker_platform_interface/image_picker_platform_interface.
 
 import 'app_restarter.dart';
 import 'core/services/photo_scaler.dart';
+import 'router/routes.dart';
+import 'router/start_location.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Spawn the long-lived background isolate used to downscale photos before
   // sending them to the vocabulary API, so it's ready by the time the user
@@ -17,6 +19,7 @@ void main() {
   unawaited(PhotoScaler.instance.start());
   useAndroidPhotoPicker();
   registerFontLicenses();
+  appStartLocation = await StartLocation.resolve();
   runApp(const AppRestarter());
 }
 

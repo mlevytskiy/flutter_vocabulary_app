@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/source_tile.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_logo_icon.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/source_tile.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/quizlet_logo_icon.dart';
 
 import 'photo_panel_test_host.dart';
 

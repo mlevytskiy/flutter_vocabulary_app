@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/row_jump.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/row_jump.dart';
 
 /// side-bar-for-main-screen T12: the jump to a photo's first row brings it
 /// fully into view within 500 ms in a list of 200 rows of mixed heights,

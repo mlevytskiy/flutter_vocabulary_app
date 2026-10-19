@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/translation_dots_button.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/translation_dots_button.dart';
 
 /// Mirrors the real screen: one row per word pair, and -- critically -- one
 /// `CustomPopupMenuController` *per row*, exactly as `_popupControllers` does.
@@ -93,7 +93,7 @@ void main() {
               index: i,
               controller: controllers[i],
               focusNode: focusNodes[i],
-              // Both handlers mirror word_input_screen.dart.
+              // Both handlers mirror words_screen.dart.
               onOpen: () {
                 openedIndex = i;
                 unfocused++;

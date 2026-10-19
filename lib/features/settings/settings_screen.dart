@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/subtitle_import_options.dart';
 import '../../core/providers.dart';
+import '../words/photo_panel/looks/edge_glass.dart';
 
 /// Preferences for the app: the drag-and-drop mode toggle that used to be an
 /// `IconButton` in the input screen's AppBar (task-13, reversing part of
@@ -11,7 +12,8 @@ import '../../core/providers.dart';
 /// (definition-mode), and the subtitle import values, the "Update with each
 /// import" switch and the subtitle model (words-from-subtitles, SCR-06), and
 /// the "Get dialogues from subtitles" switch (get-words-from-subtitles-improvment,
-/// SCR-03).
+/// SCR-03). Where the photo panel's glass is liquid (iOS with shaders), a
+/// Liquid glass section comes first (liquid-glass-tuning, owner 2026-10-19).
 ///
 /// The mode itself is not stored here -- it is `dragModeProvider`, read by the
 /// input screen and written by this switch, so the two screens cannot disagree
@@ -34,6 +36,10 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
+          if (EdgeGlass.liquidDrawn) ...[
+            const LiquidGlassSection(),
+            const Divider(),
+          ],
           SwitchListTile(
             secondary: const Icon(Icons.drag_indicator),
             title: const Text('Drag and Drop мод'),
@@ -227,6 +233,95 @@ class _MaximumFieldState extends State<_MaximumField> {
       textAlign: TextAlign.end,
       decoration: InputDecoration(errorText: _error, errorMaxLines: 2),
       onChanged: _changed,
+    );
+  }
+}
+
+/// The Liquid glass section (liquid-glass-tuning, owner 2026-10-19): how
+/// wide the bending band along the photo tab's and the half-open panel's
+/// edge is, how far it bends and how much it blurs, each in percent of the
+/// looks' own values, and Reset back to 100%.
+class LiquidGlassSection extends ConsumerWidget {
+  const LiquidGlassSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tuning = ref.watch(liquidGlassTuningProvider);
+    final notifier = ref.read(liquidGlassTuningProvider.notifier);
+    Widget slider(String label, double value, ({double min, double max}) range,
+            LiquidGlassTuning Function(double) withValue) =>
+        _PercentSlider(
+          label: label,
+          value: value,
+          min: range.min,
+          max: range.max,
+          onChanged: (v) => notifier.set(withValue(v)),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.water_drop_outlined),
+          title: const Text('Liquid glass'),
+          subtitle: const Text('The photo tab and panel'),
+          trailing: TextButton(
+            onPressed: tuning == LiquidGlassTuningNotifier.asDesigned
+                ? null
+                : notifier.reset,
+            child: const Text('Reset'),
+          ),
+        ),
+        slider('Thickness', tuning.thickness,
+            LiquidGlassTuningNotifier.thicknessRange,
+            (v) => (thickness: v, bending: tuning.bending, blur: tuning.blur)),
+        slider('Bending', tuning.bending, LiquidGlassTuningNotifier.bendingRange,
+            (v) => (thickness: tuning.thickness, bending: v, blur: tuning.blur)),
+        slider('Blur', tuning.blur, LiquidGlassTuningNotifier.blurRange,
+            (v) => (thickness: tuning.thickness, bending: tuning.bending, blur: v)),
+      ],
+    );
+  }
+}
+
+/// One slider of [LiquidGlassSection], in 10% steps, with its percentage.
+class _PercentSlider extends StatelessWidget {
+  const _PercentSlider({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = '${(value * 100).round()}%';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(72, 0, 16, 0),
+      child: Row(
+        children: [
+          SizedBox(width: 84, child: Text(label)),
+          Expanded(
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              divisions: ((max - min) * 10).round(),
+              label: percent,
+              semanticFormatterCallback: (_) => '$label $percent',
+              onChanged: (v) => onChanged((v * 10).round() / 10),
+            ),
+          ),
+          SizedBox(
+              width: 48, child: Text(percent, textAlign: TextAlign.end)),
+        ],
+      ),
     );
   }
 }

@@ -35,6 +35,7 @@ class PhotoPanel extends ConsumerStatefulWidget {
     this.busy = false,
     this.hidden = false,
     this.bottomReserve = 0,
+    this.tabTopInset = 0,
     this.scrollController,
     this.onSelected,
     this.onOpenNotes,
@@ -66,6 +67,13 @@ class PhotoPanel extends ConsumerStatefulWidget {
   /// Height kept free at the bottom of the words page for the floating
   /// buttons and a SnackBar; the tab never goes lower (spec AC-01).
   final double bottomReserve;
+
+  /// Height at the top of the words page that belongs to the top bar, e.g.
+  /// the main screen's tag line. The tab's stored height counts from above
+  /// it, so the tab stands at the same place on every screen that has one
+  /// (owner, 2026-10-19: it stays put from the main screen to the Words
+  /// screen); it never goes above the words page.
+  final double tabTopInset;
 
   /// The word list's controller; its scrolling hides the tab for a look that
   /// asks for it (spec AC-19).
@@ -407,7 +415,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
   // The tab's height on the words page.
 
   double _tabTop(Size page, Size tab) => PhotoTabTopNotifier.clamp(
-        _dragTop ?? ref.watch(photoTabTopProvider),
+        _dragTop ?? ref.watch(photoTabTopProvider) - widget.tabTopInset,
         min: 0,
         max: page.height - widget.bottomReserve - tab.height,
       );
@@ -453,7 +461,9 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
           min: 0,
           max: page.height - widget.bottomReserve - tab.height,
         );
-        ref.read(photoTabTopProvider.notifier).set(top);
+        ref
+            .read(photoTabTopProvider.notifier)
+            .set(top + widget.tabTopInset);
         setState(() => _dragTop = null);
       case _TabDrag.open:
         _endPanelDrag(velocityX);
@@ -984,6 +994,27 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     }
   }
 
+  /// The words page in overlay coordinates as its route shows it once the
+  /// route's transition is over. A route sliding or zooming in or out moves
+  /// its page, not the tab and the panel: they stay where they stand, so the
+  /// tab stays on screen from the main screen to the Words screen and back
+  /// (owner, 2026-10-19). Moves inside the page, e.g. the main screen's
+  /// pager, still move them. The route's page fills the overlay.
+  Rect _settledPage(OverlayChildLayoutInfo info) {
+    final pageBox = _route?.subtreeContext?.findRenderObject();
+    final childBox = context.findRenderObject();
+    if (pageBox is RenderBox &&
+        childBox is RenderBox &&
+        pageBox.attached &&
+        childBox.attached) {
+      return MatrixUtils.transformRect(
+          childBox.getTransformTo(pageBox), Offset.zero & info.childSize);
+    }
+    final origin =
+        MatrixUtils.transformPoint(info.childPaintTransform, Offset.zero);
+    return origin & info.childSize;
+  }
+
   @override
   Widget build(BuildContext context) {
     final stored = widget.collectionId;
@@ -1008,9 +1039,7 @@ class _PhotoPanelState extends ConsumerState<PhotoPanel>
     return OverlayPortal.overlayChildLayoutBuilder(
       controller: _portal,
       overlayChildBuilder: (context, info) {
-        final origin =
-            MatrixUtils.transformPoint(info.childPaintTransform, Offset.zero);
-        _page = origin & info.childSize;
+        _page = _settledPage(info);
         _overlay = info.overlaySize;
         _devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
         _want(_exclusionFor(sources));

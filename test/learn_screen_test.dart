@@ -8,12 +8,12 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercises.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/widgets/step_progress.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 import 'fake_story_groups.dart';
 
 /// learn-part-step-1 T6 (AC-04, AC-06, AC-07, AC-13): the app's learn page.
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -40,13 +40,13 @@ void main() {
     addTearDown(tester.view.reset);
     container = ProviderContainer(overrides: [
       ...fakeGroupOverrides(),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(current)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(current)),
       collectionByIdProvider(history.collectionId)
           .overrideWith((ref) async => history),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       await container.read(collectionByIdProvider(history.collectionId).future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -314,14 +314,14 @@ void main() {
       (tester) async {
     await pump(tester, collectionId: history.collectionId);
     expect(find.byType(LearnScreen), findsOneWidget);
-    expect(container.read(wordInputNotifierProvider).value!.collectionId,
+    expect(container.read(wordsNotifierProvider).value!.collectionId,
         current.collectionId);
   });
 
   test('LearnRoute sits under the table and carries the optional sessionId',
       () {
-    expect(const LearnRoute().location, '/table/learn');
+    expect(const LearnRoute().location, '/words/table/learn');
     expect(const LearnRoute(collectionId: 'abc').location,
-        '/table/learn?collection-id=abc');
+        '/words/table/learn?collection-id=abc');
   });
 }

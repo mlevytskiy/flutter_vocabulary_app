@@ -11,9 +11,9 @@ import 'photo_panel_look.dart';
 /// edge with concave flares ([EdgeGlass]), a dark full-open that pages
 /// through the photos sideways, and a tinted row highlight.
 ///
-/// The glass is `liquid_glass_renderer`'s: it refracts and blurs the word
-/// rows behind it on Impeller (iOS, most Android phones) and falls back to a
-/// frosted blur with the same outline where shaders are not available.
+/// The glass is `liquid_glass_renderer`'s on iOS: it refracts and blurs the
+/// word rows behind it, and falls back to a frosted blur with the same
+/// outline on Android and where shaders are not available.
 class LookA extends PhotoPanelLook {
   const LookA();
 

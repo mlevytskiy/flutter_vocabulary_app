@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 /// definition-mode T9: a photo word's context description becomes the row's
 /// definition in every mode, and never stands in for the translation

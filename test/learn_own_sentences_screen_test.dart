@@ -14,12 +14,12 @@ import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/own_sentences/own_sentences_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'dart:math';
 
 /// learn-own-sentences: the screen (AC-01, AC-04 – AC-23, AC-26, AC-27, AC-29,
 /// AC-30; §6 call counts and feedback timing).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -98,7 +98,7 @@ void main() {
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);

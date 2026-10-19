@@ -10,8 +10,8 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -49,7 +49,7 @@ void main() {
     ]);
     // Resolve the session outside the fake-async zone: Isar needs real I/O.
     await tester
-        .runAsync(() => container.read(wordInputNotifierProvider.future));
+        .runAsync(() => container.read(wordsNotifierProvider.future));
     // Not closing the store: Isar would wait for a write begun inside the
     // widget test's fake-async zone, which never finishes. One test per file
     // keeps the open instance from colliding.
@@ -60,20 +60,20 @@ void main() {
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: const MaterialApp(home: WordsScreen()),
     ));
     // In the app the session resolves after the screen mounts, and the
     // screen's ref.listen rebuilds its rows from it. Here it resolved first
     // (Isar needs real I/O), so re-emit it once to drive that same path.
-    final notifier = container.read(wordInputNotifierProvider.notifier);
+    final notifier = container.read(wordsNotifierProvider.notifier);
     notifier.setPairs(
-        List.of(container.read(wordInputNotifierProvider).value!.words));
+        List.of(container.read(wordsNotifierProvider).value!.words));
     await tester.pump();
     await tester.pump();
   }
 
   List<WordPair> words() =>
-      container.read(wordInputNotifierProvider).value!.words;
+      container.read(wordsNotifierProvider).value!.words;
 
   /// Unmounts the screen (its dispose() still reads providers) and disposes
   /// the container, which cancels the notifier's debounced save timer.
@@ -105,6 +105,6 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // Row alignment on remove/reorder is covered at the notifier level
-  // (word_input_notifier_test.dart); removing a row here goes through the
+  // (words_notifier_test.dart); removing a row here goes through the
   // pronunciation plugin, which this harness cannot drive.
 }

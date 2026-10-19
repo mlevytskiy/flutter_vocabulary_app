@@ -13,10 +13,10 @@ import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/pick_the_answer/pick_the_answer_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-pick-the-answer: the screen (AC-01, AC-04 – AC-07, AC-12, AC-14 – AC-20).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -58,7 +58,7 @@ void main() {
     final container = ProviderContainer(overrides: [
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
       ...extra,
     ]);

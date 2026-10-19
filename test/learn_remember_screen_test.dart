@@ -13,11 +13,11 @@ import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/pronunciation_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/pronunciation_buttons.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/pronunciation_buttons.dart';
 
 /// learn-remember-or-not: the screen (AC-01, AC-05 – AC-09, AC-11, AC-14 – AC-19, AC-21).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -77,7 +77,7 @@ void main() {
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(_NoNetwork()),
       pronunciationServiceProvider.overrideWithValue(speech),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);
@@ -263,7 +263,7 @@ void main() {
     await tapText(tester, 'learn page');
     await tester.pumpAndSettle();
     expect(find.text('Card 1 of 5'), findsOneWidget);
-    expect(c.read(wordInputNotifierProvider).requireValue.words.length, 5);
+    expect(c.read(wordsNotifierProvider).requireValue.words.length, 5);
   });
 
   testWidgets('AC-16: fewer than 3 usable words: only the message and Back', (tester) async {

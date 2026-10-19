@@ -12,10 +12,10 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-match-synonyms: the screen (AC-01, AC-03 – AC-08, AC-13 – AC-22).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -72,7 +72,7 @@ void main() {
     final container = ProviderContainer(overrides: [
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(api),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);

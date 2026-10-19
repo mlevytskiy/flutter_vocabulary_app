@@ -108,7 +108,6 @@ void main() {
       expect((await store.bin(f, now: t0)).result, BinResult.done);
       expect((await folder(f)).binnedAt, t0);
       expect((await stored(a)).binnedAt, isNull);
-      expect(await store.watchHistory().first, isEmpty);
     });
 
     test('a folder holding the current collection moves it to its old place',

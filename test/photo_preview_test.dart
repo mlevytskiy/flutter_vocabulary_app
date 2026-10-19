@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_preview.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_preview.dart';
 
 /// A 1×1 PNG.
 final kPng = base64Decode(

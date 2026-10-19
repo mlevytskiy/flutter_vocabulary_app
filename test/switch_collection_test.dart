@@ -15,8 +15,8 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/dictionary_service.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -119,18 +119,18 @@ void main() {
         dictionaryServiceProvider.overrideWithValue(dictionary),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: const MaterialApp(home: WordsScreen()),
     ));
     // The session resolved before the screen mounted, so nudge the notifier
     // once for the screen's listener to fill the rows. A blank row is not a
     // content change: it stamps nothing.
-    container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
   }
@@ -144,21 +144,21 @@ void main() {
 
   Future<void> switchToPicked(WidgetTester tester) async {
     await tester.runAsync(() => container
-        .read(wordInputNotifierProvider.notifier)
+        .read(wordsNotifierProvider.notifier)
         .switchTo(picked.collectionId));
     await tester.pump();
     await tester.pump();
   }
 
   List<WordPair> words() =>
-      container.read(wordInputNotifierProvider).value!.words;
+      container.read(wordsNotifierProvider).value!.words;
 
   Finder field(String label) => find.byWidgetPredicate(
       (w) => w is TextField && w.decoration?.labelText == label);
 
   Future<void> expectPickedUntouched(WidgetTester tester,
       {String leftTranslation = ''}) async {
-    expect(container.read(wordInputNotifierProvider).value!.collectionId,
+    expect(container.read(wordsNotifierProvider).value!.collectionId,
         picked.collectionId);
     expect(words().where((w) => !w.isEmpty).map((w) => w.word),
         ['tea', 'milk']);
@@ -169,7 +169,7 @@ void main() {
     // Whatever is waiting to be saved goes to the store now (in the real
     // zone: a debounced Isar write started under the fake clock never ends).
     await tester.runAsync(
-        () => container.read(wordInputNotifierProvider.notifier).flush());
+        () => container.read(wordsNotifierProvider.notifier).flush());
     await tester.runAsync(() async {
       final stored = await store.byId(picked.collectionId);
       expect(stored!.lastLocalModifiedAt, DateTime(2026, 9, 1, 12),
@@ -229,6 +229,27 @@ void main() {
     await tester.pump();
 
     await expectPickedUntouched(tester);
+    await tearDownMain(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'the screen stays alive in the menu shell: an empty collection opened '
+      'on it shows one blank row, not the previous rows', (tester) async {
+    await pumpMain(tester);
+    expect(find.widgetWithText(TextField, 'apple'), findsOneWidget);
+    final empty = WordCollection.create()..words = [];
+    await tester.runAsync(() async {
+      await seedCollection(store, empty);
+      await container
+          .read(wordsNotifierProvider.notifier)
+          .switchTo(empty.collectionId);
+    });
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.widgetWithText(TextField, 'apple'), findsNothing);
+    expect(field('Word'), findsOneWidget);
+    expect(container.read(wordsNotifierProvider).value!.words, isEmpty);
     await tearDownMain(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

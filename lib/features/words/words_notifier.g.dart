@@ -1,31 +1,31 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'word_input_notifier.dart';
+part of 'words_notifier.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$wordInputNotifierHash() => r'4bac49f22b011bc2a1a5e78919b372f9764f6bab';
+String _$wordsNotifierHash() => r'aa8aa2670cfaa2745e8265f40af9fdd74d3ab696';
 
-/// Owns the current [WordCollection]. `WordInputScreen` keeps mirroring the words into
+/// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
 /// mutation here right after making it.
 ///
-/// Copied from [WordInputNotifier].
-@ProviderFor(WordInputNotifier)
-final wordInputNotifierProvider =
-    AsyncNotifierProvider<WordInputNotifier, WordCollection>.internal(
-  WordInputNotifier.new,
-  name: r'wordInputNotifierProvider',
+/// Copied from [WordsNotifier].
+@ProviderFor(WordsNotifier)
+final wordsNotifierProvider =
+    AsyncNotifierProvider<WordsNotifier, WordCollection>.internal(
+  WordsNotifier.new,
+  name: r'wordsNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$wordInputNotifierHash,
+      : _$wordsNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$WordInputNotifier = AsyncNotifier<WordCollection>;
+typedef _$WordsNotifier = AsyncNotifier<WordCollection>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

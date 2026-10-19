@@ -6,11 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photos_with_words.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/looks/photo_panel_look.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photos_with_words.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
 
@@ -144,12 +144,18 @@ Rect panelRect(WidgetTester tester) => tester.getRect(panelFinder);
 
 Finder smallPhoto(String id) => find.byKey(PhotoPanel.smallPhotoKey(id));
 
+/// The start screen's stand-in in [mainScreenRouter].
+const collectionsStub = 'COLLECTIONS';
+
 /// The main screen under a router with the Notes page, so the panel's
 /// expand control and a drag to full-open can open Notes (owner, 2026-10-15).
-GoRouter mainScreenRouter() => GoRouter(routes: [
+GoRouter mainScreenRouter() => GoRouter(initialLocation: '/words', routes: [
+      // Collections, where Back from the Words screen goes (navigation,
+      // owner 2026-10-18).
+      GoRoute(path: '/', builder: (context, state) => const Text(collectionsStub)),
       GoRoute(
-        path: '/',
-        builder: (context, state) => const WordInputScreen(),
+        path: '/words',
+        builder: (context, state) => const WordsScreen(),
         routes: [
           GoRoute(
             path: 'notes',

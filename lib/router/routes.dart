@@ -7,7 +7,6 @@ import '../features/collections/collections_screen.dart';
 import '../features/collections/collections_settings_screen.dart';
 import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
-import '../features/history/history_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
 import '../features/learn/learn_screen.dart';
@@ -15,7 +14,7 @@ import '../features/mnemonic_story/story_screen.dart';
 import '../features/notes/notes_screen.dart';
 import '../features/notes/photo_viewer_screen.dart';
 import '../features/settings/settings_screen.dart';
-import '../features/word_input/word_input_screen.dart';
+import '../features/words/words_screen.dart';
 import '../features/words_settings/story_run_screen.dart';
 import '../features/words_settings/story_runs_screen.dart';
 import '../features/words_settings/words_settings_screen.dart';
@@ -23,47 +22,109 @@ import '../features/words_table/words_table_screen.dart';
 
 part 'routes.g.dart';
 
-@TypedGoRoute<WordInputRoute>(
-  path: '/',
-  routes: [
-    TypedGoRoute<WordsTableRoute>(
-      path: 'table',
-      routes: [
-        TypedGoRoute<LearnRoute>(
-          path: 'learn',
+// The side menu's screens (navigation, owner 2026-10-18) are the branches
+// of one shell: each keeps its own navigator, so going back to one through
+// the menu shows the same screen, as it was, without a page transition.
+// `go` to one leaves its branch at its root, so its top bar shows the menu
+// button, not Back. Collections is the start screen.
+@TypedStatefulShellRoute<MenuShellRoute>(
+  branches: <TypedStatefulShellBranch<StatefulShellBranchData>>[
+    TypedStatefulShellBranch<CollectionsBranch>(
+      routes: <TypedRoute<RouteData>>[
+        TypedGoRoute<CollectionsRoute>(
+          path: '/',
           routes: [
-            TypedGoRoute<ComingSoonRoute>(path: 'soon'),
-            TypedGoRoute<StoryRoute>(path: 'story'),
-            TypedGoRoute<ExerciseRoute>(path: 'exercise'),
-            TypedGoRoute<DialogueRoute>(path: 'dialogue'),
-          ],
-        ),
-        TypedGoRoute<WordsSettingsRoute>(
-          path: 'settings',
-          routes: [
-            TypedGoRoute<StoryRunsRoute>(
-              path: 'runs',
-              routes: [TypedGoRoute<StoryRunRoute>(path: ':runId')],
-            ),
+            TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
+            TypedGoRoute<CollectionsSettingsRoute>(path: 'collections-settings'),
           ],
         ),
       ],
     ),
-    TypedGoRoute<NotesRoute>(path: 'notes'),
-    TypedGoRoute<PhotoViewerRoute>(path: 'photo/:sourceId'),
-    TypedGoRoute<CollectionsRoute>(path: 'collections'),
-    TypedGoRoute<HistoryRoute>(path: 'history'),
-    TypedGoRoute<SettingsRoute>(path: 'settings'),
-    TypedGoRoute<AppSettingsRoute>(path: 'app-settings'),
-    TypedGoRoute<RecycleBinRoute>(path: 'recycle-bin'),
-    TypedGoRoute<CollectionsSettingsRoute>(path: 'collections-settings'),
+    TypedStatefulShellBranch<WordsBranch>(
+      routes: <TypedRoute<RouteData>>[
+        TypedGoRoute<WordsRoute>(
+          path: '/words',
+          routes: [
+            TypedGoRoute<WordsTableRoute>(
+              path: 'table',
+              routes: [
+                TypedGoRoute<LearnRoute>(
+                  path: 'learn',
+                  routes: [
+                    TypedGoRoute<ComingSoonRoute>(path: 'soon'),
+                    TypedGoRoute<StoryRoute>(path: 'story'),
+                    TypedGoRoute<ExerciseRoute>(path: 'exercise'),
+                    TypedGoRoute<DialogueRoute>(path: 'dialogue'),
+                  ],
+                ),
+                TypedGoRoute<WordsSettingsRoute>(
+                  path: 'settings',
+                  routes: [
+                    TypedGoRoute<StoryRunsRoute>(
+                      path: 'runs',
+                      routes: [TypedGoRoute<StoryRunRoute>(path: ':runId')],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            TypedGoRoute<NotesRoute>(path: 'notes'),
+            TypedGoRoute<PhotoViewerRoute>(path: 'photo/:sourceId'),
+            TypedGoRoute<SettingsRoute>(path: 'settings'),
+          ],
+        ),
+      ],
+    ),
+    TypedStatefulShellBranch<AppSettingsBranch>(
+      routes: <TypedRoute<RouteData>>[
+        TypedGoRoute<AppSettingsRoute>(path: '/app-settings'),
+      ],
+    ),
   ],
 )
-class WordInputRoute extends GoRouteData with _$WordInputRoute {
-  const WordInputRoute();
+/// The shell around the side menu's screens: the branches in an indexed
+/// stack, the hidden ones kept alive.
+class MenuShellRoute extends StatefulShellRouteData {
+  const MenuShellRoute();
 
   @override
-  Widget build(BuildContext context, GoRouterState state) => const WordInputScreen();
+  Widget builder(BuildContext context, GoRouterState state,
+          StatefulNavigationShell navigationShell) =>
+      navigationShell;
+}
+
+class CollectionsBranch extends StatefulShellBranchData {
+  const CollectionsBranch();
+}
+
+class WordsBranch extends StatefulShellBranchData {
+  const WordsBranch();
+}
+
+class AppSettingsBranch extends StatefulShellBranchData {
+  const AppSettingsBranch();
+}
+
+/// The Collections screen (collections-screen): folders and collections as icons.
+class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
+  const CollectionsRoute({this.tagKind, this.tag});
+
+  /// A tag tap on the Words screen filters the screen (collection-tags ADR-0008).
+  final TagKind? tagKind;
+  final String? tag;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      CollectionsScreen(tagKind: tagKind, tag: tag);
+}
+
+/// The Words screen: the current collection's word rows (the app's main
+/// screen before navigation, owner 2026-10-18).
+class WordsRoute extends GoRouteData with _$WordsRoute {
+  const WordsRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => const WordsScreen();
 }
 
 /// [collectionId] is optional and travels as a query param: with no id the table
@@ -220,13 +281,6 @@ class PhotoViewerRoute extends GoRouteData with _$PhotoViewerRoute {
       PhotoViewerScreen(sourceId: sourceId);
 }
 
-class HistoryRoute extends GoRouteData with _$HistoryRoute {
-  const HistoryRoute();
-
-  @override
-  Widget build(BuildContext context, GoRouterState state) => const HistoryScreen();
-}
-
 /// A plain pushed screen, not a dialog: it is where preferences live, and
 /// more rows are expected here than the one it ships with (task-13).
 class SettingsRoute extends GoRouteData with _$SettingsRoute {
@@ -237,7 +291,7 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
 }
 
 /// App settings (app-themes): settings for the whole app, opened from the
-/// side menu below History. Holds the theme gallery.
+/// side menu. Holds the theme gallery.
 class AppSettingsRoute extends GoRouteData with _$AppSettingsRoute {
   const AppSettingsRoute();
 
@@ -265,17 +319,9 @@ class CollectionsSettingsRoute extends GoRouteData
       const CollectionsSettingsScreen();
 }
 
-final appRouter = GoRouter(routes: $appRoutes);
+/// The screen the router opens on; `main` sets it from [StartLocation]
+/// before the first frame, as `appRouter` is built on first use.
+String appStartLocation = const CollectionsRoute().location;
 
-/// The Collections screen (collections-screen): folders and collections as icons.
-class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
-  const CollectionsRoute({this.tagKind, this.tag});
-
-  /// A tag tap on the main screen filters the screen (collection-tags ADR-0008).
-  final TagKind? tagKind;
-  final String? tag;
-
-  @override
-  Widget build(BuildContext context, GoRouterState state) =>
-      CollectionsScreen(tagKind: tagKind, tag: tag);
-}
+final appRouter =
+    GoRouter(initialLocation: appStartLocation, routes: $appRoutes);

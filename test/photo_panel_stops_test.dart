@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
 
 /// side-bar-for-main-screen T1: a released drag settles at the nearest stop,
 /// a flick moves one stop past the start stop and never two, and any drag to

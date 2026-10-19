@@ -14,7 +14,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
 import 'package:flutter_vocabulary_app/features/tags/typed_tag_field.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 
@@ -22,7 +22,7 @@ import 'photo_preview_test.dart' show MapSourcePhotoStore, kPng;
 /// fields are typed, suggest only while focused and say when the collection
 /// refused a source's tag.
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection, {this.refuse = const {}});
   final WordCollection collection;
   final Set<TagKind> refuse;
@@ -84,17 +84,15 @@ void main() {
     tester.view.devicePixelRatio = 2.7;
     addTearDown(tester.view.reset);
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => fake),
+      wordsNotifierProvider.overrideWith(() => fake),
       collectionStoreProvider
           .overrideWith((ref) => Completer<CollectionStore>().future),
-      nonEmptyCollectionsProvider
-          .overrideWith((ref) => Stream.value(const <WordCollection>[])),
       sourcePhotoStoreProvider
           .overrideWithValue(MapSourcePhotoStore({'p1': kPng})),
     ]);
     addTearDown(container.dispose);
     await tester
-        .runAsync(() => container.read(wordInputNotifierProvider.future));
+        .runAsync(() => container.read(wordsNotifierProvider.future));
     final router = GoRouter(routes: [
       GoRoute(
           path: '/', builder: (_, __) => const NotesScreen(selectedId: 'p1')),

@@ -8,9 +8,9 @@ import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
-import 'package:flutter_vocabulary_app/features/word_input/quizlet_import_flow.dart';
-import 'package:flutter_vocabulary_app/features/word_input/quizlet_read_controller.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/quizlet_link_dialog.dart';
+import 'package:flutter_vocabulary_app/features/words/quizlet_import_flow.dart';
+import 'package:flutter_vocabulary_app/features/words/quizlet_read_controller.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/quizlet_link_dialog.dart';
 
 /// Stands in for the web view: the test decides when the page loads and what
 /// the reader script returns.

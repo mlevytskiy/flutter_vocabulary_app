@@ -13,8 +13,8 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -267,7 +267,7 @@ void main() {
     });
   });
 
-  group('WordInputNotifier', () {
+  group('WordsNotifier', () {
     late Directory dir;
     late CollectionStore store;
     late ProviderContainer container;
@@ -287,12 +287,12 @@ void main() {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
 
-    WordCollection collection() => container.read(wordInputNotifierProvider).value!;
+    WordCollection collection() => container.read(wordsNotifierProvider).value!;
 
     // AC-25
     test('a photo and its rows are saved; a typed row has no photo', () async {
-      await container.read(wordInputNotifierProvider.future);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
+      await container.read(wordsNotifierProvider.future);
+      final notifier = container.read(wordsNotifierProvider.notifier);
       notifier.setPairs([WordPair(word: 'typed', translation: 'набраний')]);
 
       notifier.addSource(photo('p1'));
@@ -312,8 +312,8 @@ void main() {
 
     test('editing a row keeps its photo; clearing it drops the photo',
         () async {
-      await container.read(wordInputNotifierProvider.future);
-      final notifier = container.read(wordInputNotifierProvider.notifier);
+      await container.read(wordsNotifierProvider.future);
+      final notifier = container.read(wordsNotifierProvider.notifier);
       notifier.setPairs([WordPair(word: 'apple', sourceId: 'p1'), WordPair()]);
 
       notifier.updateAt(0, translation: 'яблуко');
@@ -333,8 +333,8 @@ void main() {
       await seedCollection(store, prev);
       await store.setCurrentCollectionId(prev.collectionId);
 
-      await container.read(wordInputNotifierProvider.future);
-      container.read(wordInputNotifierProvider.notifier).addSource(photo('p2'));
+      await container.read(wordsNotifierProvider.future);
+      container.read(wordsNotifierProvider.notifier).addSource(photo('p2'));
 
       expect(collection().sources.map((s) => s.id).toList(), ['p1', 'p2']);
     });

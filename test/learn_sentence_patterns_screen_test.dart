@@ -12,12 +12,12 @@ import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/pronunciation_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/exercise_screens.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/check_result_line.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/pronunciation_buttons.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/pronunciation_buttons.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-sentence-patterns: the screen (AC-01, AC-02, AC-04 – AC-08, AC-12 –
 /// AC-14, AC-16, AC-18, AC-19, AC-22 – AC-28; §6 call counts).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -108,7 +108,7 @@ void main() {
     final container = ProviderContainer(overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       pronunciationServiceProvider.overrideWithValue(speech),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);

@@ -13,14 +13,14 @@ import 'package:flutter_vocabulary_app/core/story/word_grouping.dart';
 import 'package:flutter_vocabulary_app/core/story/word_groups_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/widgets/group_pager.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'fake_story_groups.dart';
 
 /// get-words-from-subtitles-improvment T21: "Dialogs from movie" and the
 /// dialogue groups on the learn page (SCR-06; AC-13, AC-15, AC-16, AC-24,
 /// AC-25).
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -71,19 +71,19 @@ void main() {
     addTearDown(tester.view.reset);
     groups = FakeGroups(state);
     final container = ProviderContainer(overrides: [
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       wordGroupsNotifierProvider(null).overrideWith(() => groups),
       storyRunTrackerProvider.overrideWith(() => FakeTracker(const StoryTrackerState())),
     ]);
     addTearDown(container.dispose);
-    await tester.runAsync(() => container.read(wordInputNotifierProvider.future));
+    await tester.runAsync(() => container.read(wordsNotifierProvider.future));
 
     Widget stub(String text) => Scaffold(appBar: AppBar(), body: Text(text));
     final router = GoRouter(
-      initialLocation: '/table/learn',
+      initialLocation: '/words/table/learn',
       routes: [
         GoRoute(
-          path: '/table/learn',
+          path: '/words/table/learn',
           builder: (context, state) => const LearnScreen(),
           routes: [
             GoRoute(

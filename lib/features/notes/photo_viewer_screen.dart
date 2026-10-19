@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/session_source.dart';
-import '../word_input/photo_panel/photo_preview.dart';
-import '../word_input/photo_panel/source_hero.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/photo_panel/photo_preview.dart';
+import '../words/photo_panel/source_hero.dart';
+import '../words/words_notifier.dart';
 
 /// A source's photo on its own, as large as the screen allows, opened from
 /// its picture on the Notes page (notes-editing, owner 2026-10-15). Pinch
@@ -65,7 +65,7 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   @override
   Widget build(BuildContext context) {
     final source = ref
-        .watch(wordInputNotifierProvider)
+        .watch(wordsNotifierProvider)
         .valueOrNull
         ?.sources
         .where((s) => s.id == widget.sourceId)

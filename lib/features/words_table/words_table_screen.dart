@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -17,13 +18,10 @@ import '../../core/services/collection_publish_service.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../notes/notes_screen.dart';
-import '../word_input/photo_panel/looks/look_a.dart';
-import '../word_input/photo_panel/photo_panel.dart';
-import '../word_input/photo_panel/photo_panel_host.dart';
-import '../word_input/photo_panel/photos_with_words.dart';
-import '../word_input/photo_panel/row_jump.dart';
-import '../word_input/widgets/word_row_morph.dart';
-import '../word_input/word_input_notifier.dart';
+import '../words/photo_panel/photo_panel.dart';
+import '../words/photo_panel/photo_panel_host.dart';
+import '../words/photo_panel/photos_with_words.dart';
+import '../words/words_notifier.dart';
 import 'include_photos.dart';
 import 'safe_file_name.dart';
 import 'share_formats.dart';
@@ -47,36 +45,43 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
   /// double tap cannot publish twice; the request itself times out (AC-16).
   bool _isPublishing = false;
 
-  /// words-photo-panel: the table's vertical scrolling, and the one-line rows
-  /// shown while the photo panel is open, with one key per line so the list
-  /// can jump to a source's first row (side-bar-for-main-screen AC-04).
+  /// words-photo-panel: the table's vertical scrolling. The table stays a
+  /// table while the photo panel is open (owner, 2026-10-19): a selected
+  /// source's rows are highlighted in it and its first row scrolls to the
+  /// top. The key sits in the first row's "#" cell, to find the table.
   final ScrollController _tableScroll = ScrollController();
-  final ScrollController _lineScroll = ScrollController();
-  final List<GlobalKey> _lineKeys = [];
-  int _lineCount = 0;
-
-  GlobalKey _lineKey(int index) {
-    while (_lineKeys.length <= index) {
-      _lineKeys.add(GlobalKey(debugLabel: 'word line ${_lineKeys.length}'));
-    }
-    return _lineKeys[index];
-  }
-
-  GlobalKey? _lineKeyOrNull(int index) =>
-      index < _lineCount ? _lineKey(index) : null;
+  final GlobalKey _firstCellKey = GlobalKey(debugLabel: 'first table cell');
 
   /// The table's sources with words, each with its rows as table rows: the
   /// table lists only the filled rows. Set in build.
   List<SourceWithWords> _tableSources = const [];
 
-  /// A source was selected in the half-open panel: the one-line list scrolls
-  /// its first row to the top, as on the main screen (spec AC-04).
+  /// A source was selected in the half-open panel: the table scrolls its
+  /// first row to the top, as on the main screen (spec AC-04), or as near
+  /// the top as the table's end allows. Sideways it stays where it is.
   void _onPhotoSelected(String? id) {
     if (id == null) return;
     final source =
         _tableSources.where((p) => p.source.id == id).firstOrNull;
     if (source == null || source.rows.isEmpty) return;
-    jumpToRow(_lineScroll, source.rows.first, _lineKeyOrNull);
+    final cell = _firstCellKey.currentContext?.findRenderObject();
+    if (cell == null || !_tableScroll.hasClients) return;
+    RenderObject? table = cell;
+    while (table != null && table is! RenderTable) {
+      table = table.parent;
+    }
+    if (table is! RenderTable) return;
+    // Row 0 of the table is the heading.
+    final row = table.getRowBox(source.rows.first + 1);
+    final top = RenderAbstractViewport.of(table)
+        .getOffsetToReveal(table, 0, rect: row)
+        .offset;
+    final position = _tableScroll.position;
+    _tableScroll.animateTo(
+      top.clamp(position.minScrollExtent, position.maxScrollExtent),
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+    );
   }
 
   /// Notes edits the current collection, so it opens only for that one; a
@@ -87,7 +92,6 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
   @override
   void dispose() {
     _tableScroll.dispose();
-    _lineScroll.dispose();
     super.dispose();
   }
 
@@ -338,7 +342,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
   WordCollection? _collection() {
     final collectionId = widget.collectionId;
     return collectionId == null
-        ? ref.read(wordInputNotifierProvider).valueOrNull
+        ? ref.read(wordsNotifierProvider).valueOrNull
         : ref.read(collectionByIdProvider(collectionId)).valueOrNull;
   }
 
@@ -364,11 +368,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     );
     if (yes != true || !mounted) return;
     final switched = await ref
-        .read(wordInputNotifierProvider.notifier)
+        .read(wordsNotifierProvider.notifier)
         .switchTo(collectionId);
     if (!mounted) return;
     if (switched) {
-      const WordInputRoute().go(context);
+      const WordsRoute().go(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -384,11 +388,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     final collectionId = widget.collectionId;
     // A History row may be the session the notifier holds: update it there,
     // or its next save would write the old id and token back.
-    final current = ref.exists(wordInputNotifierProvider)
-        ? ref.read(wordInputNotifierProvider).valueOrNull
+    final current = ref.exists(wordsNotifierProvider)
+        ? ref.read(wordsNotifierProvider).valueOrNull
         : null;
     if (collectionId == null || current?.collectionId == collectionId) {
-      final notifier = ref.read(wordInputNotifierProvider.notifier);
+      final notifier = ref.read(wordsNotifierProvider.notifier);
       await notifier.markShared(
           publishedId: published.id, editToken: published.editToken);
       await notifier.markDialoguesPublished(
@@ -499,7 +503,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
   Widget build(BuildContext context) {
     final collectionId = widget.collectionId;
     final collection = collectionId == null
-        ? ref.watch(wordInputNotifierProvider).valueOrNull
+        ? ref.watch(wordsNotifierProvider).valueOrNull
         : ref.watch(collectionByIdProvider(collectionId)).valueOrNull;
     // definition-mode: every filled row -- a word plus a translation or a
     // definition -- whatever the mode (spec AC-12); the mode picks columns.
@@ -512,8 +516,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     final showDefinition = detailMode != WordDetailMode.translation;
     // edit-session-from-history AC-06: no Edit button for the session the main
     // screen is already editing.
-    final currentId = ref.exists(wordInputNotifierProvider)
-        ? ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId
+    final currentId = ref.exists(wordsNotifierProvider)
+        ? ref.watch(wordsNotifierProvider).valueOrNull?.collectionId
         : null;
     final canEdit = collectionId != null && collectionId != currentId;
 
@@ -527,8 +531,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
       photoPanel.retain([for (final s in sources) s.source.id]);
     });
     _tableSources = _asTableRows(ref.watch(sourcesProvider), collection);
-    _lineCount = wordPairs.length;
     final (highlightedRows, highlight) = photoHighlight(_tableSources);
+    final highlightColor = (highlight as BoxDecoration?)?.color;
 
     // Back steps the open photo panel back one stop and never leaves the
     // screen while it is open (spec AC-10). Closed, Back is as before.
@@ -586,22 +590,20 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
           : Stack(
               children: [
                 // Open photo panel: a tap or a sideways swipe on the words
-                // closes it and does nothing else (AC-06, AC-11).
+                // closes it and does nothing else (AC-06, AC-11). The table
+                // stays as it is and still scrolls (owner, 2026-10-19).
                 Positioned.fill(
                   child: GestureDetector(
                     onTap: photoPanel.isOpen ? photoPanel.close : null,
                     onHorizontalDragStart:
                         photoPanel.isOpen ? (_) => photoPanel.close() : null,
-                    child: AnimatedBuilder(
-                      animation: photoPanel.openness,
-                      builder: (context, _) => _tableOrLines(
-                        wordPairs,
-                        detailMode: detailMode,
-                        showTranslation: showTranslation,
-                        showDefinition: showDefinition,
-                        highlightFor: (index) =>
-                            highlightedRows.contains(index) ? highlight : null,
-                      ),
+                    child: _table(
+                      wordPairs,
+                      showTranslation: showTranslation,
+                      showDefinition: showDefinition,
+                      highlightFor: (index) => highlightedRows.contains(index)
+                          ? highlightColor
+                          : null,
                     ),
                   ),
                 ),
@@ -612,8 +614,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
                     controller: photoPanel,
                     // Kept free for the floating-button row (spec AC-01).
                     bottomReserve: 80,
-                    scrollController:
-                        photoPanel.isOpen ? _lineScroll : _tableScroll,
+                    scrollController: _tableScroll,
                     onSelected: _onPhotoSelected,
                     collectionId: collectionId,
                     onOpenNotes: collectionId == null || collectionId == currentId
@@ -652,61 +653,12 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     ];
   }
 
-  /// The table, which turns into one line per row, "word — translation", as
-  /// the photo panel opens, and back as it closes (photo-panel-glass, on the
-  /// Words screen): the two cross-fade with the panel's openness.
-  Widget _tableOrLines(
+  Widget _table(
     List<WordPair> wordPairs, {
-    required WordDetailMode detailMode,
     required bool showTranslation,
     required bool showDefinition,
-    required Decoration? Function(int index) highlightFor,
+    required Color? Function(int index) highlightFor,
   }) {
-    final t = (photoPanel.openness.value * 2).clamp(0.0, 1.0);
-    final table = _table(wordPairs,
-        showTranslation: showTranslation, showDefinition: showDefinition);
-    return Stack(
-      children: [
-        // The same place in the tree whether the panel is open or not, so
-        // the table keeps its scroll position.
-        Positioned.fill(
-          child: IgnorePointer(
-            ignoring: t > 0,
-            child: Opacity(opacity: 1 - t, child: table),
-          ),
-        ),
-        // The lines are only for looking (spec AC-11); the list scrolls.
-        if (t > 0)
-          Positioned.fill(
-            child: Opacity(
-              opacity: t,
-              child: ListView.builder(
-                controller: _lineScroll,
-                padding: const EdgeInsets.all(16.0),
-                itemCount: wordPairs.length,
-                itemBuilder: (context, index) => KeyedSubtree(
-                  key: _lineKey(index),
-                  child: CompactWordLine(
-                    index: index,
-                    word: wordPairs[index].word,
-                    detail: compactDetail(
-                      mode: detailMode,
-                      translation: wordPairs[index].translation,
-                      definition: wordPairs[index].definition,
-                    ),
-                    highlight: highlightFor(index),
-                    endInset: const LookA().halfOpenWidth - 16,
-                  ),
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _table(List<WordPair> wordPairs,
-      {required bool showTranslation, required bool showDefinition}) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
@@ -755,8 +707,14 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
             rows: List<DataRow>.generate(
               wordPairs.length,
               (index) => DataRow(
+                // words-photo-panel: the selected source's rows.
+                color: switch (highlightFor(index)) {
+                  final color? => WidgetStatePropertyAll(color),
+                  null => null,
+                },
                 cells: [
-                  DataCell(Text('${index + 1}')),
+                  DataCell(Text('${index + 1}',
+                      key: index == 0 ? _firstCellKey : null)),
                   DataCell(Text(wordPairs[index].word)),
                   if (showTranslation)
                     DataCell(Text(wordPairs[index].translation)),

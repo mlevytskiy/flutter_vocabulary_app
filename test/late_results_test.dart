@@ -10,7 +10,7 @@ import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// collections-screen T13 (ADR-0006, AC-11, AC-27): a translation lookup, a
 /// photo reading, a Quizlet import and a subtitle import started in A that
@@ -33,7 +33,7 @@ void main() {
   late Directory dir;
   late CollectionStore store;
   late ProviderContainer container;
-  late WordInputNotifier notifier;
+  late WordsNotifier notifier;
   late String a;
   late String b;
 
@@ -44,8 +44,8 @@ void main() {
     container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
-    final first = await container.read(wordInputNotifierProvider.future);
-    notifier = container.read(wordInputNotifierProvider.notifier);
+    final first = await container.read(wordsNotifierProvider.future);
+    notifier = container.read(wordsNotifierProvider.notifier);
     a = first.collectionId;
     notifier.setPairs([WordPair(word: 'tide', rowId: 'row-1'), WordPair()]);
     await notifier.flush();

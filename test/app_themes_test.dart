@@ -66,6 +66,23 @@ void main() {
         await titleSize(AppThemeId.matcha));
   });
 
+  testWidgets(
+      'every theme puts the title right after the menu or Back button, as on '
+      'Words (owner, 2026-10-18)', (t) async {
+    for (final spec in appThemes) {
+      await t.pumpWidget(MaterialApp(
+        theme: spec.build(),
+        home: Scaffold(
+          drawer: const Drawer(),
+          appBar: AppBar(title: const Text('Title')),
+        ),
+      ));
+      final button = t.getRect(find.byType(DrawerButton));
+      expect(button.right, 48, reason: spec.name);
+      expect(t.getRect(find.text('Title')).left, 48, reason: spec.name);
+    }
+  });
+
   test('the kept themes recolour what Classic hard-coded', () {
     for (final id in [
       AppThemeId.aurora,

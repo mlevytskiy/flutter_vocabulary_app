@@ -19,8 +19,8 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/subtitle_words_service.dart';
-import 'package:flutter_vocabulary_app/features/word_input/subtitle_import_flow.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/subtitle_import_flow.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -197,7 +197,7 @@ void main() {
     });
   });
 
-  group('WordInputNotifier.addImportDialogues', () {
+  group('WordsNotifier.addImportDialogues', () {
     TestWidgetsFlutterBinding.ensureInitialized();
 
     setUpAll(() async {
@@ -231,12 +231,12 @@ void main() {
     WordPair pair(String word, [String rowId = '']) =>
         WordPair(word: word, translation: 'т', rowId: rowId);
 
-    Future<WordInputNotifier> current(WordCollection s) async {
+    Future<WordsNotifier> current(WordCollection s) async {
       s.lastLocalModifiedAt = DateTime.now();
       await seedCollection(store, s);
       await store.setCurrentCollectionId(s.collectionId);
-      await container.read(wordInputNotifierProvider.future);
-      return container.read(wordInputNotifierProvider.notifier);
+      await container.read(wordsNotifierProvider.future);
+      return container.read(wordsNotifierProvider.notifier);
     }
 
     test('links the import\'s rows, drops removed words, appends after the existing (AC-03, AC-10)',

@@ -14,7 +14,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
 import 'package:flutter_vocabulary_app/core/services/source_photo_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_settings/words_settings_screen.dart';
 import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
@@ -58,10 +58,10 @@ void main() {
     // The table and its settings, under the app's paths, so the Settings
     // button opens the Words settings with the collection's id.
     final router = GoRouter(
-      initialLocation: '/table?collection-id=${table.collectionId}',
+      initialLocation: '/words/table?collection-id=${table.collectionId}',
       routes: [
         GoRoute(
-          path: '/table',
+          path: '/words/table',
           builder: (context, state) => WordsTableScreen(
               collectionId: state.uri.queryParameters['collection-id']),
           routes: [
@@ -479,7 +479,7 @@ void main() {
   group('Edit button', () {
     late WordCollection current;
     late WordCollection past;
-    late _FakeWordInput input;
+    late _FakeWords input;
     late GoRouter router;
 
     Future<void> pumpHistoryTable(WidgetTester tester, String? shownId,
@@ -492,12 +492,12 @@ void main() {
           WordPair(word: 'tea', translation: 'чай'),
           WordPair(word: 'milk', translation: 'молоко'),
         ];
-      input = _FakeWordInput(current, {
+      input = _FakeWords(current, {
         current.collectionId: current,
         if (pastExists) past.collectionId: past,
       });
       final container = ProviderContainer(overrides: [
-        wordInputNotifierProvider.overrideWith(() => input),
+        wordsNotifierProvider.overrideWith(() => input),
         collectionByIdProvider(past.collectionId).overrideWith((ref) async => past),
         collectionByIdProvider(current.collectionId)
             .overrideWith((ref) async => current),
@@ -505,17 +505,17 @@ void main() {
       addTearDown(container.dispose);
       await tester.runAsync(() async {
         await container.read(wordDetailModeProvider.notifier).loaded;
-        await container.read(wordInputNotifierProvider.future);
+        await container.read(wordsNotifierProvider.future);
         await container.read(collectionByIdProvider(past.collectionId).future);
         await container.read(collectionByIdProvider(current.collectionId).future);
       });
       router = GoRouter(
         initialLocation: shownId == null
-            ? '/table'
-            : '/table?sessionId=${shownId == 'past' ? past.collectionId : current.collectionId}',
+            ? '/words/table'
+            : '/words/table?sessionId=${shownId == 'past' ? past.collectionId : current.collectionId}',
         routes: [
           GoRoute(
-            path: '/',
+            path: '/words',
             builder: (context, state) => const _MainStub(),
             routes: [
               GoRoute(
@@ -607,7 +607,7 @@ class _MainStub extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final words = ref.watch(wordInputNotifierProvider).valueOrNull?.words ??
+    final words = ref.watch(wordsNotifierProvider).valueOrNull?.words ??
         const <WordPair>[];
     return Scaffold(
       body: Text('main: ${words.map((w) => w.word).join(', ')}'),
@@ -616,8 +616,8 @@ class _MainStub extends ConsumerWidget {
 }
 
 /// The notifier without Isar: a map of sessions, and a log of switches.
-class _FakeWordInput extends WordInputNotifier {
-  _FakeWordInput(this._current, this._collections);
+class _FakeWords extends WordsNotifier {
+  _FakeWords(this._current, this._collections);
 
   final WordCollection _current;
   final Map<String, WordCollection> _collections;

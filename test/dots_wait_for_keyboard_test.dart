@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/translation_dots_button.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/translation_dots_button.dart';
 
 /// The popup package measures the dots' position once, when the menu shows.
 /// Tapping the dots drops the keyboard, which moves a lower row down, so with

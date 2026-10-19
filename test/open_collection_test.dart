@@ -10,7 +10,7 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -62,13 +62,13 @@ void main() {
   Future<WordCollection> current() async {
     final left = await store.create();
     await store.setCurrentCollectionId(left.collectionId);
-    await container.read(wordInputNotifierProvider.future);
+    await container.read(wordsNotifierProvider.future);
     return left;
   }
 
-  WordInputNotifier notifier() =>
-      container.read(wordInputNotifierProvider.notifier);
-  WordCollection shown() => container.read(wordInputNotifierProvider).value!;
+  WordsNotifier notifier() =>
+      container.read(wordsNotifierProvider.notifier);
+  WordCollection shown() => container.read(wordsNotifierProvider).value!;
 
   group('open', () {
     test('shows the opened collection and sets the pointer', () async {

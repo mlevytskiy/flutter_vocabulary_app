@@ -15,14 +15,14 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/system_gesture_exclusion.dart';
 import 'package:flutter_vocabulary_app/features/notes/notes_screen.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/look_a.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/looks/photo_panel_look.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photo_panel_stops.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_morph.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/looks/look_a.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/looks/photo_panel_look.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photo_panel_stops.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_morph.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'photo_panel_test_host.dart';
 import 'photo_preview_test.dart' show MapSourcePhotoStore;
@@ -123,7 +123,7 @@ void main() {
       systemGestureExclusionProvider.overrideWithValue(exclusion),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -131,7 +131,7 @@ void main() {
     ));
     // A notifier change makes the screen restore the session's rows (as
     // main_screen_photo_panel_test.dart).
-    container.read(wordInputNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -230,10 +230,12 @@ void main() {
       await tearDownMain(tester);
     });
 
-    testWidgets('no photo with words: no tab, Back as before (AC-02)', (tester) async {
+    testWidgets('no photo with words: no tab, Back goes to Collections (AC-02)', (tester) async {
       await pumpMain(tester, photos: false, words: [WordPair(word: 'typed')]);
       expect(find.byKey(PhotoPanel.tabKey), findsNothing);
-      expect(await tester.binding.handlePopRoute(), isFalse);
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text(collectionsStub), findsOneWidget);
       await tearDownMain(tester);
     });
 
@@ -407,15 +409,18 @@ void main() {
       expect(await tester.binding.handlePopRoute(), isTrue);
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);
-      expect(find.byType(WordInputScreen), findsOneWidget);
-      expect(await tester.binding.handlePopRoute(), isFalse);
+      expect(find.byType(WordsScreen), findsOneWidget);
+      // Closed, Back is no longer the panel's: it goes to Collections.
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      expect(find.text(collectionsStub), findsOneWidget);
       await tearDownMain(tester);
     });
 
     testWidgets('open: a tap on a row or a button only closes it (AC-11)', (tester) async {
       await pumpMain(tester);
       await openHalf(tester);
-      final count = container.read(wordInputNotifierProvider).value!.words.length;
+      final count = container.read(wordsNotifierProvider).value!.words.length;
 
       await tester.tap(line(1), warnIfMissed: false);
       await tester.pumpAndSettle();
@@ -426,8 +431,8 @@ void main() {
       await tester.tap(find.byTooltip('Settings'), warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);
-      expect(find.byType(WordInputScreen), findsOneWidget);
-      expect(container.read(wordInputNotifierProvider).value!.words.length, count);
+      expect(find.byType(WordsScreen), findsOneWidget);
+      expect(container.read(wordsNotifierProvider).value!.words.length, count);
       await tearDownMain(tester);
     });
 
@@ -452,7 +457,7 @@ void main() {
     testWidgets('a vertical drag moves the tab and nothing under it responds (AC-14)',
         (tester) async {
       await pumpMain(tester);
-      final count = container.read(wordInputNotifierProvider).value!.words.length;
+      final count = container.read(wordsNotifierProvider).value!.words.length;
       final before = tester.getRect(find.byKey(PhotoPanel.tabKey));
 
       await tester.drag(find.byKey(PhotoPanel.tabKey), const Offset(0, 200));
@@ -464,7 +469,7 @@ void main() {
 
       await tester.tap(find.byKey(PhotoPanel.tabKey));
       await tester.pumpAndSettle();
-      expect(container.read(wordInputNotifierProvider).value!.words.length, count,
+      expect(container.read(wordsNotifierProvider).value!.words.length, count,
           reason: 'no row control fired through the tab');
       await tearDownMain(tester);
     });
@@ -500,14 +505,14 @@ void main() {
       expect(stop(tester), PanelStop.halfOpen);
       expect(selected(tester), 'p2');
 
-      container.read(wordInputNotifierProvider.notifier).updateAt(18, word: '');
+      container.read(wordsNotifierProvider.notifier).updateAt(18, word: '');
       await tester.pumpAndSettle();
       expect(selected(tester), isNull);
       expect(find.byKey(PhotoPanel.smallPhotoKey('p2')), findsNothing);
       expect(stop(tester), PanelStop.halfOpen);
 
       await tester.runAsync(() =>
-          container.read(wordInputNotifierProvider.notifier).switchTo(other.collectionId));
+          container.read(wordsNotifierProvider.notifier).switchTo(other.collectionId));
       await tester.pump();
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);

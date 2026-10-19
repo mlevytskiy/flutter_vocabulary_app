@@ -13,10 +13,10 @@ import 'package:flutter_vocabulary_app/features/collections/collections_screen.d
 import 'package:flutter_vocabulary_app/features/collections/fly_to_bin.dart';
 import 'package:flutter_vocabulary_app/features/collections/recycle_bin_screen.dart';
 import 'package:flutter_vocabulary_app/features/collections/recycle_bin_view.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:go_router/go_router.dart';
 
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
   @override
@@ -66,7 +66,7 @@ void main() {
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
         binItemsProvider.overrideWith((ref) => Stream.value(inBin)),
-        wordInputNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
+        wordsNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([

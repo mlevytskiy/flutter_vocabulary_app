@@ -6,16 +6,16 @@ import '../../../core/theme/app_theme.dart';
 import 'quizlet_logo_icon.dart';
 
 /// The word-input screen's floating speed-dial FAB: take a photo (green),
-/// import words from subtitles (words-from-subtitles, dark grey) or from a
+/// import words from subtitles (words-from-subtitles, purple in Classic) or from a
 /// Quizlet set (import-from-quizlet, blue, in Screenshot's old place).
 /// Settings is not here -- it has its own bottom-left button on the screen
 /// (task-13), so this dial carries the capture actions only.
-class WordInputSpeedDial extends StatelessWidget {
+class WordsSpeedDial extends StatelessWidget {
   final VoidCallback onTakePhoto;
   final VoidCallback onFromSubtitles;
   final VoidCallback onImportFromQuizlet;
 
-  const WordInputSpeedDial({
+  const WordsSpeedDial({
     super.key,
     required this.onTakePhoto,
     required this.onFromSubtitles,

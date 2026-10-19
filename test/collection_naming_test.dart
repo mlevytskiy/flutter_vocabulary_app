@@ -19,8 +19,8 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_naming_service.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/collection_title.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/collection_title.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 import 'seed_collections.dart';
 
@@ -371,13 +371,13 @@ void main() {
       });
       tearDown(() => container.dispose());
 
-      WordInputNotifier notifier() =>
-          container.read(wordInputNotifierProvider.notifier);
+      WordsNotifier notifier() =>
+          container.read(wordsNotifierProvider.notifier);
       WordCollection shown() =>
-          container.read(wordInputNotifierProvider).value!;
+          container.read(wordsNotifierProvider).value!;
 
       Future<WordCollection> open() async {
-        await container.read(wordInputNotifierProvider.future);
+        await container.read(wordsNotifierProvider.future);
         return shown();
       }
 
@@ -643,15 +643,46 @@ void main() {
 
       await tester.pumpWidget(title('Kitchen Tools'));
       await tester.pump(CollectionTitle.duration ~/ 2);
-      // Mid-reveal: single letters, some still blurred.
+      // Mid-reveal: single letters, some still on their way, none blurred
+      // (a blur layer blanked the title on an Android phone).
       expect(find.text('K'), findsOneWidget);
-      expect(find.byType(ImageFiltered), findsWidgets);
+      expect(find.byType(Opacity), findsWidgets);
+      expect(find.byType(ImageFiltered), findsNothing);
       expect(plain('Kitchen Tools'), findsNothing);
 
       await tester.pumpAndSettle();
       expect(plain('Kitchen Tools'), findsOneWidget);
-      expect(find.byType(ImageFiltered), findsNothing);
+      expect(find.byType(Opacity), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        'swirl float: the title is never empty during the reveal, and the '
+        'letters float off the line (owner, 2026-10-19)', (tester) async {
+      await tester.pumpWidget(title('Vocabulary 2'));
+      await tester.pumpWidget(title('Kitchen Tools'));
+      var floated = false;
+      const steps = 30;
+      for (var i = 1; i < steps; i++) {
+        await tester.pump(CollectionTitle.duration ~/ steps);
+        // The opacity of every letter on screen: more than one whole letter
+        // is always showing.
+        final shown = tester
+            .widgetList<Opacity>(find.descendant(
+                of: find.byType(CollectionTitle),
+                matching: find.byType(Opacity)))
+            .fold<double>(0, (sum, o) => sum + o.opacity);
+        expect(shown, greaterThan(1.0), reason: 'step $i of $steps');
+        floated = floated ||
+            tester
+                .widgetList<Transform>(find.descendant(
+                    of: find.byType(CollectionTitle),
+                    matching: find.byType(Transform)))
+                .any((tr) => tr.transform.getTranslation().y.abs() > 4);
+      }
+      expect(floated, isTrue);
+      await tester.pumpAndSettle();
+      expect(plain('Kitchen Tools'), findsOneWidget);
     });
 
     testWidgets(
@@ -672,6 +703,44 @@ void main() {
       ));
       await tester.pump();
       expect(plain('Calm'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a bar title style with no font size still places every letter '
+        '(owner\'s phone, 2026-10-19: the title row drew nothing)',
+        (tester) async {
+      Widget bar(String text) => MaterialApp(
+            theme: ThemeData(
+              // As the app's themes: the title style carries no font size.
+              appBarTheme: const AppBarTheme(
+                  titleTextStyle: TextStyle(color: Colors.black)),
+            ),
+            home: Scaffold(
+              appBar: AppBar(
+                title: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Flexible(
+                    child: CollectionTitle(
+                        text: text, collectionId: 'c1', animate: true),
+                  ),
+                  const Icon(Icons.edit),
+                ]),
+              ),
+            ),
+          );
+      await tester.pumpWidget(bar('Vocabulary'));
+      await tester.pumpWidget(bar('Pear Entries'));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(CollectionTitle.duration ~/ 6);
+        final letters = find.descendant(
+            of: find.byType(CollectionTitle), matching: find.byType(Opacity));
+        expect(letters, findsWidgets);
+        for (final e in letters.evaluate()) {
+          final at = (e.renderObject! as RenderBox).localToGlobal(Offset.zero);
+          expect(at.dx.isFinite && at.dy.isFinite, isTrue, reason: '$at');
+        }
+      }
+      await tester.pumpAndSettle();
+      expect(plain('Pear Entries'), findsOneWidget);
     });
 
     testWidgets('a long name ends one line with an ellipsis', (tester) async {

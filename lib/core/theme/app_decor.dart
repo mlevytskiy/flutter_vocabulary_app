@@ -40,7 +40,7 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.fabAlt = const Color(0xff954ef3),
     this.onFabAlt = Colors.white,
     this.dialPhoto = Colors.green,
-    this.dialSubtitles = const Color(0xFF424242),
+    this.dialSubtitles = const Color(0xFF7E57C2),
     this.dialQuizlet = Colors.blue,
     this.dialFolder = const Color(0xFFFFA000),
     this.onDial = Colors.white,

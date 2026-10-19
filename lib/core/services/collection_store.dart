@@ -52,10 +52,10 @@ class CollectionStore {
 
   CollectionStore._(this._isar, this._prefs);
 
-  static Future<CollectionStore> open({String? directory}) async {
+  static Future<Isar> _openIsar(String? directory) async {
     final dir =
         directory ?? (await getApplicationDocumentsDirectory()).path;
-    final isar = Isar.getInstance('vocab') ??
+    return Isar.getInstance('vocab') ??
         await Isar.open(
             [
               WordCollectionSchema,
@@ -64,6 +64,39 @@ class CollectionStore {
               TagLibraryEntrySchema,
             ],
             directory: dir, name: 'vocab');
+  }
+
+  /// True when no collection outside the bin has a word: none at all, or only
+  /// the current one, still empty. Read at launch, before any provider, to
+  /// pick the start screen (start-screen, owner 2026-10-18); leaves the
+  /// database open for [open]. Never throws: false on any failure.
+  static Future<bool> onlyOneEmpty({String? directory}) async {
+    try {
+      final isar = await _openIsar(directory);
+      final folders = await isar.collectionFolders.where().findAll();
+      final parentOf = {for (final f in folders) f.folderId: f.parentId};
+      final binnedFolderIds = {
+        for (final f in folders)
+          if (f.binnedAt != null) f.folderId,
+      };
+      final outside = [
+        for (final c in await isar.wordCollections.where().findAll())
+          if (!isInBin(
+            binned: c.binnedAt != null,
+            folderId: c.folderId,
+            parentOf: parentOf,
+            binnedFolderIds: binnedFolderIds,
+          ))
+            c,
+      ];
+      return outside.length <= 1 && outside.every((c) => c.isEmpty);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static Future<CollectionStore> open({String? directory}) async {
+    final isar = await _openIsar(directory);
     final prefs = await SharedPreferences.getInstance();
     final store = CollectionStore._(isar, prefs);
     for (final k in _legacyKeys) {
@@ -1325,34 +1358,6 @@ class CollectionStore {
   /// Every folder, binned ones too, for the path and the tree; unsorted.
   Stream<List<CollectionFolder>> watchFolders() =>
       _isar.collectionFolders.where().watch(fireImmediately: true);
-
-  /// History (F11, AC-28): collections with at least one non-blank word
-  /// that are not in the bin, directly or through a folder above them,
-  /// newest `lastLocalModifiedAt` first. Emits on listen and after every
-  /// write to collections or folders.
-  Stream<List<WordCollection>> watchHistory() => _watchFiling(() async {
-        final folders = await _isar.collectionFolders.where().findAll();
-        final parentOf = {for (final f in folders) f.folderId: f.parentId};
-        final binnedFolderIds = {
-          for (final f in folders)
-            if (f.binnedAt != null) f.folderId,
-        };
-        final all = await _isar.wordCollections
-            .where()
-            .sortByLastLocalModifiedAtDesc()
-            .findAll();
-        return [
-          for (final s in all)
-            if (!s.isEmpty &&
-                !isInBin(
-                  binned: s.binnedAt != null,
-                  folderId: s.folderId,
-                  parentOf: parentOf,
-                  binnedFolderIds: binnedFolderIds,
-                ))
-              await _withRowIds(s),
-        ];
-      });
 
   /// Every collection that is not in the bin, empty ones too, as the
   /// Collections search sees it (collection-tags ADR-0006, AC-27): folder

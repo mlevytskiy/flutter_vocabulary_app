@@ -10,8 +10,8 @@ import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/photo_panel/photos_with_words.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/photo_panel/photos_with_words.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// side-bar-for-main-screen T2: the current session's photos with words, in
 /// the order they were added, each with its linked rows (spec AC-02, AC-03,
@@ -53,10 +53,10 @@ void main() {
     ..fileName = '$id.jpg'
     ..takenAt = DateTime(2026, 10, 13);
 
-  Future<WordInputNotifier> seeded(
+  Future<WordsNotifier> seeded(
       {List<SessionSource> sources = const [], List<WordPair> pairs = const []}) async {
-    await container.read(wordInputNotifierProvider.future);
-    final notifier = container.read(wordInputNotifierProvider.notifier);
+    await container.read(wordsNotifierProvider.future);
+    final notifier = container.read(wordsNotifierProvider.notifier);
     for (final s in sources) {
       notifier.addSource(s);
     }

@@ -12,9 +12,9 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/dictionary_service.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/lightning_rules.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/lightning_rules.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -105,22 +105,22 @@ void main() {
       dictionaryServiceProvider.overrideWithValue(dictionary),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordInputNotifierProvider.future);
+      await container.read(wordsNotifierProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
-      child: const MaterialApp(home: WordInputScreen()),
+      child: const MaterialApp(home: WordsScreen()),
     ));
-    final notifier = container.read(wordInputNotifierProvider.notifier);
+    final notifier = container.read(wordsNotifierProvider.notifier);
     notifier.setPairs(
-        List.of(container.read(wordInputNotifierProvider).value!.words));
+        List.of(container.read(wordsNotifierProvider).value!.words));
     await tester.pump();
     await tester.pump();
 
     List<WordPair> words() =>
-        container.read(wordInputNotifierProvider).value!.words;
+        container.read(wordsNotifierProvider).value!.words;
     Finder definitionField(int row) => find
         .byWidgetPredicate(
             (w) => w is TextField && w.decoration?.labelText == 'Definition')

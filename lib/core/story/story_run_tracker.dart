@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../features/word_input/word_input_notifier.dart';
+import '../../features/words/words_notifier.dart';
 import '../models/film_dialogue.dart';
 import '../models/offered_ai.dart';
 import '../models/word_collection.dart';
@@ -469,7 +469,7 @@ class StoryRunTracker extends _$StoryRunTracker {
         ..storyRunId = run.runId
         ..storyWords = [...run.words];
     });
-    final current = ref.read(wordInputNotifierProvider).valueOrNull?.collectionId == run.collectionId;
+    final current = ref.read(wordsNotifierProvider).valueOrNull?.collectionId == run.collectionId;
     final groups = wordGroupsNotifierProvider(current ? null : run.collectionId);
     if (ref.exists(groups)) await ref.read(groups.notifier).reload();
   }
@@ -481,9 +481,9 @@ class StoryRunTracker extends _$StoryRunTracker {
     if (collection == null) return;
     final dialogueId = collection.groups.where((g) => g.id == run.groupId).firstOrNull?.dialogueId;
     if (dialogueId == null) return;
-    final current = ref.read(wordInputNotifierProvider).valueOrNull?.collectionId == run.collectionId;
+    final current = ref.read(wordsNotifierProvider).valueOrNull?.collectionId == run.collectionId;
     if (current) {
-      await ref.read(wordInputNotifierProvider.notifier).setScenePicture(dialogueId, run.runId);
+      await ref.read(wordsNotifierProvider.notifier).setScenePicture(dialogueId, run.runId);
       return;
     }
     await (await ref.read(collectionStoreProvider.future)).update(run.collectionId, (stored) {
@@ -540,7 +540,7 @@ class StoryRunTracker extends _$StoryRunTracker {
 
   /// The current session's live object, or a History session from the store.
   Future<WordCollection?> _collection(String collectionId) async {
-    final current = await ref.read(wordInputNotifierProvider.future);
+    final current = await ref.read(wordsNotifierProvider.future);
     if (current.collectionId == collectionId) return current;
     return (await ref.read(collectionStoreProvider.future)).byId(collectionId);
   }

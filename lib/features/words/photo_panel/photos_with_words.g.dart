@@ -6,7 +6,7 @@ part of 'photos_with_words.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sourcesWithWordsHash() => r'7d1f6385d6acb7722ff23218f0f4e43aecbad51c';
+String _$sourcesWithWordsHash() => r'f6b5260d65cad7e940ef4194d9bdae4eb5175396';
 
 /// The current session's sources with words that the photo panel lists,
 /// photos and sets mixed, oldest first by `takenAt` (sources added at the

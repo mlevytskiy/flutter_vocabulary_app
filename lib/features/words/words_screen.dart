@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/MyCustomPopupMenuController.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/MyCustomPopupMenuController.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
@@ -22,6 +22,7 @@ import '../../core/providers.dart';
 import '../../core/services/pronunciation_service.dart';
 import '../../core/services/vocab_photo_service.dart';
 import '../../router/routes.dart';
+import '../app_menu/app_drawer.dart';
 import '../collections/collection_details_sheet.dart';
 import '../notes/notes_screen.dart';
 import 'collection_tag_line.dart';
@@ -37,13 +38,13 @@ import 'widgets/photo_source_dialog.dart';
 import 'widgets/quizlet_progress_dialog.dart';
 import 'widgets/vocab_result_dialog.dart';
 import 'widgets/collection_title.dart';
-import 'widgets/word_input_speed_dial.dart';
+import 'widgets/words_speed_dial.dart';
 import 'widgets/word_row_item.dart';
 import 'widgets/anchored_scroll_controller.dart';
 import 'widgets/dashed_add_button.dart';
 import 'widgets/word_row_morph.dart';
 import 'widgets/still_body.dart';
-import 'word_input_notifier.dart';
+import 'words_notifier.dart';
 
 part 'source_words_dialog.dart';
 part 'word_rows.dart';
@@ -81,23 +82,23 @@ WordPair wordPairFromPhoto(VocabWord w, {String? sourceId}) {
   );
 }
 
-class WordInputScreen extends ConsumerStatefulWidget {
-  const WordInputScreen({super.key, this.quizletDriverFactory});
+class WordsScreen extends ConsumerStatefulWidget {
+  const WordsScreen({super.key, this.quizletDriverFactory});
 
   /// Stands in for the Quizlet web view in tests; null in the app.
   @visibleForTesting
   final QuizletPageDriverFactory? quizletDriverFactory;
 
   @override
-  ConsumerState<WordInputScreen> createState() => _WordInputScreenState();
+  ConsumerState<WordsScreen> createState() => _WordsScreenState();
 }
 
-class _WordInputScreenState extends ConsumerState<WordInputScreen>
+class _WordsScreenState extends ConsumerState<WordsScreen>
     with
         WidgetsBindingObserver,
-        PhotoPanelHost<WordInputScreen>,
+        PhotoPanelHost<WordsScreen>,
         SingleTickerProviderStateMixin,
-        _WordRows<WordInputScreen> {
+        _WordRows<WordsScreen> {
   @override
   final List<WordPair> _wordPairs = [
     WordPair(word: '', translation: ''),
@@ -190,11 +191,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     WidgetsBinding.instance.addObserver(this);
     photoPanel.openness.addListener(_onPhotoPanelOpenness);
     _pronunciation = ref.read(pronunciationServiceProvider);
+    // No field takes focus here: the screen opens without the keyboard
+    // (owner, 2026-10-18).
     _addControllersForIndex(0);
-    // Request focus on the first field after the first frame
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _wordFocusNodes[0].requestFocus();
-    });
     _pollForLostPhoto();
   }
 
@@ -204,15 +203,32 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_restoredCollectionId == null ||
+    // The side menu's `go` disposes this screen; coming back builds a new
+    // State while the kept-alive collection is already loaded, so the
+    // `ref.listen` in build() never fires. Build the rows after the first
+    // frame instead (the restore writes to the notifier, which a lifecycle
+    // method may not).
+    if (_restoredCollectionId == null) {
+      final collection = ref.read(wordsNotifierProvider).valueOrNull;
+      if (collection != null) {
+        _restoredCollectionId = collection.collectionId;
+        if (collection.words.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _restoreFromStore(collection.words);
+          });
+        }
+      }
+      return;
+    }
+    if (
         ModalRoute.isCurrentOf(context) != true) {
       return;
     }
-    final notifier = ref.read(wordInputNotifierProvider.notifier);
-    final collection = ref.read(wordInputNotifierProvider).valueOrNull;
+    final notifier = ref.read(wordsNotifierProvider.notifier);
+    final collection = ref.read(wordsNotifierProvider).valueOrNull;
     if (collection == null || !notifier.takeEditedElsewhere()) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _restoreFromStore(collection.words, focusLast: false);
+      if (mounted) _restoreFromStore(collection.words);
     });
   }
 
@@ -226,13 +242,13 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // before onResume, so resuming is the race-free point to claim it.
     if (state == AppLifecycleState.resumed) {
       _pollForLostPhoto();
-      ref.read(wordInputNotifierProvider.notifier).resume();
+      ref.read(wordsNotifierProvider.notifier).resume();
     }
     // The OS can kill the process while the camera is open; `paused` is the
     // last guaranteed callback before that happens, so flush immediately
     // instead of waiting on the debounce timer.
     if (state == AppLifecycleState.paused) {
-      ref.read(wordInputNotifierProvider.notifier).flush();
+      ref.read(wordsNotifierProvider.notifier).flush();
       ref.read(pronunciationServiceProvider).stop();
     }
   }
@@ -302,8 +318,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// the first time it resolves (see the `ref.listen` in build()). Rebuilds
   /// every parallel per-row list from scratch, exactly like initState() does
   /// for a single row, then re-runs the same "always one trailing blank row"
-  /// and initial-focus logic a fresh launch would.
-  void _restoreFromStore(List<WordPair> pairs, {bool focusLast = true}) {
+  /// logic a fresh launch would. No row takes focus: the keyboard stays down
+  /// (owner, 2026-10-18).
+  void _restoreFromStore(List<WordPair> pairs) {
     for (final c in _wordControllers) {
       c.dispose();
     }
@@ -372,13 +389,6 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         _definitionMarkedFilled[i] = pair.definitionMarkedFilled;
       }
       _checkAndAddNewPair();
-    });
-
-    if (!focusLast) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _wordFocusNodes.isNotEmpty) {
-        _wordFocusNodes.last.requestFocus();
-      }
     });
   }
 
@@ -461,7 +471,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         _wordPairs.add(newPair);
         _addControllersForIndex(_wordPairs.length - 1);
       });
-      ref.read(wordInputNotifierProvider.notifier).addAll([newPair]);
+      ref.read(wordsNotifierProvider.notifier).addAll([newPair]);
     }
   }
 
@@ -558,7 +568,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   Future<void> _processPickedPhoto(XFile picked,
       {ImageSource source = ImageSource.camera}) async {
     final collectionId = _collectionIdNow;
-    final notifier = ref.read(wordInputNotifierProvider.notifier);
+    final notifier = ref.read(wordsNotifierProvider.notifier);
     setState(() {
       _isAnalyzingPhoto = true;
     });
@@ -665,7 +675,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// collections-screen T14: the current collection's stored name, or its date
   /// name until the backfill has given it one (AC-01).
   String _collectionTitle() {
-    final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final collection = ref.watch(wordsNotifierProvider).valueOrNull;
     if (collection == null) return '';
     final stored = ref
         .watch(collectionNamingProvider(collection.collectionId))
@@ -681,7 +691,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// undefined one.
   NameKind? _shownNameKind;
   bool _titleReveals() {
-    final collection = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final collection = ref.watch(wordsNotifierProvider).valueOrNull;
     final kind = collection == null
         ? null
         : ref
@@ -697,7 +707,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// tags) and saves through the store; the title follows the stored name
   /// (collection-tags AC-05).
   Future<void> _renameCollection() async {
-    final collection = ref.read(wordInputNotifierProvider).valueOrNull;
+    final collection = ref.read(wordsNotifierProvider).valueOrNull;
     if (collection == null) return;
     // A name or description nobody gave is still AI's to fill: the field
     // starts empty with New collection's AI hint and note (owner, 2026-10-18).
@@ -722,7 +732,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       ),
     );
     if (details == null) return;
-    await ref.read(wordInputNotifierProvider.notifier).saveDetails(
+    await ref.read(wordsNotifierProvider.notifier).saveDetails(
           // Left blank: the name stays AI's to give.
           name: details.name.trim().isEmpty ? null : details.name,
           description: details.description,
@@ -737,9 +747,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   Future<void> _importFromSubtitles() => runSubtitleImport(
         context: context,
         ref: ref,
-        currentCollectionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.collectionId,
+        currentCollectionId: () => ref.read(wordsNotifierProvider).valueOrNull?.collectionId,
         collectionWords: () => [
-          for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+          for (final pair in ref.read(wordsNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty && pair.word.trim().length <= 500) pair.word.trim(),
         ].take(500).toList(),
         addWords: (words, film, poster) {
@@ -747,15 +757,15 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
           // side-panel-sources AC-22: the film joins the session's sources
           // (or the one already there is reused), and the rows point at it.
           final sourceId =
-              ref.read(wordInputNotifierProvider.notifier).upsertSubtitlesSource(film, poster: poster);
+              ref.read(wordsNotifierProvider.notifier).upsertSubtitlesSource(film, poster: poster);
           _addWordsFromPhoto(words, sourceId: sourceId);
         },
         addDialogues: (dialogues, keptCount) {
-          if (mounted) ref.read(wordInputNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
+          if (mounted) ref.read(wordsNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
         },
         addWordsTo: (collectionId, words, film, poster, dialogues) async {
           if (!mounted) return;
-          await ref.read(wordInputNotifierProvider.notifier).addWordsTo(
+          await ref.read(wordsNotifierProvider.notifier).addWordsTo(
                 collectionId,
                 [for (final w in words) wordPairFromPhoto(w)],
                 film: film,
@@ -771,21 +781,21 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   /// each pointing at it (AC-03, AC-13b).
   Future<void> _importFromQuizlet() => runQuizletImport(
         context: context,
-        currentCollectionId: () => ref.read(wordInputNotifierProvider).valueOrNull?.collectionId,
+        currentCollectionId: () => ref.read(wordsNotifierProvider).valueOrNull?.collectionId,
         collectionWords: () => [
-          for (final pair in ref.read(wordInputNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+          for (final pair in ref.read(wordsNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty) pair.word.trim(),
         ],
         addWords: (words, set) {
           if (!mounted) return;
           final sourceId = ref
-              .read(wordInputNotifierProvider.notifier)
+              .read(wordsNotifierProvider.notifier)
               .upsertSetSource(set.id, set.name, set.url);
           _addWordsFromPhoto(words, sourceId: sourceId);
         },
         addWordsTo: (collectionId, words, set) async {
           if (!mounted) return;
-          await ref.read(wordInputNotifierProvider.notifier).addWordsTo(
+          await ref.read(wordsNotifierProvider.notifier).addWordsTo(
                 collectionId,
                 [for (final w in words) wordPairFromPhoto(w)],
                 set: set,
@@ -798,7 +808,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {
-      ref.read(wordInputNotifierProvider.notifier).addSource(source);
+      ref.read(wordsNotifierProvider.notifier).addSource(source);
     }
     // The new words go after the last word, not after the trailing blank row:
     // drop it here, and _checkAndAddNewPair below adds a fresh one at the end.
@@ -842,7 +852,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
           sourceId: _wordPairs[0].sourceId);
     }
     if (appendedPairs.isNotEmpty) {
-      ref.read(wordInputNotifierProvider.notifier).addAll(appendedPairs);
+      ref.read(wordsNotifierProvider.notifier).addAll(appendedPairs);
     }
     // After addAll, so the notifier gets the new blank row after the words too.
     _checkAndAddNewPair();
@@ -915,7 +925,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
       _popupControllers.removeWhere((index, _) => index >= _wordPairs.length);
       _definitionPopupControllers.removeWhere((index, _) => index >= _wordPairs.length);
 
-      ref.read(wordInputNotifierProvider.notifier).reorder(oldIndex, newIndex);
+      ref.read(wordsNotifierProvider.notifier).reorder(oldIndex, newIndex);
     });
   }
 
@@ -997,14 +1007,22 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     // ordinary notifier updates below (all driven by this screen's own
     // mutations, via updateAt/removeAt/reorder/addAll) never re-trigger it,
     // while another session being swapped in does.
-    ref.listen(wordInputNotifierProvider, (previous, next) {
+    ref.listen(wordsNotifierProvider, (previous, next) {
       next.whenData((collection) {
         if (_restoredCollectionId == collection.collectionId) return;
+        final swapped = _restoredCollectionId != null;
         _restoredCollectionId = collection.collectionId;
         // Another session: the photo panel closes and nothing stays
         // selected (side-bar-for-main-screen, spec AC-15b).
         photoPanel.close();
-        if (collection.words.isNotEmpty) _restoreFromStore(collection.words);
+        if (collection.words.isNotEmpty) {
+          _restoreFromStore(collection.words);
+        } else if (swapped) {
+          // This screen stays alive in the menu shell, so an empty
+          // collection opened later gets the one blank row a new screen
+          // starts with, not the previous collection's rows.
+          _restoreFromStore([WordPair(word: '', translation: '')]);
+        }
         debugPrint('VOCAB: session ${collection.collectionId} on screen');
       });
     });
@@ -1036,11 +1054,18 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
     _tagLineOpen = hasTags;
 
     // Back steps the open photo panel back one stop and never leaves the
-    // screen while it is open (spec AC-10). Closed, Back is as before.
+    // screen while it is open (spec AC-10). Closed, Back goes to Collections,
+    // the start screen (navigation, owner 2026-10-18).
+    // While the drawer is open Back only closes it.
     return PopScope(
-      canPop: !photoPanel.isOpen,
+      canPop: _drawerOpen,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) photoPanel.stepBack();
+        if (didPop) return;
+        if (photoPanel.isOpen) {
+          photoPanel.stepBack();
+        } else {
+          const CollectionsRoute().go(context);
+        }
       },
       child: Scaffold(
       appBar: photoPanelGuardedAppBar(AppBar(
@@ -1058,7 +1083,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
             Flexible(
               child: CollectionTitle(
                 text: _collectionTitle(),
-                collectionId: ref.watch(wordInputNotifierProvider).valueOrNull?.collectionId,
+                collectionId: ref.watch(wordsNotifierProvider).valueOrNull?.collectionId,
                 animate: _titleReveals(),
               ),
             ),
@@ -1106,57 +1131,12 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
         setState(() => _drawerOpen = open);
         if (open) photoPanel.close();
       },
-      drawer: Drawer(
-              // In the tree exactly while the drawer is on screen (StillBody).
-              child: StillBodyWhileMounted(
-              controller: _bodyStill,
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  DrawerHeader(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.inversePrimary,
-                    ),
-                    child: const Text(
-                      'Меню',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.home),
-                    title: const Text('Main'),
-                    selected: true,
-                    onTap: () => Navigator.pop(context),
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.folder_outlined),
-                    title: const Text('Collections'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      const CollectionsRoute().go(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.history),
-                    title: const Text('History'),
-                    onTap: () {
-                      Navigator.pop(context);
-                      const HistoryRoute().go(context);
-                    },
-                  ),
-              ListTile(
-                key: const Key('drawer-app-settings'),
-                leading: const Icon(Icons.palette_outlined),
-                title: const Text('App settings'),
-                onTap: () {
-                  Navigator.pop(context);
-                  const AppSettingsRoute().go(context);
-                },
-              ),
-                ],
-              ),
-              ),
-            ),
+      drawer: AppDrawer(
+        current: AppMenuItem.words,
+        // In the tree exactly while the drawer is on screen (StillBody).
+        wrap: (list) =>
+            StillBodyWhileMounted(controller: _bodyStill, child: list),
+      ),
         // The theme's backdrop, behind the list (app-themes).
       body: StillBody(
           controller: _bodyStill,
@@ -1228,6 +1208,9 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               hidden: _drawerOpen,
               // Kept free for the floating-button row (spec AC-01).
               bottomReserve: 80,
+              // The tag line is the top bar's: the tab stands where it
+              // does on the Words screen, which has none.
+              tabTopInset: CollectionTagLine.lineHeight * _tagLine.value,
               scrollController: _listScroll,
               onSelected: _onPhotoSelected,
               onOpenNotes: _openNotes,
@@ -1263,7 +1246,7 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
               foregroundColor: AppDecor.of(context).onFabAlt,
               child: const Icon(Icons.settings),
             ),
-            WordInputSpeedDial(
+            WordsSpeedDial(
               onTakePhoto: _takePhotoForVocabulary,
               onFromSubtitles: _importFromSubtitles,
               onImportFromQuizlet: _importFromQuizlet,
@@ -1281,16 +1264,16 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   Future<void> _openNotes(String? id) async {
     await NotesRoute(selectedId: id).push<void>(context);
     if (!mounted) return;
-    final notifier = ref.read(wordInputNotifierProvider.notifier);
-    final collection = ref.read(wordInputNotifierProvider).valueOrNull;
+    final notifier = ref.read(wordsNotifierProvider.notifier);
+    final collection = ref.read(wordsNotifierProvider).valueOrNull;
     if (!notifier.takeEditedElsewhere() || collection == null) return;
-    _restoreFromStore(collection.words, focusLast: false);
+    _restoreFromStore(collection.words);
   }
 
   /// The current collection's typed tags; a collection from before the typed
   /// tags shows its legacy tags as topic tags.
   bool get _legacyOnly {
-    final c = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final c = ref.watch(wordsNotifierProvider).valueOrNull;
     return c != null &&
         c.originTags.isEmpty &&
         c.topicTags.isEmpty &&
@@ -1298,10 +1281,10 @@ class _WordInputScreenState extends ConsumerState<WordInputScreen>
   }
 
   List<String> _originTags() =>
-      ref.watch(wordInputNotifierProvider).valueOrNull?.originTags ?? const [];
+      ref.watch(wordsNotifierProvider).valueOrNull?.originTags ?? const [];
 
   List<String> _topicTags() {
-    final c = ref.watch(wordInputNotifierProvider).valueOrNull;
+    final c = ref.watch(wordsNotifierProvider).valueOrNull;
     if (c == null) return const [];
     return _legacyOnly ? c.tags : c.topicTags;
   }

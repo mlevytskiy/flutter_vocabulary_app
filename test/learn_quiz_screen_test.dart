@@ -17,12 +17,12 @@ import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_scaffold.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/question_builder.dart';
 import 'package:flutter_vocabulary_app/features/learn/quiz/quiz_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/pronunciation_buttons.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/pronunciation_buttons.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 
 /// learn-quiz: the screen (AC-01, AC-03, AC-04, AC-08 – AC-18, AC-21,
 /// AC-23 – AC-26; §6 tap-to-Next and feedback leak).
-class _FakeInput extends WordInputNotifier {
+class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
 
@@ -108,7 +108,7 @@ void main() {
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordInputNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);

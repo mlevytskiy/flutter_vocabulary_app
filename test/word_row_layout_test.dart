@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/translation_dots_button.dart';
-import 'package:flutter_vocabulary_app/features/word_input/widgets/word_row_item.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/translation_dots_button.dart';
+import 'package:flutter_vocabulary_app/features/words/widgets/word_row_item.dart';
 
 /// definition-mode T11: translation mode must look exactly as before
 /// (spec AC-02). The expected rectangles below were recorded from the

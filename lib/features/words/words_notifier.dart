@@ -17,14 +17,14 @@ import '../../core/services/collection_store.dart';
 import '../../core/services/filing.dart';
 import '../../core/services/source_photo_store.dart' show uuidV4;
 
-part 'word_input_notifier.g.dart';
+part 'words_notifier.g.dart';
 
-/// Owns the current [WordCollection]. `WordInputScreen` keeps mirroring the words into
+/// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
 /// mutation here right after making it.
 @Riverpod(keepAlive: true)
-class WordInputNotifier extends _$WordInputNotifier {
+class WordsNotifier extends _$WordsNotifier {
   Timer? _saveTimer;
 
   /// True between a mutation and the write that persists it. `flush()` is

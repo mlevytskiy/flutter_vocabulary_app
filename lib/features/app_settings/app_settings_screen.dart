@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app_restarter.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_theme.dart';
+import '../app_menu/app_drawer.dart';
 
 /// App settings (app-themes, owner 2026-10-17): settings for the whole app,
 /// opened from the side menu. The theme gallery (every theme as a small live
@@ -23,53 +24,56 @@ class AppSettingsScreen extends ConsumerWidget {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('App settings')),
-      body: AppBackdrop(
-        child: CustomScrollView(
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Theme', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Colours, fonts and shapes for the whole app',
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                    ),
-                  ],
+      drawer: appDrawerIfRoot(context, AppMenuItem.appSettings),
+      body: BackToCollections(
+        child: AppBackdrop(
+          child: CustomScrollView(
+            slivers: [
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Theme', style: theme.textTheme.titleLarge),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Colours, fonts and shapes for the whole app',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 220,
-                  mainAxisSpacing: 14,
-                  crossAxisSpacing: 14,
-                  childAspectRatio: 0.66,
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                sliver: SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 220,
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    childAspectRatio: 0.66,
+                  ),
+                  delegate: SliverChildListDelegate([
+                    for (final spec in appThemes)
+                      _ThemeCard(
+                        key: themeKey(spec.id),
+                        spec: spec,
+                        selected: spec.id == current,
+                        onTap: () => ref
+                            .read(appThemeNotifierProvider.notifier)
+                            .set(spec.id),
+                      ),
+                  ]),
                 ),
-                delegate: SliverChildListDelegate([
-                  for (final spec in appThemes)
-                    _ThemeCard(
-                      key: themeKey(spec.id),
-                      spec: spec,
-                      selected: spec.id == current,
-                      onTap: () => ref
-                          .read(appThemeNotifierProvider.notifier)
-                          .set(spec.id),
-                    ),
-                ]),
               ),
-            ),
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(16, 0, 16, 32),
-              sliver: SliverToBoxAdapter(child: _NewUserSection()),
-            ),
-          ],
+              const SliverPadding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 32),
+                sliver: SliverToBoxAdapter(child: _NewUserSection()),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -86,8 +90,8 @@ class _NewUserSection extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final takenAt = ref.watch(newUserBackupProvider).valueOrNull;
-    final muted = theme.textTheme.bodyMedium
-        ?.copyWith(color: scheme.onSurfaceVariant);
+    final muted =
+        theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant);
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(

@@ -13,9 +13,9 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
-import 'package:flutter_vocabulary_app/features/word_input/collection_tag_line.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_notifier.dart';
-import 'package:flutter_vocabulary_app/features/word_input/word_input_screen.dart';
+import 'package:flutter_vocabulary_app/features/words/collection_tag_line.dart';
+import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+import 'package:flutter_vocabulary_app/features/words/words_screen.dart';
 
 import 'seed_collections.dart';
 
@@ -63,7 +63,7 @@ void main() {
     container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
-    await container.read(wordInputNotifierProvider.future);
+    await container.read(wordsNotifierProvider.future);
   }
 
   Future<void> close() async {
@@ -72,9 +72,9 @@ void main() {
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   }
 
-  WordInputNotifier notifier() =>
-      container.read(wordInputNotifierProvider.notifier);
-  WordCollection shown() => container.read(wordInputNotifierProvider).value!;
+  WordsNotifier notifier() =>
+      container.read(wordsNotifierProvider.notifier);
+  WordCollection shown() => container.read(wordsNotifierProvider).value!;
   Future<WordCollection> stored() async =>
       (await store.byId(seeded.collectionId))!;
 
@@ -164,8 +164,8 @@ void main() {
       // A fresh empty one with no source.
       final bare = await store.create(folderId: null, keep: false);
       await store.setCurrentCollectionId(bare.collectionId);
-      container.invalidate(wordInputNotifierProvider);
-      await container.read(wordInputNotifierProvider.future);
+      container.invalidate(wordsNotifierProvider);
+      await container.read(wordsNotifierProvider.future);
       expect(await notifier().saveDetails(description: 'Notes only'), isTrue);
       await notifier().newCollection(null);
       expect(await store.byId(bare.collectionId), isNotNull);
@@ -190,7 +190,7 @@ void main() {
       });
       await tester.pumpWidget(UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: WordInputScreen()),
+        child: const MaterialApp(home: WordsScreen()),
       ));
       for (var i = 0; i < 10; i++) {
         await tester.pump(const Duration(milliseconds: 50));

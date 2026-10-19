@@ -184,16 +184,21 @@ class CollectionsGrid extends StatelessWidget {
       itemCount: list.length,
       itemBuilder: (context, i) {
         final item = list[i];
-        final icon = CollectionIcon(
-          kind: item.isFolder
-              ? CollectionIconKind.folder
-              : CollectionIconKind.collection,
-          name: item.name,
-          wordCount: item.wordCount,
-          isCurrent: item.isCurrent,
-          badges: item.badges,
-          onTap: () => onTap(item),
-          onBin: onBin == null ? null : (rect) => onBin!(item, rect),
+        // The full cell width, also under a wrapper's loose constraints, so
+        // every picture sits in its cell's middle whatever the name's width.
+        final icon = SizedBox(
+          width: double.infinity,
+          child: CollectionIcon(
+            kind: item.isFolder
+                ? CollectionIconKind.folder
+                : CollectionIconKind.collection,
+            name: item.name,
+            wordCount: item.wordCount,
+            isCurrent: item.isCurrent,
+            badges: item.badges,
+            onTap: () => onTap(item),
+            onBin: onBin == null ? null : (rect) => onBin!(item, rect),
+          ),
         );
         final shown = itemWrapper?.call(context, item, icon) ?? icon;
         return hidden.contains(item.id)
