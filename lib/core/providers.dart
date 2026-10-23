@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:convert';
 
+import '../features/learn/entry/learn_presets.dart';
 import 'models/offered_ai.dart';
 import 'theme/app_theme.dart' show AppThemeId;
 import 'models/collection_folder.dart';
@@ -319,6 +320,171 @@ class WordDetailModeNotifier extends _$WordDetailModeNotifier {
     state = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(prefsKey, mode.name);
+  }
+}
+
+/// What the Learn entry remembers (learn-redesign T6, ADR-0006, AC-05/17).
+class LearnSettings {
+  const LearnSettings({
+    required this.preset,
+    required this.enabled,
+    required this.wordsPerSession,
+  });
+
+  final LearnPreset preset;
+  final Set<String> enabled;
+  final WordsPerSession wordsPerSession;
+
+  LearnSettings copyWith({
+    LearnPreset? preset,
+    Set<String>? enabled,
+    WordsPerSession? wordsPerSession,
+  }) =>
+      LearnSettings(
+        preset: preset ?? this.preset,
+        enabled: enabled ?? this.enabled,
+        wordsPerSession: wordsPerSession ?? this.wordsPerSession,
+      );
+}
+
+/// The learn preset, enabled exercises and words per session; persisted like
+/// [WordDetailModeNotifier]. Starts as Balanced / its set / all words and
+/// switches once the stored values are read ([loaded]).
+@Riverpod(keepAlive: true)
+class LearnSettingsNotifier extends _$LearnSettingsNotifier {
+  static const presetKey = 'learn.preset';
+  static const enabledKey = 'learn.enabled';
+  static const wordsPerSessionKey = 'learn.wordsPerSession';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  LearnSettings build() {
+    loaded;
+    return LearnSettings(
+      preset: LearnPreset.balanced,
+      enabled: presetExercises(LearnPreset.balanced),
+      wordsPerSession: WordsPerSession.all,
+    );
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    // A choice made before the stored values arrived wins over them.
+    if (_setByLearner) return;
+    final storedEnabled = prefs.getStringList(enabledKey);
+    final enabled = storedEnabled == null
+        ? state.enabled
+        : storedEnabled.where(pageExerciseIds.contains).toSet();
+    final storedPreset = prefs.getString(presetKey);
+    final preset = LearnPreset.values.firstWhere(
+      (p) => p.name == storedPreset,
+      orElse: () => presetFor(enabled),
+    );
+    state = LearnSettings(
+      preset: preset,
+      enabled: enabled,
+      wordsPerSession: WordsPerSession.values.firstWhere(
+        (w) => w.name == prefs.getString(wordsPerSessionKey),
+        orElse: () => WordsPerSession.all,
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(presetKey, state.preset.name);
+    await prefs.setStringList(enabledKey, state.enabled.toList()..sort());
+    await prefs.setString(wordsPerSessionKey, state.wordsPerSession.name);
+  }
+
+  Future<void> pickPreset(LearnPreset preset) async {
+    _setByLearner = true;
+    state = state.copyWith(
+      preset: preset,
+      // Custom keeps the current mix; the others bring their own.
+      enabled: preset == LearnPreset.custom
+          ? state.enabled
+          : presetExercises(preset),
+    );
+    await _save();
+  }
+
+  /// Turns [id] on or off. Refuses (false) to turn off the last enabled
+  /// exercise of its step; any change sets the preset to the matching one.
+  Future<bool> setEnabled(String id, bool on) async {
+    if (!pageExerciseIds.contains(id)) return false;
+    if (!on && !canTurnOff(state.enabled, id)) return false;
+    _setByLearner = true;
+    final enabled = {...state.enabled};
+    on ? enabled.add(id) : enabled.remove(id);
+    state = state.copyWith(enabled: enabled, preset: presetFor(enabled));
+    await _save();
+    return true;
+  }
+
+  Future<void> setWordsPerSession(WordsPerSession value) async {
+    _setByLearner = true;
+    state = state.copyWith(wordsPerSession: value);
+    await _save();
+  }
+}
+
+/// Whether a collection's learn session is split into its word groups
+/// (AC-18); on by default, remembered per collection.
+@Riverpod(keepAlive: true)
+class LearnSplitNotifier extends _$LearnSplitNotifier {
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  String get _key => 'learn.split.$collectionId';
+
+  @override
+  bool build(String collectionId) {
+    loaded;
+    return true;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    state = prefs.getBool(_key) ?? true;
+  }
+
+  Future<void> set(bool value) async {
+    _setByLearner = true;
+    state = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_key, value);
+  }
+}
+
+/// Index of the session group a collection's learner played last, if any.
+@Riverpod(keepAlive: true)
+class LearnLastGroupNotifier extends _$LearnLastGroupNotifier {
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  String get _key => 'learn.lastGroup.$collectionId';
+
+  @override
+  int? build(String collectionId) {
+    loaded;
+    return null;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    state = prefs.getInt(_key);
+  }
+
+  Future<void> set(int index) async {
+    _setByLearner = true;
+    state = index;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_key, index);
   }
 }
 

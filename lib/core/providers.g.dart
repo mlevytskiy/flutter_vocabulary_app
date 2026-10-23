@@ -1211,6 +1211,351 @@ final wordDetailModeNotifierProvider =
 );
 
 typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+String _$learnSettingsNotifierHash() =>
+    r'6ba5822e47837e70ee80a57b34cf031f60e9867b';
+
+/// The learn preset, enabled exercises and words per session; persisted like
+/// [WordDetailModeNotifier]. Starts as Balanced / its set / all words and
+/// switches once the stored values are read ([loaded]).
+///
+/// Copied from [LearnSettingsNotifier].
+@ProviderFor(LearnSettingsNotifier)
+final learnSettingsNotifierProvider =
+    NotifierProvider<LearnSettingsNotifier, LearnSettings>.internal(
+  LearnSettingsNotifier.new,
+  name: r'learnSettingsNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$learnSettingsNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$LearnSettingsNotifier = Notifier<LearnSettings>;
+String _$learnSplitNotifierHash() =>
+    r'18a734f282d274061b2c06adec850ac1243c2c8d';
+
+abstract class _$LearnSplitNotifier extends BuildlessNotifier<bool> {
+  late final String collectionId;
+
+  bool build(
+    String collectionId,
+  );
+}
+
+/// Whether a collection's learn session is split into its word groups
+/// (AC-18); on by default, remembered per collection.
+///
+/// Copied from [LearnSplitNotifier].
+@ProviderFor(LearnSplitNotifier)
+const learnSplitNotifierProvider = LearnSplitNotifierFamily();
+
+/// Whether a collection's learn session is split into its word groups
+/// (AC-18); on by default, remembered per collection.
+///
+/// Copied from [LearnSplitNotifier].
+class LearnSplitNotifierFamily extends Family<bool> {
+  /// Whether a collection's learn session is split into its word groups
+  /// (AC-18); on by default, remembered per collection.
+  ///
+  /// Copied from [LearnSplitNotifier].
+  const LearnSplitNotifierFamily();
+
+  /// Whether a collection's learn session is split into its word groups
+  /// (AC-18); on by default, remembered per collection.
+  ///
+  /// Copied from [LearnSplitNotifier].
+  LearnSplitNotifierProvider call(
+    String collectionId,
+  ) {
+    return LearnSplitNotifierProvider(
+      collectionId,
+    );
+  }
+
+  @override
+  LearnSplitNotifierProvider getProviderOverride(
+    covariant LearnSplitNotifierProvider provider,
+  ) {
+    return call(
+      provider.collectionId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'learnSplitNotifierProvider';
+}
+
+/// Whether a collection's learn session is split into its word groups
+/// (AC-18); on by default, remembered per collection.
+///
+/// Copied from [LearnSplitNotifier].
+class LearnSplitNotifierProvider
+    extends NotifierProviderImpl<LearnSplitNotifier, bool> {
+  /// Whether a collection's learn session is split into its word groups
+  /// (AC-18); on by default, remembered per collection.
+  ///
+  /// Copied from [LearnSplitNotifier].
+  LearnSplitNotifierProvider(
+    String collectionId,
+  ) : this._internal(
+          () => LearnSplitNotifier()..collectionId = collectionId,
+          from: learnSplitNotifierProvider,
+          name: r'learnSplitNotifierProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$learnSplitNotifierHash,
+          dependencies: LearnSplitNotifierFamily._dependencies,
+          allTransitiveDependencies:
+              LearnSplitNotifierFamily._allTransitiveDependencies,
+          collectionId: collectionId,
+        );
+
+  LearnSplitNotifierProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.collectionId,
+  }) : super.internal();
+
+  final String collectionId;
+
+  @override
+  bool runNotifierBuild(
+    covariant LearnSplitNotifier notifier,
+  ) {
+    return notifier.build(
+      collectionId,
+    );
+  }
+
+  @override
+  Override overrideWith(LearnSplitNotifier Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: LearnSplitNotifierProvider._internal(
+        () => create()..collectionId = collectionId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        collectionId: collectionId,
+      ),
+    );
+  }
+
+  @override
+  NotifierProviderElement<LearnSplitNotifier, bool> createElement() {
+    return _LearnSplitNotifierProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LearnSplitNotifierProvider &&
+        other.collectionId == collectionId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin LearnSplitNotifierRef on NotifierProviderRef<bool> {
+  /// The parameter `collectionId` of this provider.
+  String get collectionId;
+}
+
+class _LearnSplitNotifierProviderElement
+    extends NotifierProviderElement<LearnSplitNotifier, bool>
+    with LearnSplitNotifierRef {
+  _LearnSplitNotifierProviderElement(super.provider);
+
+  @override
+  String get collectionId =>
+      (origin as LearnSplitNotifierProvider).collectionId;
+}
+
+String _$learnLastGroupNotifierHash() =>
+    r'5915809e9d038b59f145437d0a69fa3f0a88da30';
+
+abstract class _$LearnLastGroupNotifier extends BuildlessNotifier<int?> {
+  late final String collectionId;
+
+  int? build(
+    String collectionId,
+  );
+}
+
+/// Index of the session group a collection's learner played last, if any.
+///
+/// Copied from [LearnLastGroupNotifier].
+@ProviderFor(LearnLastGroupNotifier)
+const learnLastGroupNotifierProvider = LearnLastGroupNotifierFamily();
+
+/// Index of the session group a collection's learner played last, if any.
+///
+/// Copied from [LearnLastGroupNotifier].
+class LearnLastGroupNotifierFamily extends Family<int?> {
+  /// Index of the session group a collection's learner played last, if any.
+  ///
+  /// Copied from [LearnLastGroupNotifier].
+  const LearnLastGroupNotifierFamily();
+
+  /// Index of the session group a collection's learner played last, if any.
+  ///
+  /// Copied from [LearnLastGroupNotifier].
+  LearnLastGroupNotifierProvider call(
+    String collectionId,
+  ) {
+    return LearnLastGroupNotifierProvider(
+      collectionId,
+    );
+  }
+
+  @override
+  LearnLastGroupNotifierProvider getProviderOverride(
+    covariant LearnLastGroupNotifierProvider provider,
+  ) {
+    return call(
+      provider.collectionId,
+    );
+  }
+
+  static const Iterable<ProviderOrFamily>? _dependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
+
+  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
+
+  @override
+  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
+      _allTransitiveDependencies;
+
+  @override
+  String? get name => r'learnLastGroupNotifierProvider';
+}
+
+/// Index of the session group a collection's learner played last, if any.
+///
+/// Copied from [LearnLastGroupNotifier].
+class LearnLastGroupNotifierProvider
+    extends NotifierProviderImpl<LearnLastGroupNotifier, int?> {
+  /// Index of the session group a collection's learner played last, if any.
+  ///
+  /// Copied from [LearnLastGroupNotifier].
+  LearnLastGroupNotifierProvider(
+    String collectionId,
+  ) : this._internal(
+          () => LearnLastGroupNotifier()..collectionId = collectionId,
+          from: learnLastGroupNotifierProvider,
+          name: r'learnLastGroupNotifierProvider',
+          debugGetCreateSourceHash:
+              const bool.fromEnvironment('dart.vm.product')
+                  ? null
+                  : _$learnLastGroupNotifierHash,
+          dependencies: LearnLastGroupNotifierFamily._dependencies,
+          allTransitiveDependencies:
+              LearnLastGroupNotifierFamily._allTransitiveDependencies,
+          collectionId: collectionId,
+        );
+
+  LearnLastGroupNotifierProvider._internal(
+    super._createNotifier, {
+    required super.name,
+    required super.dependencies,
+    required super.allTransitiveDependencies,
+    required super.debugGetCreateSourceHash,
+    required super.from,
+    required this.collectionId,
+  }) : super.internal();
+
+  final String collectionId;
+
+  @override
+  int? runNotifierBuild(
+    covariant LearnLastGroupNotifier notifier,
+  ) {
+    return notifier.build(
+      collectionId,
+    );
+  }
+
+  @override
+  Override overrideWith(LearnLastGroupNotifier Function() create) {
+    return ProviderOverride(
+      origin: this,
+      override: LearnLastGroupNotifierProvider._internal(
+        () => create()..collectionId = collectionId,
+        from: from,
+        name: null,
+        dependencies: null,
+        allTransitiveDependencies: null,
+        debugGetCreateSourceHash: null,
+        collectionId: collectionId,
+      ),
+    );
+  }
+
+  @override
+  NotifierProviderElement<LearnLastGroupNotifier, int?> createElement() {
+    return _LearnLastGroupNotifierProviderElement(this);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LearnLastGroupNotifierProvider &&
+        other.collectionId == collectionId;
+  }
+
+  @override
+  int get hashCode {
+    var hash = _SystemHash.combine(0, runtimeType.hashCode);
+    hash = _SystemHash.combine(hash, collectionId.hashCode);
+
+    return _SystemHash.finish(hash);
+  }
+}
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+mixin LearnLastGroupNotifierRef on NotifierProviderRef<int?> {
+  /// The parameter `collectionId` of this provider.
+  String get collectionId;
+}
+
+class _LearnLastGroupNotifierProviderElement
+    extends NotifierProviderElement<LearnLastGroupNotifier, int?>
+    with LearnLastGroupNotifierRef {
+  _LearnLastGroupNotifierProviderElement(super.provider);
+
+  @override
+  String get collectionId =>
+      (origin as LearnLastGroupNotifierProvider).collectionId;
+}
+
 String _$appThemeNotifierHash() => r'6224233ff14b800d30acbad8a25b501db5c323f0';
 
 /// The app's theme, picked on the App settings page (app-themes, owner
