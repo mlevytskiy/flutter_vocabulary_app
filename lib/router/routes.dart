@@ -11,6 +11,7 @@ import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/learn/session/learning_session_screen.dart';
+import '../features/learn/session/session_results_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
 import '../features/notes/notes_screen.dart';
 import '../features/notes/photo_viewer_screen.dart';
@@ -59,6 +60,7 @@ part 'routes.g.dart';
                   ],
                 ),
                 TypedGoRoute<LearningSessionRoute>(path: 'session'),
+                TypedGoRoute<SessionResultsRoute>(path: 'results'),
                 TypedGoRoute<WordsSettingsRoute>(
                   path: 'settings',
                   routes: [
@@ -160,18 +162,34 @@ class LearnRoute extends GoRouteData with _$LearnRoute {
 /// [LearnRoute], [split] as ticked on the sheet, [rowIds] the comma-joined
 /// rows of "Practise N shaky words" (none: the picker chooses).
 class LearningSessionRoute extends GoRouteData with _$LearningSessionRoute {
-  const LearningSessionRoute({this.collectionId, this.split = true, this.rowIds});
+  const LearningSessionRoute({this.collectionId, this.split = true, this.rowIds, this.skipGroup});
 
   final String? collectionId;
   final bool split;
   final String? rowIds;
+
+  /// "Next group": the group just played, skipped by the picker.
+  final int? skipGroup;
 
   @override
   Widget build(BuildContext context, GoRouterState state) => LearningSessionScreen(
         collectionId: collectionId,
         split: split,
         rowIds: rowIds == null || rowIds!.isEmpty ? null : rowIds!.split(','),
+        skipGroup: skipGroup,
       );
+}
+
+/// The results of the session just finished (learn-redesign SCR-04; AC-12),
+/// read from `lastSessionResultProvider`. [collectionId] as on
+/// [LearningSessionRoute].
+class SessionResultsRoute extends GoRouteData with _$SessionResultsRoute {
+  const SessionResultsRoute({this.collectionId});
+
+  final String? collectionId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => SessionResultsScreen(collectionId: collectionId);
 }
 
 /// The app's placeholder for an exercise that is not built yet (learn-part-step-1),

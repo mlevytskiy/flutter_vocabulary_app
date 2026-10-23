@@ -68,6 +68,10 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
                       factory: _$LearningSessionRoute._fromState,
                     ),
                     GoRouteData.$route(
+                      path: 'results',
+                      factory: _$SessionResultsRoute._fromState,
+                    ),
+                    GoRouteData.$route(
                       path: 'settings',
                       factory: _$WordsSettingsRoute._fromState,
                       routes: [
@@ -413,6 +417,8 @@ mixin _$LearningSessionRoute on GoRouteData {
                 'split', state.uri.queryParameters, _$boolConverter) ??
             true,
         rowIds: state.uri.queryParameters['row-ids'],
+        skipGroup: _$convertMapValue(
+            'skip-group', state.uri.queryParameters, int.tryParse),
       );
 
   LearningSessionRoute get _self => this as LearningSessionRoute;
@@ -424,6 +430,38 @@ mixin _$LearningSessionRoute on GoRouteData {
           if (_self.collectionId != null) 'collection-id': _self.collectionId,
           if (_self.split != true) 'split': _self.split.toString(),
           if (_self.rowIds != null) 'row-ids': _self.rowIds,
+          if (_self.skipGroup != null)
+            'skip-group': _self.skipGroup!.toString(),
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$SessionResultsRoute on GoRouteData {
+  static SessionResultsRoute _fromState(GoRouterState state) =>
+      SessionResultsRoute(
+        collectionId: state.uri.queryParameters['collection-id'],
+      );
+
+  SessionResultsRoute get _self => this as SessionResultsRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/words/table/results',
+        queryParams: {
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
         },
       );
 

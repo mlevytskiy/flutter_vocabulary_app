@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../router/routes.dart';
 import 'learn_page_frame.dart';
 import 'learning_session_notifier.dart';
 
@@ -8,7 +9,7 @@ import 'learning_session_notifier.dart';
 /// the pages of [LearningSession] in the [LearnPageFrame], the error line with
 /// Retry above it, and the leave dialog. Opened by `LearningSessionRoute`.
 class LearningSessionScreen extends ConsumerStatefulWidget {
-  const LearningSessionScreen({super.key, this.collectionId, this.split = true, this.rowIds});
+  const LearningSessionScreen({super.key, this.collectionId, this.split = true, this.rowIds, this.skipGroup});
 
   /// Null for the current collection, as on `LearnRoute`.
   final String? collectionId;
@@ -18,6 +19,9 @@ class LearningSessionScreen extends ConsumerStatefulWidget {
 
   /// Exactly these rows ("Practise N shaky words"), else null.
   final List<String>? rowIds;
+
+  /// "Next group": the group just played, skipped by the picker.
+  final int? skipGroup;
 
   @override
   ConsumerState<LearningSessionScreen> createState() => _LearningSessionScreenState();
@@ -32,7 +36,7 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
     // After the first build has subscribed, so the auto-dispose session lives.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(learningSessionProvider(widget.collectionId).notifier).start(split: widget.split, rowIds: widget.rowIds);
+      ref.read(learningSessionProvider(widget.collectionId).notifier).start(split: widget.split, rowIds: widget.rowIds, skipGroup: widget.skipGroup);
     });
   }
 
@@ -57,6 +61,12 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
     final provider = learningSessionProvider(widget.collectionId);
     final s = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
+    // Finished: the results replace the session (AC-12).
+    ref.listen(provider.select((s) => s.status), (_, status) {
+      if (status == SessionStatus.finished && mounted) {
+        SessionResultsRoute(collectionId: widget.collectionId).pushReplacement(context);
+      }
+    });
     final inProgress = s.status == SessionStatus.playing;
     return PopScope(
       canPop: !inProgress,
@@ -77,12 +87,7 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
                 button: 'Retry',
                 onPressed: notifier.retry,
               ),
-            // learn-redesign T13 replaces this with the results screen.
-            SessionStatus.finished => _Message(
-                text: 'Session done',
-                button: 'Done',
-                onPressed: () => Navigator.of(context).pop(),
-              ),
+            SessionStatus.finished => const _Message(text: 'Preparing your results…', busy: true),
             SessionStatus.playing => Column(
                 children: [
                   if (s.loadFailed) _ErrorLine(onRetry: notifier.retry),
