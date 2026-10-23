@@ -10,6 +10,7 @@ import '../features/dialogue/dialogue_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
 import '../features/learn/learn_screen.dart';
+import '../features/learn/session/learning_session_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
 import '../features/notes/notes_screen.dart';
 import '../features/notes/photo_viewer_screen.dart';
@@ -57,6 +58,7 @@ part 'routes.g.dart';
                     TypedGoRoute<DialogueRoute>(path: 'dialogue'),
                   ],
                 ),
+                TypedGoRoute<LearningSessionRoute>(path: 'session'),
                 TypedGoRoute<WordsSettingsRoute>(
                   path: 'settings',
                   routes: [
@@ -151,6 +153,25 @@ class LearnRoute extends GoRouteData with _$LearnRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       LearnScreen(collectionId: collectionId);
+}
+
+/// A learning session (learn-redesign SCR-03, AC-02), opened from the Learn
+/// sheet's Exercises card. Ids only (rule 1): [collectionId] as on
+/// [LearnRoute], [split] as ticked on the sheet, [rowIds] the comma-joined
+/// rows of "Practise N shaky words" (none: the picker chooses).
+class LearningSessionRoute extends GoRouteData with _$LearningSessionRoute {
+  const LearningSessionRoute({this.collectionId, this.split = true, this.rowIds});
+
+  final String? collectionId;
+  final bool split;
+  final String? rowIds;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => LearningSessionScreen(
+        collectionId: collectionId,
+        split: split,
+        rowIds: rowIds == null || rowIds!.isEmpty ? null : rowIds!.split(','),
+      );
 }
 
 /// The app's placeholder for an exercise that is not built yet (learn-part-step-1),

@@ -1,0 +1,166 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'learn_page_frame.dart';
+import 'learning_session_notifier.dart';
+
+/// The learning session (learn-redesign SCR-03; AC-02, AC-08, AC-11, AC-16):
+/// the pages of [LearningSession] in the [LearnPageFrame], the error line with
+/// Retry above it, and the leave dialog. Opened by `LearningSessionRoute`.
+class LearningSessionScreen extends ConsumerStatefulWidget {
+  const LearningSessionScreen({super.key, this.collectionId, this.split = true, this.rowIds});
+
+  /// Null for the current collection, as on `LearnRoute`.
+  final String? collectionId;
+
+  /// Whether the Learn sheet's split was ticked.
+  final bool split;
+
+  /// Exactly these rows ("Practise N shaky words"), else null.
+  final List<String>? rowIds;
+
+  @override
+  ConsumerState<LearningSessionScreen> createState() => _LearningSessionScreenState();
+}
+
+class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
+  static const leaveText = 'Leave the session? Progress in this session is lost.';
+
+  @override
+  void initState() {
+    super.initState();
+    // After the first build has subscribed, so the auto-dispose session lives.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(learningSessionProvider(widget.collectionId).notifier).start(split: widget.split, rowIds: widget.rowIds);
+    });
+  }
+
+  /// Asks before leaving a session in progress; Leave pops and writes
+  /// nothing (AC-16).
+  Future<void> _confirmLeave() async {
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: const Text(leaveText),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Stay')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Leave')),
+        ],
+      ),
+    );
+    if (leave == true && mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = learningSessionProvider(widget.collectionId);
+    final s = ref.watch(provider);
+    final notifier = ref.read(provider.notifier);
+    final inProgress = s.status == SessionStatus.playing;
+    return PopScope(
+      canPop: !inProgress,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _confirmLeave();
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: switch (s.status) {
+            SessionStatus.loading => const _Message(text: 'Preparing your session…', busy: true),
+            SessionStatus.notEnough => _Message(
+                text: 'Not enough words to learn yet',
+                button: 'Back',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            SessionStatus.error => _Message(
+                text: 'Could not load some exercises',
+                button: 'Retry',
+                onPressed: notifier.retry,
+              ),
+            // learn-redesign T13 replaces this with the results screen.
+            SessionStatus.finished => _Message(
+                text: 'Session done',
+                button: 'Done',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            SessionStatus.playing => Column(
+                children: [
+                  if (s.loadFailed) _ErrorLine(onRetry: notifier.retry),
+                  Expanded(
+                    child: LearnPageFrame(
+                      step: s.step,
+                      stepProgress: s.stepProgress,
+                      page: s.pageNumber,
+                      total: s.pageTotal,
+                      chip: s.page!.exerciseName,
+                      // A fresh subtree per page, so no body state carries over.
+                      body: KeyedSubtree(
+                        key: ValueKey(s.pageIndex),
+                        child: Builder(builder: (context) => s.page!.body(context, s.answer!)),
+                      ),
+                      answer: s.answer!,
+                      verdict: s.verdict,
+                      onContinue: notifier.next,
+                      onClose: _confirmLeave,
+                      onResult: notifier.answer,
+                    ),
+                  ),
+                ],
+              ),
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// The one plain error line with Retry while other pages play (AC-11).
+class _ErrorLine extends StatelessWidget {
+  const _ErrorLine({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 8, 0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text('Could not load some exercises',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.error)),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  }
+}
+
+class _Message extends StatelessWidget {
+  const _Message({required this.text, this.busy = false, this.button, this.onPressed});
+
+  final String text;
+  final bool busy;
+  final String? button;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (busy) ...[const CircularProgressIndicator(), const SizedBox(height: 16)],
+              Text(text, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),
+              if (button != null) ...[
+                const SizedBox(height: 16),
+                FilledButton(onPressed: onPressed, child: Text(button!)),
+              ],
+            ],
+          ),
+        ),
+      );
+}

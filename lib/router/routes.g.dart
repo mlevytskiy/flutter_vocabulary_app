@@ -64,6 +64,10 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
                       ],
                     ),
                     GoRouteData.$route(
+                      path: 'session',
+                      factory: _$LearningSessionRoute._fromState,
+                    ),
+                    GoRouteData.$route(
                       path: 'settings',
                       factory: _$WordsSettingsRoute._fromState,
                       routes: [
@@ -401,6 +405,42 @@ mixin _$DialogueRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
+mixin _$LearningSessionRoute on GoRouteData {
+  static LearningSessionRoute _fromState(GoRouterState state) =>
+      LearningSessionRoute(
+        collectionId: state.uri.queryParameters['collection-id'],
+        split: _$convertMapValue(
+                'split', state.uri.queryParameters, _$boolConverter) ??
+            true,
+        rowIds: state.uri.queryParameters['row-ids'],
+      );
+
+  LearningSessionRoute get _self => this as LearningSessionRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/words/table/session',
+        queryParams: {
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
+          if (_self.split != true) 'split': _self.split.toString(),
+          if (_self.rowIds != null) 'row-ids': _self.rowIds,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
 mixin _$WordsSettingsRoute on GoRouteData {
   static WordsSettingsRoute _fromState(GoRouterState state) =>
       WordsSettingsRoute(
@@ -592,4 +632,15 @@ T? _$convertMapValue<T>(
 extension<T extends Enum> on Map<T, String> {
   T? _$fromName(String? value) =>
       entries.where((element) => element.value == value).firstOrNull?.key;
+}
+
+bool _$boolConverter(String value) {
+  switch (value) {
+    case 'true':
+      return true;
+    case 'false':
+      return false;
+    default:
+      throw UnsupportedError('Cannot convert "$value" into a bool.');
+  }
 }
