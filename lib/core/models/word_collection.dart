@@ -198,7 +198,7 @@ class WordCollection {
         'groupedWordsKey': groupedWordsKey,
         'dialogues': dialogues.map((d) => d.toJson()).toList(),
         'results': results.map((r) => r.toJson()).toList(),
-        'boxes': boxes.map((b) => b.toJson()).toList(),
+        if (boxes.isNotEmpty) 'boxes': boxes.map((b) => b.toJson()).toList(),
         'tags': tags,
         if (description != null) 'description': description,
         if (originTags.isNotEmpty) 'originTags': originTags,
