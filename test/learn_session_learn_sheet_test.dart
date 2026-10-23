@@ -85,7 +85,7 @@ void main() {
     expect(find.text('3 steps · a mix of short tasks'), findsOneWidget);
     expect(find.text('Talk with AI'), findsOneWidget);
     expect(find.byType(CheckboxListTile), findsNothing);
-    expect(find.byTooltip('Learn settings'), findsNothing);
+    expect(find.byTooltip('Learn settings'), findsOneWidget);
     await t.tap(find.text('Talk with AI'));
     await t.pump();
     expect(find.text('Coming soon'), findsOneWidget);

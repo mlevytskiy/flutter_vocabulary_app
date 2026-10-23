@@ -9,6 +9,7 @@ import '../features/collections/recycle_bin_screen.dart';
 import '../features/dialogue/dialogue_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
+import '../features/learn/entry/learn_settings_screen.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/learn/session/learning_session_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
@@ -59,6 +60,7 @@ part 'routes.g.dart';
                   ],
                 ),
                 TypedGoRoute<LearningSessionRoute>(path: 'session'),
+                TypedGoRoute<LearnSettingsRoute>(path: 'learn-settings'),
                 TypedGoRoute<WordsSettingsRoute>(
                   path: 'settings',
                   routes: [
@@ -146,13 +148,28 @@ class WordsTableRoute extends GoRouteData with _$WordsTableRoute {
 /// the same optional [collectionId] as [WordsTableRoute]: none for the current
 /// session, an id for a History row, read-only either way (AC-13).
 class LearnRoute extends GoRouteData with _$LearnRoute {
-  const LearnRoute({this.collectionId});
+  const LearnRoute({this.collectionId, this.exercise});
+
+  final String? collectionId;
+
+  /// An exercise to open ticked ("Try it" in the Learn settings, AC-19).
+  final String? exercise;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      LearnScreen(collectionId: collectionId, initialExercise: exercise);
+}
+
+/// The Learn settings (learn-redesign SCR-05, AC-17..19), opened from the
+/// Learn sheet's gear. [collectionId] as on [LearnRoute], for "Try it".
+class LearnSettingsRoute extends GoRouteData with _$LearnSettingsRoute {
+  const LearnSettingsRoute({this.collectionId});
 
   final String? collectionId;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      LearnScreen(collectionId: collectionId);
+      LearnSettingsScreen(collectionId: collectionId);
 }
 
 /// A learning session (learn-redesign SCR-03, AC-02), opened from the Learn

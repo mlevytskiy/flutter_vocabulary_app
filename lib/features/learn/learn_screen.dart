@@ -43,9 +43,12 @@ GoRouteData startRouteFor(String exerciseId,
 /// exercises will read: none is the current session, an id is a History row
 /// (AC-13). Ticks are transient UI state.
 class LearnScreen extends ConsumerStatefulWidget {
-  const LearnScreen({super.key, this.collectionId});
+  const LearnScreen({super.key, this.collectionId, this.initialExercise});
 
   final String? collectionId;
+
+  /// An exercise that starts ticked ("Try it" in the Learn settings, AC-19).
+  final String? initialExercise;
 
   @override
   ConsumerState<LearnScreen> createState() => _LearnScreenState();
@@ -124,9 +127,13 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialExercise;
+    if (initial != null && exercises.any((e) => e.id == initial)) {
+      _ticked.add(initial);
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _showHint();
+      if (_ticked.isEmpty) _showHint();
       // Grouping starts here too when the words changed (AC-03); the page
       // shows it going.
       _groups.ensureGrouped().catchError((_) {});

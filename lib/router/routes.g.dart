@@ -68,6 +68,10 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
                       factory: _$LearningSessionRoute._fromState,
                     ),
                     GoRouteData.$route(
+                      path: 'learn-settings',
+                      factory: _$LearnSettingsRoute._fromState,
+                    ),
+                    GoRouteData.$route(
                       path: 'settings',
                       factory: _$WordsSettingsRoute._fromState,
                       routes: [
@@ -255,6 +259,7 @@ mixin _$WordsTableRoute on GoRouteData {
 mixin _$LearnRoute on GoRouteData {
   static LearnRoute _fromState(GoRouterState state) => LearnRoute(
         collectionId: state.uri.queryParameters['collection-id'],
+        exercise: state.uri.queryParameters['exercise'],
       );
 
   LearnRoute get _self => this as LearnRoute;
@@ -264,6 +269,7 @@ mixin _$LearnRoute on GoRouteData {
         '/words/table/learn',
         queryParams: {
           if (_self.collectionId != null) 'collection-id': _self.collectionId,
+          if (_self.exercise != null) 'exercise': _self.exercise,
         },
       );
 
@@ -424,6 +430,36 @@ mixin _$LearningSessionRoute on GoRouteData {
           if (_self.collectionId != null) 'collection-id': _self.collectionId,
           if (_self.split != true) 'split': _self.split.toString(),
           if (_self.rowIds != null) 'row-ids': _self.rowIds,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$LearnSettingsRoute on GoRouteData {
+  static LearnSettingsRoute _fromState(GoRouterState state) =>
+      LearnSettingsRoute(
+        collectionId: state.uri.queryParameters['collection-id'],
+      );
+
+  LearnSettingsRoute get _self => this as LearnSettingsRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/words/table/learn-settings',
+        queryParams: {
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
         },
       );
 
