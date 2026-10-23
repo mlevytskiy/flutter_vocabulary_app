@@ -1,7 +1,9 @@
 import 'package:flutter/widgets.dart';
 
-/// Opens the results of a finished talk (learn-redesign SCR-04). Until the
-/// results route is wired in, the talk screen just closes.
+import '../../../router/routes.dart';
+
+/// Opens the results of a finished talk (learn-redesign SCR-04), replacing
+/// the talk screen so Back from the results does not return to it.
 void openSessionResults(BuildContext context, String? collectionId) {
-  Navigator.of(context).pop();
+  SessionResultsRoute(collectionId: collectionId).pushReplacement(context);
 }

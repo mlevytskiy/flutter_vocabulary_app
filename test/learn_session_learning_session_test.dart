@@ -47,6 +47,27 @@ class _Store implements CollectionStore {
   }
 }
 
+/// Finishing writes the boxes (T13): an in-memory store that takes the update.
+class _FinishStore implements CollectionStore {
+  _FinishStore(this.collection);
+  final WordCollection collection;
+
+  @override
+  Future<String?> currentCollectionId() async => collection.collectionId;
+
+  @override
+  Future<WordCollection?> byId(String collectionId) async => collection;
+
+  @override
+  Future<bool> update(String collectionId, void Function(WordCollection) change) async {
+    change(collection);
+    return true;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation i) => throw StateError('unexpected ${i.memberName}');
+}
+
 class _NoNetwork implements LearnApiService {
   @override
   dynamic noSuchMethod(Invocation i) => throw StateError('the session asked the server: ${i.memberName}');
@@ -99,6 +120,7 @@ ExercisePage _page(String id, int step, List<String> rowIds) => ExercisePage(
 
 ProviderContainer _container(WordCollection collection, _Fakes fakes, {int seed = 1}) {
   final c = ProviderContainer(overrides: [
+    collectionStoreProvider.overrideWith((ref) async => _FinishStore(collection)),
     exerciseRandomProvider.overrideWithValue(Random(seed)),
     learnApiServiceProvider.overrideWithValue(_NoNetwork()),
     wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
