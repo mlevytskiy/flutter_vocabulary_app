@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Talk with AI's hold-to-talk (learn-redesign AC-25). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="flutter_vocabulary_app"
         android:name="${applicationName}"
@@ -46,6 +48,10 @@
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
+        </intent>
+        <!-- speech_to_text / speech_to_text_pro: find the speech recognizer (learn-redesign AC-25). -->
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
         </intent>
     </queries>
 </manifest>

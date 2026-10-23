@@ -41,6 +41,10 @@ dependencies:
   liquid_glass_renderer: 0.2.0-dev.4
   # The PDF share format (owner, 2026-10-14). Pinned, pure Dart.
   pdf: 3.11.3
+  # Speech to text for Talk with AI (learn-redesign, owner 2026-10-23/24). Pinned.
+  speech_to_text: 7.4.0
+  # Second speech engine for Talk with AI, picked in Learn settings (learn-redesign, owner 2026-10-23/24). Pinned.
+  speech_to_text_pro: 0.0.1
 
 dev_dependencies:
   flutter_test:

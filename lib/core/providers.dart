@@ -32,6 +32,7 @@ import 'services/tag_rules.dart' show tagKey;
 import 'models/tag_kind.dart';
 import 'services/collection_store.dart';
 import 'services/source_photo_store.dart';
+import 'services/speech_input.dart';
 import 'services/story_api_service.dart';
 import 'services/story_picture_store.dart';
 import 'services/story_run_store.dart';
@@ -492,6 +493,47 @@ class LearnLastGroupNotifier extends _$LearnLastGroupNotifier {
     await prefs.setInt(_key, index);
   }
 }
+
+/// The speech recognition engine for Talk with AI's hold-to-talk, picked in
+/// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
+/// [LearnSettingsNotifier]. Starts as [SpeechEngine.speechToText].
+@Riverpod(keepAlive: true)
+class SpeechEngineNotifier extends _$SpeechEngineNotifier {
+  static const key = 'learn.speechEngine';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  SpeechEngine build() {
+    loaded;
+    return SpeechEngine.speechToText;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    final stored = prefs.getString(key);
+    state = SpeechEngine.values.firstWhere((e) => e.name == stored,
+        orElse: () => SpeechEngine.speechToText);
+  }
+
+  Future<void> set(SpeechEngine engine) async {
+    _setByLearner = true;
+    state = engine;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, engine.name);
+  }
+}
+
+/// The hold-to-talk input of the engine picked in Learn settings (AC-25,
+/// AC-28, ADR-0009); overridden with a fake in tests.
+@Riverpod(keepAlive: true)
+SpeechInput speechInput(Ref ref) =>
+    switch (ref.watch(speechEngineNotifierProvider)) {
+      SpeechEngine.speechToText => SpeechToTextInput(),
+      SpeechEngine.speechToTextPro => SpeechToTextProInput(),
+    };
 
 /// The app's theme, picked on the App settings page (app-themes, owner
 /// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as

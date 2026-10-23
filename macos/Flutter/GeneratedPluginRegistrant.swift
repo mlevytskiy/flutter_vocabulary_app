@@ -12,6 +12,8 @@ import isar_community_flutter_libs
 import path_provider_foundation
 import share_plus
 import shared_preferences_foundation
+import speech_to_text
+import speech_to_text_pro
 import url_launcher_macos
 import webview_flutter_wkwebview
 
@@ -23,6 +25,8 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   PathProviderPlugin.register(with: registry.registrar(forPlugin: "PathProviderPlugin"))
   SharePlusMacosPlugin.register(with: registry.registrar(forPlugin: "SharePlusMacosPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))
+  SpeechToTextPlugin.register(with: registry.registrar(forPlugin: "SpeechToTextPlugin"))
+  SpeechToTextProPlugin.register(with: registry.registrar(forPlugin: "SpeechToTextProPlugin"))
   UrlLauncherPlugin.register(with: registry.registrar(forPlugin: "UrlLauncherPlugin"))
   WebViewFlutterPlugin.register(with: registry.registrar(forPlugin: "WebViewFlutterPlugin"))
 }

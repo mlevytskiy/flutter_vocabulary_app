@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/services/speech_input.dart';
 import '../../../router/routes.dart';
 import '../exercises.dart';
 import 'learn_presets.dart';
@@ -17,7 +18,8 @@ const _stepTitles = {
 
 /// The Learn settings (learn-redesign SCR-05, ADR-0006, AC-17..19): the
 /// preset, words per session, and every exercise of the plan with its switch
-/// (the eleven session pages) and a "Try it" that opens it alone.
+/// (the eleven session pages) and a "Try it" that opens it alone; under
+/// Voice, the speech recognition engine of Talk with AI (AC-28).
 class LearnSettingsScreen extends ConsumerWidget {
   const LearnSettingsScreen({super.key, this.collectionId});
 
@@ -40,6 +42,7 @@ class LearnSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(learnSettingsNotifierProvider);
     final notifier = ref.read(learnSettingsNotifierProvider.notifier);
+    final engine = ref.watch(speechEngineNotifierProvider);
     final heading = Theme.of(context).textTheme.titleMedium;
     return Scaffold(
       appBar: AppBar(title: const Text('Learn settings')),
@@ -109,6 +112,28 @@ class LearnSettingsScreen extends ConsumerWidget {
                 ]),
               ),
           ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Text('Voice', style: heading),
+          ),
+          const ListTile(title: Text('Speech recognition')),
+          RadioGroup<SpeechEngine>(
+            groupValue: engine,
+            onChanged: (e) {
+              if (e != null) {
+                ref.read(speechEngineNotifierProvider.notifier).set(e);
+              }
+            },
+            child: Column(children: [
+              for (final e in SpeechEngine.values)
+                RadioListTile<SpeechEngine>(
+                  value: e,
+                  title: Text(e.label),
+                  subtitle:
+                      e == SpeechEngine.speechToText ? const Text('Default') : null,
+                ),
+            ]),
+          ),
           const SizedBox(height: 16),
         ],
       ),
