@@ -77,6 +77,20 @@ void main() {
     expect(learnX < wordsX && wordsX < shareX, isTrue);
   });
 
+  testWidgets('learn-redesign AC-04: Learn as before plus the companion button',
+      (t) async {
+    await _pump(t, width: 600);
+    final learn = find.ancestor(
+        of: find.text('Learn'), matching: find.bySubtype<ElevatedButton>());
+    expect(learn, findsOneWidget);
+    expect(find.byIcon(Icons.school), findsOneWidget);
+    final companion = find.byTooltip('Learn with');
+    expect(companion, findsOneWidget);
+    expect(t.getSize(companion).width, greaterThanOrEqualTo(48));
+    expect(t.getCenter(companion).dx, greaterThan(t.getRect(learn).right));
+    expect(t.takeException(), isNull);
+  });
+
   testWidgets('AC-01: taps call the callbacks', (t) async {
     var l = 0, s = 0;
     await _pump(t, width: 600, onLearn: () => l++, onShare: () => s++);
