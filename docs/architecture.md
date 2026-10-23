@@ -70,6 +70,9 @@ lib/
                                 word_result.dart (+.g) — Isar @embedded WordResult {rowId, exerciseId,
                                 label known/repeat, at}: WordCollection.results, append-only, at most 2000;
                                 never in a row, a publish or an export (learn-kit S-22)
+                                word_box.dart (+.g) — Isar @embedded WordBox {rowId, word, box 1-5, dueAt,
+                                lastUpDay}: WordCollection.boxes, the Leitner boxes (learn-redesign ADR-0001);
+                                put() keeps the stored boxes, only update() writes them
                                 translation_result.dart (Google's dictionary block)
                                 definition_result.dart (the Worker's dictionary answer:
                                 senses / not found / unavailable; definition-mode)
@@ -139,6 +142,11 @@ lib/
                                 learn_api_service.dart (learn-kit: POST /learn/data — typed per
                                 LearnDataKind, 30 s — and POST /learn/check, 15 s; throws
                                 LearnApiException)
+                                talk_api_service.dart (learn-redesign: POST /learn/talk start/reply, 15 s;
+                                throws TalkApiException dayLimit/failed/network)
+                                speech_input.dart (learn-redesign ADR-0009: SpeechInput over
+                                speech_to_text or speech_to_text_pro, picked by the persisted
+                                SpeechEngine in Learn settings; speechInputProvider)
                                 exam_result_sink.dart (learn-kit: ExamResultSink, StoreExamResultSink —
                                 Step 3 word results onto the session via appendResult; latest per row)
                                 story_run_store.dart (Isar StoryRun: put/byId/watch; nothing is ever
@@ -262,7 +270,25 @@ lib/
                                       autocomplete, limits, long-press Forget), tag_suggestions.dart
                                       (+.g: tagSuggestions(kind) = library + live use counts + presets)
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
-                                      the Worker side is vocab-photo-api/src/learn/
+                                      the Worker side is vocab-photo-api/src/learn/. learn-redesign (2026-10-23):
+                                      Learn opens the Learn sheet; the old learn page opens only from Try it
+      entry/                          (learn-redesign) learn_sheet.dart (Exercises / Talk with AI, counts, split
+                                      checkbox from 20 words), companion_button.dart (alone / teacher / friend
+                                      "Soon" beside Learn), learn_presets.dart (Quick / Balanced / Deep / Custom),
+                                      learn_settings_screen.dart (presets, switches, words per session, Try it,
+                                      speech engine)
+      session/                        (learn-redesign) leitner.dart (WordBox rules, applySession), session_words.dart
+                                      (which words a session takes; session groups of 7-12), ladder_queue.dart
+                                      (word ladder Meet/Practise/Use), exercise_page.dart + page_input.dart +
+                                      page_registry.dart (each exercise's <x>_pages.dart page source and
+                                      <x>_page_body.dart, ADR-0003), learn_page_frame.dart (card-and-check frame,
+                                      AppDecor.learnRight/learnWrong), learning_session_notifier/screen
+                                      (LearningSessionRoute), session_result.dart (finishSession: one
+                                      CollectionStore.update; lastSessionResultProvider), session_results_screen
+                                      (SessionResultsRoute)
+      talk/                           (learn-redesign) talk_rules.dart (used words by matchPlaces, hints, scoring),
+                                      talk_notifier.dart, talk_screen.dart (TalkRoute; hold-to-talk via
+                                      speechInputProvider, replies spoken by PronunciationService)
       exercises.dart                  Exercise (id, name, stage, available) + the const list of thirteen (learn-kit),
                                       tested against the Worker's exercises.json (ADR-0003)
       learn_screen.dart               the learn page: ticks live in widget State, nothing is saved;
