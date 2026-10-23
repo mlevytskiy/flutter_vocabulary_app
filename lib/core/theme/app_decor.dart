@@ -63,6 +63,10 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.onSmallBin = Colors.white,
     this.right = Colors.green,
     this.wrong = Colors.red,
+    this.learnRight = const Color(0xFF2E9E5B),
+    this.onLearnRight = Colors.white,
+    this.learnWrong = const Color(0xFFE5604D),
+    this.onLearnWrong = Colors.white,
     this.picked = Colors.blueGrey,
     this.pic50 = const Color(0xfff6effe),
     this.pic100 = const Color(0xffeee2fd),
@@ -179,6 +183,13 @@ class AppDecor extends ThemeExtension<AppDecor> {
   /// (collection-naming, owner 2026-10-18). A hue no tag tint, button or
   /// accent of the theme uses, so it reads as its own thing.
   final Color aiAccent;
+
+  /// The learn page frame's verdict bar (learn-redesign, ADR-0011): the fill
+  /// for "Right" / "Not quite" and the text and button colour on it.
+  final Color learnRight;
+  final Color onLearnRight;
+  final Color learnWrong;
+  final Color onLearnWrong;
 
   /// Painted behind the main screen's list: a gradient and soft colour blobs.
   final Gradient? backdrop;
