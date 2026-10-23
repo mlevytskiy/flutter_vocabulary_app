@@ -94,6 +94,10 @@ ThemeData windows95Theme() {
       binFolder: Color(0xFFFFFF00),
       right: Color(0xFF008000),
       wrong: Color(0xFFFF0000),
+      learnRight: Color(0xFF008000),
+      onLearnRight: Color(0xFFFFFFFF),
+      learnWrong: Color(0xFFFF0000),
+      onLearnWrong: Color(0xFFFFFFFF),
       picked: shadow,
       pic50: white,
       pic100: Color(0xFFFFFFC0),
@@ -121,8 +125,8 @@ ThemeData windows95Theme() {
   );
   return base.copyWith(
     appBarTheme: base.appBarTheme.copyWith(
-      titleTextStyle:
-          base.appBarTheme.titleTextStyle?.copyWith(fontWeight: FontWeight.w700),
+      titleTextStyle: base.appBarTheme.titleTextStyle
+          ?.copyWith(fontWeight: FontWeight.w700),
     ),
     filledButtonTheme: const FilledButtonThemeData(style: button),
     elevatedButtonTheme: const ElevatedButtonThemeData(style: button),
@@ -132,7 +136,8 @@ ThemeData windows95Theme() {
         backgroundColor: face,
         shape: RoundedRectangleBorder(side: BorderSide(color: black))),
     popupMenuTheme: const PopupMenuThemeData(
-        color: face, shape: RoundedRectangleBorder(side: BorderSide(color: black))),
+        color: face,
+        shape: RoundedRectangleBorder(side: BorderSide(color: black))),
     inputDecorationTheme: const InputDecorationTheme(
       filled: true,
       fillColor: white,
