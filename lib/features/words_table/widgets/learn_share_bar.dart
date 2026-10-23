@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../learn/entry/companion_button.dart';
 
 /// The Words screen's top bar: the back arrow on the left, the title in the
 /// middle of the screen, Learn centred between the arrow and the title, Share
@@ -81,6 +82,20 @@ class LearnShareBar extends StatelessWidget implements PreferredSizeWidget {
         return _Layout.iconOnly;
       }
 
+      // The companion button sits right of Learn and is always icon-only. The
+      // normal layout keeps Learn where it was by balancing the pair with a
+      // spare 48 px on its left; when that does not fit the pair is centred.
+      double learnWidth(_Layout l) => switch (l) {
+            _Layout.normal => button(learn, _iconLabelPadding),
+            _Layout.compact => button(learn, _compactButtonPadding),
+            _Layout.iconOnly => _iconOnlySize,
+          };
+      const companion = CompanionButton.width;
+      // Learn keeps the layout it would have alone (its label stays on every
+      // phone); the pair is scaled down only if the companion does not fit.
+      final learnLayout = pick(learn, left);
+      final balanced = learnWidth(learnLayout) + 2 * companion <= left;
+
       return AppBar(
         centerTitle: true,
         // Its own Back room, which the layout above counts on.
@@ -91,8 +106,15 @@ class LearnShareBar extends StatelessWidget implements PreferredSizeWidget {
             SizedBox(
               width: left < 0 ? 0 : left,
               child: Center(
-                child: _button(context, pick(learn, left), 'Learn',
-                    const Icon(Icons.school), onLearn),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (balanced) const SizedBox(width: companion),
+                    _button(context, learnLayout, 'Learn',
+                        const Icon(Icons.school), onLearn),
+                    const CompanionButton(),
+                  ]),
+                ),
               ),
             ),
             Expanded(child: Center(child: Text(title, softWrap: false))),

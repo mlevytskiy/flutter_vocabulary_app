@@ -29,11 +29,11 @@ void main() {
   Future<void> pump(WidgetTester tester, {String? shownId, WordCollection? cur}) async {
     SharedPreferences.setMockInitialValues({});
     current = cur ??
-        (WordCollection.create()..words = [WordPair(word: 'coffee', translation: 'кава')]);
+        (WordCollection.create()..words = [WordPair(word: 'coffee', translation: 'кава')..rowId = 'c1']);
     past = WordCollection.create()
       ..words = [
-        WordPair(word: 'tea', translation: 'чай'),
-        WordPair(word: 'milk', translation: 'молоко'),
+        WordPair(word: 'tea', translation: 'чай')..rowId = 't1',
+        WordPair(word: 'milk', translation: 'молоко')..rowId = 't2',
         WordPair(word: 'bare'),
       ];
     container = ProviderContainer(overrides: [
@@ -85,7 +85,7 @@ void main() {
     await pump(tester, cur: WordCollection.create());
     await tester.tap(learn);
     await tester.pump();
-    expect(find.text('No words to learn'), findsOneWidget);
+    expect(find.text('Add words with a translation to start learning'), findsOneWidget);
     expect(find.byType(LearnScreen), findsNothing);
     expect(find.byType(LearnShareBar), findsOneWidget);
   });
@@ -98,22 +98,17 @@ void main() {
     expect(find.text('No words to share'), findsOneWidget);
   });
 
-  testWidgets('AC-02: current session opens learn, back returns',
+  testWidgets('AC-02: Learn opens the Learn sheet (learn-redesign T14)',
       (tester) async {
     await pump(tester);
     await tester.tap(learn);
     await tester.pumpAndSettle();
-    expect(find.byType(LearnScreen), findsOneWidget);
-    expect(
-        tester.widget<LearnScreen>(find.byType(LearnScreen)).collectionId, isNull);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    expect(find.text('How do you want to learn?'), findsOneWidget);
+    expect(find.text('1 words · 0 due'), findsOneWidget);
     expect(find.byType(LearnScreen), findsNothing);
-    expect(find.byType(WordsTableScreen), findsOneWidget);
-    expect(find.byType(LearnShareBar), findsOneWidget);
   });
 
-  testWidgets('AC-13: a History session opens learn for it, current untouched',
+  testWidgets('AC-13: a History session opens the sheet for it, current untouched',
       (tester) async {
     await pump(tester, shownId: 'past');
     final before = container.read(wordsNotifierProvider).value!;
@@ -121,14 +116,10 @@ void main() {
     final beforeWords = before.words.length;
     await tester.tap(learn);
     await tester.pumpAndSettle();
-    expect(find.byType(LearnScreen), findsOneWidget);
-    expect(tester.widget<LearnScreen>(find.byType(LearnScreen)).collectionId,
-        past.collectionId);
+    // The past collection has two words with a translation, one without.
+    expect(find.text('2 words · 0 due'), findsOneWidget);
     final after = container.read(wordsNotifierProvider).value!;
     expect(after.collectionId, beforeId);
     expect(after.words.length, beforeWords);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    expect(find.byType(WordsTableScreen), findsOneWidget);
   });
 }

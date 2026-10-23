@@ -15,6 +15,8 @@ import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_publish_service.dart';
+import '../../core/story/word_grouping.dart' show wordsToLearn;
+import '../learn/entry/learn_sheet.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../notes/notes_screen.dart';
@@ -183,15 +185,19 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  /// Learn (learn-part-step-1): like Share, nothing to do without a filled row.
+  /// Learn (learn-redesign AC-01, AC-03): the Learn sheet; nothing to learn
+  /// without a word that has a translation.
   void _learn(List<WordPair> wordPairs) {
-    if (wordPairs.isEmpty) {
+    final collection = _collection();
+    if (collection == null || wordsToLearn(collection).isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No words to learn')),
+        const SnackBar(
+            content: Text('Add words with a translation to start learning')),
       );
       return;
     }
-    LearnRoute(collectionId: widget.collectionId).push(context);
+    showLearnSheet(context, ref,
+        collectionId: widget.collectionId, collection: collection);
   }
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)
