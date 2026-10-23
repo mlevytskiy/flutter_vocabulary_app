@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
@@ -11,6 +10,7 @@ import '../kit/exercise_words.dart';
 import '../kit/result_summary.dart';
 import '../kit/sentence_check.dart';
 import '../kit/split_rounds.dart';
+import 'explain_to_friend_pages.dart';
 
 part 'explain_to_friend_notifier.g.dart';
 
@@ -130,11 +130,7 @@ class ExplainToFriend extends _$ExplainToFriend {
   Future<ExplainState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
-    final usable = <ExplainCard>[
-      for (final WordPair w in words.group)
-        if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty)
-          ExplainCard(rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-    ];
+    final usable = explainCards(words.group);
     if (usable.length < 3) return const ExplainState(rounds: []);
     return ExplainState(rounds: [for (final r in splitRounds(usable, min: 3, max: 5)) _shuffled(r, random)]);
   }

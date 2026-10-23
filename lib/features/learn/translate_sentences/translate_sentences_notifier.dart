@@ -4,17 +4,14 @@ import 'dart:math';
 import 'package:flutter/painting.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/dialogues/dialogue_match.dart';
-import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
-import '../../../core/services/learn_api_service.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
 import '../kit/result_summary.dart';
 import '../kit/sentence_check.dart';
 import '../kit/split_rounds.dart';
-import '../kit/word_marks.dart';
+import 'translate_sentences_pages.dart';
 
 part 'translate_sentences_notifier.g.dart';
 
@@ -113,32 +110,9 @@ class TranslateSentences extends _$TranslateSentences {
   Future<TranslateState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
-    final candidates = <WordPair>[
-      for (final w in words.group)
-        if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty) w,
-    ];
+    final candidates = translateCandidates(words.group);
     if (candidates.length < 3) return const TranslateState(rounds: []);
-    final replies = await ref.read(learnApiServiceProvider).fetchData(LearnDataKind.translate, [
-      for (final w in candidates) (rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-    ]);
-    final groupWords = [for (final w in words.group) if (w.word.trim().isNotEmpty) w.word.trim()];
-    final cards = <TranslateCard>[];
-    for (final w in candidates) {
-      final data = replies[w.rowId];
-      final word = w.word.trim();
-      if (data == null || data.cue.isEmpty || !data.source.contains(data.cue)) continue;
-      if (!holdsWordOnce(data.model, word)) continue;
-      // S-57: no English word of the group may show on the card.
-      if (groupWords.any((g) => matchPlaces(data.source, g).isNotEmpty)) continue;
-      cards.add(TranslateCard(
-        rowId: w.rowId,
-        word: word,
-        translation: w.translation.trim(),
-        source: data.source,
-        cue: data.cue,
-        model: data.model,
-      ));
-    }
+    final cards = await translateCards(words.group, candidates, ref.read(learnApiServiceProvider));
     return TranslateState(rounds: [for (final r in splitRounds(cards, min: 3, max: 5)) _shuffled(r, random)]);
   }
 

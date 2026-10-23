@@ -7,7 +7,7 @@ part of 'translate_sentences_notifier.dart';
 // **************************************************************************
 
 String _$translateSentencesHash() =>
-    r'00a799b85bbe38609ed74ab7dbaa7a9bfda652ba';
+    r'5bd767b8eb023464a273b1f18e922f17b9f641f1';
 
 /// Copied from Dart SDK
 class _SystemHash {

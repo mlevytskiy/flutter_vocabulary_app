@@ -6,7 +6,7 @@ part of 'explain_to_friend_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$explainToFriendHash() => r'96edc3b1b644f8613576de34f6a288d523e870c7';
+String _$explainToFriendHash() => r'cf7d701f0204845d7bf894f4414eee33961a2627';
 
 /// Copied from Dart SDK
 class _SystemHash {
