@@ -6,7 +6,7 @@ part of 'sentence_patterns_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sentencePatternsHash() => r'36531b9461c683e091285291dc79607ade5fe18b';
+String _$sentencePatternsHash() => r'd8f6c1ec403f56dd9a9542b47e895a98fc806555';
 
 /// Copied from Dart SDK
 class _SystemHash {

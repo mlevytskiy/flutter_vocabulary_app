@@ -1,13 +1,15 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../kit/exercise_phase.dart';
+import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
 import '../kit/gap_question.dart';
 import '../kit/result_summary.dart';
 import '../kit/split_rounds.dart';
 import '../kit/typed_answer_field.dart';
+import '../session/page_input.dart';
+import 'fill_the_gaps_pages.dart';
 
 part 'fill_the_gaps_notifier.g.dart';
 
@@ -72,13 +74,16 @@ class FillTheGaps extends _$FillTheGaps {
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final dialogues = await ref.watch(exerciseDialoguesProvider(collectionId).future);
     // Under 3 words to learn, or under 3 with a translation: nothing to ask.
-    final candidates = <WordPair>[
-      for (final w in words.group)
-        if (w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty) w,
-    ];
+    final candidates = gapCandidates(words.group);
     if (candidates.length < 3) return const FillState(rounds: []);
-    final questions = await loadGapQuestions(candidates, dialogues, ref.read(learnApiServiceProvider));
-    final rounds = splitRounds(questions.values.toList(), min: 3, max: 9);
+    final questions = await fillTheGapsQuestions(PageInput(
+      words: candidates,
+      others: words.others,
+      dialogues: dialogues,
+      api: ref.read(learnApiServiceProvider),
+      random: ref.read(exerciseRandomProvider),
+    ));
+    final rounds = splitRounds(questions, min: 3, max: 9);
     return FillState(rounds: rounds);
   }
 
