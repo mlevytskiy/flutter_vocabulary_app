@@ -17,15 +17,18 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
           routes: [
             GoRouteData.$route(
               path: '/',
-              factory: _$CollectionsRoute._fromState,
+              hasOverriddenOnExit: false,
+              factory: $CollectionsRoute._fromState,
               routes: [
                 GoRouteData.$route(
                   path: 'recycle-bin',
-                  factory: _$RecycleBinRoute._fromState,
+                  hasOverriddenOnExit: false,
+                  factory: $RecycleBinRoute._fromState,
                 ),
                 GoRouteData.$route(
                   path: 'collections-settings',
-                  factory: _$CollectionsSettingsRoute._fromState,
+                  hasOverriddenOnExit: false,
+                  factory: $CollectionsSettingsRoute._fromState,
                 ),
               ],
             ),
@@ -35,61 +38,75 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
           routes: [
             GoRouteData.$route(
               path: '/words',
-              factory: _$WordsRoute._fromState,
+              hasOverriddenOnExit: false,
+              factory: $WordsRoute._fromState,
               routes: [
                 GoRouteData.$route(
                   path: 'table',
-                  factory: _$WordsTableRoute._fromState,
+                  hasOverriddenOnExit: false,
+                  factory: $WordsTableRoute._fromState,
                   routes: [
                     GoRouteData.$route(
                       path: 'learn',
-                      factory: _$LearnRoute._fromState,
+                      hasOverriddenOnExit: false,
+                      factory: $LearnRoute._fromState,
                       routes: [
                         GoRouteData.$route(
                           path: 'soon',
-                          factory: _$ComingSoonRoute._fromState,
+                          hasOverriddenOnExit: false,
+                          factory: $ComingSoonRoute._fromState,
                         ),
                         GoRouteData.$route(
                           path: 'story',
-                          factory: _$StoryRoute._fromState,
+                          hasOverriddenOnExit: false,
+                          factory: $StoryRoute._fromState,
                         ),
                         GoRouteData.$route(
                           path: 'exercise',
-                          factory: _$ExerciseRoute._fromState,
+                          hasOverriddenOnExit: false,
+                          factory: $ExerciseRoute._fromState,
                         ),
                         GoRouteData.$route(
                           path: 'dialogue',
-                          factory: _$DialogueRoute._fromState,
+                          hasOverriddenOnExit: false,
+                          factory: $DialogueRoute._fromState,
                         ),
                       ],
                     ),
                     GoRouteData.$route(
                       path: 'session',
-                      factory: _$LearningSessionRoute._fromState,
+                      hasOverriddenOnExit: false,
+                      factory: $LearningSessionRoute._fromState,
                     ),
                     GoRouteData.$route(
                       path: 'talk',
-                      factory: _$TalkRoute._fromState,
+                      hasOverriddenOnExit: false,
+                      factory: $TalkRoute._fromState,
                     ),
                     GoRouteData.$route(
                       path: 'results',
-                      factory: _$SessionResultsRoute._fromState,
+                      hasOverriddenOnExit: false,
+                      factory: $SessionResultsRoute._fromState,
                     ),
                     GoRouteData.$route(
                       path: 'learn-settings',
-                      factory: _$LearnSettingsRoute._fromState,
+                      hasOverriddenOnExit: false,
+                      factory: $LearnSettingsRoute._fromState,
                     ),
                     GoRouteData.$route(
                       path: 'settings',
-                      factory: _$WordsSettingsRoute._fromState,
+                      hasOverriddenOnExit: false,
+                      factory: $WordsSettingsRoute._fromState,
                       routes: [
                         GoRouteData.$route(
                           path: 'runs',
-                          factory: _$StoryRunsRoute._fromState,
+                          hasOverriddenOnExit: false,
+                          factory: $StoryRunsRoute._fromState,
                           routes: [
                             GoRouteData.$route(
                               path: ':runId',
-                              factory: _$StoryRunRoute._fromState,
+                              hasOverriddenOnExit: false,
+                              factory: $StoryRunRoute._fromState,
                             ),
                           ],
                         ),
@@ -99,15 +116,18 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
                 ),
                 GoRouteData.$route(
                   path: 'notes',
-                  factory: _$NotesRoute._fromState,
+                  hasOverriddenOnExit: false,
+                  factory: $NotesRoute._fromState,
                 ),
                 GoRouteData.$route(
                   path: 'photo/:sourceId',
-                  factory: _$PhotoViewerRoute._fromState,
+                  hasOverriddenOnExit: false,
+                  factory: $PhotoViewerRoute._fromState,
                 ),
                 GoRouteData.$route(
                   path: 'settings',
-                  factory: _$SettingsRoute._fromState,
+                  hasOverriddenOnExit: false,
+                  factory: $SettingsRoute._fromState,
                 ),
               ],
             ),
@@ -117,7 +137,8 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
           routes: [
             GoRouteData.$route(
               path: '/app-settings',
-              factory: _$AppSettingsRoute._fromState,
+              hasOverriddenOnExit: false,
+              factory: $AppSettingsRoute._fromState,
             ),
           ],
         ),
@@ -129,7 +150,7 @@ extension $MenuShellRouteExtension on MenuShellRoute {
       const MenuShellRoute();
 }
 
-mixin _$CollectionsRoute on GoRouteData {
+mixin $CollectionsRoute on GoRouteData {
   static CollectionsRoute _fromState(GoRouterState state) => CollectionsRoute(
         tagKind: _$convertMapValue(
             'tag-kind', state.uri.queryParameters, _$TagKindEnumMap._$fromName),
@@ -167,7 +188,7 @@ const _$TagKindEnumMap = {
   TagKind.topic: 'topic',
 };
 
-mixin _$RecycleBinRoute on GoRouteData {
+mixin $RecycleBinRoute on GoRouteData {
   static RecycleBinRoute _fromState(GoRouterState state) =>
       const RecycleBinRoute();
 
@@ -190,7 +211,7 @@ mixin _$RecycleBinRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$CollectionsSettingsRoute on GoRouteData {
+mixin $CollectionsSettingsRoute on GoRouteData {
   static CollectionsSettingsRoute _fromState(GoRouterState state) =>
       const CollectionsSettingsRoute();
 
@@ -213,7 +234,7 @@ mixin _$CollectionsSettingsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$WordsRoute on GoRouteData {
+mixin $WordsRoute on GoRouteData {
   static WordsRoute _fromState(GoRouterState state) => const WordsRoute();
 
   @override
@@ -235,7 +256,7 @@ mixin _$WordsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$WordsTableRoute on GoRouteData {
+mixin $WordsTableRoute on GoRouteData {
   static WordsTableRoute _fromState(GoRouterState state) => WordsTableRoute(
         collectionId: state.uri.queryParameters['collection-id'],
       );
@@ -264,7 +285,7 @@ mixin _$WordsTableRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$LearnRoute on GoRouteData {
+mixin $LearnRoute on GoRouteData {
   static LearnRoute _fromState(GoRouterState state) => LearnRoute(
         collectionId: state.uri.queryParameters['collection-id'],
         exercise: state.uri.queryParameters['exercise'],
@@ -295,7 +316,7 @@ mixin _$LearnRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$ComingSoonRoute on GoRouteData {
+mixin $ComingSoonRoute on GoRouteData {
   static ComingSoonRoute _fromState(GoRouterState state) => ComingSoonRoute(
         exercise: state.uri.queryParameters['exercise']!,
       );
@@ -324,7 +345,7 @@ mixin _$ComingSoonRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$StoryRoute on GoRouteData {
+mixin $StoryRoute on GoRouteData {
   static StoryRoute _fromState(GoRouterState state) => StoryRoute(
         collectionId: state.uri.queryParameters['collection-id'],
         groupId: state.uri.queryParameters['group-id']!,
@@ -355,7 +376,7 @@ mixin _$StoryRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$ExerciseRoute on GoRouteData {
+mixin $ExerciseRoute on GoRouteData {
   static ExerciseRoute _fromState(GoRouterState state) => ExerciseRoute(
         collectionId: state.uri.queryParameters['collection-id'],
         exercise: state.uri.queryParameters['exercise']!,
@@ -388,7 +409,7 @@ mixin _$ExerciseRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$DialogueRoute on GoRouteData {
+mixin $DialogueRoute on GoRouteData {
   static DialogueRoute _fromState(GoRouterState state) => DialogueRoute(
         collectionId: state.uri.queryParameters['collection-id'],
         groupId: state.uri.queryParameters['group-id']!,
@@ -419,7 +440,7 @@ mixin _$DialogueRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$LearningSessionRoute on GoRouteData {
+mixin $LearningSessionRoute on GoRouteData {
   static LearningSessionRoute _fromState(GoRouterState state) =>
       LearningSessionRoute(
         collectionId: state.uri.queryParameters['collection-id'],
@@ -459,7 +480,7 @@ mixin _$LearningSessionRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$TalkRoute on GoRouteData {
+mixin $TalkRoute on GoRouteData {
   static TalkRoute _fromState(GoRouterState state) => TalkRoute(
         collectionId: state.uri.queryParameters['collection-id'],
         split: _$convertMapValue(
@@ -492,7 +513,7 @@ mixin _$TalkRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$SessionResultsRoute on GoRouteData {
+mixin $SessionResultsRoute on GoRouteData {
   static SessionResultsRoute _fromState(GoRouterState state) =>
       SessionResultsRoute(
         collectionId: state.uri.queryParameters['collection-id'],
@@ -522,7 +543,7 @@ mixin _$SessionResultsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$LearnSettingsRoute on GoRouteData {
+mixin $LearnSettingsRoute on GoRouteData {
   static LearnSettingsRoute _fromState(GoRouterState state) =>
       LearnSettingsRoute(
         collectionId: state.uri.queryParameters['collection-id'],
@@ -552,7 +573,7 @@ mixin _$LearnSettingsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$WordsSettingsRoute on GoRouteData {
+mixin $WordsSettingsRoute on GoRouteData {
   static WordsSettingsRoute _fromState(GoRouterState state) =>
       WordsSettingsRoute(
         collectionId: state.uri.queryParameters['collection-id'],
@@ -582,7 +603,7 @@ mixin _$WordsSettingsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$StoryRunsRoute on GoRouteData {
+mixin $StoryRunsRoute on GoRouteData {
   static StoryRunsRoute _fromState(GoRouterState state) =>
       const StoryRunsRoute();
 
@@ -605,7 +626,7 @@ mixin _$StoryRunsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$StoryRunRoute on GoRouteData {
+mixin $StoryRunRoute on GoRouteData {
   static StoryRunRoute _fromState(GoRouterState state) => StoryRunRoute(
         runId: state.pathParameters['runId']!,
       );
@@ -631,7 +652,7 @@ mixin _$StoryRunRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$NotesRoute on GoRouteData {
+mixin $NotesRoute on GoRouteData {
   static NotesRoute _fromState(GoRouterState state) => NotesRoute(
         selectedId: state.uri.queryParameters['selected-id'],
       );
@@ -660,7 +681,7 @@ mixin _$NotesRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$PhotoViewerRoute on GoRouteData {
+mixin $PhotoViewerRoute on GoRouteData {
   static PhotoViewerRoute _fromState(GoRouterState state) => PhotoViewerRoute(
         sourceId: state.pathParameters['sourceId']!,
       );
@@ -686,7 +707,7 @@ mixin _$PhotoViewerRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$SettingsRoute on GoRouteData {
+mixin $SettingsRoute on GoRouteData {
   static SettingsRoute _fromState(GoRouterState state) => const SettingsRoute();
 
   @override
@@ -708,7 +729,7 @@ mixin _$SettingsRoute on GoRouteData {
   void replace(BuildContext context) => context.replace(location);
 }
 
-mixin _$AppSettingsRoute on GoRouteData {
+mixin $AppSettingsRoute on GoRouteData {
   static AppSettingsRoute _fromState(GoRouterState state) =>
       const AppSettingsRoute();
 

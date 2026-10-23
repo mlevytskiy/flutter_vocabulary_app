@@ -6,26 +6,63 @@ part of 'words_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$wordsNotifierHash() => r'aa8aa2670cfaa2745e8265f40af9fdd74d3ab696';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
+/// its own `_wordPairs` field (controllers, focus nodes and the rest of its
+/// per-row state stay keyed off that field, unchanged) and pushes every
+/// mutation here right after making it.
+
+@ProviderFor(WordsNotifier)
+final wordsProvider = WordsNotifierProvider._();
 
 /// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
 /// per-row state stay keyed off that field, unchanged) and pushes every
 /// mutation here right after making it.
-///
-/// Copied from [WordsNotifier].
-@ProviderFor(WordsNotifier)
-final wordsNotifierProvider =
-    AsyncNotifierProvider<WordsNotifier, WordCollection>.internal(
-  WordsNotifier.new,
-  name: r'wordsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$wordsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final class WordsNotifierProvider
+    extends $AsyncNotifierProvider<WordsNotifier, WordCollection> {
+  /// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
+  /// its own `_wordPairs` field (controllers, focus nodes and the rest of its
+  /// per-row state stay keyed off that field, unchanged) and pushes every
+  /// mutation here right after making it.
+  WordsNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'wordsProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-typedef _$WordsNotifier = AsyncNotifier<WordCollection>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+  @override
+  String debugGetCreateSourceHash() => _$wordsNotifierHash();
+
+  @$internal
+  @override
+  WordsNotifier create() => WordsNotifier();
+}
+
+String _$wordsNotifierHash() => r'55a7b368f31f0891a7d655f1ce91b8ff357faa7e';
+
+/// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
+/// its own `_wordPairs` field (controllers, focus nodes and the rest of its
+/// per-row state stay keyed off that field, unchanged) and pushes every
+/// mutation here right after making it.
+
+abstract class _$WordsNotifier extends $AsyncNotifier<WordCollection> {
+  FutureOr<WordCollection> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<WordCollection>, WordCollection>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AsyncValue<WordCollection>, WordCollection>,
+        AsyncValue<WordCollection>,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}

@@ -6,195 +6,115 @@ part of 'sentence_patterns_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sentencePatternsHash() => r'd8f6c1ec403f56dd9a9542b47e895a98fc806555';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+@ProviderFor(SentencePatterns)
+final sentencePatternsProvider = SentencePatternsFamily._();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
+final class SentencePatternsProvider
+    extends $AsyncNotifierProvider<SentencePatterns, PatternsState> {
+  SentencePatternsProvider._(
+      {required SentencePatternsFamily super.from,
+      required (
+        String?,
+        String,
+      )
+          super.argument})
+      : super(
+          retry: null,
+          name: r'sentencePatternsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$sentencePatternsHash();
+
+  @override
+  String toString() {
+    return r'sentencePatternsProvider'
+        ''
+        '$argument';
   }
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @$internal
+  @override
+  SentencePatterns create() => SentencePatterns();
+
+  @override
+  bool operator ==(Object other) {
+    return other is SentencePatternsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-abstract class _$SentencePatterns
-    extends BuildlessAutoDisposeAsyncNotifier<PatternsState> {
-  late final String? collectionId;
-  late final String groupId;
+String _$sentencePatternsHash() => r'391e22e964727b20d186cd6ba46493451df125e7';
+
+final class SentencePatternsFamily extends $Family
+    with
+        $ClassFamilyOverride<
+            SentencePatterns,
+            AsyncValue<PatternsState>,
+            PatternsState,
+            FutureOr<PatternsState>,
+            (
+              String?,
+              String,
+            )> {
+  SentencePatternsFamily._()
+      : super(
+          retry: null,
+          name: r'sentencePatternsProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  SentencePatternsProvider call(
+    String? collectionId,
+    String groupId,
+  ) =>
+      SentencePatternsProvider._(argument: (
+        collectionId,
+        groupId,
+      ), from: this);
+
+  @override
+  String toString() => r'sentencePatternsProvider';
+}
+
+abstract class _$SentencePatterns extends $AsyncNotifier<PatternsState> {
+  late final _$args = ref.$arg as (
+    String?,
+    String,
+  );
+  String? get collectionId => _$args.$1;
+  String get groupId => _$args.$2;
 
   FutureOr<PatternsState> build(
     String? collectionId,
     String groupId,
   );
-}
-
-/// See also [SentencePatterns].
-@ProviderFor(SentencePatterns)
-const sentencePatternsProvider = SentencePatternsFamily();
-
-/// See also [SentencePatterns].
-class SentencePatternsFamily extends Family<AsyncValue<PatternsState>> {
-  /// See also [SentencePatterns].
-  const SentencePatternsFamily();
-
-  /// See also [SentencePatterns].
-  SentencePatternsProvider call(
-    String? collectionId,
-    String groupId,
-  ) {
-    return SentencePatternsProvider(
-      collectionId,
-      groupId,
-    );
-  }
-
+  @$mustCallSuper
   @override
-  SentencePatternsProvider getProviderOverride(
-    covariant SentencePatternsProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-      provider.groupId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'sentencePatternsProvider';
-}
-
-/// See also [SentencePatterns].
-class SentencePatternsProvider extends AutoDisposeAsyncNotifierProviderImpl<
-    SentencePatterns, PatternsState> {
-  /// See also [SentencePatterns].
-  SentencePatternsProvider(
-    String? collectionId,
-    String groupId,
-  ) : this._internal(
-          () => SentencePatterns()
-            ..collectionId = collectionId
-            ..groupId = groupId,
-          from: sentencePatternsProvider,
-          name: r'sentencePatternsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$sentencePatternsHash,
-          dependencies: SentencePatternsFamily._dependencies,
-          allTransitiveDependencies:
-              SentencePatternsFamily._allTransitiveDependencies,
-          collectionId: collectionId,
-          groupId: groupId,
-        );
-
-  SentencePatternsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-    required this.groupId,
-  }) : super.internal();
-
-  final String? collectionId;
-  final String groupId;
-
-  @override
-  FutureOr<PatternsState> runNotifierBuild(
-    covariant SentencePatterns notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-      groupId,
-    );
-  }
-
-  @override
-  Override overrideWith(SentencePatterns Function() create) {
-    return ProviderOverride(
-      origin: this,
-      override: SentencePatternsProvider._internal(
-        () => create()
-          ..collectionId = collectionId
-          ..groupId = groupId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-        groupId: groupId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeAsyncNotifierProviderElement<SentencePatterns, PatternsState>
-      createElement() {
-    return _SentencePatternsProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is SentencePatternsProvider &&
-        other.collectionId == collectionId &&
-        other.groupId == groupId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-    hash = _SystemHash.combine(hash, groupId.hashCode);
-
-    return _SystemHash.finish(hash);
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<PatternsState>, PatternsState>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AsyncValue<PatternsState>, PatternsState>,
+        AsyncValue<PatternsState>,
+        Object?,
+        Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args.$1,
+              _$args.$2,
+            ));
   }
 }
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin SentencePatternsRef
-    on AutoDisposeAsyncNotifierProviderRef<PatternsState> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-
-  /// The parameter `groupId` of this provider.
-  String get groupId;
-}
-
-class _SentencePatternsProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<SentencePatterns,
-        PatternsState> with SentencePatternsRef {
-  _SentencePatternsProviderElement(super.provider);
-
-  @override
-  String? get collectionId => (origin as SentencePatternsProvider).collectionId;
-  @override
-  String get groupId => (origin as SentencePatternsProvider).groupId;
-}
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

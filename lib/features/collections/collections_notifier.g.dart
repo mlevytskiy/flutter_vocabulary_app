@@ -6,24 +6,60 @@ part of 'collections_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$collectionsNotifierHash() =>
-    r'4236aaf5550a18ba9b2893c5bfff6d5875823110';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Holds the open folder of the Collections screen (collections-screen T15).
+
+@ProviderFor(CollectionsNotifier)
+final collectionsProvider = CollectionsNotifierProvider._();
 
 /// Holds the open folder of the Collections screen (collections-screen T15).
-///
-/// Copied from [CollectionsNotifier].
-@ProviderFor(CollectionsNotifier)
-final collectionsNotifierProvider =
-    AutoDisposeNotifierProvider<CollectionsNotifier, CollectionsState>.internal(
-  CollectionsNotifier.new,
-  name: r'collectionsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$collectionsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final class CollectionsNotifierProvider
+    extends $NotifierProvider<CollectionsNotifier, CollectionsState> {
+  /// Holds the open folder of the Collections screen (collections-screen T15).
+  CollectionsNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'collectionsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-typedef _$CollectionsNotifier = AutoDisposeNotifier<CollectionsState>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+  @override
+  String debugGetCreateSourceHash() => _$collectionsNotifierHash();
+
+  @$internal
+  @override
+  CollectionsNotifier create() => CollectionsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CollectionsState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CollectionsState>(value),
+    );
+  }
+}
+
+String _$collectionsNotifierHash() =>
+    r'4ad16935bf13243d97ed042bf5af161115e3a04a';
+
+/// Holds the open folder of the Collections screen (collections-screen T15).
+
+abstract class _$CollectionsNotifier extends $Notifier<CollectionsState> {
+  CollectionsState build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<CollectionsState, CollectionsState>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<CollectionsState, CollectionsState>,
+        CollectionsState,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}

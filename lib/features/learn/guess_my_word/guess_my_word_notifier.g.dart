@@ -6,218 +6,136 @@ part of 'guess_my_word_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$guessMyWordHash() => r'b825614e803b45c25891070d95c12dd80c946359';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
+/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
+/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+@ProviderFor(GuessMyWord)
+final guessMyWordProvider = GuessMyWordFamily._();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
+/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
+/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
+/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
+final class GuessMyWordProvider
+    extends $AsyncNotifierProvider<GuessMyWord, GuessState> {
+  /// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
+  /// call for kind `clues`, three masked clues per word (S-51), rounds, scores
+  /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
+  GuessMyWordProvider._(
+      {required GuessMyWordFamily super.from,
+      required (
+        String?,
+        String,
+      )
+          super.argument})
+      : super(
+          retry: null,
+          name: r'guessMyWordProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$guessMyWordHash();
+
+  @override
+  String toString() {
+    return r'guessMyWordProvider'
+        ''
+        '$argument';
   }
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @$internal
+  @override
+  GuessMyWord create() => GuessMyWord();
+
+  @override
+  bool operator ==(Object other) {
+    return other is GuessMyWordProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-abstract class _$GuessMyWord
-    extends BuildlessAutoDisposeAsyncNotifier<GuessState> {
-  late final String? collectionId;
-  late final String groupId;
+String _$guessMyWordHash() => r'7a91971ef81174c4b3313dedbf9b93c54bcf03f8';
+
+/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
+/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
+/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
+
+final class GuessMyWordFamily extends $Family
+    with
+        $ClassFamilyOverride<
+            GuessMyWord,
+            AsyncValue<GuessState>,
+            GuessState,
+            FutureOr<GuessState>,
+            (
+              String?,
+              String,
+            )> {
+  GuessMyWordFamily._()
+      : super(
+          retry: null,
+          name: r'guessMyWordProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  /// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
+  /// call for kind `clues`, three masked clues per word (S-51), rounds, scores
+  /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
+
+  GuessMyWordProvider call(
+    String? collectionId,
+    String groupId,
+  ) =>
+      GuessMyWordProvider._(argument: (
+        collectionId,
+        groupId,
+      ), from: this);
+
+  @override
+  String toString() => r'guessMyWordProvider';
+}
+
+/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
+/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
+/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
+
+abstract class _$GuessMyWord extends $AsyncNotifier<GuessState> {
+  late final _$args = ref.$arg as (
+    String?,
+    String,
+  );
+  String? get collectionId => _$args.$1;
+  String get groupId => _$args.$2;
 
   FutureOr<GuessState> build(
     String? collectionId,
     String groupId,
   );
-}
-
-/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
-/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
-/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
-///
-/// Copied from [GuessMyWord].
-@ProviderFor(GuessMyWord)
-const guessMyWordProvider = GuessMyWordFamily();
-
-/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
-/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
-/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
-///
-/// Copied from [GuessMyWord].
-class GuessMyWordFamily extends Family<AsyncValue<GuessState>> {
-  /// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
-  /// call for kind `clues`, three masked clues per word (S-51), rounds, scores
-  /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
-  ///
-  /// Copied from [GuessMyWord].
-  const GuessMyWordFamily();
-
-  /// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
-  /// call for kind `clues`, three masked clues per word (S-51), rounds, scores
-  /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
-  ///
-  /// Copied from [GuessMyWord].
-  GuessMyWordProvider call(
-    String? collectionId,
-    String groupId,
-  ) {
-    return GuessMyWordProvider(
-      collectionId,
-      groupId,
-    );
-  }
-
+  @$mustCallSuper
   @override
-  GuessMyWordProvider getProviderOverride(
-    covariant GuessMyWordProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-      provider.groupId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'guessMyWordProvider';
-}
-
-/// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
-/// call for kind `clues`, three masked clues per word (S-51), rounds, scores
-/// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
-///
-/// Copied from [GuessMyWord].
-class GuessMyWordProvider
-    extends AutoDisposeAsyncNotifierProviderImpl<GuessMyWord, GuessState> {
-  /// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
-  /// call for kind `clues`, three masked clues per word (S-51), rounds, scores
-  /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
-  ///
-  /// Copied from [GuessMyWord].
-  GuessMyWordProvider(
-    String? collectionId,
-    String groupId,
-  ) : this._internal(
-          () => GuessMyWord()
-            ..collectionId = collectionId
-            ..groupId = groupId,
-          from: guessMyWordProvider,
-          name: r'guessMyWordProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$guessMyWordHash,
-          dependencies: GuessMyWordFamily._dependencies,
-          allTransitiveDependencies:
-              GuessMyWordFamily._allTransitiveDependencies,
-          collectionId: collectionId,
-          groupId: groupId,
-        );
-
-  GuessMyWordProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-    required this.groupId,
-  }) : super.internal();
-
-  final String? collectionId;
-  final String groupId;
-
-  @override
-  FutureOr<GuessState> runNotifierBuild(
-    covariant GuessMyWord notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-      groupId,
-    );
-  }
-
-  @override
-  Override overrideWith(GuessMyWord Function() create) {
-    return ProviderOverride(
-      origin: this,
-      override: GuessMyWordProvider._internal(
-        () => create()
-          ..collectionId = collectionId
-          ..groupId = groupId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-        groupId: groupId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeAsyncNotifierProviderElement<GuessMyWord, GuessState>
-      createElement() {
-    return _GuessMyWordProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is GuessMyWordProvider &&
-        other.collectionId == collectionId &&
-        other.groupId == groupId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-    hash = _SystemHash.combine(hash, groupId.hashCode);
-
-    return _SystemHash.finish(hash);
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<GuessState>, GuessState>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AsyncValue<GuessState>, GuessState>,
+        AsyncValue<GuessState>,
+        Object?,
+        Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args.$1,
+              _$args.$2,
+            ));
   }
 }
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin GuessMyWordRef on AutoDisposeAsyncNotifierProviderRef<GuessState> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-
-  /// The parameter `groupId` of this provider.
-  String get groupId;
-}
-
-class _GuessMyWordProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<GuessMyWord, GuessState>
-    with GuessMyWordRef {
-  _GuessMyWordProviderElement(super.provider);
-
-  @override
-  String? get collectionId => (origin as GuessMyWordProvider).collectionId;
-  @override
-  String get groupId => (origin as GuessMyWordProvider).groupId;
-}
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

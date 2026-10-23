@@ -6,366 +6,254 @@ part of 'exercise_words.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$exerciseWordsHash() => r'9347555cd130b5a18546070c7ee7f0956af0da7c';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// The words of one exercise (learn-kit S-08): the selected group's words to
+/// learn in group order, and the same session's other words to learn (for
+/// wrong options, D-15). A null [collectionId] is the current session, an id a
+/// History session (AC-05). No other session is read. Which words are usable
+/// is each exercise's own rule. Read-only: nothing here writes the session.
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+@ProviderFor(exerciseWords)
+final exerciseWordsProvider = ExerciseWordsFamily._();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
+/// The words of one exercise (learn-kit S-08): the selected group's words to
+/// learn in group order, and the same session's other words to learn (for
+/// wrong options, D-15). A null [collectionId] is the current session, an id a
+/// History session (AC-05). No other session is read. Which words are usable
+/// is each exercise's own rule. Read-only: nothing here writes the session.
+
+final class ExerciseWordsProvider extends $FunctionalProvider<
+        AsyncValue<
+            ({
+              List<WordPair> group,
+              List<WordPair> others,
+            })>,
+        ({
+          List<WordPair> group,
+          List<WordPair> others,
+        }),
+        FutureOr<
+            ({
+              List<WordPair> group,
+              List<WordPair> others,
+            })>>
+    with
+        $FutureModifier<
+            ({
+              List<WordPair> group,
+              List<WordPair> others,
+            })>,
+        $FutureProvider<
+            ({
+              List<WordPair> group,
+              List<WordPair> others,
+            })> {
+  /// The words of one exercise (learn-kit S-08): the selected group's words to
+  /// learn in group order, and the same session's other words to learn (for
+  /// wrong options, D-15). A null [collectionId] is the current session, an id a
+  /// History session (AC-05). No other session is read. Which words are usable
+  /// is each exercise's own rule. Read-only: nothing here writes the session.
+  ExerciseWordsProvider._(
+      {required ExerciseWordsFamily super.from,
+      required (
+        String?,
+        String,
+      )
+          super.argument})
+      : super(
+          retry: null,
+          name: r'exerciseWordsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$exerciseWordsHash();
+
+  @override
+  String toString() {
+    return r'exerciseWordsProvider'
+        ''
+        '$argument';
   }
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @$internal
+  @override
+  $FutureProviderElement<
+      ({
+        List<WordPair> group,
+        List<WordPair> others,
+      })> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<
+      ({
+        List<WordPair> group,
+        List<WordPair> others,
+      })> create(Ref ref) {
+    final argument = this.argument as (
+      String?,
+      String,
+    );
+    return exerciseWords(
+      ref,
+      argument.$1,
+      argument.$2,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is ExerciseWordsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-/// The words of one exercise (learn-kit S-08): the selected group's words to
-/// learn in group order, and the same session's other words to learn (for
-/// wrong options, D-15). A null [collectionId] is the current session, an id a
-/// History session (AC-05). No other session is read. Which words are usable
-/// is each exercise's own rule. Read-only: nothing here writes the session.
-///
-/// Copied from [exerciseWords].
-@ProviderFor(exerciseWords)
-const exerciseWordsProvider = ExerciseWordsFamily();
+String _$exerciseWordsHash() => r'886db8572add36cc8a25120314adc0758537a537';
 
 /// The words of one exercise (learn-kit S-08): the selected group's words to
 /// learn in group order, and the same session's other words to learn (for
 /// wrong options, D-15). A null [collectionId] is the current session, an id a
 /// History session (AC-05). No other session is read. Which words are usable
 /// is each exercise's own rule. Read-only: nothing here writes the session.
-///
-/// Copied from [exerciseWords].
-class ExerciseWordsFamily extends Family<
-    AsyncValue<({List<WordPair> group, List<WordPair> others})>> {
-  /// The words of one exercise (learn-kit S-08): the selected group's words to
-  /// learn in group order, and the same session's other words to learn (for
-  /// wrong options, D-15). A null [collectionId] is the current session, an id a
-  /// History session (AC-05). No other session is read. Which words are usable
-  /// is each exercise's own rule. Read-only: nothing here writes the session.
-  ///
-  /// Copied from [exerciseWords].
-  const ExerciseWordsFamily();
+
+final class ExerciseWordsFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+            FutureOr<
+                ({
+                  List<WordPair> group,
+                  List<WordPair> others,
+                })>,
+            (
+              String?,
+              String,
+            )> {
+  ExerciseWordsFamily._()
+      : super(
+          retry: null,
+          name: r'exerciseWordsProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
 
   /// The words of one exercise (learn-kit S-08): the selected group's words to
   /// learn in group order, and the same session's other words to learn (for
   /// wrong options, D-15). A null [collectionId] is the current session, an id a
   /// History session (AC-05). No other session is read. Which words are usable
   /// is each exercise's own rule. Read-only: nothing here writes the session.
-  ///
-  /// Copied from [exerciseWords].
+
   ExerciseWordsProvider call(
     String? collectionId,
     String groupId,
-  ) {
-    return ExerciseWordsProvider(
-      collectionId,
-      groupId,
-    );
-  }
+  ) =>
+      ExerciseWordsProvider._(argument: (
+        collectionId,
+        groupId,
+      ), from: this);
 
   @override
-  ExerciseWordsProvider getProviderOverride(
-    covariant ExerciseWordsProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-      provider.groupId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'exerciseWordsProvider';
+  String toString() => r'exerciseWordsProvider';
 }
 
-/// The words of one exercise (learn-kit S-08): the selected group's words to
-/// learn in group order, and the same session's other words to learn (for
-/// wrong options, D-15). A null [collectionId] is the current session, an id a
-/// History session (AC-05). No other session is read. Which words are usable
-/// is each exercise's own rule. Read-only: nothing here writes the session.
-///
-/// Copied from [exerciseWords].
-class ExerciseWordsProvider extends AutoDisposeFutureProvider<
-    ({List<WordPair> group, List<WordPair> others})> {
-  /// The words of one exercise (learn-kit S-08): the selected group's words to
-  /// learn in group order, and the same session's other words to learn (for
-  /// wrong options, D-15). A null [collectionId] is the current session, an id a
-  /// History session (AC-05). No other session is read. Which words are usable
-  /// is each exercise's own rule. Read-only: nothing here writes the session.
-  ///
-  /// Copied from [exerciseWords].
-  ExerciseWordsProvider(
-    String? collectionId,
-    String groupId,
-  ) : this._internal(
-          (ref) => exerciseWords(
-            ref as ExerciseWordsRef,
-            collectionId,
-            groupId,
-          ),
-          from: exerciseWordsProvider,
-          name: r'exerciseWordsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$exerciseWordsHash,
-          dependencies: ExerciseWordsFamily._dependencies,
-          allTransitiveDependencies:
-              ExerciseWordsFamily._allTransitiveDependencies,
-          collectionId: collectionId,
-          groupId: groupId,
+/// The film dialogues of the session an exercise reads, same session choice as
+/// [exerciseWords] (null = current, id = History). S-31.
+
+@ProviderFor(exerciseDialogues)
+final exerciseDialoguesProvider = ExerciseDialoguesFamily._();
+
+/// The film dialogues of the session an exercise reads, same session choice as
+/// [exerciseWords] (null = current, id = History). S-31.
+
+final class ExerciseDialoguesProvider extends $FunctionalProvider<
+        AsyncValue<List<FilmDialogue>>,
+        List<FilmDialogue>,
+        FutureOr<List<FilmDialogue>>>
+    with
+        $FutureModifier<List<FilmDialogue>>,
+        $FutureProvider<List<FilmDialogue>> {
+  /// The film dialogues of the session an exercise reads, same session choice as
+  /// [exerciseWords] (null = current, id = History). S-31.
+  ExerciseDialoguesProvider._(
+      {required ExerciseDialoguesFamily super.from,
+      required String? super.argument})
+      : super(
+          retry: null,
+          name: r'exerciseDialoguesProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  ExerciseWordsProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-    required this.groupId,
-  }) : super.internal();
-
-  final String? collectionId;
-  final String groupId;
+  @override
+  String debugGetCreateSourceHash() => _$exerciseDialoguesHash();
 
   @override
-  Override overrideWith(
-    FutureOr<({List<WordPair> group, List<WordPair> others})> Function(
-            ExerciseWordsRef provider)
-        create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ExerciseWordsProvider._internal(
-        (ref) => create(ref as ExerciseWordsRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-        groupId: groupId,
-      ),
-    );
+  String toString() {
+    return r'exerciseDialoguesProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeFutureProviderElement<
-      ({List<WordPair> group, List<WordPair> others})> createElement() {
-    return _ExerciseWordsProviderElement(this);
+  $FutureProviderElement<List<FilmDialogue>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<FilmDialogue>> create(Ref ref) {
+    final argument = this.argument as String?;
+    return exerciseDialogues(
+      ref,
+      argument,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is ExerciseWordsProvider &&
-        other.collectionId == collectionId &&
-        other.groupId == groupId;
+    return other is ExerciseDialoguesProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-    hash = _SystemHash.combine(hash, groupId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ExerciseWordsRef on AutoDisposeFutureProviderRef<
-    ({List<WordPair> group, List<WordPair> others})> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-
-  /// The parameter `groupId` of this provider.
-  String get groupId;
-}
-
-class _ExerciseWordsProviderElement extends AutoDisposeFutureProviderElement<
-    ({List<WordPair> group, List<WordPair> others})> with ExerciseWordsRef {
-  _ExerciseWordsProviderElement(super.provider);
-
-  @override
-  String? get collectionId => (origin as ExerciseWordsProvider).collectionId;
-  @override
-  String get groupId => (origin as ExerciseWordsProvider).groupId;
-}
-
-String _$exerciseDialoguesHash() => r'2f542602f57c5e6523141cbb0c89674d75b4c1c0';
+String _$exerciseDialoguesHash() => r'729bd94e949a3df00dfcbee562d3e0c8ffcd571c';
 
 /// The film dialogues of the session an exercise reads, same session choice as
 /// [exerciseWords] (null = current, id = History). S-31.
-///
-/// Copied from [exerciseDialogues].
-@ProviderFor(exerciseDialogues)
-const exerciseDialoguesProvider = ExerciseDialoguesFamily();
 
-/// The film dialogues of the session an exercise reads, same session choice as
-/// [exerciseWords] (null = current, id = History). S-31.
-///
-/// Copied from [exerciseDialogues].
-class ExerciseDialoguesFamily extends Family<AsyncValue<List<FilmDialogue>>> {
-  /// The film dialogues of the session an exercise reads, same session choice as
-  /// [exerciseWords] (null = current, id = History). S-31.
-  ///
-  /// Copied from [exerciseDialogues].
-  const ExerciseDialoguesFamily();
+final class ExerciseDialoguesFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<List<FilmDialogue>>, String?> {
+  ExerciseDialoguesFamily._()
+      : super(
+          retry: null,
+          name: r'exerciseDialoguesProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
 
   /// The film dialogues of the session an exercise reads, same session choice as
   /// [exerciseWords] (null = current, id = History). S-31.
-  ///
-  /// Copied from [exerciseDialogues].
+
   ExerciseDialoguesProvider call(
     String? collectionId,
-  ) {
-    return ExerciseDialoguesProvider(
-      collectionId,
-    );
-  }
+  ) =>
+      ExerciseDialoguesProvider._(argument: collectionId, from: this);
 
   @override
-  ExerciseDialoguesProvider getProviderOverride(
-    covariant ExerciseDialoguesProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'exerciseDialoguesProvider';
+  String toString() => r'exerciseDialoguesProvider';
 }
-
-/// The film dialogues of the session an exercise reads, same session choice as
-/// [exerciseWords] (null = current, id = History). S-31.
-///
-/// Copied from [exerciseDialogues].
-class ExerciseDialoguesProvider
-    extends AutoDisposeFutureProvider<List<FilmDialogue>> {
-  /// The film dialogues of the session an exercise reads, same session choice as
-  /// [exerciseWords] (null = current, id = History). S-31.
-  ///
-  /// Copied from [exerciseDialogues].
-  ExerciseDialoguesProvider(
-    String? collectionId,
-  ) : this._internal(
-          (ref) => exerciseDialogues(
-            ref as ExerciseDialoguesRef,
-            collectionId,
-          ),
-          from: exerciseDialoguesProvider,
-          name: r'exerciseDialoguesProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$exerciseDialoguesHash,
-          dependencies: ExerciseDialoguesFamily._dependencies,
-          allTransitiveDependencies:
-              ExerciseDialoguesFamily._allTransitiveDependencies,
-          collectionId: collectionId,
-        );
-
-  ExerciseDialoguesProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
-
-  final String? collectionId;
-
-  @override
-  Override overrideWith(
-    FutureOr<List<FilmDialogue>> Function(ExerciseDialoguesRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: ExerciseDialoguesProvider._internal(
-        (ref) => create(ref as ExerciseDialoguesRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeFutureProviderElement<List<FilmDialogue>> createElement() {
-    return _ExerciseDialoguesProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is ExerciseDialoguesProvider &&
-        other.collectionId == collectionId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
-}
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin ExerciseDialoguesRef on AutoDisposeFutureProviderRef<List<FilmDialogue>> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-}
-
-class _ExerciseDialoguesProviderElement
-    extends AutoDisposeFutureProviderElement<List<FilmDialogue>>
-    with ExerciseDialoguesRef {
-  _ExerciseDialoguesProviderElement(super.provider);
-
-  @override
-  String? get collectionId =>
-      (origin as ExerciseDialoguesProvider).collectionId;
-}
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

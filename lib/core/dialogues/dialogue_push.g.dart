@@ -6,7 +6,18 @@ part of 'dialogue_push.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$dialoguePushHash() => r'85b542c00e3ce52d5b63d861cc2a22069fa76579';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Delivers what the sessions with a shared link still owe it
+/// (get-words-from-subtitles-improvment ADR-0005): each pending import's rows
+/// and dialogues, then each pending scene picture whose dialogue the page
+/// has. Runs once on app start (read in `app.dart`), whenever the current
+/// session gains something to deliver, and again with growing pauses while
+/// anything failed. The state lives on the `FilmDialogue`s, so closing the
+/// app loses nothing. Never throws.
+
+@ProviderFor(DialoguePush)
+final dialoguePushProvider = DialoguePushProvider._();
 
 /// Delivers what the sessions with a shared link still owe it
 /// (get-words-from-subtitles-improvment ADR-0005): each pending import's rows
@@ -15,18 +26,59 @@ String _$dialoguePushHash() => r'85b542c00e3ce52d5b63d861cc2a22069fa76579';
 /// session gains something to deliver, and again with growing pauses while
 /// anything failed. The state lives on the `FilmDialogue`s, so closing the
 /// app loses nothing. Never throws.
-///
-/// Copied from [DialoguePush].
-@ProviderFor(DialoguePush)
-final dialoguePushProvider = NotifierProvider<DialoguePush, void>.internal(
-  DialoguePush.new,
-  name: r'dialoguePushProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$dialoguePushHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final class DialoguePushProvider extends $NotifierProvider<DialoguePush, void> {
+  /// Delivers what the sessions with a shared link still owe it
+  /// (get-words-from-subtitles-improvment ADR-0005): each pending import's rows
+  /// and dialogues, then each pending scene picture whose dialogue the page
+  /// has. Runs once on app start (read in `app.dart`), whenever the current
+  /// session gains something to deliver, and again with growing pauses while
+  /// anything failed. The state lives on the `FilmDialogue`s, so closing the
+  /// app loses nothing. Never throws.
+  DialoguePushProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'dialoguePushProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-typedef _$DialoguePush = Notifier<void>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+  @override
+  String debugGetCreateSourceHash() => _$dialoguePushHash();
+
+  @$internal
+  @override
+  DialoguePush create() => DialoguePush();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+}
+
+String _$dialoguePushHash() => r'1738fb1e95763e192c394fe62768771c8469b535';
+
+/// Delivers what the sessions with a shared link still owe it
+/// (get-words-from-subtitles-improvment ADR-0005): each pending import's rows
+/// and dialogues, then each pending scene picture whose dialogue the page
+/// has. Runs once on app start (read in `app.dart`), whenever the current
+/// session gains something to deliver, and again with growing pauses while
+/// anything failed. The state lives on the `FilmDialogue`s, so closing the
+/// app loses nothing. Never throws.
+
+abstract class _$DialoguePush extends $Notifier<void> {
+  void build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<void, void>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<void, void>, void, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}

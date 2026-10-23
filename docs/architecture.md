@@ -421,18 +421,22 @@ No `packages/`, no workspace, no `feature_*` pub packages. A feature is a folder
    the Quizlet set page in the progress dialog; JavaScript on, no JavaScript channel, top-level
    navigation only to the pasted set's Quizlet pages; no new permission).
 
-   **Why the Isar packages are pinned to `3.3.0-dev.1`, exactly.** Every isar_community release
-   from `3.3.0-dev.2` up is built against `build ^3/^4` and `source_gen ^4`, while this project's
-   other generators — `riverpod_generator ^2.6.1` and `go_router_builder ^3.0.0` — are built
-   against `build ^2` / `source_gen ^2`. Asking for both makes `pub get` fail outright:
-
-   > Because isar_community_generator >=3.3.1 depends on build ^4.0.0 and riverpod_generator
-   > <3.0.0-dev.17 depends on build ^2.0.0, version solving failed.
-
-   `3.3.0-dev.1` is the last release still on `build 2.x`, so it is the one version of Isar that
-   coexists with the generators already here. Pinned exactly (no caret) so a `pub upgrade` cannot
-   drift onto `3.3.0-dev.2` and break the build. The other way out is upgrading riverpod to 3.x,
-   which is a breaking API change across every provider — not something task-03 should carry.
+   **Pins after the toolchain upgrade (owner, 2026-10-24; Flutter 3.47.8 / Dart 3.13).** The
+   generators now all sit on `build ^4` / `source_gen ^4`: `riverpod_generator` 4.x,
+   `go_router_builder` 4.x and `isar_community_generator` 3.4.1, with `build_runner` 2.16. The
+   Isar packages (`isar_community`, `isar_community_flutter_libs`, `isar_community_generator`)
+   are pinned to `3.4.1` exactly (no caret) so a `pub upgrade` cannot move the database format or
+   the generator. (Before, they were held at `3.3.0-dev.1`, the last release on `build 2.x`,
+   because `riverpod_generator` 2.x and `go_router_builder` 3.x were on `build 2`.)
+   `go_router` stays on 17.x (`^17.5.0`): go_router 18 moved to the `material_ui` package and
+   only recognises *that* package's `MaterialApp`; with `package:flutter/material.dart`'s
+   `MaterialApp` it falls back to `NoTransitionPage` and a plain `HeroController`, so every push
+   and pop would lose its slide (and the iOS back swipe) and heroes their Material arc.
+   Riverpod 3 notes: `retry` is off on the root `ProviderScope` (`noProviderRetry` in
+   `providers.dart`), so a failed provider shows its error at once as before; every
+   AsyncNotifier keeps Riverpod 2's notify rule (`asyncNotifyAsBefore`), since Riverpod 3
+   compares states with `==` and the words notifier stores the same, changed, collection again;
+   generated names drop a class's `Notifier` suffix (`WordsNotifier` → `wordsProvider`).
    Note the import is `package:isar_community/isar.dart` (the package kept Isar's library name).
 7. **One file ≈ one thing.** The screen file composes; widget files draw; the notifier holds data.
    Aim for files under ~300 lines, but do not split a widget just to hit a number.
@@ -452,7 +456,7 @@ flowchart LR
   EX -->|fetchData / check| LA[learnApiServiceProvider<br/>Worker /learn/data, /learn/check]
   EX -->|record| ER[examResultSinkProvider<br/>WordCollection.results]
   L -->|Start with Mnemonic story: StoryRoute push| Y[StoryScreen]
-  L -->|ensureGrouped| GN[wordGroupsNotifierProvider<br/>core/story]
+  L -->|ensureGrouped| GN[wordGroupsProvider<br/>core/story]
   GN -->|POST /story/grouping| SA[storyApiServiceProvider<br/>Worker /story/*]
   Y -->|follow / startFor| R[storyRunTrackerProvider<br/>core/story]
   R -->|start, poll, picture| SA

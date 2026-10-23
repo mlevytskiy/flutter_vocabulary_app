@@ -6,202 +6,130 @@ part of 'word_groups_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$wordGroupsNotifierHash() =>
-    r'051a6444f55fc998297ebfc4c0a3b6c2dadd00b7';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-abstract class _$WordGroupsNotifier extends BuildlessNotifier<WordGroupsState> {
-  late final String? collectionId;
-
-  WordGroupsState build(
-    String? collectionId,
-  );
-}
-
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 /// The groups of one session and the learner's selection among them. A null
 /// [collectionId] is the current session; an id is a History session, which is
 /// read and saved on its own and never becomes current (AC-11). Lives in
 /// `lib/core/story/` so the Words screen and the learn page share it.
-///
-/// Copied from [WordGroupsNotifier].
+
 @ProviderFor(WordGroupsNotifier)
-const wordGroupsNotifierProvider = WordGroupsNotifierFamily();
+final wordGroupsProvider = WordGroupsNotifierFamily._();
 
 /// The groups of one session and the learner's selection among them. A null
 /// [collectionId] is the current session; an id is a History session, which is
 /// read and saved on its own and never becomes current (AC-11). Lives in
 /// `lib/core/story/` so the Words screen and the learn page share it.
-///
-/// Copied from [WordGroupsNotifier].
-class WordGroupsNotifierFamily extends Family<WordGroupsState> {
+final class WordGroupsNotifierProvider
+    extends $NotifierProvider<WordGroupsNotifier, WordGroupsState> {
   /// The groups of one session and the learner's selection among them. A null
   /// [collectionId] is the current session; an id is a History session, which is
   /// read and saved on its own and never becomes current (AC-11). Lives in
   /// `lib/core/story/` so the Words screen and the learn page share it.
-  ///
-  /// Copied from [WordGroupsNotifier].
-  const WordGroupsNotifierFamily();
-
-  /// The groups of one session and the learner's selection among them. A null
-  /// [collectionId] is the current session; an id is a History session, which is
-  /// read and saved on its own and never becomes current (AC-11). Lives in
-  /// `lib/core/story/` so the Words screen and the learn page share it.
-  ///
-  /// Copied from [WordGroupsNotifier].
-  WordGroupsNotifierProvider call(
-    String? collectionId,
-  ) {
-    return WordGroupsNotifierProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  WordGroupsNotifierProvider getProviderOverride(
-    covariant WordGroupsNotifierProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'wordGroupsNotifierProvider';
-}
-
-/// The groups of one session and the learner's selection among them. A null
-/// [collectionId] is the current session; an id is a History session, which is
-/// read and saved on its own and never becomes current (AC-11). Lives in
-/// `lib/core/story/` so the Words screen and the learn page share it.
-///
-/// Copied from [WordGroupsNotifier].
-class WordGroupsNotifierProvider
-    extends NotifierProviderImpl<WordGroupsNotifier, WordGroupsState> {
-  /// The groups of one session and the learner's selection among them. A null
-  /// [collectionId] is the current session; an id is a History session, which is
-  /// read and saved on its own and never becomes current (AC-11). Lives in
-  /// `lib/core/story/` so the Words screen and the learn page share it.
-  ///
-  /// Copied from [WordGroupsNotifier].
-  WordGroupsNotifierProvider(
-    String? collectionId,
-  ) : this._internal(
-          () => WordGroupsNotifier()..collectionId = collectionId,
-          from: wordGroupsNotifierProvider,
-          name: r'wordGroupsNotifierProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$wordGroupsNotifierHash,
-          dependencies: WordGroupsNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              WordGroupsNotifierFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+  WordGroupsNotifierProvider._(
+      {required WordGroupsNotifierFamily super.from,
+      required String? super.argument})
+      : super(
+          retry: null,
+          name: r'wordGroupsProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  WordGroupsNotifierProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
-
-  final String? collectionId;
+  @override
+  String debugGetCreateSourceHash() => _$wordGroupsNotifierHash();
 
   @override
-  WordGroupsState runNotifierBuild(
-    covariant WordGroupsNotifier notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-    );
+  String toString() {
+    return r'wordGroupsProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  Override overrideWith(WordGroupsNotifier Function() create) {
-    return ProviderOverride(
+  WordGroupsNotifier create() => WordGroupsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(WordGroupsState value) {
+    return $ProviderOverride(
       origin: this,
-      override: WordGroupsNotifierProvider._internal(
-        () => create()..collectionId = collectionId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
+      providerOverride: $SyncValueProvider<WordGroupsState>(value),
     );
-  }
-
-  @override
-  NotifierProviderElement<WordGroupsNotifier, WordGroupsState> createElement() {
-    return _WordGroupsNotifierProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is WordGroupsNotifierProvider &&
-        other.collectionId == collectionId;
+    return other is WordGroupsNotifierProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin WordGroupsNotifierRef on NotifierProviderRef<WordGroupsState> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-}
+String _$wordGroupsNotifierHash() =>
+    r'4f93ee55e1229058a2b9dee89563263184a2017e';
 
-class _WordGroupsNotifierProviderElement
-    extends NotifierProviderElement<WordGroupsNotifier, WordGroupsState>
-    with WordGroupsNotifierRef {
-  _WordGroupsNotifierProviderElement(super.provider);
+/// The groups of one session and the learner's selection among them. A null
+/// [collectionId] is the current session; an id is a History session, which is
+/// read and saved on its own and never becomes current (AC-11). Lives in
+/// `lib/core/story/` so the Words screen and the learn page share it.
+
+final class WordGroupsNotifierFamily extends $Family
+    with
+        $ClassFamilyOverride<WordGroupsNotifier, WordGroupsState,
+            WordGroupsState, WordGroupsState, String?> {
+  WordGroupsNotifierFamily._()
+      : super(
+          retry: null,
+          name: r'wordGroupsProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: false,
+        );
+
+  /// The groups of one session and the learner's selection among them. A null
+  /// [collectionId] is the current session; an id is a History session, which is
+  /// read and saved on its own and never becomes current (AC-11). Lives in
+  /// `lib/core/story/` so the Words screen and the learn page share it.
+
+  WordGroupsNotifierProvider call(
+    String? collectionId,
+  ) =>
+      WordGroupsNotifierProvider._(argument: collectionId, from: this);
 
   @override
-  String? get collectionId =>
-      (origin as WordGroupsNotifierProvider).collectionId;
+  String toString() => r'wordGroupsProvider';
 }
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+
+/// The groups of one session and the learner's selection among them. A null
+/// [collectionId] is the current session; an id is a History session, which is
+/// read and saved on its own and never becomes current (AC-11). Lives in
+/// `lib/core/story/` so the Words screen and the learn page share it.
+
+abstract class _$WordGroupsNotifier extends $Notifier<WordGroupsState> {
+  late final _$args = ref.$arg as String?;
+  String? get collectionId => _$args;
+
+  WordGroupsState build(
+    String? collectionId,
+  );
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<WordGroupsState, WordGroupsState>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<WordGroupsState, WordGroupsState>,
+        WordGroupsState,
+        Object?,
+        Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args,
+            ));
+  }
+}

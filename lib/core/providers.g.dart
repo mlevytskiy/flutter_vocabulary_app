@@ -6,618 +6,1307 @@ part of 'providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+
+@ProviderFor(vocabPhotoService)
+final vocabPhotoServiceProvider = VocabPhotoServiceProvider._();
+
+final class VocabPhotoServiceProvider extends $FunctionalProvider<
+    VocabPhotoService,
+    VocabPhotoService,
+    VocabPhotoService> with $Provider<VocabPhotoService> {
+  VocabPhotoServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'vocabPhotoServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$vocabPhotoServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<VocabPhotoService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  VocabPhotoService create(Ref ref) {
+    return vocabPhotoService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(VocabPhotoService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<VocabPhotoService>(value),
+    );
+  }
+}
+
 String _$vocabPhotoServiceHash() => r'380ca452d4e4be41e35c3b9266cfb041bceaa536';
 
-/// See also [vocabPhotoService].
-@ProviderFor(vocabPhotoService)
-final vocabPhotoServiceProvider = Provider<VocabPhotoService>.internal(
-  vocabPhotoService,
-  name: r'vocabPhotoServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$vocabPhotoServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef VocabPhotoServiceRef = ProviderRef<VocabPhotoService>;
-String _$photoScalerHash() => r'af179c8f6325da4a20a8c72b488e27151515346a';
-
-/// See also [photoScaler].
 @ProviderFor(photoScaler)
-final photoScalerProvider = Provider<PhotoScaler>.internal(
-  photoScaler,
-  name: r'photoScalerProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$photoScalerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final photoScalerProvider = PhotoScalerProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PhotoScalerRef = ProviderRef<PhotoScaler>;
-String _$imagePickerHash() => r'7740c09b2d6b395ce466f1b72b93b31db7bfd740';
+final class PhotoScalerProvider
+    extends $FunctionalProvider<PhotoScaler, PhotoScaler, PhotoScaler>
+    with $Provider<PhotoScaler> {
+  PhotoScalerProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'photoScalerProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$photoScalerHash();
+
+  @$internal
+  @override
+  $ProviderElement<PhotoScaler> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PhotoScaler create(Ref ref) {
+    return photoScaler(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PhotoScaler value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PhotoScaler>(value),
+    );
+  }
+}
+
+String _$photoScalerHash() => r'af179c8f6325da4a20a8c72b488e27151515346a';
 
 /// Camera and gallery picks for the photo chain (photo-from-gallery T2);
 /// a provider so widget tests can swap in a fake picker.
-///
-/// Copied from [imagePicker].
+
 @ProviderFor(imagePicker)
-final imagePickerProvider = AutoDisposeProvider<ImagePicker>.internal(
-  imagePicker,
-  name: r'imagePickerProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$imagePickerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final imagePickerProvider = ImagePickerProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ImagePickerRef = AutoDisposeProviderRef<ImagePicker>;
-String _$collectionStoreHash() => r'734e53cb3306b24784379060398a3d74e2bac7c5';
+/// Camera and gallery picks for the photo chain (photo-from-gallery T2);
+/// a provider so widget tests can swap in a fake picker.
 
-/// See also [collectionStore].
+final class ImagePickerProvider
+    extends $FunctionalProvider<ImagePicker, ImagePicker, ImagePicker>
+    with $Provider<ImagePicker> {
+  /// Camera and gallery picks for the photo chain (photo-from-gallery T2);
+  /// a provider so widget tests can swap in a fake picker.
+  ImagePickerProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'imagePickerProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$imagePickerHash();
+
+  @$internal
+  @override
+  $ProviderElement<ImagePicker> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImagePicker create(Ref ref) {
+    return imagePicker(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImagePicker value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImagePicker>(value),
+    );
+  }
+}
+
+String _$imagePickerHash() => r'7740c09b2d6b395ce466f1b72b93b31db7bfd740';
+
 @ProviderFor(collectionStore)
-final collectionStoreProvider = FutureProvider<CollectionStore>.internal(
-  collectionStore,
-  name: r'collectionStoreProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$collectionStoreHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final collectionStoreProvider = CollectionStoreProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CollectionStoreRef = FutureProviderRef<CollectionStore>;
-String _$newUserTrialHash() => r'914f1c160762186768b6cda8ed7401d812808cfb';
+final class CollectionStoreProvider extends $FunctionalProvider<
+        AsyncValue<CollectionStore>, CollectionStore, FutureOr<CollectionStore>>
+    with $FutureModifier<CollectionStore>, $FutureProvider<CollectionStore> {
+  CollectionStoreProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'collectionStoreProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$collectionStoreHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<CollectionStore> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<CollectionStore> create(Ref ref) {
+    return collectionStore(ref);
+  }
+}
+
+String _$collectionStoreHash() => r'734e53cb3306b24784379060398a3d74e2bac7c5';
 
 /// Puts the user's data aside to show the app as to a new user, and brings
 /// it back (new-user-trial, owner 2026-10-17).
-///
-/// Copied from [newUserTrial].
-@ProviderFor(newUserTrial)
-final newUserTrialProvider = Provider<NewUserTrial>.internal(
-  newUserTrial,
-  name: r'newUserTrialProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$newUserTrialHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef NewUserTrialRef = ProviderRef<NewUserTrial>;
-String _$newUserBackupHash() => r'a385c54cf25fbd0a4a932aea61c2d67dddd8beca';
+@ProviderFor(newUserTrial)
+final newUserTrialProvider = NewUserTrialProvider._();
+
+/// Puts the user's data aside to show the app as to a new user, and brings
+/// it back (new-user-trial, owner 2026-10-17).
+
+final class NewUserTrialProvider
+    extends $FunctionalProvider<NewUserTrial, NewUserTrial, NewUserTrial>
+    with $Provider<NewUserTrial> {
+  /// Puts the user's data aside to show the app as to a new user, and brings
+  /// it back (new-user-trial, owner 2026-10-17).
+  NewUserTrialProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'newUserTrialProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$newUserTrialHash();
+
+  @$internal
+  @override
+  $ProviderElement<NewUserTrial> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  NewUserTrial create(Ref ref) {
+    return newUserTrial(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(NewUserTrial value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<NewUserTrial>(value),
+    );
+  }
+}
+
+String _$newUserTrialHash() => r'914f1c160762186768b6cda8ed7401d812808cfb';
 
 /// When the new-user trial's backup was made; null while no trial is on.
-///
-/// Copied from [newUserBackup].
-@ProviderFor(newUserBackup)
-final newUserBackupProvider = AutoDisposeFutureProvider<DateTime?>.internal(
-  newUserBackup,
-  name: r'newUserBackupProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$newUserBackupHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef NewUserBackupRef = AutoDisposeFutureProviderRef<DateTime?>;
-String _$sourcePhotoStoreHash() => r'5ba15f72c22a820489d043a9260d86a9f9d91b3d';
+@ProviderFor(newUserBackup)
+final newUserBackupProvider = NewUserBackupProvider._();
+
+/// When the new-user trial's backup was made; null while no trial is on.
+
+final class NewUserBackupProvider extends $FunctionalProvider<
+        AsyncValue<DateTime?>, DateTime?, FutureOr<DateTime?>>
+    with $FutureModifier<DateTime?>, $FutureProvider<DateTime?> {
+  /// When the new-user trial's backup was made; null while no trial is on.
+  NewUserBackupProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'newUserBackupProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$newUserBackupHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<DateTime?> $createElement($ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<DateTime?> create(Ref ref) {
+    return newUserBackup(ref);
+  }
+}
+
+String _$newUserBackupHash() => r'a385c54cf25fbd0a4a932aea61c2d67dddd8beca';
 
 /// The kept 1600 px copies of the session photos (good-looking-web T17).
-///
-/// Copied from [sourcePhotoStore].
-@ProviderFor(sourcePhotoStore)
-final sourcePhotoStoreProvider = Provider<SourcePhotoStore>.internal(
-  sourcePhotoStore,
-  name: r'sourcePhotoStoreProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$sourcePhotoStoreHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SourcePhotoStoreRef = ProviderRef<SourcePhotoStore>;
-String _$systemGestureExclusionHash() =>
-    r'6e5cfd25b75fb8acad89848713fcd6222249a31f';
+@ProviderFor(sourcePhotoStore)
+final sourcePhotoStoreProvider = SourcePhotoStoreProvider._();
+
+/// The kept 1600 px copies of the session photos (good-looking-web T17).
+
+final class SourcePhotoStoreProvider extends $FunctionalProvider<
+    SourcePhotoStore,
+    SourcePhotoStore,
+    SourcePhotoStore> with $Provider<SourcePhotoStore> {
+  /// The kept 1600 px copies of the session photos (good-looking-web T17).
+  SourcePhotoStoreProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'sourcePhotoStoreProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$sourcePhotoStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<SourcePhotoStore> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SourcePhotoStore create(Ref ref) {
+    return sourcePhotoStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SourcePhotoStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SourcePhotoStore>(value),
+    );
+  }
+}
+
+String _$sourcePhotoStoreHash() => r'5ba15f72c22a820489d043a9260d86a9f9d91b3d';
 
 /// The Android Back-gesture exclusion for the photo tab
 /// (side-bar-for-main-screen ADR-0002).
-///
-/// Copied from [systemGestureExclusion].
-@ProviderFor(systemGestureExclusion)
-final systemGestureExclusionProvider =
-    Provider<SystemGestureExclusion>.internal(
-  systemGestureExclusion,
-  name: r'systemGestureExclusionProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$systemGestureExclusionHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SystemGestureExclusionRef = ProviderRef<SystemGestureExclusion>;
-String _$storyRunStoreHash() => r'406c5b86ac090c61141ffc690cd2065301fb3140';
+@ProviderFor(systemGestureExclusion)
+final systemGestureExclusionProvider = SystemGestureExclusionProvider._();
+
+/// The Android Back-gesture exclusion for the photo tab
+/// (side-bar-for-main-screen ADR-0002).
+
+final class SystemGestureExclusionProvider extends $FunctionalProvider<
+    SystemGestureExclusion,
+    SystemGestureExclusion,
+    SystemGestureExclusion> with $Provider<SystemGestureExclusion> {
+  /// The Android Back-gesture exclusion for the photo tab
+  /// (side-bar-for-main-screen ADR-0002).
+  SystemGestureExclusionProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'systemGestureExclusionProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$systemGestureExclusionHash();
+
+  @$internal
+  @override
+  $ProviderElement<SystemGestureExclusion> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SystemGestureExclusion create(Ref ref) {
+    return systemGestureExclusion(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SystemGestureExclusion value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SystemGestureExclusion>(value),
+    );
+  }
+}
+
+String _$systemGestureExclusionHash() =>
+    r'6e5cfd25b75fb8acad89848713fcd6222249a31f';
 
 /// The story runs, kept in the same database as the sessions (ADR-0003).
-///
-/// Copied from [storyRunStore].
-@ProviderFor(storyRunStore)
-final storyRunStoreProvider = FutureProvider<StoryRunStore>.internal(
-  storyRunStore,
-  name: r'storyRunStoreProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$storyRunStoreHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef StoryRunStoreRef = FutureProviderRef<StoryRunStore>;
-String _$storyPictureStoreHash() => r'625afbaf103c13e839e9def2035d1edb5251d58f';
+@ProviderFor(storyRunStore)
+final storyRunStoreProvider = StoryRunStoreProvider._();
+
+/// The story runs, kept in the same database as the sessions (ADR-0003).
+
+final class StoryRunStoreProvider extends $FunctionalProvider<
+        AsyncValue<StoryRunStore>, StoryRunStore, FutureOr<StoryRunStore>>
+    with $FutureModifier<StoryRunStore>, $FutureProvider<StoryRunStore> {
+  /// The story runs, kept in the same database as the sessions (ADR-0003).
+  StoryRunStoreProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'storyRunStoreProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$storyRunStoreHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<StoryRunStore> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<StoryRunStore> create(Ref ref) {
+    return storyRunStore(ref);
+  }
+}
+
+String _$storyRunStoreHash() => r'406c5b86ac090c61141ffc690cd2065301fb3140';
 
 /// The compressed story pictures kept on the phone.
-///
-/// Copied from [storyPictureStore].
-@ProviderFor(storyPictureStore)
-final storyPictureStoreProvider = Provider<StoryPictureStore>.internal(
-  storyPictureStore,
-  name: r'storyPictureStoreProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$storyPictureStoreHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef StoryPictureStoreRef = ProviderRef<StoryPictureStore>;
+@ProviderFor(storyPictureStore)
+final storyPictureStoreProvider = StoryPictureStoreProvider._();
+
+/// The compressed story pictures kept on the phone.
+
+final class StoryPictureStoreProvider extends $FunctionalProvider<
+    StoryPictureStore,
+    StoryPictureStore,
+    StoryPictureStore> with $Provider<StoryPictureStore> {
+  /// The compressed story pictures kept on the phone.
+  StoryPictureStoreProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'storyPictureStoreProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$storyPictureStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<StoryPictureStore> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  StoryPictureStore create(Ref ref) {
+    return storyPictureStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(StoryPictureStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<StoryPictureStore>(value),
+    );
+  }
+}
+
+String _$storyPictureStoreHash() => r'625afbaf103c13e839e9def2035d1edb5251d58f';
+
+@ProviderFor(googleTranslateService)
+final googleTranslateServiceProvider = GoogleTranslateServiceProvider._();
+
+final class GoogleTranslateServiceProvider extends $FunctionalProvider<
+    GoogleTranslateService,
+    GoogleTranslateService,
+    GoogleTranslateService> with $Provider<GoogleTranslateService> {
+  GoogleTranslateServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'googleTranslateServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$googleTranslateServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<GoogleTranslateService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  GoogleTranslateService create(Ref ref) {
+    return googleTranslateService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(GoogleTranslateService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<GoogleTranslateService>(value),
+    );
+  }
+}
+
 String _$googleTranslateServiceHash() =>
     r'6afdf9f3d52ebdc231e65e17d05446c50f457432';
 
-/// See also [googleTranslateService].
-@ProviderFor(googleTranslateService)
-final googleTranslateServiceProvider =
-    Provider<GoogleTranslateService>.internal(
-  googleTranslateService,
-  name: r'googleTranslateServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$googleTranslateServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+@ProviderFor(pronunciationService)
+final pronunciationServiceProvider = PronunciationServiceProvider._();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef GoogleTranslateServiceRef = ProviderRef<GoogleTranslateService>;
+final class PronunciationServiceProvider extends $FunctionalProvider<
+    PronunciationService,
+    PronunciationService,
+    PronunciationService> with $Provider<PronunciationService> {
+  PronunciationServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'pronunciationServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$pronunciationServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<PronunciationService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  PronunciationService create(Ref ref) {
+    return pronunciationService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PronunciationService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PronunciationService>(value),
+    );
+  }
+}
+
 String _$pronunciationServiceHash() =>
     r'a04b5b4ea06bd7d29a7b0874172549524472bb26';
 
-/// See also [pronunciationService].
-@ProviderFor(pronunciationService)
-final pronunciationServiceProvider = Provider<PronunciationService>.internal(
-  pronunciationService,
-  name: r'pronunciationServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$pronunciationServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Dictionary senses for the definition field, via the Worker (ADR-0002).
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PronunciationServiceRef = ProviderRef<PronunciationService>;
-String _$dictionaryServiceHash() => r'55c5a3e42d3dab60fb9f17e0724c51e347330b20';
+@ProviderFor(dictionaryService)
+final dictionaryServiceProvider = DictionaryServiceProvider._();
 
 /// Dictionary senses for the definition field, via the Worker (ADR-0002).
-///
-/// Copied from [dictionaryService].
-@ProviderFor(dictionaryService)
-final dictionaryServiceProvider = Provider<DictionaryService>.internal(
-  dictionaryService,
-  name: r'dictionaryServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$dictionaryServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef DictionaryServiceRef = ProviderRef<DictionaryService>;
-String _$storyApiServiceHash() => r'a236884d7c0ebee6e6e8e747202f0035a3f0f616';
+final class DictionaryServiceProvider extends $FunctionalProvider<
+    DictionaryService,
+    DictionaryService,
+    DictionaryService> with $Provider<DictionaryService> {
+  /// Dictionary senses for the definition field, via the Worker (ADR-0002).
+  DictionaryServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'dictionaryServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$dictionaryServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<DictionaryService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DictionaryService create(Ref ref) {
+    return dictionaryService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DictionaryService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DictionaryService>(value),
+    );
+  }
+}
+
+String _$dictionaryServiceHash() => r'55c5a3e42d3dab60fb9f17e0724c51e347330b20';
 
 /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
-///
-/// Copied from [storyApiService].
-@ProviderFor(storyApiService)
-final storyApiServiceProvider = Provider<StoryApiService>.internal(
-  storyApiService,
-  name: r'storyApiServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$storyApiServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef StoryApiServiceRef = ProviderRef<StoryApiService>;
+@ProviderFor(storyApiService)
+final storyApiServiceProvider = StoryApiServiceProvider._();
+
+/// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
+
+final class StoryApiServiceProvider extends $FunctionalProvider<StoryApiService,
+    StoryApiService, StoryApiService> with $Provider<StoryApiService> {
+  /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
+  StoryApiServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'storyApiServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$storyApiServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<StoryApiService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  StoryApiService create(Ref ref) {
+    return storyApiService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(StoryApiService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<StoryApiService>(value),
+    );
+  }
+}
+
+String _$storyApiServiceHash() => r'a236884d7c0ebee6e6e8e747202f0035a3f0f616';
+
+/// The Worker's collection naming (collection-naming, owner 2026-10-18).
+
+@ProviderFor(collectionNamingService)
+final collectionNamingServiceProvider = CollectionNamingServiceProvider._();
+
+/// The Worker's collection naming (collection-naming, owner 2026-10-18).
+
+final class CollectionNamingServiceProvider extends $FunctionalProvider<
+    CollectionNamingService,
+    CollectionNamingService,
+    CollectionNamingService> with $Provider<CollectionNamingService> {
+  /// The Worker's collection naming (collection-naming, owner 2026-10-18).
+  CollectionNamingServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'collectionNamingServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$collectionNamingServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CollectionNamingService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CollectionNamingService create(Ref ref) {
+    return collectionNamingService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CollectionNamingService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CollectionNamingService>(value),
+    );
+  }
+}
+
 String _$collectionNamingServiceHash() =>
     r'ea710e876937b0fa9333378880697a6e9fce73db';
 
-/// The Worker's collection naming (collection-naming, owner 2026-10-18).
-///
-/// Copied from [collectionNamingService].
-@ProviderFor(collectionNamingService)
-final collectionNamingServiceProvider =
-    Provider<CollectionNamingService>.internal(
-  collectionNamingService,
-  name: r'collectionNamingServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$collectionNamingServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CollectionNamingServiceRef = ProviderRef<CollectionNamingService>;
-String _$learnApiServiceHash() => r'2da4556e695e318b873e02fe83b565960e790244';
+@ProviderFor(learnApiService)
+final learnApiServiceProvider = LearnApiServiceProvider._();
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
-///
-/// Copied from [learnApiService].
-@ProviderFor(learnApiService)
-final learnApiServiceProvider = Provider<LearnApiService>.internal(
-  learnApiService,
-  name: r'learnApiServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$learnApiServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef LearnApiServiceRef = ProviderRef<LearnApiService>;
-String _$talkApiServiceHash() => r'210b666c417cfb782e871aedfb4eeb8ee1dbbaed';
+final class LearnApiServiceProvider extends $FunctionalProvider<LearnApiService,
+    LearnApiService, LearnApiService> with $Provider<LearnApiService> {
+  /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
+  LearnApiServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'learnApiServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$learnApiServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<LearnApiService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LearnApiService create(Ref ref) {
+    return learnApiService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LearnApiService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LearnApiService>(value),
+    );
+  }
+}
+
+String _$learnApiServiceHash() => r'2da4556e695e318b873e02fe83b565960e790244';
 
 /// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
-///
-/// Copied from [talkApiService].
-@ProviderFor(talkApiService)
-final talkApiServiceProvider = Provider<TalkApiService>.internal(
-  talkApiService,
-  name: r'talkApiServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$talkApiServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TalkApiServiceRef = ProviderRef<TalkApiService>;
-String _$examResultSinkHash() => r'48e41297d46cc66488d89b803bb61380316ddf96';
+@ProviderFor(talkApiService)
+final talkApiServiceProvider = TalkApiServiceProvider._();
+
+/// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
+
+final class TalkApiServiceProvider
+    extends $FunctionalProvider<TalkApiService, TalkApiService, TalkApiService>
+    with $Provider<TalkApiService> {
+  /// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
+  TalkApiServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'talkApiServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$talkApiServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<TalkApiService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TalkApiService create(Ref ref) {
+    return talkApiService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TalkApiService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TalkApiService>(value),
+    );
+  }
+}
+
+String _$talkApiServiceHash() => r'210b666c417cfb782e871aedfb4eeb8ee1dbbaed';
 
 /// Where Step 3 exams record each word's known / repeat result (learn-kit
 /// S-23), on the session in the session store.
-///
-/// Copied from [examResultSink].
-@ProviderFor(examResultSink)
-final examResultSinkProvider = Provider<ExamResultSink>.internal(
-  examResultSink,
-  name: r'examResultSinkProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$examResultSinkHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef ExamResultSinkRef = ProviderRef<ExamResultSink>;
-String _$offeredAisHash() => r'5a7c2096143ae6f5c0db6e33b3300caccad2a625';
+@ProviderFor(examResultSink)
+final examResultSinkProvider = ExamResultSinkProvider._();
+
+/// Where Step 3 exams record each word's known / repeat result (learn-kit
+/// S-23), on the session in the session store.
+
+final class ExamResultSinkProvider
+    extends $FunctionalProvider<ExamResultSink, ExamResultSink, ExamResultSink>
+    with $Provider<ExamResultSink> {
+  /// Where Step 3 exams record each word's known / repeat result (learn-kit
+  /// S-23), on the session in the session store.
+  ExamResultSinkProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'examResultSinkProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$examResultSinkHash();
+
+  @$internal
+  @override
+  $ProviderElement<ExamResultSink> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ExamResultSink create(Ref ref) {
+    return examResultSink(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ExamResultSink value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ExamResultSink>(value),
+    );
+  }
+}
+
+String _$examResultSinkHash() => r'48e41297d46cc66488d89b803bb61380316ddf96';
 
 /// The AIs on the Worker's offered list. Fetched on first use and cached in
 /// preferences; when the fetch fails, the cached list is used, and when there is
 /// none either, the built-in defaults (AC-13). Never throws.
-///
-/// Copied from [offeredAis].
-@ProviderFor(offeredAis)
-final offeredAisProvider = FutureProvider<OfferedAiList>.internal(
-  offeredAis,
-  name: r'offeredAisProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$offeredAisHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef OfferedAisRef = FutureProviderRef<OfferedAiList>;
+@ProviderFor(offeredAis)
+final offeredAisProvider = OfferedAisProvider._();
+
+/// The AIs on the Worker's offered list. Fetched on first use and cached in
+/// preferences; when the fetch fails, the cached list is used, and when there is
+/// none either, the built-in defaults (AC-13). Never throws.
+
+final class OfferedAisProvider extends $FunctionalProvider<
+        AsyncValue<OfferedAiList>, OfferedAiList, FutureOr<OfferedAiList>>
+    with $FutureModifier<OfferedAiList>, $FutureProvider<OfferedAiList> {
+  /// The AIs on the Worker's offered list. Fetched on first use and cached in
+  /// preferences; when the fetch fails, the cached list is used, and when there is
+  /// none either, the built-in defaults (AC-13). Never throws.
+  OfferedAisProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'offeredAisProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$offeredAisHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<OfferedAiList> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<OfferedAiList> create(Ref ref) {
+    return offeredAis(ref);
+  }
+}
+
+String _$offeredAisHash() => r'5a7c2096143ae6f5c0db6e33b3300caccad2a625';
+
+/// The learner's saved AI for each step of a story run (AC-12). Persisted like
+/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+
+@ProviderFor(AiChoiceNotifier)
+final aiChoiceProvider = AiChoiceNotifierProvider._();
+
+/// The learner's saved AI for each step of a story run (AC-12). Persisted like
+/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+final class AiChoiceNotifierProvider
+    extends $NotifierProvider<AiChoiceNotifier, StoredAiChoice> {
+  /// The learner's saved AI for each step of a story run (AC-12). Persisted like
+  /// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+  /// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+  AiChoiceNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'aiChoiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$aiChoiceNotifierHash();
+
+  @$internal
+  @override
+  AiChoiceNotifier create() => AiChoiceNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(StoredAiChoice value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<StoredAiChoice>(value),
+    );
+  }
+}
+
+String _$aiChoiceNotifierHash() => r'56fb292859c4632c546aa2450c049a959ad528bc';
+
+/// The learner's saved AI for each step of a story run (AC-12). Persisted like
+/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
+/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
+
+abstract class _$AiChoiceNotifier extends $Notifier<StoredAiChoice> {
+  StoredAiChoice build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<StoredAiChoice, StoredAiChoice>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<StoredAiChoice, StoredAiChoice>,
+        StoredAiChoice,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(collectionPublishService)
+final collectionPublishServiceProvider = CollectionPublishServiceProvider._();
+
+final class CollectionPublishServiceProvider extends $FunctionalProvider<
+    CollectionPublishService,
+    CollectionPublishService,
+    CollectionPublishService> with $Provider<CollectionPublishService> {
+  CollectionPublishServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'collectionPublishServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$collectionPublishServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<CollectionPublishService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CollectionPublishService create(Ref ref) {
+    return collectionPublishService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CollectionPublishService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CollectionPublishService>(value),
+    );
+  }
+}
+
 String _$collectionPublishServiceHash() =>
     r'782c4e1830d4068a7ccce88ceaf477de7cc026d4';
 
-/// See also [collectionPublishService].
-@ProviderFor(collectionPublishService)
-final collectionPublishServiceProvider =
-    Provider<CollectionPublishService>.internal(
-  collectionPublishService,
-  name: r'collectionPublishServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$collectionPublishServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CollectionPublishServiceRef = ProviderRef<CollectionPublishService>;
+@ProviderFor(subtitleWordsService)
+final subtitleWordsServiceProvider = SubtitleWordsServiceProvider._();
+
+/// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
+
+final class SubtitleWordsServiceProvider extends $FunctionalProvider<
+    SubtitleWordsService,
+    SubtitleWordsService,
+    SubtitleWordsService> with $Provider<SubtitleWordsService> {
+  /// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
+  SubtitleWordsServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'subtitleWordsServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$subtitleWordsServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<SubtitleWordsService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SubtitleWordsService create(Ref ref) {
+    return subtitleWordsService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SubtitleWordsService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SubtitleWordsService>(value),
+    );
+  }
+}
+
 String _$subtitleWordsServiceHash() =>
     r'56f13395451925ab40ca0224660f990ec0cd6ce7';
 
-/// Word picking from a subtitle file's lines, via the Worker (words-from-subtitles).
-///
-/// Copied from [subtitleWordsService].
-@ProviderFor(subtitleWordsService)
-final subtitleWordsServiceProvider = Provider<SubtitleWordsService>.internal(
-  subtitleWordsService,
-  name: r'subtitleWordsServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$subtitleWordsServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Subtitle files found by film name, through the Worker (OpenSubtitles).
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SubtitleWordsServiceRef = ProviderRef<SubtitleWordsService>;
+@ProviderFor(subtitleSearchService)
+final subtitleSearchServiceProvider = SubtitleSearchServiceProvider._();
+
+/// Subtitle files found by film name, through the Worker (OpenSubtitles).
+
+final class SubtitleSearchServiceProvider extends $FunctionalProvider<
+    SubtitleSearchService,
+    SubtitleSearchService,
+    SubtitleSearchService> with $Provider<SubtitleSearchService> {
+  /// Subtitle files found by film name, through the Worker (OpenSubtitles).
+  SubtitleSearchServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'subtitleSearchServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$subtitleSearchServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<SubtitleSearchService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SubtitleSearchService create(Ref ref) {
+    return subtitleSearchService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SubtitleSearchService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SubtitleSearchService>(value),
+    );
+  }
+}
+
 String _$subtitleSearchServiceHash() =>
     r'cc2abc44e30d06312b788e733574cf0709c3fcdd';
 
-/// Subtitle files found by film name, through the Worker (OpenSubtitles).
-///
-/// Copied from [subtitleSearchService].
-@ProviderFor(subtitleSearchService)
-final subtitleSearchServiceProvider = Provider<SubtitleSearchService>.internal(
-  subtitleSearchService,
-  name: r'subtitleSearchServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$subtitleSearchServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Subtitle words translated on the phone with Google Translate.
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SubtitleSearchServiceRef = ProviderRef<SubtitleSearchService>;
+@ProviderFor(subtitleGoogleWords)
+final subtitleGoogleWordsProvider = SubtitleGoogleWordsProvider._();
+
+/// Subtitle words translated on the phone with Google Translate.
+
+final class SubtitleGoogleWordsProvider extends $FunctionalProvider<
+    SubtitleGoogleWords,
+    SubtitleGoogleWords,
+    SubtitleGoogleWords> with $Provider<SubtitleGoogleWords> {
+  /// Subtitle words translated on the phone with Google Translate.
+  SubtitleGoogleWordsProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'subtitleGoogleWordsProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$subtitleGoogleWordsHash();
+
+  @$internal
+  @override
+  $ProviderElement<SubtitleGoogleWords> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SubtitleGoogleWords create(Ref ref) {
+    return subtitleGoogleWords(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SubtitleGoogleWords value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SubtitleGoogleWords>(value),
+    );
+  }
+}
+
 String _$subtitleGoogleWordsHash() =>
     r'fca5efe9d5a66d33861f0cc0b336f3b1a60f873b';
 
-/// Subtitle words translated on the phone with Google Translate.
-///
-/// Copied from [subtitleGoogleWords].
-@ProviderFor(subtitleGoogleWords)
-final subtitleGoogleWordsProvider = Provider<SubtitleGoogleWords>.internal(
-  subtitleGoogleWords,
-  name: r'subtitleGoogleWordsProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$subtitleGoogleWordsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Background upload of the photos a publish declared (good-looking-web T18).
+/// keepAlive, so uploads outlive the words table (sad §8).
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SubtitleGoogleWordsRef = ProviderRef<SubtitleGoogleWords>;
-String _$photoUploadServiceHash() =>
-    r'8c9008e9902f73f6fe215aff73ac7796edf87107';
+@ProviderFor(photoUploadService)
+final photoUploadServiceProvider = PhotoUploadServiceProvider._();
 
 /// Background upload of the photos a publish declared (good-looking-web T18).
 /// keepAlive, so uploads outlive the words table (sad §8).
-///
-/// Copied from [photoUploadService].
-@ProviderFor(photoUploadService)
-final photoUploadServiceProvider = Provider<PhotoUploadService>.internal(
-  photoUploadService,
-  name: r'photoUploadServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$photoUploadServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef PhotoUploadServiceRef = ProviderRef<PhotoUploadService>;
-String _$collectionByIdHash() => r'ad2b3bf6ef382c136b9269914067acfeafcd7c90';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-/// See also [collectionById].
-@ProviderFor(collectionById)
-const collectionByIdProvider = CollectionByIdFamily();
-
-/// See also [collectionById].
-class CollectionByIdFamily extends Family<AsyncValue<WordCollection?>> {
-  /// See also [collectionById].
-  const CollectionByIdFamily();
-
-  /// See also [collectionById].
-  CollectionByIdProvider call(
-    String collectionId,
-  ) {
-    return CollectionByIdProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  CollectionByIdProvider getProviderOverride(
-    covariant CollectionByIdProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'collectionByIdProvider';
-}
-
-/// See also [collectionById].
-class CollectionByIdProvider
-    extends AutoDisposeFutureProvider<WordCollection?> {
-  /// See also [collectionById].
-  CollectionByIdProvider(
-    String collectionId,
-  ) : this._internal(
-          (ref) => collectionById(
-            ref as CollectionByIdRef,
-            collectionId,
-          ),
-          from: collectionByIdProvider,
-          name: r'collectionByIdProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$collectionByIdHash,
-          dependencies: CollectionByIdFamily._dependencies,
-          allTransitiveDependencies:
-              CollectionByIdFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+final class PhotoUploadServiceProvider extends $FunctionalProvider<
+    PhotoUploadService,
+    PhotoUploadService,
+    PhotoUploadService> with $Provider<PhotoUploadService> {
+  /// Background upload of the photos a publish declared (good-looking-web T18).
+  /// keepAlive, so uploads outlive the words table (sad §8).
+  PhotoUploadServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'photoUploadServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  CollectionByIdProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$photoUploadServiceHash();
 
-  final String collectionId;
+  @$internal
+  @override
+  $ProviderElement<PhotoUploadService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    FutureOr<WordCollection?> Function(CollectionByIdRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: CollectionByIdProvider._internal(
-        (ref) => create(ref as CollectionByIdRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
-    );
+  PhotoUploadService create(Ref ref) {
+    return photoUploadService(ref);
   }
 
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PhotoUploadService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PhotoUploadService>(value),
+    );
+  }
+}
+
+String _$photoUploadServiceHash() =>
+    r'8c9008e9902f73f6fe215aff73ac7796edf87107';
+
+@ProviderFor(collectionById)
+final collectionByIdProvider = CollectionByIdFamily._();
+
+final class CollectionByIdProvider extends $FunctionalProvider<
+        AsyncValue<WordCollection?>, WordCollection?, FutureOr<WordCollection?>>
+    with $FutureModifier<WordCollection?>, $FutureProvider<WordCollection?> {
+  CollectionByIdProvider._(
+      {required CollectionByIdFamily super.from,
+      required String super.argument})
+      : super(
+          retry: null,
+          name: r'collectionByIdProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
   @override
-  AutoDisposeFutureProviderElement<WordCollection?> createElement() {
-    return _CollectionByIdProviderElement(this);
+  String debugGetCreateSourceHash() => _$collectionByIdHash();
+
+  @override
+  String toString() {
+    return r'collectionByIdProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<WordCollection?> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<WordCollection?> create(Ref ref) {
+    final argument = this.argument as String;
+    return collectionById(
+      ref,
+      argument,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is CollectionByIdProvider &&
-        other.collectionId == collectionId;
+    return other is CollectionByIdProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin CollectionByIdRef on AutoDisposeFutureProviderRef<WordCollection?> {
-  /// The parameter `collectionId` of this provider.
-  String get collectionId;
-}
+String _$collectionByIdHash() => r'ad2b3bf6ef382c136b9269914067acfeafcd7c90';
 
-class _CollectionByIdProviderElement
-    extends AutoDisposeFutureProviderElement<WordCollection?>
-    with CollectionByIdRef {
-  _CollectionByIdProviderElement(super.provider);
+final class CollectionByIdFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<WordCollection?>, String> {
+  CollectionByIdFamily._()
+      : super(
+          retry: null,
+          name: r'collectionByIdProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  CollectionByIdProvider call(
+    String collectionId,
+  ) =>
+      CollectionByIdProvider._(argument: collectionId, from: this);
 
   @override
-  String get collectionId => (origin as CollectionByIdProvider).collectionId;
+  String toString() => r'collectionByIdProvider';
+}
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+
+@ProviderFor(collectionLevel)
+final collectionLevelProvider = CollectionLevelFamily._();
+
+/// One level of the Collections screen (collections-screen T8): the folders
+/// and collections in [folderId], null being the top level, that are not in
+/// the bin, by order, re-emitted after every write.
+
+final class CollectionLevelProvider extends $FunctionalProvider<
+        AsyncValue<List<LevelItem>>, List<LevelItem>, Stream<List<LevelItem>>>
+    with $FutureModifier<List<LevelItem>>, $StreamProvider<List<LevelItem>> {
+  /// One level of the Collections screen (collections-screen T8): the folders
+  /// and collections in [folderId], null being the top level, that are not in
+  /// the bin, by order, re-emitted after every write.
+  CollectionLevelProvider._(
+      {required CollectionLevelFamily super.from,
+      required String? super.argument})
+      : super(
+          retry: null,
+          name: r'collectionLevelProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$collectionLevelHash();
+
+  @override
+  String toString() {
+    return r'collectionLevelProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<LevelItem>> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<LevelItem>> create(Ref ref) {
+    final argument = this.argument as String?;
+    return collectionLevel(
+      ref,
+      argument,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CollectionLevelProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$collectionLevelHash() => r'35c09f3e0dc5b9ca13c5d35021e6ce1ef3d65d15';
@@ -625,588 +1314,432 @@ String _$collectionLevelHash() => r'35c09f3e0dc5b9ca13c5d35021e6ce1ef3d65d15';
 /// One level of the Collections screen (collections-screen T8): the folders
 /// and collections in [folderId], null being the top level, that are not in
 /// the bin, by order, re-emitted after every write.
-///
-/// Copied from [collectionLevel].
-@ProviderFor(collectionLevel)
-const collectionLevelProvider = CollectionLevelFamily();
 
-/// One level of the Collections screen (collections-screen T8): the folders
-/// and collections in [folderId], null being the top level, that are not in
-/// the bin, by order, re-emitted after every write.
-///
-/// Copied from [collectionLevel].
-class CollectionLevelFamily extends Family<AsyncValue<List<LevelItem>>> {
-  /// One level of the Collections screen (collections-screen T8): the folders
-  /// and collections in [folderId], null being the top level, that are not in
-  /// the bin, by order, re-emitted after every write.
-  ///
-  /// Copied from [collectionLevel].
-  const CollectionLevelFamily();
-
-  /// One level of the Collections screen (collections-screen T8): the folders
-  /// and collections in [folderId], null being the top level, that are not in
-  /// the bin, by order, re-emitted after every write.
-  ///
-  /// Copied from [collectionLevel].
-  CollectionLevelProvider call(
-    String? folderId,
-  ) {
-    return CollectionLevelProvider(
-      folderId,
-    );
-  }
-
-  @override
-  CollectionLevelProvider getProviderOverride(
-    covariant CollectionLevelProvider provider,
-  ) {
-    return call(
-      provider.folderId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'collectionLevelProvider';
-}
-
-/// One level of the Collections screen (collections-screen T8): the folders
-/// and collections in [folderId], null being the top level, that are not in
-/// the bin, by order, re-emitted after every write.
-///
-/// Copied from [collectionLevel].
-class CollectionLevelProvider
-    extends AutoDisposeStreamProvider<List<LevelItem>> {
-  /// One level of the Collections screen (collections-screen T8): the folders
-  /// and collections in [folderId], null being the top level, that are not in
-  /// the bin, by order, re-emitted after every write.
-  ///
-  /// Copied from [collectionLevel].
-  CollectionLevelProvider(
-    String? folderId,
-  ) : this._internal(
-          (ref) => collectionLevel(
-            ref as CollectionLevelRef,
-            folderId,
-          ),
-          from: collectionLevelProvider,
+final class CollectionLevelFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<LevelItem>>, String?> {
+  CollectionLevelFamily._()
+      : super(
+          retry: null,
           name: r'collectionLevelProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$collectionLevelHash,
-          dependencies: CollectionLevelFamily._dependencies,
-          allTransitiveDependencies:
-              CollectionLevelFamily._allTransitiveDependencies,
-          folderId: folderId,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
         );
 
-  CollectionLevelProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.folderId,
-  }) : super.internal();
+  /// One level of the Collections screen (collections-screen T8): the folders
+  /// and collections in [folderId], null being the top level, that are not in
+  /// the bin, by order, re-emitted after every write.
 
-  final String? folderId;
+  CollectionLevelProvider call(
+    String? folderId,
+  ) =>
+      CollectionLevelProvider._(argument: folderId, from: this);
 
   @override
-  Override overrideWith(
-    Stream<List<LevelItem>> Function(CollectionLevelRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: CollectionLevelProvider._internal(
-        (ref) => create(ref as CollectionLevelRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        folderId: folderId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeStreamProviderElement<List<LevelItem>> createElement() {
-    return _CollectionLevelProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is CollectionLevelProvider && other.folderId == folderId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, folderId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'collectionLevelProvider';
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin CollectionLevelRef on AutoDisposeStreamProviderRef<List<LevelItem>> {
-  /// The parameter `folderId` of this provider.
-  String? get folderId;
-}
+/// Every collection that is not in the bin, empty ones too, for the
+/// Collections search and the tag counts (collection-tags ADR-0006); one
+/// emission per burst of writes.
 
-class _CollectionLevelProviderElement
-    extends AutoDisposeStreamProviderElement<List<LevelItem>>
-    with CollectionLevelRef {
-  _CollectionLevelProviderElement(super.provider);
+@ProviderFor(collectionSummaries)
+final collectionSummariesProvider = CollectionSummariesProvider._();
+
+/// Every collection that is not in the bin, empty ones too, for the
+/// Collections search and the tag counts (collection-tags ADR-0006); one
+/// emission per burst of writes.
+
+final class CollectionSummariesProvider extends $FunctionalProvider<
+        AsyncValue<List<CollectionSummary>>,
+        List<CollectionSummary>,
+        Stream<List<CollectionSummary>>>
+    with
+        $FutureModifier<List<CollectionSummary>>,
+        $StreamProvider<List<CollectionSummary>> {
+  /// Every collection that is not in the bin, empty ones too, for the
+  /// Collections search and the tag counts (collection-tags ADR-0006); one
+  /// emission per burst of writes.
+  CollectionSummariesProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'collectionSummariesProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
-  String? get folderId => (origin as CollectionLevelProvider).folderId;
+  String debugGetCreateSourceHash() => _$collectionSummariesHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<CollectionSummary>> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<CollectionSummary>> create(Ref ref) {
+    return collectionSummaries(ref);
+  }
 }
 
 String _$collectionSummariesHash() =>
     r'e728a8708419084d7a2350ad47bd8d86dc8fb691';
 
-/// Every collection that is not in the bin, empty ones too, for the
-/// Collections search and the tag counts (collection-tags ADR-0006); one
-/// emission per burst of writes.
-///
-/// Copied from [collectionSummaries].
-@ProviderFor(collectionSummaries)
-final collectionSummariesProvider =
-    AutoDisposeStreamProvider<List<CollectionSummary>>.internal(
-  collectionSummaries,
-  name: r'collectionSummariesProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$collectionSummariesHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// The whole tag library, forgotten entries included (collection-tags
+/// ADR-0009).
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CollectionSummariesRef
-    = AutoDisposeStreamProviderRef<List<CollectionSummary>>;
-String _$tagLibraryHash() => r'fa2e6b23b96de113752f004b78bf4e3279e69bc7';
+@ProviderFor(tagLibrary)
+final tagLibraryProvider = TagLibraryProvider._();
 
 /// The whole tag library, forgotten entries included (collection-tags
 /// ADR-0009).
-///
-/// Copied from [tagLibrary].
-@ProviderFor(tagLibrary)
-final tagLibraryProvider =
-    AutoDisposeStreamProvider<List<TagLibraryEntry>>.internal(
-  tagLibrary,
-  name: r'tagLibraryProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$tagLibraryHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef TagLibraryRef = AutoDisposeStreamProviderRef<List<TagLibraryEntry>>;
-String _$collectionNameHash() => r'8a07f2bd9b41c3855b426acf2b30592f9ccd9978';
-
-/// The stored name of one collection (collections-screen T14): the main
-/// screen's title. Null before the backfill; callers show the date name.
-///
-/// Copied from [collectionName].
-@ProviderFor(collectionName)
-const collectionNameProvider = CollectionNameFamily();
-
-/// The stored name of one collection (collections-screen T14): the main
-/// screen's title. Null before the backfill; callers show the date name.
-///
-/// Copied from [collectionName].
-class CollectionNameFamily extends Family<AsyncValue<String?>> {
-  /// The stored name of one collection (collections-screen T14): the main
-  /// screen's title. Null before the backfill; callers show the date name.
-  ///
-  /// Copied from [collectionName].
-  const CollectionNameFamily();
-
-  /// The stored name of one collection (collections-screen T14): the main
-  /// screen's title. Null before the backfill; callers show the date name.
-  ///
-  /// Copied from [collectionName].
-  CollectionNameProvider call(
-    String collectionId,
-  ) {
-    return CollectionNameProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  CollectionNameProvider getProviderOverride(
-    covariant CollectionNameProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'collectionNameProvider';
-}
-
-/// The stored name of one collection (collections-screen T14): the main
-/// screen's title. Null before the backfill; callers show the date name.
-///
-/// Copied from [collectionName].
-class CollectionNameProvider extends AutoDisposeStreamProvider<String?> {
-  /// The stored name of one collection (collections-screen T14): the main
-  /// screen's title. Null before the backfill; callers show the date name.
-  ///
-  /// Copied from [collectionName].
-  CollectionNameProvider(
-    String collectionId,
-  ) : this._internal(
-          (ref) => collectionName(
-            ref as CollectionNameRef,
-            collectionId,
-          ),
-          from: collectionNameProvider,
-          name: r'collectionNameProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$collectionNameHash,
-          dependencies: CollectionNameFamily._dependencies,
-          allTransitiveDependencies:
-              CollectionNameFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+final class TagLibraryProvider extends $FunctionalProvider<
+        AsyncValue<List<TagLibraryEntry>>,
+        List<TagLibraryEntry>,
+        Stream<List<TagLibraryEntry>>>
+    with
+        $FutureModifier<List<TagLibraryEntry>>,
+        $StreamProvider<List<TagLibraryEntry>> {
+  /// The whole tag library, forgotten entries included (collection-tags
+  /// ADR-0009).
+  TagLibraryProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'tagLibraryProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  CollectionNameProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
+  @override
+  String debugGetCreateSourceHash() => _$tagLibraryHash();
 
-  final String collectionId;
+  @$internal
+  @override
+  $StreamProviderElement<List<TagLibraryEntry>> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
 
   @override
-  Override overrideWith(
-    Stream<String?> Function(CollectionNameRef provider) create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: CollectionNameProvider._internal(
-        (ref) => create(ref as CollectionNameRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
-    );
+  Stream<List<TagLibraryEntry>> create(Ref ref) {
+    return tagLibrary(ref);
+  }
+}
+
+String _$tagLibraryHash() => r'fa2e6b23b96de113752f004b78bf4e3279e69bc7';
+
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+
+@ProviderFor(collectionName)
+final collectionNameProvider = CollectionNameFamily._();
+
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+
+final class CollectionNameProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, Stream<String?>>
+    with $FutureModifier<String?>, $StreamProvider<String?> {
+  /// The stored name of one collection (collections-screen T14): the main
+  /// screen's title. Null before the backfill; callers show the date name.
+  CollectionNameProvider._(
+      {required CollectionNameFamily super.from,
+      required String super.argument})
+      : super(
+          retry: null,
+          name: r'collectionNameProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$collectionNameHash();
+
+  @override
+  String toString() {
+    return r'collectionNameProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  AutoDisposeStreamProviderElement<String?> createElement() {
-    return _CollectionNameProviderElement(this);
+  $StreamProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<String?> create(Ref ref) {
+    final argument = this.argument as String;
+    return collectionName(
+      ref,
+      argument,
+    );
   }
 
   @override
   bool operator ==(Object other) {
-    return other is CollectionNameProvider &&
-        other.collectionId == collectionId;
+    return other is CollectionNameProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin CollectionNameRef on AutoDisposeStreamProviderRef<String?> {
-  /// The parameter `collectionId` of this provider.
-  String get collectionId;
-}
+String _$collectionNameHash() => r'8a07f2bd9b41c3855b426acf2b30592f9ccd9978';
 
-class _CollectionNameProviderElement
-    extends AutoDisposeStreamProviderElement<String?> with CollectionNameRef {
-  _CollectionNameProviderElement(super.provider);
+/// The stored name of one collection (collections-screen T14): the main
+/// screen's title. Null before the backfill; callers show the date name.
+
+final class CollectionNameFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<String?>, String> {
+  CollectionNameFamily._()
+      : super(
+          retry: null,
+          name: r'collectionNameProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  /// The stored name of one collection (collections-screen T14): the main
+  /// screen's title. Null before the backfill; callers show the date name.
+
+  CollectionNameProvider call(
+    String collectionId,
+  ) =>
+      CollectionNameProvider._(argument: collectionId, from: this);
 
   @override
-  String get collectionId => (origin as CollectionNameProvider).collectionId;
+  String toString() => r'collectionNameProvider';
+}
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+
+@ProviderFor(collectionNaming)
+final collectionNamingProvider = CollectionNamingFamily._();
+
+/// The stored name of collection [collectionId] with its [NameKind], for the
+/// main screen's title (collection-naming).
+
+final class CollectionNamingProvider extends $FunctionalProvider<
+        AsyncValue<
+            ({
+              NameKind kind,
+              String? name,
+            })?>,
+        ({
+          NameKind kind,
+          String? name,
+        })?,
+        Stream<
+            ({
+              NameKind kind,
+              String? name,
+            })?>>
+    with
+        $FutureModifier<
+            ({
+              NameKind kind,
+              String? name,
+            })?>,
+        $StreamProvider<
+            ({
+              NameKind kind,
+              String? name,
+            })?> {
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
+  CollectionNamingProvider._(
+      {required CollectionNamingFamily super.from,
+      required String super.argument})
+      : super(
+          retry: null,
+          name: r'collectionNamingProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$collectionNamingHash();
+
+  @override
+  String toString() {
+    return r'collectionNamingProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<
+      ({
+        NameKind kind,
+        String? name,
+      })?> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<
+      ({
+        NameKind kind,
+        String? name,
+      })?> create(Ref ref) {
+    final argument = this.argument as String;
+    return collectionNaming(
+      ref,
+      argument,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CollectionNamingProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
 }
 
 String _$collectionNamingHash() => r'eacf5846b5e9db437f2f039634d17ff5f7715b0c';
 
 /// The stored name of collection [collectionId] with its [NameKind], for the
 /// main screen's title (collection-naming).
-///
-/// Copied from [collectionNaming].
-@ProviderFor(collectionNaming)
-const collectionNamingProvider = CollectionNamingFamily();
 
-/// The stored name of collection [collectionId] with its [NameKind], for the
-/// main screen's title (collection-naming).
-///
-/// Copied from [collectionNaming].
-class CollectionNamingFamily
-    extends Family<AsyncValue<({String? name, NameKind kind})?>> {
-  /// The stored name of collection [collectionId] with its [NameKind], for the
-  /// main screen's title (collection-naming).
-  ///
-  /// Copied from [collectionNaming].
-  const CollectionNamingFamily();
-
-  /// The stored name of collection [collectionId] with its [NameKind], for the
-  /// main screen's title (collection-naming).
-  ///
-  /// Copied from [collectionNaming].
-  CollectionNamingProvider call(
-    String collectionId,
-  ) {
-    return CollectionNamingProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  CollectionNamingProvider getProviderOverride(
-    covariant CollectionNamingProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'collectionNamingProvider';
-}
-
-/// The stored name of collection [collectionId] with its [NameKind], for the
-/// main screen's title (collection-naming).
-///
-/// Copied from [collectionNaming].
-class CollectionNamingProvider
-    extends AutoDisposeStreamProvider<({String? name, NameKind kind})?> {
-  /// The stored name of collection [collectionId] with its [NameKind], for the
-  /// main screen's title (collection-naming).
-  ///
-  /// Copied from [collectionNaming].
-  CollectionNamingProvider(
-    String collectionId,
-  ) : this._internal(
-          (ref) => collectionNaming(
-            ref as CollectionNamingRef,
-            collectionId,
-          ),
-          from: collectionNamingProvider,
+final class CollectionNamingFamily extends $Family
+    with
+        $FunctionalFamilyOverride<
+            Stream<
+                ({
+                  NameKind kind,
+                  String? name,
+                })?>,
+            String> {
+  CollectionNamingFamily._()
+      : super(
+          retry: null,
           name: r'collectionNamingProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$collectionNamingHash,
-          dependencies: CollectionNamingFamily._dependencies,
-          allTransitiveDependencies:
-              CollectionNamingFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
         );
 
-  CollectionNamingProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
+  /// The stored name of collection [collectionId] with its [NameKind], for the
+  /// main screen's title (collection-naming).
 
-  final String collectionId;
+  CollectionNamingProvider call(
+    String collectionId,
+  ) =>
+      CollectionNamingProvider._(argument: collectionId, from: this);
 
   @override
-  Override overrideWith(
-    Stream<({String? name, NameKind kind})?> Function(
-            CollectionNamingRef provider)
-        create,
-  ) {
-    return ProviderOverride(
-      origin: this,
-      override: CollectionNamingProvider._internal(
-        (ref) => create(ref as CollectionNamingRef),
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeStreamProviderElement<({String? name, NameKind kind})?>
-      createElement() {
-    return _CollectionNamingProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is CollectionNamingProvider &&
-        other.collectionId == collectionId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
-  }
+  String toString() => r'collectionNamingProvider';
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin CollectionNamingRef
-    on AutoDisposeStreamProviderRef<({String? name, NameKind kind})?> {
-  /// The parameter `collectionId` of this provider.
-  String get collectionId;
-}
+/// Every folder, binned ones too, for the Collections path and the tree.
 
-class _CollectionNamingProviderElement
-    extends AutoDisposeStreamProviderElement<({String? name, NameKind kind})?>
-    with CollectionNamingRef {
-  _CollectionNamingProviderElement(super.provider);
+@ProviderFor(collectionFolders)
+final collectionFoldersProvider = CollectionFoldersProvider._();
+
+/// Every folder, binned ones too, for the Collections path and the tree.
+
+final class CollectionFoldersProvider extends $FunctionalProvider<
+        AsyncValue<List<CollectionFolder>>,
+        List<CollectionFolder>,
+        Stream<List<CollectionFolder>>>
+    with
+        $FutureModifier<List<CollectionFolder>>,
+        $StreamProvider<List<CollectionFolder>> {
+  /// Every folder, binned ones too, for the Collections path and the tree.
+  CollectionFoldersProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'collectionFoldersProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
   @override
-  String get collectionId => (origin as CollectionNamingProvider).collectionId;
+  String debugGetCreateSourceHash() => _$collectionFoldersHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<CollectionFolder>> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<CollectionFolder>> create(Ref ref) {
+    return collectionFolders(ref);
+  }
 }
 
 String _$collectionFoldersHash() => r'0201bdb7340183c54b86017aa80dc98dee5f1df7';
 
-/// Every folder, binned ones too, for the Collections path and the tree.
-///
-/// Copied from [collectionFolders].
-@ProviderFor(collectionFolders)
-final collectionFoldersProvider =
-    AutoDisposeStreamProvider<List<CollectionFolder>>.internal(
-  collectionFolders,
-  name: r'collectionFoldersProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$collectionFoldersHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Whether the word list is in drag-and-drop (reorder) mode. A pure display
+/// preference: it lives here rather than on `WordCollection` because it is not
+/// session data and must never reach Isar (task-13), and `keepAlive` because
+/// the Settings screen is the only writer while the input screen is the only
+/// reader -- autoDispose would drop the value when Settings is popped.
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef CollectionFoldersRef
-    = AutoDisposeStreamProviderRef<List<CollectionFolder>>;
-String _$speechInputHash() => r'c8073c0fef4fdaeafb87648c1d37a09f6e034f70';
+@ProviderFor(DragMode)
+final dragModeProvider = DragModeProvider._();
 
-/// The hold-to-talk input of the engine picked in Learn settings (AC-25,
-/// AC-28, ADR-0009); overridden with a fake in tests.
-///
-/// Copied from [speechInput].
-@ProviderFor(speechInput)
-final speechInputProvider = Provider<SpeechInput>.internal(
-  speechInput,
-  name: r'speechInputProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$speechInputHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+/// Whether the word list is in drag-and-drop (reorder) mode. A pure display
+/// preference: it lives here rather than on `WordCollection` because it is not
+/// session data and must never reach Isar (task-13), and `keepAlive` because
+/// the Settings screen is the only writer while the input screen is the only
+/// reader -- autoDispose would drop the value when Settings is popped.
+final class DragModeProvider extends $NotifierProvider<DragMode, bool> {
+  /// Whether the word list is in drag-and-drop (reorder) mode. A pure display
+  /// preference: it lives here rather than on `WordCollection` because it is not
+  /// session data and must never reach Isar (task-13), and `keepAlive` because
+  /// the Settings screen is the only writer while the input screen is the only
+  /// reader -- autoDispose would drop the value when Settings is popped.
+  DragModeProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'dragModeProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef SpeechInputRef = ProviderRef<SpeechInput>;
-String _$dialoguePushServiceHash() =>
-    r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
+  @override
+  String debugGetCreateSourceHash() => _$dragModeHash();
 
-/// Adds an import's rows and dialogues, and scene pictures, to a published
-/// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
-/// uses it is `dialoguePushProvider`.
-///
-/// Copied from [dialoguePushService].
-@ProviderFor(dialoguePushService)
-final dialoguePushServiceProvider = Provider<DialoguePushService>.internal(
-  dialoguePushService,
-  name: r'dialoguePushServiceProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$dialoguePushServiceHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+  @$internal
+  @override
+  DragMode create() => DragMode();
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef DialoguePushServiceRef = ProviderRef<DialoguePushService>;
-String _$aiChoiceNotifierHash() => r'56fb292859c4632c546aa2450c049a959ad528bc';
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
 
-/// The learner's saved AI for each step of a story run (AC-12). Persisted like
-/// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
-/// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
-///
-/// Copied from [AiChoiceNotifier].
-@ProviderFor(AiChoiceNotifier)
-final aiChoiceNotifierProvider =
-    NotifierProvider<AiChoiceNotifier, StoredAiChoice>.internal(
-  AiChoiceNotifier.new,
-  name: r'aiChoiceNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$aiChoiceNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
-
-typedef _$AiChoiceNotifier = Notifier<StoredAiChoice>;
 String _$dragModeHash() => r'6c8be31e69381c41da06163dfa7a77cfa9c1bb89';
 
 /// Whether the word list is in drag-and-drop (reorder) mode. A pure display
@@ -1214,19 +1747,64 @@ String _$dragModeHash() => r'6c8be31e69381c41da06163dfa7a77cfa9c1bb89';
 /// session data and must never reach Isar (task-13), and `keepAlive` because
 /// the Settings screen is the only writer while the input screen is the only
 /// reader -- autoDispose would drop the value when Settings is popped.
-///
-/// Copied from [DragMode].
-@ProviderFor(DragMode)
-final dragModeProvider = NotifierProvider<DragMode, bool>.internal(
-  DragMode.new,
-  name: r'dragModeProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$dragModeHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$DragMode = Notifier<bool>;
+abstract class _$DragMode extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<bool, bool>, bool, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The learner's word detail mode. Unlike drag mode it survives a restart, so
+/// it is persisted under one preferences key; it is still a display preference
+/// and never goes on `WordCollection`. Starts as [WordDetailMode.translation] and
+/// switches once the stored value is read ([loaded]).
+
+@ProviderFor(WordDetailModeNotifier)
+final wordDetailModeProvider = WordDetailModeNotifierProvider._();
+
+/// The learner's word detail mode. Unlike drag mode it survives a restart, so
+/// it is persisted under one preferences key; it is still a display preference
+/// and never goes on `WordCollection`. Starts as [WordDetailMode.translation] and
+/// switches once the stored value is read ([loaded]).
+final class WordDetailModeNotifierProvider
+    extends $NotifierProvider<WordDetailModeNotifier, WordDetailMode> {
+  /// The learner's word detail mode. Unlike drag mode it survives a restart, so
+  /// it is persisted under one preferences key; it is still a display preference
+  /// and never goes on `WordCollection`. Starts as [WordDetailMode.translation] and
+  /// switches once the stored value is read ([loaded]).
+  WordDetailModeNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'wordDetailModeProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$wordDetailModeNotifierHash();
+
+  @$internal
+  @override
+  WordDetailModeNotifier create() => WordDetailModeNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(WordDetailMode value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<WordDetailMode>(value),
+    );
+  }
+}
+
 String _$wordDetailModeNotifierHash() =>
     r'45973bab20f05a4640eaf6cb6cbd04bff4126d76';
 
@@ -1234,364 +1812,340 @@ String _$wordDetailModeNotifierHash() =>
 /// it is persisted under one preferences key; it is still a display preference
 /// and never goes on `WordCollection`. Starts as [WordDetailMode.translation] and
 /// switches once the stored value is read ([loaded]).
-///
-/// Copied from [WordDetailModeNotifier].
-@ProviderFor(WordDetailModeNotifier)
-final wordDetailModeNotifierProvider =
-    NotifierProvider<WordDetailModeNotifier, WordDetailMode>.internal(
-  WordDetailModeNotifier.new,
-  name: r'wordDetailModeNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$wordDetailModeNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$WordDetailModeNotifier = Notifier<WordDetailMode>;
+abstract class _$WordDetailModeNotifier extends $Notifier<WordDetailMode> {
+  WordDetailMode build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<WordDetailMode, WordDetailMode>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<WordDetailMode, WordDetailMode>,
+        WordDetailMode,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The learn preset, enabled exercises and words per session; persisted like
+/// [WordDetailModeNotifier]. Starts as Balanced / its set / all words and
+/// switches once the stored values are read ([loaded]).
+
+@ProviderFor(LearnSettingsNotifier)
+final learnSettingsProvider = LearnSettingsNotifierProvider._();
+
+/// The learn preset, enabled exercises and words per session; persisted like
+/// [WordDetailModeNotifier]. Starts as Balanced / its set / all words and
+/// switches once the stored values are read ([loaded]).
+final class LearnSettingsNotifierProvider
+    extends $NotifierProvider<LearnSettingsNotifier, LearnSettings> {
+  /// The learn preset, enabled exercises and words per session; persisted like
+  /// [WordDetailModeNotifier]. Starts as Balanced / its set / all words and
+  /// switches once the stored values are read ([loaded]).
+  LearnSettingsNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'learnSettingsProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$learnSettingsNotifierHash();
+
+  @$internal
+  @override
+  LearnSettingsNotifier create() => LearnSettingsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LearnSettings value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LearnSettings>(value),
+    );
+  }
+}
+
 String _$learnSettingsNotifierHash() =>
     r'6ba5822e47837e70ee80a57b34cf031f60e9867b';
 
 /// The learn preset, enabled exercises and words per session; persisted like
 /// [WordDetailModeNotifier]. Starts as Balanced / its set / all words and
 /// switches once the stored values are read ([loaded]).
-///
-/// Copied from [LearnSettingsNotifier].
-@ProviderFor(LearnSettingsNotifier)
-final learnSettingsNotifierProvider =
-    NotifierProvider<LearnSettingsNotifier, LearnSettings>.internal(
-  LearnSettingsNotifier.new,
-  name: r'learnSettingsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$learnSettingsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$LearnSettingsNotifier = Notifier<LearnSettings>;
-String _$learnSplitNotifierHash() =>
-    r'18a734f282d274061b2c06adec850ac1243c2c8d';
-
-abstract class _$LearnSplitNotifier extends BuildlessNotifier<bool> {
-  late final String collectionId;
-
-  bool build(
-    String collectionId,
-  );
+abstract class _$LearnSettingsNotifier extends $Notifier<LearnSettings> {
+  LearnSettings build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<LearnSettings, LearnSettings>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<LearnSettings, LearnSettings>,
+        LearnSettings,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
 }
 
 /// Whether a collection's learn session is split into its word groups
 /// (AC-18); on by default, remembered per collection.
-///
-/// Copied from [LearnSplitNotifier].
+
 @ProviderFor(LearnSplitNotifier)
-const learnSplitNotifierProvider = LearnSplitNotifierFamily();
+final learnSplitProvider = LearnSplitNotifierFamily._();
 
 /// Whether a collection's learn session is split into its word groups
 /// (AC-18); on by default, remembered per collection.
-///
-/// Copied from [LearnSplitNotifier].
-class LearnSplitNotifierFamily extends Family<bool> {
+final class LearnSplitNotifierProvider
+    extends $NotifierProvider<LearnSplitNotifier, bool> {
   /// Whether a collection's learn session is split into its word groups
   /// (AC-18); on by default, remembered per collection.
-  ///
-  /// Copied from [LearnSplitNotifier].
-  const LearnSplitNotifierFamily();
-
-  /// Whether a collection's learn session is split into its word groups
-  /// (AC-18); on by default, remembered per collection.
-  ///
-  /// Copied from [LearnSplitNotifier].
-  LearnSplitNotifierProvider call(
-    String collectionId,
-  ) {
-    return LearnSplitNotifierProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  LearnSplitNotifierProvider getProviderOverride(
-    covariant LearnSplitNotifierProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'learnSplitNotifierProvider';
-}
-
-/// Whether a collection's learn session is split into its word groups
-/// (AC-18); on by default, remembered per collection.
-///
-/// Copied from [LearnSplitNotifier].
-class LearnSplitNotifierProvider
-    extends NotifierProviderImpl<LearnSplitNotifier, bool> {
-  /// Whether a collection's learn session is split into its word groups
-  /// (AC-18); on by default, remembered per collection.
-  ///
-  /// Copied from [LearnSplitNotifier].
-  LearnSplitNotifierProvider(
-    String collectionId,
-  ) : this._internal(
-          () => LearnSplitNotifier()..collectionId = collectionId,
-          from: learnSplitNotifierProvider,
-          name: r'learnSplitNotifierProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$learnSplitNotifierHash,
-          dependencies: LearnSplitNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              LearnSplitNotifierFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+  LearnSplitNotifierProvider._(
+      {required LearnSplitNotifierFamily super.from,
+      required String super.argument})
+      : super(
+          retry: null,
+          name: r'learnSplitProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  LearnSplitNotifierProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
-
-  final String collectionId;
+  @override
+  String debugGetCreateSourceHash() => _$learnSplitNotifierHash();
 
   @override
-  bool runNotifierBuild(
-    covariant LearnSplitNotifier notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-    );
+  String toString() {
+    return r'learnSplitProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  Override overrideWith(LearnSplitNotifier Function() create) {
-    return ProviderOverride(
+  LearnSplitNotifier create() => LearnSplitNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
       origin: this,
-      override: LearnSplitNotifierProvider._internal(
-        () => create()..collectionId = collectionId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
+      providerOverride: $SyncValueProvider<bool>(value),
     );
-  }
-
-  @override
-  NotifierProviderElement<LearnSplitNotifier, bool> createElement() {
-    return _LearnSplitNotifierProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is LearnSplitNotifierProvider &&
-        other.collectionId == collectionId;
+    return other is LearnSplitNotifierProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin LearnSplitNotifierRef on NotifierProviderRef<bool> {
-  /// The parameter `collectionId` of this provider.
-  String get collectionId;
-}
+String _$learnSplitNotifierHash() =>
+    r'18a734f282d274061b2c06adec850ac1243c2c8d';
 
-class _LearnSplitNotifierProviderElement
-    extends NotifierProviderElement<LearnSplitNotifier, bool>
-    with LearnSplitNotifierRef {
-  _LearnSplitNotifierProviderElement(super.provider);
+/// Whether a collection's learn session is split into its word groups
+/// (AC-18); on by default, remembered per collection.
 
-  @override
-  String get collectionId =>
-      (origin as LearnSplitNotifierProvider).collectionId;
-}
-
-String _$learnLastGroupNotifierHash() =>
-    r'5915809e9d038b59f145437d0a69fa3f0a88da30';
-
-abstract class _$LearnLastGroupNotifier extends BuildlessNotifier<int?> {
-  late final String collectionId;
-
-  int? build(
-    String collectionId,
-  );
-}
-
-/// Index of the session group a collection's learner played last, if any.
-///
-/// Copied from [LearnLastGroupNotifier].
-@ProviderFor(LearnLastGroupNotifier)
-const learnLastGroupNotifierProvider = LearnLastGroupNotifierFamily();
-
-/// Index of the session group a collection's learner played last, if any.
-///
-/// Copied from [LearnLastGroupNotifier].
-class LearnLastGroupNotifierFamily extends Family<int?> {
-  /// Index of the session group a collection's learner played last, if any.
-  ///
-  /// Copied from [LearnLastGroupNotifier].
-  const LearnLastGroupNotifierFamily();
-
-  /// Index of the session group a collection's learner played last, if any.
-  ///
-  /// Copied from [LearnLastGroupNotifier].
-  LearnLastGroupNotifierProvider call(
-    String collectionId,
-  ) {
-    return LearnLastGroupNotifierProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  LearnLastGroupNotifierProvider getProviderOverride(
-    covariant LearnLastGroupNotifierProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'learnLastGroupNotifierProvider';
-}
-
-/// Index of the session group a collection's learner played last, if any.
-///
-/// Copied from [LearnLastGroupNotifier].
-class LearnLastGroupNotifierProvider
-    extends NotifierProviderImpl<LearnLastGroupNotifier, int?> {
-  /// Index of the session group a collection's learner played last, if any.
-  ///
-  /// Copied from [LearnLastGroupNotifier].
-  LearnLastGroupNotifierProvider(
-    String collectionId,
-  ) : this._internal(
-          () => LearnLastGroupNotifier()..collectionId = collectionId,
-          from: learnLastGroupNotifierProvider,
-          name: r'learnLastGroupNotifierProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$learnLastGroupNotifierHash,
-          dependencies: LearnLastGroupNotifierFamily._dependencies,
-          allTransitiveDependencies:
-              LearnLastGroupNotifierFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+final class LearnSplitNotifierFamily extends $Family
+    with $ClassFamilyOverride<LearnSplitNotifier, bool, bool, bool, String> {
+  LearnSplitNotifierFamily._()
+      : super(
+          retry: null,
+          name: r'learnSplitProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: false,
         );
 
-  LearnLastGroupNotifierProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
+  /// Whether a collection's learn session is split into its word groups
+  /// (AC-18); on by default, remembered per collection.
 
-  final String collectionId;
+  LearnSplitNotifierProvider call(
+    String collectionId,
+  ) =>
+      LearnSplitNotifierProvider._(argument: collectionId, from: this);
 
   @override
-  int? runNotifierBuild(
-    covariant LearnLastGroupNotifier notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-    );
+  String toString() => r'learnSplitProvider';
+}
+
+/// Whether a collection's learn session is split into its word groups
+/// (AC-18); on by default, remembered per collection.
+
+abstract class _$LearnSplitNotifier extends $Notifier<bool> {
+  late final _$args = ref.$arg as String;
+  String get collectionId => _$args;
+
+  bool build(
+    String collectionId,
+  );
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<bool, bool>, bool, Object?, Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args,
+            ));
+  }
+}
+
+/// Index of the session group a collection's learner played last, if any.
+
+@ProviderFor(LearnLastGroupNotifier)
+final learnLastGroupProvider = LearnLastGroupNotifierFamily._();
+
+/// Index of the session group a collection's learner played last, if any.
+final class LearnLastGroupNotifierProvider
+    extends $NotifierProvider<LearnLastGroupNotifier, int?> {
+  /// Index of the session group a collection's learner played last, if any.
+  LearnLastGroupNotifierProvider._(
+      {required LearnLastGroupNotifierFamily super.from,
+      required String super.argument})
+      : super(
+          retry: null,
+          name: r'learnLastGroupProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$learnLastGroupNotifierHash();
+
+  @override
+  String toString() {
+    return r'learnLastGroupProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  Override overrideWith(LearnLastGroupNotifier Function() create) {
-    return ProviderOverride(
+  LearnLastGroupNotifier create() => LearnLastGroupNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int? value) {
+    return $ProviderOverride(
       origin: this,
-      override: LearnLastGroupNotifierProvider._internal(
-        () => create()..collectionId = collectionId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
+      providerOverride: $SyncValueProvider<int?>(value),
     );
-  }
-
-  @override
-  NotifierProviderElement<LearnLastGroupNotifier, int?> createElement() {
-    return _LearnLastGroupNotifierProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
     return other is LearnLastGroupNotifierProvider &&
-        other.collectionId == collectionId;
+        other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin LearnLastGroupNotifierRef on NotifierProviderRef<int?> {
-  /// The parameter `collectionId` of this provider.
-  String get collectionId;
-}
+String _$learnLastGroupNotifierHash() =>
+    r'5915809e9d038b59f145437d0a69fa3f0a88da30';
 
-class _LearnLastGroupNotifierProviderElement
-    extends NotifierProviderElement<LearnLastGroupNotifier, int?>
-    with LearnLastGroupNotifierRef {
-  _LearnLastGroupNotifierProviderElement(super.provider);
+/// Index of the session group a collection's learner played last, if any.
+
+final class LearnLastGroupNotifierFamily extends $Family
+    with
+        $ClassFamilyOverride<LearnLastGroupNotifier, int?, int?, int?, String> {
+  LearnLastGroupNotifierFamily._()
+      : super(
+          retry: null,
+          name: r'learnLastGroupProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: false,
+        );
+
+  /// Index of the session group a collection's learner played last, if any.
+
+  LearnLastGroupNotifierProvider call(
+    String collectionId,
+  ) =>
+      LearnLastGroupNotifierProvider._(argument: collectionId, from: this);
 
   @override
-  String get collectionId =>
-      (origin as LearnLastGroupNotifierProvider).collectionId;
+  String toString() => r'learnLastGroupProvider';
+}
+
+/// Index of the session group a collection's learner played last, if any.
+
+abstract class _$LearnLastGroupNotifier extends $Notifier<int?> {
+  late final _$args = ref.$arg as String;
+  String get collectionId => _$args;
+
+  int? build(
+    String collectionId,
+  );
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<int?, int?>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<int?, int?>, int?, Object?, Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args,
+            ));
+  }
+}
+
+/// The speech recognition engine for Talk with AI's hold-to-talk, picked in
+/// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
+/// [LearnSettingsNotifier]. Starts as [SpeechEngine.speechToText].
+
+@ProviderFor(SpeechEngineNotifier)
+final speechEngineProvider = SpeechEngineNotifierProvider._();
+
+/// The speech recognition engine for Talk with AI's hold-to-talk, picked in
+/// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
+/// [LearnSettingsNotifier]. Starts as [SpeechEngine.speechToText].
+final class SpeechEngineNotifierProvider
+    extends $NotifierProvider<SpeechEngineNotifier, SpeechEngine> {
+  /// The speech recognition engine for Talk with AI's hold-to-talk, picked in
+  /// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
+  /// [LearnSettingsNotifier]. Starts as [SpeechEngine.speechToText].
+  SpeechEngineNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'speechEngineProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$speechEngineNotifierHash();
+
+  @$internal
+  @override
+  SpeechEngineNotifier create() => SpeechEngineNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SpeechEngine value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SpeechEngine>(value),
+    );
+  }
 }
 
 String _$speechEngineNotifierHash() =>
@@ -1600,41 +2154,231 @@ String _$speechEngineNotifierHash() =>
 /// The speech recognition engine for Talk with AI's hold-to-talk, picked in
 /// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
 /// [LearnSettingsNotifier]. Starts as [SpeechEngine.speechToText].
-///
-/// Copied from [SpeechEngineNotifier].
-@ProviderFor(SpeechEngineNotifier)
-final speechEngineNotifierProvider =
-    NotifierProvider<SpeechEngineNotifier, SpeechEngine>.internal(
-  SpeechEngineNotifier.new,
-  name: r'speechEngineNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$speechEngineNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$SpeechEngineNotifier = Notifier<SpeechEngine>;
+abstract class _$SpeechEngineNotifier extends $Notifier<SpeechEngine> {
+  SpeechEngine build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<SpeechEngine, SpeechEngine>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<SpeechEngine, SpeechEngine>,
+        SpeechEngine,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The hold-to-talk input of the engine picked in Learn settings (AC-25,
+/// AC-28, ADR-0009); overridden with a fake in tests.
+
+@ProviderFor(speechInput)
+final speechInputProvider = SpeechInputProvider._();
+
+/// The hold-to-talk input of the engine picked in Learn settings (AC-25,
+/// AC-28, ADR-0009); overridden with a fake in tests.
+
+final class SpeechInputProvider
+    extends $FunctionalProvider<SpeechInput, SpeechInput, SpeechInput>
+    with $Provider<SpeechInput> {
+  /// The hold-to-talk input of the engine picked in Learn settings (AC-25,
+  /// AC-28, ADR-0009); overridden with a fake in tests.
+  SpeechInputProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'speechInputProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$speechInputHash();
+
+  @$internal
+  @override
+  $ProviderElement<SpeechInput> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SpeechInput create(Ref ref) {
+    return speechInput(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SpeechInput value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SpeechInput>(value),
+    );
+  }
+}
+
+String _$speechInputHash() => r'fe768665d4122671a2a0ab8a9717fbd1d2eb4e87';
+
+/// The app's theme, picked on the App settings page (app-themes, owner
+/// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+/// [AppThemeId.classic] and switches once the stored value is read.
+
+@ProviderFor(AppThemeNotifier)
+final appThemeProvider = AppThemeNotifierProvider._();
+
+/// The app's theme, picked on the App settings page (app-themes, owner
+/// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+/// [AppThemeId.classic] and switches once the stored value is read.
+final class AppThemeNotifierProvider
+    extends $NotifierProvider<AppThemeNotifier, AppThemeId> {
+  /// The app's theme, picked on the App settings page (app-themes, owner
+  /// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
+  /// [AppThemeId.classic] and switches once the stored value is read.
+  AppThemeNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'appThemeProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$appThemeNotifierHash();
+
+  @$internal
+  @override
+  AppThemeNotifier create() => AppThemeNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(AppThemeId value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<AppThemeId>(value),
+    );
+  }
+}
+
 String _$appThemeNotifierHash() => r'6224233ff14b800d30acbad8a25b501db5c323f0';
 
 /// The app's theme, picked on the App settings page (app-themes, owner
 /// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
 /// [AppThemeId.classic] and switches once the stored value is read.
-///
-/// Copied from [AppThemeNotifier].
-@ProviderFor(AppThemeNotifier)
-final appThemeNotifierProvider =
-    NotifierProvider<AppThemeNotifier, AppThemeId>.internal(
-  AppThemeNotifier.new,
-  name: r'appThemeNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$appThemeNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$AppThemeNotifier = Notifier<AppThemeId>;
+abstract class _$AppThemeNotifier extends $Notifier<AppThemeId> {
+  AppThemeId build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AppThemeId, AppThemeId>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AppThemeId, AppThemeId>, AppThemeId, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// Adds an import's rows and dialogues, and scene pictures, to a published
+/// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
+/// uses it is `dialoguePushProvider`.
+
+@ProviderFor(dialoguePushService)
+final dialoguePushServiceProvider = DialoguePushServiceProvider._();
+
+/// Adds an import's rows and dialogues, and scene pictures, to a published
+/// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
+/// uses it is `dialoguePushProvider`.
+
+final class DialoguePushServiceProvider extends $FunctionalProvider<
+    DialoguePushService,
+    DialoguePushService,
+    DialoguePushService> with $Provider<DialoguePushService> {
+  /// Adds an import's rows and dialogues, and scene pictures, to a published
+  /// session (get-words-from-subtitles-improvment ADR-0005); the outbox that
+  /// uses it is `dialoguePushProvider`.
+  DialoguePushServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'dialoguePushServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$dialoguePushServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<DialoguePushService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  DialoguePushService create(Ref ref) {
+    return dialoguePushService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DialoguePushService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DialoguePushService>(value),
+    );
+  }
+}
+
+String _$dialoguePushServiceHash() =>
+    r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
+
+/// The "Get dialogues from subtitles" switch in Settings
+/// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
+/// also asks for film dialogues. Persisted like the word detail mode; off
+/// until the stored value is read ([loaded]).
+
+@ProviderFor(DialoguesSettingNotifier)
+final dialoguesSettingProvider = DialoguesSettingNotifierProvider._();
+
+/// The "Get dialogues from subtitles" switch in Settings
+/// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
+/// also asks for film dialogues. Persisted like the word detail mode; off
+/// until the stored value is read ([loaded]).
+final class DialoguesSettingNotifierProvider
+    extends $NotifierProvider<DialoguesSettingNotifier, bool> {
+  /// The "Get dialogues from subtitles" switch in Settings
+  /// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
+  /// also asks for film dialogues. Persisted like the word detail mode; off
+  /// until the stored value is read ([loaded]).
+  DialoguesSettingNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'dialoguesSettingProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$dialoguesSettingNotifierHash();
+
+  @$internal
+  @override
+  DialoguesSettingNotifier create() => DialoguesSettingNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
 String _$dialoguesSettingNotifierHash() =>
     r'79a0b0141cc70e6d14eb3a468af48a9fb1300bb6';
 
@@ -1642,21 +2386,67 @@ String _$dialoguesSettingNotifierHash() =>
 /// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
 /// also asks for film dialogues. Persisted like the word detail mode; off
 /// until the stored value is read ([loaded]).
-///
-/// Copied from [DialoguesSettingNotifier].
-@ProviderFor(DialoguesSettingNotifier)
-final dialoguesSettingNotifierProvider =
-    NotifierProvider<DialoguesSettingNotifier, bool>.internal(
-  DialoguesSettingNotifier.new,
-  name: r'dialoguesSettingNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$dialoguesSettingNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$DialoguesSettingNotifier = Notifier<bool>;
+abstract class _$DialoguesSettingNotifier extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<bool, bool>, bool, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The subtitle import values in Settings (words-from-subtitles, data-model.md
+/// Device preferences): one set of level and maximum, the "Update with
+/// each import" switch, the translator and the model. Persisted like the word detail mode;
+/// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
+/// values are read ([loaded]). A missing or unknown value keeps its default.
+
+@ProviderFor(SubtitleImportPrefsNotifier)
+final subtitleImportPrefsProvider = SubtitleImportPrefsNotifierProvider._();
+
+/// The subtitle import values in Settings (words-from-subtitles, data-model.md
+/// Device preferences): one set of level and maximum, the "Update with
+/// each import" switch, the translator and the model. Persisted like the word detail mode;
+/// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
+/// values are read ([loaded]). A missing or unknown value keeps its default.
+final class SubtitleImportPrefsNotifierProvider extends $NotifierProvider<
+    SubtitleImportPrefsNotifier, SubtitleImportPrefs> {
+  /// The subtitle import values in Settings (words-from-subtitles, data-model.md
+  /// Device preferences): one set of level and maximum, the "Update with
+  /// each import" switch, the translator and the model. Persisted like the word detail mode;
+  /// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
+  /// values are read ([loaded]). A missing or unknown value keeps its default.
+  SubtitleImportPrefsNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'subtitleImportPrefsProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$subtitleImportPrefsNotifierHash();
+
+  @$internal
+  @override
+  SubtitleImportPrefsNotifier create() => SubtitleImportPrefsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SubtitleImportPrefs value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SubtitleImportPrefs>(value),
+    );
+  }
+}
+
 String _$subtitleImportPrefsNotifierHash() =>
     r'62a46bccde782750c8ef15315e616046294235bb';
 
@@ -1665,21 +2455,68 @@ String _$subtitleImportPrefsNotifierHash() =>
 /// each import" switch, the translator and the model. Persisted like the word detail mode;
 /// starts at [SubtitleImportPrefs.firstLaunch] and switches once the stored
 /// values are read ([loaded]). A missing or unknown value keeps its default.
-///
-/// Copied from [SubtitleImportPrefsNotifier].
-@ProviderFor(SubtitleImportPrefsNotifier)
-final subtitleImportPrefsNotifierProvider =
-    NotifierProvider<SubtitleImportPrefsNotifier, SubtitleImportPrefs>.internal(
-  SubtitleImportPrefsNotifier.new,
-  name: r'subtitleImportPrefsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$subtitleImportPrefsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$SubtitleImportPrefsNotifier = Notifier<SubtitleImportPrefs>;
+abstract class _$SubtitleImportPrefsNotifier
+    extends $Notifier<SubtitleImportPrefs> {
+  SubtitleImportPrefs build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<SubtitleImportPrefs, SubtitleImportPrefs>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<SubtitleImportPrefs, SubtitleImportPrefs>,
+        SubtitleImportPrefs,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The photo tab's top, in logical pixels from the top of the main screen's
+/// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
+/// up or down and the height is kept across restarts (spec AC-14). A display
+/// preference: never on `WordCollection`. Clamped on use by the tab ([clamp]).
+
+@ProviderFor(PhotoTabTopNotifier)
+final photoTabTopProvider = PhotoTabTopNotifierProvider._();
+
+/// The photo tab's top, in logical pixels from the top of the main screen's
+/// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
+/// up or down and the height is kept across restarts (spec AC-14). A display
+/// preference: never on `WordCollection`. Clamped on use by the tab ([clamp]).
+final class PhotoTabTopNotifierProvider
+    extends $NotifierProvider<PhotoTabTopNotifier, double> {
+  /// The photo tab's top, in logical pixels from the top of the main screen's
+  /// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
+  /// up or down and the height is kept across restarts (spec AC-14). A display
+  /// preference: never on `WordCollection`. Clamped on use by the tab ([clamp]).
+  PhotoTabTopNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'photoTabTopProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$photoTabTopNotifierHash();
+
+  @$internal
+  @override
+  PhotoTabTopNotifier create() => PhotoTabTopNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(double value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<double>(value),
+    );
+  }
+}
+
 String _$photoTabTopNotifierHash() =>
     r'64d44d57f4fa1cfe9a9043c6528efcacf16be923';
 
@@ -1687,21 +2524,67 @@ String _$photoTabTopNotifierHash() =>
 /// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
 /// up or down and the height is kept across restarts (spec AC-14). A display
 /// preference: never on `WordCollection`. Clamped on use by the tab ([clamp]).
-///
-/// Copied from [PhotoTabTopNotifier].
-@ProviderFor(PhotoTabTopNotifier)
-final photoTabTopNotifierProvider =
-    NotifierProvider<PhotoTabTopNotifier, double>.internal(
-  PhotoTabTopNotifier.new,
-  name: r'photoTabTopNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$photoTabTopNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$PhotoTabTopNotifier = Notifier<double>;
+abstract class _$PhotoTabTopNotifier extends $Notifier<double> {
+  double build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<double, double>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<double, double>, double, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The Words settings' Liquid glass sliders (liquid-glass-tuning, owner
+/// 2026-10-19), for the photo tab and the half-open panel. Persisted like
+/// [WordDetailModeNotifier], one preferences key per slider; a display
+/// preference, never on `WordCollection`. Starts at 100% and switches once
+/// the stored values are read ([loaded]).
+
+@ProviderFor(LiquidGlassTuningNotifier)
+final liquidGlassTuningProvider = LiquidGlassTuningNotifierProvider._();
+
+/// The Words settings' Liquid glass sliders (liquid-glass-tuning, owner
+/// 2026-10-19), for the photo tab and the half-open panel. Persisted like
+/// [WordDetailModeNotifier], one preferences key per slider; a display
+/// preference, never on `WordCollection`. Starts at 100% and switches once
+/// the stored values are read ([loaded]).
+final class LiquidGlassTuningNotifierProvider
+    extends $NotifierProvider<LiquidGlassTuningNotifier, LiquidGlassTuning> {
+  /// The Words settings' Liquid glass sliders (liquid-glass-tuning, owner
+  /// 2026-10-19), for the photo tab and the half-open panel. Persisted like
+  /// [WordDetailModeNotifier], one preferences key per slider; a display
+  /// preference, never on `WordCollection`. Starts at 100% and switches once
+  /// the stored values are read ([loaded]).
+  LiquidGlassTuningNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'liquidGlassTuningProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$liquidGlassTuningNotifierHash();
+
+  @$internal
+  @override
+  LiquidGlassTuningNotifier create() => LiquidGlassTuningNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LiquidGlassTuning value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LiquidGlassTuning>(value),
+    );
+  }
+}
+
 String _$liquidGlassTuningNotifierHash() =>
     r'e3ec385b28a7cd33dd2c48d21cc9669fe6cae99a';
 
@@ -1710,21 +2593,68 @@ String _$liquidGlassTuningNotifierHash() =>
 /// [WordDetailModeNotifier], one preferences key per slider; a display
 /// preference, never on `WordCollection`. Starts at 100% and switches once
 /// the stored values are read ([loaded]).
-///
-/// Copied from [LiquidGlassTuningNotifier].
-@ProviderFor(LiquidGlassTuningNotifier)
-final liquidGlassTuningNotifierProvider =
-    NotifierProvider<LiquidGlassTuningNotifier, LiquidGlassTuning>.internal(
-  LiquidGlassTuningNotifier.new,
-  name: r'liquidGlassTuningNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$liquidGlassTuningNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$LiquidGlassTuningNotifier = Notifier<LiquidGlassTuning>;
+abstract class _$LiquidGlassTuningNotifier
+    extends $Notifier<LiquidGlassTuning> {
+  LiquidGlassTuning build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<LiquidGlassTuning, LiquidGlassTuning>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<LiquidGlassTuning, LiquidGlassTuning>,
+        LiquidGlassTuning,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The tags the learner applied from the Collections filter sheet, newest
+/// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+/// like [WordDetailModeNotifier] under one preferences key, each entry
+/// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+
+@ProviderFor(RecentFilterTagsNotifier)
+final recentFilterTagsProvider = RecentFilterTagsNotifierProvider._();
+
+/// The tags the learner applied from the Collections filter sheet, newest
+/// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+/// like [WordDetailModeNotifier] under one preferences key, each entry
+/// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+final class RecentFilterTagsNotifierProvider
+    extends $NotifierProvider<RecentFilterTagsNotifier, List<QuickTag>> {
+  /// The tags the learner applied from the Collections filter sheet, newest
+  /// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
+  /// like [WordDetailModeNotifier] under one preferences key, each entry
+  /// `kind|text`; they feed the sheet's Popular line ([quickTags]).
+  RecentFilterTagsNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'recentFilterTagsProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$recentFilterTagsNotifierHash();
+
+  @$internal
+  @override
+  RecentFilterTagsNotifier create() => RecentFilterTagsNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<QuickTag> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<QuickTag>>(value),
+    );
+  }
+}
+
 String _$recentFilterTagsNotifierHash() =>
     r'77536d2475125cb27b9f63ec9d2caef380839c1d';
 
@@ -1732,20 +2662,18 @@ String _$recentFilterTagsNotifierHash() =>
 /// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
 /// like [WordDetailModeNotifier] under one preferences key, each entry
 /// `kind|text`; they feed the sheet's Popular line ([quickTags]).
-///
-/// Copied from [RecentFilterTagsNotifier].
-@ProviderFor(RecentFilterTagsNotifier)
-final recentFilterTagsNotifierProvider =
-    NotifierProvider<RecentFilterTagsNotifier, List<QuickTag>>.internal(
-  RecentFilterTagsNotifier.new,
-  name: r'recentFilterTagsNotifierProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$recentFilterTagsNotifierHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-typedef _$RecentFilterTagsNotifier = Notifier<List<QuickTag>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+abstract class _$RecentFilterTagsNotifier extends $Notifier<List<QuickTag>> {
+  List<QuickTag> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<List<QuickTag>, List<QuickTag>>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<List<QuickTag>, List<QuickTag>>,
+        List<QuickTag>,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}

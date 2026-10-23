@@ -6,224 +6,142 @@ part of 'pick_the_answer_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pickTheAnswerHash() => r'a062031e35965a31704b624d4eecf033d36dd58e';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
+/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
+/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
+/// the round.
 
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
+@ProviderFor(PickTheAnswer)
+final pickTheAnswerProvider = PickTheAnswerFamily._();
 
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
+/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
+/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
+/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
+/// the round.
+final class PickTheAnswerProvider
+    extends $AsyncNotifierProvider<PickTheAnswer, PickState> {
+  /// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
+  /// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
+  /// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
+  /// the round.
+  PickTheAnswerProvider._(
+      {required PickTheAnswerFamily super.from,
+      required (
+        String?,
+        String,
+      )
+          super.argument})
+      : super(
+          retry: null,
+          name: r'pickTheAnswerProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$pickTheAnswerHash();
+
+  @override
+  String toString() {
+    return r'pickTheAnswerProvider'
+        ''
+        '$argument';
   }
 
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
+  @$internal
+  @override
+  PickTheAnswer create() => PickTheAnswer();
+
+  @override
+  bool operator ==(Object other) {
+    return other is PickTheAnswerProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
   }
 }
 
-abstract class _$PickTheAnswer
-    extends BuildlessAutoDisposeAsyncNotifier<PickState> {
-  late final String? collectionId;
-  late final String groupId;
+String _$pickTheAnswerHash() => r'796bae0102beb20dd24fd14e04829df6815e3ca6';
+
+/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
+/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
+/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
+/// the round.
+
+final class PickTheAnswerFamily extends $Family
+    with
+        $ClassFamilyOverride<
+            PickTheAnswer,
+            AsyncValue<PickState>,
+            PickState,
+            FutureOr<PickState>,
+            (
+              String?,
+              String,
+            )> {
+  PickTheAnswerFamily._()
+      : super(
+          retry: null,
+          name: r'pickTheAnswerProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  /// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
+  /// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
+  /// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
+  /// the round.
+
+  PickTheAnswerProvider call(
+    String? collectionId,
+    String groupId,
+  ) =>
+      PickTheAnswerProvider._(argument: (
+        collectionId,
+        groupId,
+      ), from: this);
+
+  @override
+  String toString() => r'pickTheAnswerProvider';
+}
+
+/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
+/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
+/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
+/// the round.
+
+abstract class _$PickTheAnswer extends $AsyncNotifier<PickState> {
+  late final _$args = ref.$arg as (
+    String?,
+    String,
+  );
+  String? get collectionId => _$args.$1;
+  String get groupId => _$args.$2;
 
   FutureOr<PickState> build(
     String? collectionId,
     String groupId,
   );
-}
-
-/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
-/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
-/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
-/// the round.
-///
-/// Copied from [PickTheAnswer].
-@ProviderFor(PickTheAnswer)
-const pickTheAnswerProvider = PickTheAnswerFamily();
-
-/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
-/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
-/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
-/// the round.
-///
-/// Copied from [PickTheAnswer].
-class PickTheAnswerFamily extends Family<AsyncValue<PickState>> {
-  /// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
-  /// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
-  /// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
-  /// the round.
-  ///
-  /// Copied from [PickTheAnswer].
-  const PickTheAnswerFamily();
-
-  /// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
-  /// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
-  /// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
-  /// the round.
-  ///
-  /// Copied from [PickTheAnswer].
-  PickTheAnswerProvider call(
-    String? collectionId,
-    String groupId,
-  ) {
-    return PickTheAnswerProvider(
-      collectionId,
-      groupId,
-    );
-  }
-
+  @$mustCallSuper
   @override
-  PickTheAnswerProvider getProviderOverride(
-    covariant PickTheAnswerProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-      provider.groupId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'pickTheAnswerProvider';
-}
-
-/// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
-/// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
-/// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
-/// the round.
-///
-/// Copied from [PickTheAnswer].
-class PickTheAnswerProvider
-    extends AutoDisposeAsyncNotifierProviderImpl<PickTheAnswer, PickState> {
-  /// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
-  /// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
-  /// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
-  /// the round.
-  ///
-  /// Copied from [PickTheAnswer].
-  PickTheAnswerProvider(
-    String? collectionId,
-    String groupId,
-  ) : this._internal(
-          () => PickTheAnswer()
-            ..collectionId = collectionId
-            ..groupId = groupId,
-          from: pickTheAnswerProvider,
-          name: r'pickTheAnswerProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$pickTheAnswerHash,
-          dependencies: PickTheAnswerFamily._dependencies,
-          allTransitiveDependencies:
-              PickTheAnswerFamily._allTransitiveDependencies,
-          collectionId: collectionId,
-          groupId: groupId,
-        );
-
-  PickTheAnswerProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-    required this.groupId,
-  }) : super.internal();
-
-  final String? collectionId;
-  final String groupId;
-
-  @override
-  FutureOr<PickState> runNotifierBuild(
-    covariant PickTheAnswer notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-      groupId,
-    );
-  }
-
-  @override
-  Override overrideWith(PickTheAnswer Function() create) {
-    return ProviderOverride(
-      origin: this,
-      override: PickTheAnswerProvider._internal(
-        () => create()
-          ..collectionId = collectionId
-          ..groupId = groupId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-        groupId: groupId,
-      ),
-    );
-  }
-
-  @override
-  AutoDisposeAsyncNotifierProviderElement<PickTheAnswer, PickState>
-      createElement() {
-    return _PickTheAnswerProviderElement(this);
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return other is PickTheAnswerProvider &&
-        other.collectionId == collectionId &&
-        other.groupId == groupId;
-  }
-
-  @override
-  int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-    hash = _SystemHash.combine(hash, groupId.hashCode);
-
-    return _SystemHash.finish(hash);
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<PickState>, PickState>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<AsyncValue<PickState>, PickState>,
+        AsyncValue<PickState>,
+        Object?,
+        Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args.$1,
+              _$args.$2,
+            ));
   }
 }
-
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin PickTheAnswerRef on AutoDisposeAsyncNotifierProviderRef<PickState> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-
-  /// The parameter `groupId` of this provider.
-  String get groupId;
-}
-
-class _PickTheAnswerProviderElement
-    extends AutoDisposeAsyncNotifierProviderElement<PickTheAnswer, PickState>
-    with PickTheAnswerRef {
-  _PickTheAnswerProviderElement(super.provider);
-
-  @override
-  String? get collectionId => (origin as PickTheAnswerProvider).collectionId;
-  @override
-  String get groupId => (origin as PickTheAnswerProvider).groupId;
-}
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

@@ -6,24 +6,50 @@ part of 'recycle_bin_screen.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$binItemsHash() => r'9820486e00f85d28517697c63679d463d43e1dae';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// The recycle bin's items (SCR-08), newest deleted first, with the days left
+/// counted from now; re-emitted after every write.
+
+@ProviderFor(binItems)
+final binItemsProvider = BinItemsProvider._();
 
 /// The recycle bin's items (SCR-08), newest deleted first, with the days left
 /// counted from now; re-emitted after every write.
-///
-/// Copied from [binItems].
-@ProviderFor(binItems)
-final binItemsProvider = AutoDisposeStreamProvider<List<BinItemView>>.internal(
-  binItems,
-  name: r'binItemsProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$binItemsHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-typedef BinItemsRef = AutoDisposeStreamProviderRef<List<BinItemView>>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+final class BinItemsProvider extends $FunctionalProvider<
+        AsyncValue<List<BinItemView>>,
+        List<BinItemView>,
+        Stream<List<BinItemView>>>
+    with
+        $FutureModifier<List<BinItemView>>,
+        $StreamProvider<List<BinItemView>> {
+  /// The recycle bin's items (SCR-08), newest deleted first, with the days left
+  /// counted from now; re-emitted after every write.
+  BinItemsProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'binItemsProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$binItemsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<BinItemView>> $createElement(
+          $ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<BinItemView>> create(Ref ref) {
+    return binItems(ref);
+  }
+}
+
+String _$binItemsHash() => r'9820486e00f85d28517697c63679d463d43e1dae';

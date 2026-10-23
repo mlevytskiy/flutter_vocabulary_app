@@ -6,205 +6,130 @@ part of 'include_photos.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$includePhotosHash() => r'c4b02b59ed32d72e34d0afb8cb50974335fc991e';
-
-/// Copied from Dart SDK
-class _SystemHash {
-  _SystemHash._();
-
-  static int combine(int hash, int value) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + value);
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x0007ffff & hash) << 10));
-    return hash ^ (hash >> 6);
-  }
-
-  static int finish(int hash) {
-    // ignore: parameter_assignments
-    hash = 0x1fffffff & (hash + ((0x03ffffff & hash) << 3));
-    // ignore: parameter_assignments
-    hash = hash ^ (hash >> 11);
-    return 0x1fffffff & (hash + ((0x00003fff & hash) << 15));
-  }
-}
-
-abstract class _$IncludePhotos extends BuildlessAutoDisposeNotifier<bool> {
-  late final String? collectionId;
-
-  bool build(
-    String? collectionId,
-  );
-}
-
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
 /// The "Include photos (N)" switch, now in the Words screen's settings
 /// (words-photo-panel): on until switched off, for the Words screen of
 /// [collectionId] (null: the current collection). Not saved: it lives while
 /// that Words screen does, which watches it, as it did in its `State`.
 /// Sets (import-from-quizlet) are not behind it: they are always sent.
-///
-/// Copied from [IncludePhotos].
+
 @ProviderFor(IncludePhotos)
-const includePhotosProvider = IncludePhotosFamily();
+final includePhotosProvider = IncludePhotosFamily._();
 
 /// The "Include photos (N)" switch, now in the Words screen's settings
 /// (words-photo-panel): on until switched off, for the Words screen of
 /// [collectionId] (null: the current collection). Not saved: it lives while
 /// that Words screen does, which watches it, as it did in its `State`.
 /// Sets (import-from-quizlet) are not behind it: they are always sent.
-///
-/// Copied from [IncludePhotos].
-class IncludePhotosFamily extends Family<bool> {
+final class IncludePhotosProvider
+    extends $NotifierProvider<IncludePhotos, bool> {
   /// The "Include photos (N)" switch, now in the Words screen's settings
   /// (words-photo-panel): on until switched off, for the Words screen of
   /// [collectionId] (null: the current collection). Not saved: it lives while
   /// that Words screen does, which watches it, as it did in its `State`.
   /// Sets (import-from-quizlet) are not behind it: they are always sent.
-  ///
-  /// Copied from [IncludePhotos].
-  const IncludePhotosFamily();
-
-  /// The "Include photos (N)" switch, now in the Words screen's settings
-  /// (words-photo-panel): on until switched off, for the Words screen of
-  /// [collectionId] (null: the current collection). Not saved: it lives while
-  /// that Words screen does, which watches it, as it did in its `State`.
-  /// Sets (import-from-quizlet) are not behind it: they are always sent.
-  ///
-  /// Copied from [IncludePhotos].
-  IncludePhotosProvider call(
-    String? collectionId,
-  ) {
-    return IncludePhotosProvider(
-      collectionId,
-    );
-  }
-
-  @override
-  IncludePhotosProvider getProviderOverride(
-    covariant IncludePhotosProvider provider,
-  ) {
-    return call(
-      provider.collectionId,
-    );
-  }
-
-  static const Iterable<ProviderOrFamily>? _dependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get dependencies => _dependencies;
-
-  static const Iterable<ProviderOrFamily>? _allTransitiveDependencies = null;
-
-  @override
-  Iterable<ProviderOrFamily>? get allTransitiveDependencies =>
-      _allTransitiveDependencies;
-
-  @override
-  String? get name => r'includePhotosProvider';
-}
-
-/// The "Include photos (N)" switch, now in the Words screen's settings
-/// (words-photo-panel): on until switched off, for the Words screen of
-/// [collectionId] (null: the current collection). Not saved: it lives while
-/// that Words screen does, which watches it, as it did in its `State`.
-/// Sets (import-from-quizlet) are not behind it: they are always sent.
-///
-/// Copied from [IncludePhotos].
-class IncludePhotosProvider
-    extends AutoDisposeNotifierProviderImpl<IncludePhotos, bool> {
-  /// The "Include photos (N)" switch, now in the Words screen's settings
-  /// (words-photo-panel): on until switched off, for the Words screen of
-  /// [collectionId] (null: the current collection). Not saved: it lives while
-  /// that Words screen does, which watches it, as it did in its `State`.
-  /// Sets (import-from-quizlet) are not behind it: they are always sent.
-  ///
-  /// Copied from [IncludePhotos].
-  IncludePhotosProvider(
-    String? collectionId,
-  ) : this._internal(
-          () => IncludePhotos()..collectionId = collectionId,
-          from: includePhotosProvider,
+  IncludePhotosProvider._(
+      {required IncludePhotosFamily super.from,
+      required String? super.argument})
+      : super(
+          retry: null,
           name: r'includePhotosProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$includePhotosHash,
-          dependencies: IncludePhotosFamily._dependencies,
-          allTransitiveDependencies:
-              IncludePhotosFamily._allTransitiveDependencies,
-          collectionId: collectionId,
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
         );
 
-  IncludePhotosProvider._internal(
-    super._createNotifier, {
-    required super.name,
-    required super.dependencies,
-    required super.allTransitiveDependencies,
-    required super.debugGetCreateSourceHash,
-    required super.from,
-    required this.collectionId,
-  }) : super.internal();
-
-  final String? collectionId;
+  @override
+  String debugGetCreateSourceHash() => _$includePhotosHash();
 
   @override
-  bool runNotifierBuild(
-    covariant IncludePhotos notifier,
-  ) {
-    return notifier.build(
-      collectionId,
-    );
+  String toString() {
+    return r'includePhotosProvider'
+        ''
+        '($argument)';
   }
 
+  @$internal
   @override
-  Override overrideWith(IncludePhotos Function() create) {
-    return ProviderOverride(
+  IncludePhotos create() => IncludePhotos();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
       origin: this,
-      override: IncludePhotosProvider._internal(
-        () => create()..collectionId = collectionId,
-        from: from,
-        name: null,
-        dependencies: null,
-        allTransitiveDependencies: null,
-        debugGetCreateSourceHash: null,
-        collectionId: collectionId,
-      ),
+      providerOverride: $SyncValueProvider<bool>(value),
     );
-  }
-
-  @override
-  AutoDisposeNotifierProviderElement<IncludePhotos, bool> createElement() {
-    return _IncludePhotosProviderElement(this);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is IncludePhotosProvider && other.collectionId == collectionId;
+    return other is IncludePhotosProvider && other.argument == argument;
   }
 
   @override
   int get hashCode {
-    var hash = _SystemHash.combine(0, runtimeType.hashCode);
-    hash = _SystemHash.combine(hash, collectionId.hashCode);
-
-    return _SystemHash.finish(hash);
+    return argument.hashCode;
   }
 }
 
-@Deprecated('Will be removed in 3.0. Use Ref instead')
-// ignore: unused_element
-mixin IncludePhotosRef on AutoDisposeNotifierProviderRef<bool> {
-  /// The parameter `collectionId` of this provider.
-  String? get collectionId;
-}
+String _$includePhotosHash() => r'c4b02b59ed32d72e34d0afb8cb50974335fc991e';
 
-class _IncludePhotosProviderElement
-    extends AutoDisposeNotifierProviderElement<IncludePhotos, bool>
-    with IncludePhotosRef {
-  _IncludePhotosProviderElement(super.provider);
+/// The "Include photos (N)" switch, now in the Words screen's settings
+/// (words-photo-panel): on until switched off, for the Words screen of
+/// [collectionId] (null: the current collection). Not saved: it lives while
+/// that Words screen does, which watches it, as it did in its `State`.
+/// Sets (import-from-quizlet) are not behind it: they are always sent.
+
+final class IncludePhotosFamily extends $Family
+    with $ClassFamilyOverride<IncludePhotos, bool, bool, bool, String?> {
+  IncludePhotosFamily._()
+      : super(
+          retry: null,
+          name: r'includePhotosProvider',
+          dependencies: null,
+          $allTransitiveDependencies: null,
+          isAutoDispose: true,
+        );
+
+  /// The "Include photos (N)" switch, now in the Words screen's settings
+  /// (words-photo-panel): on until switched off, for the Words screen of
+  /// [collectionId] (null: the current collection). Not saved: it lives while
+  /// that Words screen does, which watches it, as it did in its `State`.
+  /// Sets (import-from-quizlet) are not behind it: they are always sent.
+
+  IncludePhotosProvider call(
+    String? collectionId,
+  ) =>
+      IncludePhotosProvider._(argument: collectionId, from: this);
 
   @override
-  String? get collectionId => (origin as IncludePhotosProvider).collectionId;
+  String toString() => r'includePhotosProvider';
 }
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+
+/// The "Include photos (N)" switch, now in the Words screen's settings
+/// (words-photo-panel): on until switched off, for the Words screen of
+/// [collectionId] (null: the current collection). Not saved: it lives while
+/// that Words screen does, which watches it, as it did in its `State`.
+/// Sets (import-from-quizlet) are not behind it: they are always sent.
+
+abstract class _$IncludePhotos extends $Notifier<bool> {
+  late final _$args = ref.$arg as String?;
+  String? get collectionId => _$args;
+
+  bool build(
+    String? collectionId,
+  );
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<bool, bool>, bool, Object?, Object?>;
+    return element.handleCreate(
+        ref,
+        () => build(
+              _$args,
+            ));
+  }
+}

@@ -6,27 +6,75 @@ part of 'story_run_tracker.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$storyRunTrackerHash() => r'0f08dc473557a125d4a4cac2ddda7b96629410fb';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+// ignore_for_file: type=lint, type=warning
+/// Starts story runs, follows them on the Worker and collects their results to
+/// the phone (mnemonic-story ADR-0002, sad §6 S-02, S-04, S-05).
+///
+/// A run is saved before it is started, so a closed app finds it again and
+/// collects it without starting it twice (AC-10). Nothing here throws.
+
+@ProviderFor(StoryRunTracker)
+final storyRunTrackerProvider = StoryRunTrackerProvider._();
 
 /// Starts story runs, follows them on the Worker and collects their results to
 /// the phone (mnemonic-story ADR-0002, sad §6 S-02, S-04, S-05).
 ///
 /// A run is saved before it is started, so a closed app finds it again and
 /// collects it without starting it twice (AC-10). Nothing here throws.
-///
-/// Copied from [StoryRunTracker].
-@ProviderFor(StoryRunTracker)
-final storyRunTrackerProvider =
-    NotifierProvider<StoryRunTracker, StoryTrackerState>.internal(
-  StoryRunTracker.new,
-  name: r'storyRunTrackerProvider',
-  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-      ? null
-      : _$storyRunTrackerHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final class StoryRunTrackerProvider
+    extends $NotifierProvider<StoryRunTracker, StoryTrackerState> {
+  /// Starts story runs, follows them on the Worker and collects their results to
+  /// the phone (mnemonic-story ADR-0002, sad §6 S-02, S-04, S-05).
+  ///
+  /// A run is saved before it is started, so a closed app finds it again and
+  /// collects it without starting it twice (AC-10). Nothing here throws.
+  StoryRunTrackerProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'storyRunTrackerProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
 
-typedef _$StoryRunTracker = Notifier<StoryTrackerState>;
-// ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
+  @override
+  String debugGetCreateSourceHash() => _$storyRunTrackerHash();
+
+  @$internal
+  @override
+  StoryRunTracker create() => StoryRunTracker();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(StoryTrackerState value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<StoryTrackerState>(value),
+    );
+  }
+}
+
+String _$storyRunTrackerHash() => r'a8140712b06232a18554a3dfaf7b1e10d48729cb';
+
+/// Starts story runs, follows them on the Worker and collects their results to
+/// the phone (mnemonic-story ADR-0002, sad §6 S-02, S-04, S-05).
+///
+/// A run is saved before it is started, so a closed app finds it again and
+/// collects it without starting it twice (AC-10). Nothing here throws.
+
+abstract class _$StoryRunTracker extends $Notifier<StoryTrackerState> {
+  StoryTrackerState build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<StoryTrackerState, StoryTrackerState>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<StoryTrackerState, StoryTrackerState>,
+        StoryTrackerState,
+        Object?,
+        Object?>;
+    return element.handleCreate(ref, build);
+  }
+}

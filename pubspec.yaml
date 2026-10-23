@@ -20,17 +20,20 @@ dependencies:
   image_picker_platform_interface: ^2.11.1
   http: ^1.2.2
   flutter_image_compress: ^2.5.1
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
-  go_router: ^17.2.3
+  flutter_riverpod: ^3.4.3
+  riverpod_annotation: ^4.0.0
+  # go_router stays on 17.x: 18 only recognises material_ui's MaterialApp and,
+  # with flutter/material.dart's, builds NoTransitionPage (no slide, no iOS
+  # back swipe). See docs/architecture.md rule 6.
+  go_router: ^17.5.0
   shared_preferences: ^2.5.5
   flutter_tts: ^4.2.5
-  # isar_community pinned to 3.3.0-dev.1: it is the newest release still built
-  # against build 2.x / source_gen 2.x. Every later version (>=3.3.0-dev.2)
-  # requires build ^3/^4, which collides with riverpod_generator 2.x and
-  # go_router_builder 3.x. See docs/architecture.md rule 6.
-  isar_community: 3.3.0-dev.1
-  isar_community_flutter_libs: 3.3.0-dev.1
+  # isar_community pinned exactly to 3.4.1 (toolchain-upgrade, owner 2026-10-24):
+  # built against build ^4 / source_gen ^4 like riverpod_generator 4.x and
+  # go_router_builder 4.x. Pinned so a `pub upgrade` cannot drift the database
+  # format or the generator. See docs/architecture.md rule 6.
+  isar_community: 3.4.1
+  isar_community_flutter_libs: 3.4.1
   path_provider: ^2.1.0
   url_launcher: 6.3.1
   file_selector: ^1.1.0
@@ -42,7 +45,7 @@ dependencies:
   # The PDF share format (owner, 2026-10-14). Pinned, pure Dart.
   pdf: 3.11.3
   # Speech to text for Talk with AI (learn-redesign, owner 2026-10-23/24). Pinned.
-  speech_to_text: 7.4.0
+  speech_to_text: 7.5.0
   # Second speech engine for Talk with AI, picked in Learn settings (learn-redesign, owner 2026-10-23/24). Pinned.
   speech_to_text_pro: 0.0.1
 
@@ -50,10 +53,10 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  riverpod_generator: ^2.6.1
-  build_runner: ^2.4.13
-  go_router_builder: ^3.0.0
-  isar_community_generator: 3.3.0-dev.1
+  riverpod_generator: ^4.0.0
+  build_runner: ^2.16.0
+  go_router_builder: ^4.0.0
+  isar_community_generator: 3.4.1
 
 flutter:
   uses-material-design: true
