@@ -1,5 +1,5 @@
 ---
-status: Draft
+status: Reviewed
 owner: "Architect (Claude Opus 5.5); product calls by the Fable 5.1 owner proxy, 2026-10-23"
 reviewers: ["Tech Lead", "Security Lead"]
 updated_at: "2026-10-23"
@@ -69,7 +69,7 @@ The app talks to the Worker for exercise data (existing), sentence checks (exist
 | D3 | How a session's box moves are written | one `CollectionStore.update` at the end, pure `applySession` | [0002](./adr/0002-move-a-sessions-boxes-in-one-store-transaction-at-the-end.md) |
 | D4 | How exercises become pages | each exercise's question building moves into a page source used by both its screen and the session | [0003](./adr/0003-move-each-exercises-question-building-into-a-page-source-shared-with-its-screen.md) |
 | D5 | Session engine | pure ladder queue + one `LearningSession` notifier | [0004](./adr/0004-play-sessions-from-a-pure-ladder-queue-in-one-session-notifier.md) |
-| D6 | Groups for split | existing AI grouping with the split range 7–12 | [0005](./adr/0005-split-with-the-existing-word-grouping-capped-at-twelve-words.md) |
+| D6 | Groups for split | cut the words, in AI-group order, into session groups of 7–12 in the app | [0005](./adr/0005-cut-the-grouped-word-order-into-session-groups-of-seven-to-twelve.md) |
 | D7 | Learn settings + split choice storage | SharedPreferences notifiers | [0006](./adr/0006-keep-learn-settings-and-the-split-choice-in-shared-preferences.md) |
 | D8 | Talk service | new Worker route, cheap model, 20 talks/day counter | [0007](./adr/0007-serve-talk-turns-from-a-worker-route-with-a-daily-talk-counter.md) |
 | D9 | Who decides a word was used | the app, with `matchPlaces` | [0008](./adr/0008-decide-used-words-in-the-app-with-the-shared-word-match.md) |
@@ -114,21 +114,23 @@ C4Container
 | Block | Path | Responsibility |
 |---|---|---|
 | `WordBox` (new model) | `lib/core/models/word_box.dart` | Isar `@embedded`: `rowId`, `word` (English, trimmed lower), `box` 1–5, `dueAt`, `lastUpDay` (yyyy-mm-dd). `WordCollection.boxes` list; JSON round-trip like `results`. |
+| `CollectionStore.put` (changed) | `lib/core/services/collection_store.dart` | `put` rebuilds the record from a field list: it copies `..boxes = existing.boxes` (and `results` stays as today), so a words-table save never erases boxes; store test. |
 | Leitner rules (pure) | `lib/features/learn/session/leitner.dart` | `boxOf(collection, row)` (match by rowId + word, else new), `isDue`, `applySession(boxes, outcomes, now)` per AC-13, `intervalFor(box)` 1/2/4/8/16 days. |
-| Word picker (pure) | `lib/features/learn/session/session_words.dart` | AC-06/07/14: under 20 → all; split on → group by the due/new/next rule; split off → due, new, others capped by Words per session. Also `nextGroup(skip:)`. |
+| Word picker (pure) | `lib/features/learn/session/session_words.dart` | AC-06/07/14: under 20 → all; split on → session groups = the words in AI-group order (groups in order, waiting words last; row order when grouping is not done or failed) cut by `splitRounds(min 7, max 12)` — always possible for ≥ 14 words — then the due/new/after-last rule (last played index in prefs); split off → due, new, others capped by Words per session; an explicit `rowIds` list (Practise N shaky) wins. Also `nextGroup(skip:)` and `sessionGroupLabel` ("Group 2 of 4 · 9 words"). |
 | Ladder queue (pure) | `lib/features/learn/session/ladder_queue.dart` | Words × rungs; picks next page (due first, miss reinserted 3 later), `isDone`, per-word miss flag. Seeded `Random` via `exerciseRandomProvider`. |
 | Page sources | `lib/features/learn/<exercise>/<exercise>_pages.dart` (11) | Moved question building from each notifier's `build` (ADR-0003): `Future<List<ExercisePage>> pagesFor(words, others, deps)`; the notifier calls the same function. |
-| `ExercisePage` | `lib/features/learn/session/exercise_page.dart` | `exerciseId`, `step`, `rowIds` (1, or 4 for a board), `body` builder `(context, onAnswered(Map<rowId,bool>))`. |
+| `ExercisePage` | `lib/features/learn/session/exercise_page.dart` | `exerciseId`, `step`, `rowIds` (1, or 4 for a board), `body(context, PageAnswer answer)`. `PageAnswer` is the frame's hook: a check-style body calls `answer.ready(check)` where `check` is `Future<Map<rowId,bool>> Function()` (enables Check; the frame runs it on tap); a self-checking body (match boards, Remember or not's "I knew it / I didn't", the sentence-check field that runs its own AI check) calls `answer.done(results)` and the frame shows the verdict without Check. Explain it to a friend runs in its typed mode inside sessions (no mode prompt). |
 | Page bodies | moved widgets from each `*_screen.dart` into `*_page_body.dart` | One question's UI; the old screen and the frame both use it. |
-| `LearningSession` notifier | `lib/features/learn/session/learning_session_notifier.dart` | Loads words, draws types per step (min(3, on)), asks page sources, runs the queue, records outcomes, at the end calls `applySession` via store, returns `SessionResult`. |
+| `LearningSession` notifier | `lib/features/learn/session/learning_session_notifier.dart` | `start(collectionId, {split, rowIds})`. Loads words, draws types per step (min(3, on)), builds pages step by step (Meet pages up front; Practise/Use pages in the background as soon as the first word reaches that rung; AI data fetched in batches of ≤ 19 words), runs the queue, records outcomes, at the end calls `applySession` via store and writes `SessionResult` to `lastSessionResultProvider`. Page sources never write exam word results (AC-15); only the old notifiers do. |
 | `LearnPageFrame` (C1) | `lib/features/learn/session/learn_page_frame.dart` | Close ✕, 3-segment step bar, "page N of M", exercise chip, card, answers slot, Check, verdict bar (right/wrong, word — translation, Continue). Colours via `AppDecor` slots `learnRight`, `learnWrong`. |
 | Session screen | `lib/features/learn/session/learning_session_screen.dart` | Hosts the frame; leave confirm (AC-16); error line + Retry (AC-11). |
-| Results screen | `lib/features/learn/session/session_results_screen.dart` | AC-12/22: counts, per-word next review, Practise N shaky, Next group, Done; "N words not used — unchanged" for talks. |
-| Learn sheet | `lib/features/learn/entry/learn_sheet.dart` | AC-01/05: two cards, counts, gear, split checkbox (≥ 20 words). |
+| `SessionResult` holder | `lib/features/learn/session/session_result.dart` | `lastSessionResultProvider` (keepAlive, per collection): words with state known/shaky/new/unused, next reviews, kind (exercises/talk), whether written; written by `LearningSession` and `Talk`. |
+| Results screen | `lib/features/learn/session/session_results_screen.dart` | AC-12/22: reads `lastSessionResultProvider`; counts, per-word next review, Practise N shaky (`start(rowIds: shaky)`), Next group, Done; "N words not used — unchanged" for talks. |
+| Learn sheet | `lib/features/learn/entry/learn_sheet.dart` | AC-01/05: two cards, counts, gear, split checkbox (≥ 20 words), next-group line. `WordsTableScreen._learn` shows "Add words with a translation to start learning" instead of the sheet when no word can be learned (AC-03). |
 | Companion button | `lib/features/learn/entry/companion_button.dart` | AC-04: popup beside Learn in `LearnShareBar`; alone ticked, teacher/friend disabled "Soon". |
 | Learn settings | `lib/features/learn/entry/learn_settings_screen.dart` | AC-17/18/19: presets, switches, Words per session, Try it. |
 | Learn prefs | `lib/core/providers.dart` (`learnSettingsNotifier`, `learnSplitNotifier(collectionId)`) | SharedPreferences, ADR-0006. |
-| Talk | `lib/features/learn/talk/` (`talk_notifier.dart`, `talk_screen.dart`, `talk_rules.dart`) | AC-20–26: scene pick, turns, word strip, hint after 2, end rules, scoring into `applySession`. |
+| Talk | `lib/features/learn/talk/` (`talk_notifier.dart`, `talk_screen.dart`, `talk_rules.dart`) | AC-20–26: words from `session_words` (same rule as Exercises); scene from stored text (the session group's story-run text if its words fall in a story group, else a film dialogue's lines, else name + description); turns, word strip, hint after 2, end rules, scoring into `applySession` and `lastSessionResultProvider`. |
 | Talk API | `lib/core/services/talk_api_service.dart` + `talkApiServiceProvider` | Talk turn calls; maps day limit. |
 | Speech input | `lib/core/services/speech_input.dart` + `speechInputProvider` | Wraps `speech_to_text`; fake in tests. Speaking reuses `PronunciationService`. |
 | Routes | `lib/router/routes.dart` | `LearningSessionRoute`, `SessionResultsRoute` (extra-free: results read from the session provider), `LearnSettingsRoute`, `TalkRoute` under `WordsTableRoute`. `LearnRoute` stays (Try it, with `exercise` query). |
@@ -202,7 +204,7 @@ sequenceDiagram
   participant St as CollectionStore
   participant R as Results screen
   S->>St: update(collectionId, applySession(boxes, outcomes, now))
-  alt collection erased or binned meanwhile
+  alt collection erased meanwhile
     St-->>S: false → results shown, nothing written
   else written
     St-->>S: true
@@ -281,7 +283,7 @@ sequenceDiagram
 | [0002](./adr/0002-move-a-sessions-boxes-in-one-store-transaction-at-the-end.md) | Move a session's boxes in one store transaction at the end | Accepted |
 | [0003](./adr/0003-move-each-exercises-question-building-into-a-page-source-shared-with-its-screen.md) | Move each exercise's question building into a page source shared with its screen | Accepted |
 | [0004](./adr/0004-play-sessions-from-a-pure-ladder-queue-in-one-session-notifier.md) | Play sessions from a pure ladder queue in one session notifier | Accepted |
-| [0005](./adr/0005-split-with-the-existing-word-grouping-capped-at-twelve-words.md) | Split with the existing word grouping capped at twelve words | Accepted |
+| [0005](./adr/0005-cut-the-grouped-word-order-into-session-groups-of-seven-to-twelve.md) | Cut the grouped word order into session groups of seven to twelve | Accepted |
 | [0006](./adr/0006-keep-learn-settings-and-the-split-choice-in-shared-preferences.md) | Keep learn settings and the split choice in shared preferences | Accepted |
 | [0007](./adr/0007-serve-talk-turns-from-a-worker-route-with-a-daily-talk-counter.md) | Serve talk turns from a Worker route with a daily talk counter | Accepted |
 | [0008](./adr/0008-decide-used-words-in-the-app-with-the-shared-word-match.md) | Decide used words in the app with the shared word match | Accepted |
@@ -299,14 +301,16 @@ sequenceDiagram
 | First page, not cached | tap Exercises, cache cleared | "≤ 6 s, worst of 10 taps" | same log, 10 sessions |
 | Talk typed | send a reply | "≤ 4 s, 19 of 20 replies" | debug-build log, 20 replies |
 | Talk spoken | release the talk button | "≤ 6 s, 9 of 10 replies" | manual stopwatch, iPhone 15 + one Android |
-| Talk cost | 21st talk start in a UTC day | refused; replies in started talks never refused | Worker unit test of the counter and route |
+| Talk cost | a talk runs; the 21st talk start in a UTC day | "1 cheap-model call per learner reply plus 1 opening; ≤ 20 talks per UTC day app-wide, ≤ 12 learner replies per talk"; replies in started talks never refused | Worker unit tests of the counter, the reply cap (history ≤ 24) and the route |
 | Frame | every theme at 393 pt and text scale 1.3 | no overflow | widget test per theme |
 
 ## 11. Risks and technical debt
 
 | Risk | Severity | Mitigation | Owner | Due |
 |---|---|---|---|---|
-| Capping groups at 12 regroups collections whose stored groups hold 13–19 words; old story runs keep pointing at removed group ids | Medium | regroup only when a stored group exceeds 12 and split is on; story runs already tolerate a missing group (shown by name); test it | Architect | T-grouping task |
+| Session groups cut across AI groups, so a session group can mix two topics | Low | cuts follow group order; AI groups are untouched (no regroup, stories unaffected) | Architect | word-picker task |
+| Split unticked with Words per session = All on a big collection builds many pages | Medium | pages built step by step, AI data in batches of ≤ 19; first page needs only Meet pages | Implementer | session-notifier task |
+| Daily talk allowance may prove too small | Open question | raising it above the story limit's level is a money decision (spec §8) | Owner | when usage shows it |
 | Moving 11 exercises' code risks regressions in the old screens | Medium | each move keeps the old screen's widget tests green before the page source is used | Implementer | per page-source task |
 | `speech_to_text` platform setup differs per OS version | Low | voice is the last milestone; typing always works (AC-26) | Implementer | voice task |
 | Worker not deployed when the app ships Talk | Medium | Talk shows the plain error line + Retry; owner deploys with migration 0008 | Owner | before release |

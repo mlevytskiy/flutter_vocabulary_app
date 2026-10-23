@@ -26,8 +26,7 @@ V3 needs on-device speech recognition on iOS and Android; the owner approved a p
 ## Considered options
 
 1. `speech_to_text` pinned, behind `speechInputProvider` (chosen)
-2. Native platform channels in Swift/Kotlin
-3. Send audio to the Worker
+2. Native platform channels in Swift/Kotlin (SFSpeechRecognizer / SpeechRecognizer)
 
 ## Decision outcome
 

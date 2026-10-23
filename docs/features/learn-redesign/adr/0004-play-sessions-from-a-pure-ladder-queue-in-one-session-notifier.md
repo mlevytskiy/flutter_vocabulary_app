@@ -25,7 +25,7 @@ The word-ladder order (B2) with misses reinserted 3 pages later, step draws and 
 ## Considered options
 
 1. Pure `LadderQueue` + `LearningSession` notifier owning pages and outcomes (chosen)
-2. Put the ladder logic in the screen's State
+2. Let each page source own a per-exercise queue and have the session only round-robin between them
 3. Precompute the whole page order up front
 
 ## Decision outcome
@@ -36,4 +36,4 @@ Chosen: option 1. `LadderQueue` (pure Dart) holds each word's rung, miss flag an
 
 - + the hard part is unit-testable without widgets
 - + precomputing is impossible anyway because misses change the order
-- − pages are prepared for every word × drawn type up front (bounded: ≤ 19 words × ≤ 9 types)
+- − pages are prepared per step (Meet up front, Practise/Use in the background when the first word reaches them); with split off and Words per session = All this can be many words, so AI data is fetched in batches of ≤ 19 (sad §11)

@@ -25,7 +25,7 @@ AC-21: only the learner's own replies tick words, by the same whole-word rule as
 ## Considered options
 
 1. `matchPlaces` on the learner's text in the app (chosen)
-2. Ask the AI which words were used
+2. A looser lemma match in the app (took/take, children/child) via a small irregular-forms table
 
 ## Decision outcome
 

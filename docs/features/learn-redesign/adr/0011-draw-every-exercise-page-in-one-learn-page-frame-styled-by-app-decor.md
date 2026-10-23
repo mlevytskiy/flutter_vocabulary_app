@@ -25,7 +25,7 @@ C1 asks for one frame for every page in every theme; five themes exist and new c
 ## Considered options
 
 1. One `LearnPageFrame` taking a page body and verdict, with AppDecor slots (chosen)
-2. Restyle each old exercise screen separately
+2. A shared `LearnPageTheme` extension that each page body applies itself, without a common frame widget
 
 ## Decision outcome
 

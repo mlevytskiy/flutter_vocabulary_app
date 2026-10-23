@@ -25,7 +25,7 @@ The owner wants the Learn button unchanged in look and place, but Learn must sta
 ## Considered options
 
 1. Learn opens the sheet; `LearnRoute` stays, opened only from Try it with the exercise pre-ticked (chosen)
-2. Delete the old Learn page
+2. Learn opens the sheet; Try it opens `ExerciseRoute` directly for the current word group and `LearnRoute` is removed
 
 ## Decision outcome
 

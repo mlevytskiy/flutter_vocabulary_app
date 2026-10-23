@@ -27,7 +27,7 @@ The session needs single pages from eleven exercises whose question building liv
 
 1. Per exercise: move the build body into `<exercise>_pages.dart` and the per-question UI into `<exercise>_page_body.dart`; both the old notifier/screen and the session call them (chosen)
 2. Open each exercise's whole screen inside the session
-3. Rewrite every exercise as a new generic page type
+3. Keep each old notifier and drive it one question at a time from the session through its existing methods
 
 ## Decision outcome
 

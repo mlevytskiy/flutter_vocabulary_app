@@ -25,8 +25,7 @@ Talk needs an AI reply per learner turn, reachable only by the app (AC-23), with
 ## Considered options
 
 1. New route on the existing Worker with a D1 talk counter (chosen)
-2. Call the AI from the app directly
-3. Reuse the sentence-check route
+2. Reuse the sentence-check route with a talk prompt kind
 
 ## Decision outcome
 
