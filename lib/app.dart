@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,7 +42,7 @@ class App extends ConsumerWidget {
       // there, and to any bar that sets no colour (app-themes).
       // Android pages slide in as on iOS, the old page drifting left under
       // the new one (owner, 2026-10-19).
-      theme: AppThemeSpec.of(ref.watch(appThemeNotifierProvider))
+      theme: AppThemeSpec.of(ref.watch(appThemeProvider))
           .build()
           .copyWith(pageTransitionsTheme: pageTransitions),
       // A red line along the top of every screen while the new-user trial is
@@ -67,7 +68,7 @@ class TrialFrame extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final on = ref.watch(newUserBackupProvider).valueOrNull != null;
+    final on = ref.watch(newUserBackupProvider).value != null;
     return Stack(
       children: [
         child,
