@@ -9,6 +9,11 @@ import type { Env } from "../env";
  */
 export const LEARN_DATA_DAY_LIMIT = 200;
 export const LEARN_CHECK_DAY_LIMIT = 500;
+/**
+ * The talk allowance (learn-redesign AC-24, ADR-0007): one unit per talk start (POST /learn/talk
+ * with kind "start"), app-wide per UTC day; a reply inside a started talk never takes one.
+ */
+export const LEARN_TALK_DAY_LIMIT = 20;
 
 /**
  * Takes one unit of today's `table` while it is below `limit`, in one D1 batch, with the same
@@ -28,3 +33,6 @@ export const takeLearnData = (env: Pick<Env, "DB">, now = new Date()) => takeUni
 
 /** One unit of today's sentence check allowance; false when the day is used up (AC-34b). */
 export const takeLearnCheck = (env: Pick<Env, "DB">, now = new Date()) => takeUnit(env, "all_learn_checks", LEARN_CHECK_DAY_LIMIT, now);
+
+/** One unit of today's talk allowance, for a talk start; false when the day is used up (AC-24). */
+export const takeLearnTalk = (env: Pick<Env, "DB">, now = new Date()) => takeUnit(env, "all_learn_talks", LEARN_TALK_DAY_LIMIT, now);

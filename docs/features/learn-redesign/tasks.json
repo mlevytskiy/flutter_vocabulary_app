@@ -317,7 +317,7 @@
         "vocab-photo-api/src/learn/routes.ts",
         "vocab-photo-api/src/learn/allowance.ts",
         "vocab-photo-api/migrations/0008_talk_allowance.sql",
-        "vocab-photo-api/test/learn_talk.test.mjs"
+        "vocab-photo-api/test/learn-talk.test.mjs"
       ]
     },
     {

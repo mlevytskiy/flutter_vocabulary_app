@@ -35,6 +35,9 @@
 //   "STUB:same"  -> not ok, the fixed sentence equal to the learner's
 //   "STUB:notask" -> usesTask false
 //   "STUB:error" / "STUB:malformed" / "STUB:slow" as above
+// A talk turn (learn-redesign T16; system names an "English conversation partner", user = JSON {scene, words, target,
+// history}) answers a short line and a question. Markers in the learner's last message (or the scene for a start):
+//   "STUB:empty" -> an empty reply; "STUB:error" -> 500; "STUB:slow" -> the reply after 2 s
 // A naming request (system names a "vocabulary collection", user = JSON {words}, collection-naming) answers
 // {"name": "Kitchen Tools"}. Markers, as the first word: "STUB:error" -> 500, "STUB:malformed" -> prose,
 // "STUB:long" -> a name of 80 characters in quotes with a full stop, "STUB:empty" -> {"name": ""}.
@@ -175,6 +178,13 @@ function learnCheckAnswer(model, content) {
   return { status: 200, body: message(model, JSON.stringify(reply)) };
 }
 
+function learnTalkAnswer(model, content) {
+  const { scene = "", history = [] } = JSON.parse(content);
+  const last = history.length ? history[history.length - 1].text : scene;
+  if (last.includes("STUB:error")) return answer(model, "STUB:error");
+  return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };
+}
+
 function namingAnswer(model, content) {
   let first = "";
   try {
@@ -252,7 +262,8 @@ export function startAnthropicStub() {
       }
       const learn = typeof body.system !== "string" ? undefined
         : body.system.includes("data for vocabulary exercises") ? learnDataAnswer
-        : body.system.includes("check a learner's") ? learnCheckAnswer : undefined;
+        : body.system.includes("check a learner's") ? learnCheckAnswer
+        : body.system.includes("English conversation partner") ? learnTalkAnswer : undefined;
       if (learn) {
         const { status, body: reply } = learn(body.model, content);
         const send = () => {
