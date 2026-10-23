@@ -44,7 +44,7 @@ test("0006 reverts cleanly with its down file and forgets itself", () => {
   db.raw.exec("CREATE TABLE d1_migrations (name TEXT)");
   db.raw.exec("INSERT INTO d1_migrations VALUES ('0005_film_dialogues.sql'), ('0006_learn_allowance.sql')");
   db.raw.exec(readFileSync(new URL("down/0006_learn_allowance.sql", migrations), "utf8"));
-  const tables = db.raw.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'all_learn%'").all();
+  const tables = db.raw.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('all_learn_data', 'all_learn_checks')").all();
   assert.deepEqual(tables, []);
   assert.deepEqual(db.raw.prepare("SELECT name FROM d1_migrations").all().map((r) => r.name), ["0005_film_dialogues.sql"]);
   assert.ok(db.raw.prepare("SELECT 1 FROM sqlite_master WHERE name = 'all_story_runs'").get(), "the story allowance stays");

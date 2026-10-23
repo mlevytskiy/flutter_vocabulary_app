@@ -22,4 +22,4 @@ Worker tests: start takes a unit and the 21st start in a UTC day is refused with
 - `vocab-photo-api/src/learn/routes.ts`
 - `vocab-photo-api/src/learn/allowance.ts`
 - `vocab-photo-api/migrations/0008_talk_allowance.sql`
-- `vocab-photo-api/test/learn_talk.test.ts`
+- `vocab-photo-api/test/learn-talk.test.mjs` (the repo's Worker tests are `.mjs`)

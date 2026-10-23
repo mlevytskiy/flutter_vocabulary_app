@@ -5,6 +5,7 @@ import { renderNotFoundPage } from "../session/page";
 import { loadSession } from "../session/store";
 import { learnCheckRoute } from "./check.ts";
 import { learnDataRoute } from "./data.ts";
+import { learnTalkRoute } from "./talk.ts";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
 import { renderComingSoonPage, renderLearnPage, renderNoWordsPage } from "./page";
 
@@ -50,4 +51,6 @@ export const learnRoutes: RouteDefinition[] = [
   // The exercise services (learn-kit): app-only, behind the secret and the per-IP limiter (AC-26).
   learnDataRoute,
   learnCheckRoute,
+  // Talk with AI turns (learn-redesign ADR-0007): app-only too, starts counted 20 a day (AC-23, AC-24).
+  learnTalkRoute,
 ];
