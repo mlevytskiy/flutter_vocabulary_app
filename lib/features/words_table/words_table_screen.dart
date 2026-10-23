@@ -111,7 +111,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
       // Group the words quietly when they changed (mnemonic-story AC-03).
       if (!mounted) return;
       ref
-          .read(wordGroupsNotifierProvider(widget.collectionId).notifier)
+          .read(wordGroupsProvider(widget.collectionId).notifier)
           .ensureGrouped()
           .catchError((_) {});
     });
@@ -353,8 +353,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
   WordCollection? _collection() {
     final collectionId = widget.collectionId;
     return collectionId == null
-        ? ref.read(wordsNotifierProvider).valueOrNull
-        : ref.read(collectionByIdProvider(collectionId)).valueOrNull;
+        ? ref.read(wordsProvider).value
+        : ref.read(collectionByIdProvider(collectionId)).value;
   }
 
   /// Asks before making this History session the current one
@@ -379,7 +379,7 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     );
     if (yes != true || !mounted) return;
     final switched = await ref
-        .read(wordsNotifierProvider.notifier)
+        .read(wordsProvider.notifier)
         .switchTo(collectionId);
     if (!mounted) return;
     if (switched) {
@@ -399,11 +399,11 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     final collectionId = widget.collectionId;
     // A History row may be the session the notifier holds: update it there,
     // or its next save would write the old id and token back.
-    final current = ref.exists(wordsNotifierProvider)
-        ? ref.read(wordsNotifierProvider).valueOrNull
+    final current = ref.exists(wordsProvider)
+        ? ref.read(wordsProvider).value
         : null;
     if (collectionId == null || current?.collectionId == collectionId) {
-      final notifier = ref.read(wordsNotifierProvider.notifier);
+      final notifier = ref.read(wordsProvider.notifier);
       await notifier.markShared(
           publishedId: published.id, editToken: published.editToken);
       await notifier.markDialoguesPublished(
@@ -514,8 +514,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
   Widget build(BuildContext context) {
     final collectionId = widget.collectionId;
     final collection = collectionId == null
-        ? ref.watch(wordsNotifierProvider).valueOrNull
-        : ref.watch(collectionByIdProvider(collectionId)).valueOrNull;
+        ? ref.watch(wordsProvider).value
+        : ref.watch(collectionByIdProvider(collectionId)).value;
     // definition-mode: every filled row -- a word plus a translation or a
     // definition -- whatever the mode (spec AC-12); the mode picks columns.
     final wordPairs = filledPairs(collection);
@@ -527,8 +527,8 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     final showDefinition = detailMode != WordDetailMode.translation;
     // edit-session-from-history AC-06: no Edit button for the session the main
     // screen is already editing.
-    final currentId = ref.exists(wordsNotifierProvider)
-        ? ref.watch(wordsNotifierProvider).valueOrNull?.collectionId
+    final currentId = ref.exists(wordsProvider)
+        ? ref.watch(wordsProvider).value?.collectionId
         : null;
     final canEdit = collectionId != null && collectionId != currentId;
 

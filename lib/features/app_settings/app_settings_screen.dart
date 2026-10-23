@@ -20,7 +20,7 @@ class AppSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final current = ref.watch(appThemeNotifierProvider);
+    final current = ref.watch(appThemeProvider);
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('App settings')),
@@ -62,7 +62,7 @@ class AppSettingsScreen extends ConsumerWidget {
                         spec: spec,
                         selected: spec.id == current,
                         onTap: () => ref
-                            .read(appThemeNotifierProvider.notifier)
+                            .read(appThemeProvider.notifier)
                             .set(spec.id),
                       ),
                   ]),
@@ -89,7 +89,7 @@ class _NewUserSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final takenAt = ref.watch(newUserBackupProvider).valueOrNull;
+    final takenAt = ref.watch(newUserBackupProvider).value;
     final muted =
         theme.textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant);
     return Card(

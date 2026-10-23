@@ -68,7 +68,7 @@ class RecycleBinScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final items = ref.watch(binItemsProvider).valueOrNull;
+    final items = ref.watch(binItemsProvider).value;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recycle bin'),

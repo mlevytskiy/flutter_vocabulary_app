@@ -19,6 +19,11 @@ const notEnoughSynonymsMessage = 'Not enough words with synonyms for this group'
 /// Auto-disposed, so leaving the screen forgets the round (AC-21).
 @riverpod
 class MatchSynonyms extends _$MatchSynonyms {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<MatchRoundsState> previous, AsyncValue<MatchRoundsState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   Timer? _summary;
 
   @override
@@ -45,7 +50,7 @@ class MatchSynonyms extends _$MatchSynonyms {
   /// rowId. A right pair is linked; a wrong one counts a miss on the left
   /// word. The last link opens the summary [matchSummaryDelay] later.
   bool pair(String leftId, String rightId) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.rounds.isEmpty || s.inSummary || s.roundDone) return false;
     if (s.links.containsKey(leftId) || s.links.containsValue(rightId)) return false;
     if (!s.left.any((x) => x.id == leftId) || !s.right.any((x) => x.id == rightId)) return false;
@@ -58,7 +63,7 @@ class MatchSynonyms extends _$MatchSynonyms {
     if (next.roundDone) {
       _summary?.cancel();
       _summary = Timer(matchSummaryDelay, () {
-        final now = state.valueOrNull;
+        final now = state.value;
         if (now != null && now.roundDone) state = AsyncData(now.copyWith(inSummary: true));
       });
     }
@@ -67,7 +72,7 @@ class MatchSynonyms extends _$MatchSynonyms {
 
   /// "Next round" on the summary: a fresh board (AC-20).
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(s.copyWith(round: s.round + 1, links: const {}, misses: const {}, inSummary: false));
   }

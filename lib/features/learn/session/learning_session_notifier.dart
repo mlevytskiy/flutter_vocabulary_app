@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/models/word_collection.dart';
@@ -167,24 +166,24 @@ class LearningSession extends _$LearningSession {
   Future<void> start({required bool split, List<String>? rowIds, int? skipGroup}) async {
     _publish(SessionStatus.loading);
     final collection = await _readOnce(collectionId == null
-        ? wordsNotifierProvider.future
+        ? wordsProvider.future
         : collectionByIdProvider(collectionId!).future);
     if (_disposed) return;
     if (collection == null) return _publish(SessionStatus.notEnough);
     _collection = collection;
     _split = split;
 
-    final settingsNotifier = ref.read(learnSettingsNotifierProvider.notifier);
+    final settingsNotifier = ref.read(learnSettingsProvider.notifier);
     await settingsNotifier.loaded;
-    final lastNotifier = ref.read(learnLastGroupNotifierProvider(collection.collectionId).notifier);
+    final lastNotifier = ref.read(learnLastGroupProvider(collection.collectionId).notifier);
     await lastNotifier.loaded;
     if (_disposed) return;
-    final settings = ref.read(learnSettingsNotifierProvider);
+    final settings = ref.read(learnSettingsProvider);
     final pick = pickSessionWords(
       collection,
       split: split,
       wordsPerSession: settings.wordsPerSession.count,
-      lastGroup: ref.read(learnLastGroupNotifierProvider(collection.collectionId)),
+      lastGroup: ref.read(learnLastGroupProvider(collection.collectionId)),
       rowIds: rowIds,
       skipGroup: skipGroup,
       now: DateTime.now(),
@@ -410,7 +409,7 @@ class LearningSession extends _$LearningSession {
     };
     final index = pick.groupIndex;
     if (_split && index != null) {
-      unawaited(ref.read(learnLastGroupNotifierProvider(_collection.collectionId).notifier).set(index));
+      unawaited(ref.read(learnLastGroupProvider(_collection.collectionId).notifier).set(index));
     }
     final store = await ref.read(collectionStoreProvider.future);
     if (_disposed) return;

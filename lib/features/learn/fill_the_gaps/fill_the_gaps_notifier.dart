@@ -69,6 +69,11 @@ class FillState {
 
 @riverpod
 class FillTheGaps extends _$FillTheGaps {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<FillState> previous, AsyncValue<FillState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<FillState> build(String? collectionId, String groupId) async {
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
@@ -95,21 +100,21 @@ class FillTheGaps extends _$FillTheGaps {
 
   /// The question's final answer; a second call for the same question does nothing.
   void answer(TypedAnswerResult result) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.question == null || s.result != null) return;
     state = AsyncData(FillState(rounds: s.rounds, round: s.round, index: s.index, result: result, results: s.results));
   }
 
   /// Leaves a final answer for the next question, or the summary.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     final result = s?.result;
     if (s == null || result == null) return;
     state = AsyncData(FillState(rounds: s.rounds, round: s.round, index: s.index + 1, results: [...s.results, result]));
   }
 
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(FillState(rounds: s.rounds, round: s.round + 1));
   }

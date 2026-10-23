@@ -323,7 +323,7 @@ class _CollectionsFilterSheetState
   @override
   Widget build(BuildContext context) {
     final summaries =
-        ref.watch(collectionSummariesProvider).valueOrNull ?? const [];
+        ref.watch(collectionSummariesProvider).value ?? const [];
     final recent = ref.watch(recentFilterTagsProvider);
     final matching = searchCollections(summaries, _draft, now: DateTime.now());
     final n = matching.length;

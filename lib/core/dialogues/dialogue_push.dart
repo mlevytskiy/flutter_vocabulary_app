@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../config/vocab_api_config.dart';
@@ -185,8 +186,8 @@ class DialoguePush extends _$DialoguePush {
       _disposed = true;
       _timer?.cancel();
     });
-    ref.listen(wordsNotifierProvider, (_, next) {
-      final collection = next.valueOrNull;
+    ref.listen(wordsProvider, (_, next) {
+      final collection = next.value;
       // A retry already waiting picks this up too.
       if (collection != null && _isPending(collection) && _timer == null) {
         unawaited(run());
@@ -238,7 +239,7 @@ class DialoguePush extends _$DialoguePush {
   /// Returns true when something should be tried again.
   Future<bool> _pass() async {
     final store = await ref.read(collectionStoreProvider.future);
-    final current = await ref.read(wordsNotifierProvider.future);
+    final current = await ref.read(wordsProvider.future);
     final ids = <String>[
       current.collectionId,
       for (final s in await store.nonEmpty())
@@ -312,16 +313,16 @@ class DialoguePush extends _$DialoguePush {
 
   /// The current session's live object, or a History session from the store.
   Future<WordCollection?> _read(String collectionId) async {
-    final current = await ref.read(wordsNotifierProvider.future);
+    final current = await ref.read(wordsProvider.future);
     if (current.collectionId == collectionId) return current;
     return (await ref.read(collectionStoreProvider.future)).byId(collectionId);
   }
 
   Future<void> _change(String collectionId,
       List<FilmDialogue> Function(List<FilmDialogue>) change) async {
-    final current = await ref.read(wordsNotifierProvider.future);
+    final current = await ref.read(wordsProvider.future);
     if (current.collectionId == collectionId) {
-      await ref.read(wordsNotifierProvider.notifier).updateDialogues(change);
+      await ref.read(wordsProvider.notifier).updateDialogues(change);
       return;
     }
     final store = await ref.read(collectionStoreProvider.future);

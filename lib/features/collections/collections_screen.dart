@@ -118,7 +118,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   void _dragStarted(CollectionItemView item) {
     setState(() {
       _dragged = item;
-      _dragFrom = ref.read(collectionsNotifierProvider).folderId;
+      _dragFrom = ref.read(collectionsProvider).folderId;
       _dragging = true;
     });
   }
@@ -278,7 +278,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
   /// A tap on a collection (AC-09, AC-18): open it with no question and go to
   /// the main screen; opening the current one changes nothing.
   Future<void> _openCollection(String id) async {
-    await ref.read(wordsNotifierProvider.notifier).open(id);
+    await ref.read(wordsProvider.notifier).open(id);
     if (mounted) const WordsRoute().go(context);
   }
 
@@ -287,7 +287,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     final details =
         await showCollectionDetailsSheet(context, mode: DetailsMode.create);
     if (details == null || !mounted) return;
-    await ref.read(wordsNotifierProvider.notifier).newCollectionWithDetails(
+    await ref.read(wordsProvider.notifier).newCollectionWithDetails(
           folderId,
           name: details.name,
           description: details.description,
@@ -303,19 +303,19 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     final searchNotifier = ref.read(_searchProvider.notifier);
     final locked = search.searching || search.filter.isActive;
     final binFull =
-        ref.watch(binItemsProvider).valueOrNull?.isNotEmpty ?? false;
+        ref.watch(binItemsProvider).value?.isNotEmpty ?? false;
     List<CollectionSummary>? results;
     if (search.showsResults) {
-      final summaries = ref.watch(collectionSummariesProvider).valueOrNull;
+      final summaries = ref.watch(collectionSummariesProvider).value;
       results = summaries == null
           ? null
           : searchCollections(summaries, search.filter, now: DateTime.now());
     }
-    final state = ref.watch(collectionsNotifierProvider);
+    final state = ref.watch(collectionsProvider);
     final folders =
-        ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
+        ref.watch(collectionFoldersProvider).value ?? const [];
     final parentOf = {for (final f in folders) f.folderId: f.parentId};
-    final notifier = ref.read(collectionsNotifierProvider.notifier);
+    final notifier = ref.read(collectionsProvider.notifier);
 
     // Where the matches are, seen from the open folder (collections-search).
     SearchSplit? split;

@@ -76,6 +76,11 @@ class PatternsState {
 
 @riverpod
 class SentencePatterns extends _$SentencePatterns {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<PatternsState> previous, AsyncValue<PatternsState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<PatternsState> build(String? collectionId, String groupId) async {
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
@@ -99,14 +104,14 @@ class SentencePatterns extends _$SentencePatterns {
 
   /// "My turn": the field opens under the card.
   void startWriting() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.card == null || s.writing) return;
     state = AsyncData(PatternsState(rounds: s.rounds, round: s.round, index: s.index, writing: true, results: s.results));
   }
 
   /// The word's final result from the field; a second call does nothing.
   void done(SentenceResult result) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.card == null || !s.writing || s.result != null) return;
     state = AsyncData(PatternsState(
         rounds: s.rounds, round: s.round, index: s.index, writing: true, result: result, results: s.results));
@@ -114,14 +119,14 @@ class SentencePatterns extends _$SentencePatterns {
 
   /// Leaves a final word for the next card, or the summary.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     final result = s?.result;
     if (s == null || result == null) return;
     state = AsyncData(PatternsState(rounds: s.rounds, round: s.round, index: s.index + 1, results: [...s.results, result]));
   }
 
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(PatternsState(rounds: s.rounds, round: s.round + 1));
   }

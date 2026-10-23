@@ -39,10 +39,10 @@ class CollectionsNotifier extends _$CollectionsNotifier {
   @override
   CollectionsState build() {
     final folders =
-        ref.watch(collectionFoldersProvider).valueOrNull ?? const [];
-    final level = ref.watch(collectionLevelProvider(_folderId)).valueOrNull;
+        ref.watch(collectionFoldersProvider).value ?? const [];
+    final level = ref.watch(collectionLevelProvider(_folderId)).value;
     final currentId =
-        ref.watch(wordsNotifierProvider).valueOrNull?.collectionId;
+        ref.watch(wordsProvider).value?.collectionId;
 
     final byId = {for (final f in folders) f.folderId: f};
     final parentOf = {for (final f in folders) f.folderId: f.parentId};

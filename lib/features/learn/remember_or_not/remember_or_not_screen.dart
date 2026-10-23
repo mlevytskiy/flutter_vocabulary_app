@@ -46,7 +46,7 @@ class _RememberOrNotScreenState extends ConsumerState<RememberOrNotScreen> {
   Widget build(BuildContext context) {
     final provider = rememberOrNotProvider(widget.collectionId, widget.groupId);
     // Anything still playing stops when the card changes (S-32).
-    ref.listen(provider.select((a) => a.valueOrNull?.shown), (_, __) => _pronunciation.stop());
+    ref.listen(provider.select((a) => a.value?.shown), (_, __) => _pronunciation.stop());
     final async = ref.watch(provider);
     final notifier = ref.read(provider.notifier);
     final phase = async.when(

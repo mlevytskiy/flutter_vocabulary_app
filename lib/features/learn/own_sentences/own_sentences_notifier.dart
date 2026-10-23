@@ -84,6 +84,11 @@ class OwnState {
 /// [examResultSinkProvider] at once (S-55); nothing else is saved.
 @riverpod
 class OwnSentences extends _$OwnSentences {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<OwnState> previous, AsyncValue<OwnState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<OwnState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
@@ -104,7 +109,7 @@ class OwnSentences extends _$OwnSentences {
   /// same step, recorded (S-55): once per word, never awaited, nothing for
   /// "not checked". A second call does nothing.
   void done(SentenceResult result) {
-    final s = state.valueOrNull;
+    final s = state.value;
     final card = s?.card;
     if (s == null || card == null || s.result != null) return;
     state = AsyncData(OwnState(rounds: s.rounds, round: s.round, index: s.index, result: result, results: s.results));
@@ -120,14 +125,14 @@ class OwnSentences extends _$OwnSentences {
 
   /// Leaves a final word for the next card, or the summary. Records nothing.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     final result = s?.result;
     if (s == null || result == null) return;
     state = AsyncData(OwnState(rounds: s.rounds, round: s.round, index: s.index + 1, results: [...s.results, result]));
   }
 
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(OwnState(rounds: s.rounds, round: s.round + 1));
   }

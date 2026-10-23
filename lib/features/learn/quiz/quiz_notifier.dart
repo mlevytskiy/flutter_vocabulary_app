@@ -93,6 +93,11 @@ class QuizState {
 /// Auto-disposed, so leaving the screen forgets the attempt.
 @riverpod
 class Quiz extends _$Quiz {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<QuizState> previous, AsyncValue<QuizState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   late Random _random;
 
   @override
@@ -131,14 +136,14 @@ class Quiz extends _$Quiz {
 
   /// The first tap on an option is final (AC-12).
   void pick(int option) {
-    final q = state.valueOrNull?.question;
+    final q = state.value?.question;
     if (q?.choice == null) return;
     _final(QuizAnswer(label: choiceLabel(q!.choice!, option), given: q.choice!.options[option], picked: option));
   }
 
   /// A typed answer sent, or the exam field's Skip (AC-14 – AC-17).
   void submit(TypedAnswerResult result) {
-    final q = state.valueOrNull?.question;
+    final q = state.value?.question;
     if (q?.gap == null) return;
     _final(QuizAnswer(label: typedLabel(result), given: result.gaveUp ? null : result.answer.trim()));
   }
@@ -149,7 +154,7 @@ class Quiz extends _$Quiz {
   /// S-55 (1): the answer becomes final and its result is recorded in the
   /// same step, once per question of an attempt, never awaited.
   void _final(QuizAnswer answer) {
-    final s = state.valueOrNull;
+    final s = state.value;
     final q = s?.question;
     if (s == null || q == null || s.answer != null) return;
     state = AsyncData(s._with(answers: [...s.answers]..[s.index] = answer));
@@ -163,7 +168,7 @@ class Quiz extends _$Quiz {
 
   /// The next question, or the summary after the last (AC-18). Records nothing.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.answer == null) return;
     state = AsyncData(s._with(answers: s.answers, index: s.index + 1));
   }
@@ -171,7 +176,7 @@ class Quiz extends _$Quiz {
   /// "Repeat" on the summary (AC-25, AC-26): a new attempt over exactly the
   /// repeat words, from the data loaded at open.
   void repeat() {
-    final s = state.valueOrNull;
+    final s = state.value;
     final data = s?.data;
     if (s == null || data == null || !s.inSummary) return;
     final words = s.repeatWords;

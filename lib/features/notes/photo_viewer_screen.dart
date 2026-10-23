@@ -65,8 +65,8 @@ class _PhotoViewerScreenState extends ConsumerState<PhotoViewerScreen> {
   @override
   Widget build(BuildContext context) {
     final source = ref
-        .watch(wordsNotifierProvider)
-        .valueOrNull
+        .watch(wordsProvider)
+        .value
         ?.sources
         .where((s) => s.id == widget.sourceId)
         .firstOrNull;

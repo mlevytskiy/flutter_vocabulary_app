@@ -109,10 +109,10 @@ class WordsSettingsScreen extends ConsumerWidget {
     final offeredAsync = ref.watch(offeredAisProvider);
     final loaded = ref.watch(_choiceLoadedProvider);
     final stored = ref.watch(aiChoiceProvider);
-    final runs = ref.watch(storyRunsProvider).valueOrNull ?? const <StoryRun>[];
+    final runs = ref.watch(storyRunsProvider).value ?? const <StoryRun>[];
 
     final Widget body;
-    final offered = offeredAsync.valueOrNull;
+    final offered = offeredAsync.value;
     if (offered == null || !loaded.hasValue) {
       body = const Center(child: CircularProgressIndicator());
     } else {
@@ -167,8 +167,8 @@ class WordsSettingsScreen extends ConsumerWidget {
   Widget? _includePhotosTile(BuildContext context, WidgetRef ref) {
     final id = collectionId;
     final collection = id == null
-        ? ref.watch(wordsNotifierProvider).valueOrNull
-        : ref.watch(collectionByIdProvider(id)).valueOrNull;
+        ? ref.watch(wordsProvider).value
+        : ref.watch(collectionByIdProvider(id)).value;
     final photos =
         linkedPhotos(linkedSources(collection, filledPairs(collection)));
     if (photos.isEmpty) return null;

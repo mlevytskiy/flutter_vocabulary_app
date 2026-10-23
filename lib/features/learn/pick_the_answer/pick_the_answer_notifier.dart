@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/providers.dart' show asyncNotifyAsBefore;
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
@@ -77,6 +78,11 @@ class PickState {
 /// the round.
 @riverpod
 class PickTheAnswer extends _$PickTheAnswer {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<PickState> previous, AsyncValue<PickState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<PickState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
@@ -106,7 +112,7 @@ class PickTheAnswer extends _$PickTheAnswer {
 
   /// The first tap on an option is final (D-17, AC-05, AC-06).
   void pick(int option) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.item == null || s.picked != null) return;
     state = AsyncData(s.copyWith(
       picked: option,
@@ -116,7 +122,7 @@ class PickTheAnswer extends _$PickTheAnswer {
 
   /// Next question, or the summary after the last (AC-07).
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.item == null || s.picked == null) return;
     if (s.index + 1 < s.roundSize) {
       state = AsyncData(s.copyWith(index: s.index + 1, clearPicked: true));
@@ -127,7 +133,7 @@ class PickTheAnswer extends _$PickTheAnswer {
 
   /// "Next round" on the summary (AC-15): kind A again (S-29).
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(s.copyWith(round: s.round + 1, index: 0, results: const [], inSummary: false, clearPicked: true));
   }

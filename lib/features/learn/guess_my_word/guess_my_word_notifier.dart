@@ -113,6 +113,11 @@ String pointsText(int p) => p <= 0 ? 'Not found' : (p == 1 ? '1 point' : '$p poi
 /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
 @riverpod
 class GuessMyWord extends _$GuessMyWord {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<GuessState> previous, AsyncValue<GuessState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   Timer? _next;
 
   @override
@@ -135,7 +140,7 @@ class GuessMyWord extends _$GuessMyWord {
 
   /// A tap on a grid word (S-52). Found, greyed and revealed-round taps do nothing.
   void tap(String rowId) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null) return;
     final next = guessTap(s, rowId);
     if (next == null) return;
@@ -148,20 +153,20 @@ class GuessMyWord extends _$GuessMyWord {
 
   /// "Next" after the answer was shown.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.revealed) return;
     _advance();
   }
 
   void _advance() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.target == null) return;
     state = AsyncData(s.copyWith(targetIndex: s.targetIndex + 1, level: 1, greyed: const {}, revealed: false, locked: false));
   }
 
   /// "Next round" on the summary: a fresh round.
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(s.copyWith(round: s.round + 1, targetIndex: 0, level: 1, greyed: const {}, points: const {}));
   }

@@ -30,7 +30,7 @@ class LearnSettingsScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, String id, bool on) async {
     final messenger = ScaffoldMessenger.of(context);
     final done =
-        await ref.read(learnSettingsNotifierProvider.notifier).setEnabled(id, on);
+        await ref.read(learnSettingsProvider.notifier).setEnabled(id, on);
     if (!done) {
       messenger
         ..hideCurrentSnackBar()
@@ -40,9 +40,9 @@ class LearnSettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(learnSettingsNotifierProvider);
-    final notifier = ref.read(learnSettingsNotifierProvider.notifier);
-    final engine = ref.watch(speechEngineNotifierProvider);
+    final settings = ref.watch(learnSettingsProvider);
+    final notifier = ref.read(learnSettingsProvider.notifier);
+    final engine = ref.watch(speechEngineProvider);
     final heading = Theme.of(context).textTheme.titleMedium;
     return Scaffold(
       appBar: AppBar(title: const Text('Learn settings')),
@@ -121,7 +121,7 @@ class LearnSettingsScreen extends ConsumerWidget {
             groupValue: engine,
             onChanged: (e) {
               if (e != null) {
-                ref.read(speechEngineNotifierProvider.notifier).set(e);
+                ref.read(speechEngineProvider.notifier).set(e);
               }
             },
             child: Column(children: [

@@ -25,6 +25,11 @@ part 'words_notifier.g.dart';
 /// mutation here right after making it.
 @Riverpod(keepAlive: true)
 class WordsNotifier extends _$WordsNotifier {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<WordCollection> previous, AsyncValue<WordCollection> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   Timer? _saveTimer;
 
   /// True between a mutation and the write that persists it. `flush()` is
@@ -53,8 +58,8 @@ class WordsNotifier extends _$WordsNotifier {
     ref.onDispose(() => _saveTimer?.cancel());
     // A collection opened with enough words but no name yet is named now.
     listenSelf((previous, next) {
-      if (previous?.valueOrNull?.collectionId !=
-          next.valueOrNull?.collectionId) {
+      if (previous?.value?.collectionId !=
+          next.value?.collectionId) {
         _maybeAutoName();
         _maybeAutoDescribe();
       }
@@ -92,17 +97,24 @@ class WordsNotifier extends _$WordsNotifier {
       debugPrint('VOCAB: autofill failed: $e');
     } finally {
       _autofillRunning = false;
-      // The copy on screen may predate the answers: take the stored kinds
-      // before deciding whether the current collection still needs asking.
-      final current = state.isLoading ? null : state.valueOrNull;
-      if (current != null) {
-        try {
-          final stored = await store.byId(current.collectionId);
-          if (stored != null) _adopt(stored, withSources: false);
-        } catch (_) {}
+      // A disposed notifier has no state to update (Riverpod 3 throws).
+      if (ref.mounted) {
+        // The copy on screen may predate the answers: take the stored kinds
+        // before deciding whether the current collection still needs asking.
+        final current = state.isLoading ? null : state.value;
+        if (current != null) {
+          try {
+            final stored = await store.byId(current.collectionId);
+            if (stored != null && ref.mounted) {
+              _adopt(stored, withSources: false);
+            }
+          } catch (_) {}
+        }
+        if (ref.mounted) {
+          _maybeAutoName();
+          _maybeAutoDescribe();
+        }
       }
-      _maybeAutoName();
-      _maybeAutoDescribe();
     }
   }
 
@@ -144,7 +156,7 @@ class WordsNotifier extends _$WordsNotifier {
   Future<void> resume() async {
     final store = await ref.read(collectionStoreProvider.future);
     await store.sweepBin(DateTime.now());
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current == null) return;
     final stored = await store.byId(current.collectionId);
     if (stored != null && !await store.isBinned(stored)) return;
@@ -168,7 +180,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// false, touching nothing, when [id] is not in the store.
   Future<bool> open(String id) async {
     final store = await ref.read(collectionStoreProvider.future);
-    if (state.valueOrNull?.collectionId == id) return true;
+    if (state.value?.collectionId == id) return true;
     final picked = await store.byId(id);
     if (picked == null) return false;
     picked.words = picked.words.toList(); // growable, see build()
@@ -208,7 +220,7 @@ class WordsNotifier extends _$WordsNotifier {
   Future<void> _leaveAndShow(
       CollectionStore store, WordCollection next) async {
     await flush();
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current != null && current.collectionId != next.collectionId) {
       final stored = await store.byId(current.collectionId);
       if (stored != null &&
@@ -369,7 +381,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// the timestamps stay and the write goes straight to the store, as in
   /// [markShared].
   Future<void> setScenePicture(String dialogueId, String runId) async {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null) return;
     final dialogue = collection.dialogues.where((d) => d.id == dialogueId).firstOrNull;
     if (dialogue == null || dialogue.scenePictureRunId == runId) return;
@@ -439,7 +451,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// the photo panel's tile; a film listed without one gets it on a later
   /// import (owner, 2026-10-15).
   String upsertSubtitlesSource(String title, {String? poster}) {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null) return 'subtitles-${uuidV4()}';
     final before = collection.sources.length;
     final urlBefore = _subtitlesSource(collection, title)?.url;
@@ -568,7 +580,7 @@ class WordsNotifier extends _$WordsNotifier {
     List<String>? origin,
     List<String>? topic,
   }) async {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null || !collection.sources.any((s) => s.id == id)) {
       return const {};
     }
@@ -598,7 +610,7 @@ class WordsNotifier extends _$WordsNotifier {
     List<String>? origin,
     List<String>? topic,
   }) async {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null) return false;
     await flush();
     final store = await ref.read(collectionStoreProvider.future);
@@ -629,8 +641,10 @@ class WordsNotifier extends _$WordsNotifier {
   /// Never while loading: a rebuild keeps the previous collection as the
   /// loading value, and adopting into it would put it back on screen.
   void _adopt(WordCollection stored, {required bool withSources}) {
+    // Called after awaits; a disposed notifier has no state (Riverpod 3 throws).
+    if (!ref.mounted) return;
     if (state.isLoading) return;
-    final c = state.valueOrNull;
+    final c = state.value;
     if (c == null || c.collectionId != stored.collectionId) return;
     c
       ..name = stored.name
@@ -655,7 +669,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// right after its source's rows). The main screen does not see this until
   /// it takes [takeEditedElsewhere].
   void insertAt(int index, WordPair pair) {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null) return;
     collection.words.insert(index.clamp(0, collection.words.length), pair);
     state = AsyncData(collection);
@@ -682,7 +696,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// not restart the 5-minute launch clock, and the write goes straight to the
   /// store rather than through the debounce.
   Future<void> markShared({String? publishedId, String? editToken}) async {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null) return;
     if (collection.isShared &&
         collection.publishedId == publishedId &&
@@ -704,7 +718,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// [markShared].
   Future<void> updateDialogues(
       List<FilmDialogue> Function(List<FilmDialogue>) change) async {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null) return;
     collection.dialogues = change(collection.dialogues);
     state = AsyncData(collection);
@@ -716,7 +730,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// (get-words-from-subtitles-improvment ADR-0005): see [afterPublish]. Not
   /// a content change, so written like [markShared].
   Future<void> markDialoguesPublished(Set<String> sent) async {
-    final collection = state.valueOrNull;
+    final collection = state.value;
     if (collection == null || collection.dialogues.isEmpty) return;
     collection.dialogues = afterPublish(collection.dialogues, sent: sent);
     state = AsyncData(collection);
@@ -732,8 +746,11 @@ class WordsNotifier extends _$WordsNotifier {
     _saveTimer = null;
     if (!_dirty || !state.hasValue) return;
     _dirty = false;
+    // Taken before the await: Riverpod 3 refuses `state` once the notifier is
+    // disposed, and the last words must still be written (toolchain-upgrade).
+    final collection = state.value!;
     final store = await ref.read(collectionStoreProvider.future);
-    await store.put(state.value!);
+    await store.put(collection);
   }
 
   /// Records that the words just changed and queues the write.
@@ -763,7 +780,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// 2026-10-18). The store takes it only while still undefined, so a
   /// description typed meanwhile wins.
   void _maybeAutoDescribe() {
-    final c = state.valueOrNull;
+    final c = state.value;
     if (c == null ||
         c.descriptionKind != NameKind.undefined ||
         (c.description ?? '').isNotEmpty) {
@@ -840,7 +857,7 @@ class WordsNotifier extends _$WordsNotifier {
       ]);
       if (answers != null) ai = await _applyAnswers(store, answers);
     }
-    final current = state.valueOrNull;
+    final current = state.value;
     if (current != null) {
       final stored = await store.byId(current.collectionId);
       if (stored != null) _adopt(stored, withSources: false);
@@ -857,7 +874,7 @@ class WordsNotifier extends _$WordsNotifier {
   /// it only while the name is still undefined, so a name typed meanwhile
   /// wins; the main screen's title animates to it.
   void _maybeAutoName() {
-    final c = state.valueOrNull;
+    final c = state.value;
     if (c == null || c.nameKind != NameKind.undefined) return;
     if (CollectionStore.wordCount(c) < minWordsForAutoName) return;
     if (_namingFor != null || _autofillRunning) return;

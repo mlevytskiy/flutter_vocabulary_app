@@ -185,7 +185,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     // able to re-key a persisted block to the restored word (see
     // _restoreFromStore and _effectiveOptions).
     final options = _effectiveOptions(index);
-    ref.read(wordsNotifierProvider.notifier).updateAt(
+    ref.read(wordsProvider.notifier).updateAt(
           _storeIndex(index),
           word: word,
           translation: translation,
@@ -209,7 +209,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// its await and drops its result when a switch from History changed it in
   /// the meantime (edit-session-from-history, ADR-0003).
   String? get _collectionIdNow =>
-      ref.read(wordsNotifierProvider).valueOrNull?.collectionId;
+      ref.read(wordsProvider).value?.collectionId;
 
   /// A writer for the row at [index] in the collection on screen now, for a
   /// lookup that may finish after another collection was opened: it applies
@@ -217,8 +217,8 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// started in (collections-screen ADR-0006, AC-11). Taken before the await.
   void Function(void Function(WordPair row) change) _lateRowWriter(int index) {
     final collectionId = _collectionIdNow;
-    final notifier = ref.read(wordsNotifierProvider.notifier);
-    final words = ref.read(wordsNotifierProvider).valueOrNull?.words;
+    final notifier = ref.read(wordsProvider.notifier);
+    final words = ref.read(wordsProvider).value?.words;
     final i = _storeIndex(index);
     final row = words != null && i >= 0 && i < words.length ? words[i] : null;
     final rowId = row?.rowId ?? '';
@@ -765,7 +765,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         _popupControllers.remove(index);
         _definitionPopupControllers.remove(index);
         final storeIndex = _storeIndex(index);
-        ref.read(wordsNotifierProvider.notifier).removeAt(storeIndex);
+        ref.read(wordsProvider.notifier).removeAt(storeIndex);
         _onRowRemoved(index, storeIndex);
       }
     });

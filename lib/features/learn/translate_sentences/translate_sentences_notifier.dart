@@ -106,6 +106,11 @@ class TranslateState {
 /// nothing else is saved. Auto-disposed, so leaving forgets the exam.
 @riverpod
 class TranslateSentences extends _$TranslateSentences {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<TranslateState> previous, AsyncValue<TranslateState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<TranslateState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
@@ -127,7 +132,7 @@ class TranslateSentences extends _$TranslateSentences {
   /// same step, recorded (S-55): once per word, never awaited, nothing for
   /// "not checked". A second call does nothing.
   void done(SentenceResult result) {
-    final s = state.valueOrNull;
+    final s = state.value;
     final card = s?.card;
     if (s == null || card == null || s.result != null) return;
     state = AsyncData(TranslateState(rounds: s.rounds, round: s.round, index: s.index, result: result, results: s.results));
@@ -143,14 +148,14 @@ class TranslateSentences extends _$TranslateSentences {
 
   /// Leaves a final word for the next card, or the summary. Records nothing.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     final result = s?.result;
     if (s == null || result == null) return;
     state = AsyncData(TranslateState(rounds: s.rounds, round: s.round, index: s.index + 1, results: [...s.results, result]));
   }
 
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(TranslateState(rounds: s.rounds, round: s.round + 1));
   }

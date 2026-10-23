@@ -27,8 +27,8 @@ class StoryRunScreen extends ConsumerWidget {
     final runsAsync = ref.watch(storyRunsProvider);
     final theme = Theme.of(context);
     final small = theme.textTheme.bodySmall?.copyWith(color: theme.hintColor);
-    final existing = ref.watch(existingCollectionIdsProvider).valueOrNull;
-    final runs = runsAsync.valueOrNull;
+    final existing = ref.watch(existingCollectionIdsProvider).value;
+    final runs = runsAsync.value;
     final run = runs?.where((r) => r.runId == runId).firstOrNull;
 
     final Widget body;

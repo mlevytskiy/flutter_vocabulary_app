@@ -158,15 +158,15 @@ class Talk extends _$Talk {
       return;
     }
     _id = id;
-    final settings = ref.read(learnSettingsNotifierProvider.notifier);
-    final lastGroup = ref.read(learnLastGroupNotifierProvider(id).notifier);
+    final settings = ref.read(learnSettingsProvider.notifier);
+    final lastGroup = ref.read(learnLastGroupProvider(id).notifier);
     await settings.loaded;
     await lastGroup.loaded;
     final pick = pickSessionWords(
       c,
       split: split,
-      wordsPerSession: ref.read(learnSettingsNotifierProvider).wordsPerSession.count,
-      lastGroup: ref.read(learnLastGroupNotifierProvider(id)),
+      wordsPerSession: ref.read(learnSettingsProvider).wordsPerSession.count,
+      lastGroup: ref.read(learnLastGroupProvider(id)),
       now: now ?? DateTime.now(),
     );
     _pick = pick;
@@ -310,7 +310,7 @@ class Talk extends _$Talk {
     ref.read(lastSessionResultProvider.notifier).set(result);
     final index = pick?.groupIndex;
     if (result.written && index != null) {
-      await ref.read(learnLastGroupNotifierProvider(_id!).notifier).set(index);
+      await ref.read(learnLastGroupProvider(_id!).notifier).set(index);
     }
     _set(state.copyWith(status: TalkStatus.over));
   }

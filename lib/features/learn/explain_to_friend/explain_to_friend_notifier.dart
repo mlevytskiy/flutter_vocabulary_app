@@ -126,6 +126,11 @@ class ExplainState {
 /// are shown in the summary only (S-64); nothing else is saved.
 @riverpod
 class ExplainToFriend extends _$ExplainToFriend {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<ExplainState> previous, AsyncValue<ExplainState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<ExplainState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
@@ -144,7 +149,7 @@ class ExplainToFriend extends _$ExplainToFriend {
 
   /// The mode for every round of this open (S-64); asked once.
   void chooseMode(ExplainMode mode) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.rounds.isEmpty || s.mode != null) return;
     state = AsyncData(s.copyWith(mode: mode));
   }
@@ -153,7 +158,7 @@ class ExplainToFriend extends _$ExplainToFriend {
   /// in the same step, recorded (S-55): once per word, never awaited, nothing
   /// for "not checked". A second call does nothing.
   void done(SentenceResult result) {
-    final s = state.valueOrNull;
+    final s = state.value;
     final card = s?.card;
     if (s == null || card == null || s.mode != ExplainMode.type || s.result != null) return;
     state = AsyncData(s.copyWith(result: ExplainResult.typed(result)));
@@ -169,7 +174,7 @@ class ExplainToFriend extends _$ExplainToFriend {
 
   /// With a friend: the countdown reached zero or the learner tapped Done.
   void friendReady() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.card == null || s.mode != ExplainMode.friend || s.result != null || s.asking) return;
     state = AsyncData(s.copyWith(asking: true));
   }
@@ -177,7 +182,7 @@ class ExplainToFriend extends _$ExplainToFriend {
   /// With a friend: Understood / Not yet after the question, or Skip before
   /// it. Final once; never recorded (S-64).
   void friendAnswer(FriendAnswer answer) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.card == null || s.mode != ExplainMode.friend || s.result != null) return;
     if ((answer == FriendAnswer.skipped) == s.asking) return;
     state = AsyncData(s.copyWith(result: ExplainResult.friend(answer)));
@@ -185,14 +190,14 @@ class ExplainToFriend extends _$ExplainToFriend {
 
   /// Leaves a final word for the next card, or the summary. Records nothing.
   void next() {
-    final s = state.valueOrNull;
+    final s = state.value;
     final result = s?.result;
     if (s == null || result == null) return;
     state = AsyncData(s.copyWith(index: s.index + 1, asking: false, results: [...s.results, result]));
   }
 
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(s.copyWith(round: s.round + 1, index: 0, asking: false, results: const []));
   }

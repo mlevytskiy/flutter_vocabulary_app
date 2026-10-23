@@ -64,8 +64,8 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   StoryRunTracker get _tracker => ref.read(storyRunTrackerProvider.notifier);
 
   WordCollection? get _collection => widget.collectionId == null
-      ? ref.watch(wordsNotifierProvider).valueOrNull
-      : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
+      ? ref.watch(wordsProvider).value
+      : ref.watch(collectionByIdProvider(widget.collectionId!)).value;
 
   /// A new run for [group], replacing what it shows only once it has a picture
   /// (AC-16); also "Try again" after a story failed.
@@ -80,7 +80,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
   Widget build(BuildContext context) {
     final collection = _collection;
     final group = ref
-        .watch(wordGroupsNotifierProvider(widget.collectionId))
+        .watch(wordGroupsProvider(widget.collectionId))
         .groups
         .where((g) => g.id == widget.groupId)
         .firstOrNull;
@@ -89,7 +89,7 @@ class _StoryScreenState extends ConsumerState<StoryScreen> {
         storyRunTrackerProvider.select((s) => s.refusals[widget.groupId]));
 
     Widget body;
-    if (collection == null || group == null || runs.valueOrNull == null) {
+    if (collection == null || group == null || runs.value == null) {
       body = const Center(child: CircularProgressIndicator());
     } else {
       final list = runs.value!;

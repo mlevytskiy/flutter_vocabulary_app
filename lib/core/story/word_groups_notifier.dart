@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/words/words_notifier.dart';
@@ -200,8 +201,8 @@ class WordGroupsNotifier extends _$WordGroupsNotifier {
   /// which may have words not yet written), or a History session from the store.
   Future<WordCollection?> _collection() async {
     final wanted = collectionId;
-    if (wanted == null) return ref.read(wordsNotifierProvider.future);
-    final current = ref.read(wordsNotifierProvider).valueOrNull;
+    if (wanted == null) return ref.read(wordsProvider.future);
+    final current = ref.read(wordsProvider).value;
     if (current != null && current.collectionId == wanted) return current;
     final store = await ref.read(collectionStoreProvider.future);
     return store.byId(wanted);

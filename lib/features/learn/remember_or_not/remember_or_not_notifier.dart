@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/providers.dart' show asyncNotifyAsBefore;
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
@@ -87,6 +88,11 @@ class RememberState {
 
 @riverpod
 class RememberOrNot extends _$RememberOrNot {
+  // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
+  @override
+  bool updateShouldNotify(AsyncValue<RememberState> previous, AsyncValue<RememberState> next) =>
+      asyncNotifyAsBefore(previous, next);
+
   @override
   Future<RememberState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
@@ -108,14 +114,14 @@ class RememberOrNot extends _$RememberOrNot {
   }
 
   void flip() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.card == null || s.flipped) return;
     state = AsyncData(s.copyWith(flipped: true));
   }
 
   /// Rates the card on its back: [remembered] true is "Remembered" / "Got it".
   void rate(bool remembered) {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || s.card == null || !s.flipped) return;
     final current = s.queue.first;
     final rest = s.queue.sublist(1);
@@ -142,7 +148,7 @@ class RememberOrNot extends _$RememberOrNot {
   }
 
   void nextRound() {
-    final s = state.valueOrNull;
+    final s = state.value;
     if (s == null || !s.inSummary || s.round + 1 >= s.rounds.length) return;
     state = AsyncData(RememberState(
       rounds: s.rounds,

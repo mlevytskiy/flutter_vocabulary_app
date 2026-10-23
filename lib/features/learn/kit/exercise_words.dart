@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/models/film_dialogue.dart';
@@ -19,7 +18,7 @@ part 'exercise_words.g.dart';
 Future<({List<WordPair> group, List<WordPair> others})> exerciseWords(
     Ref ref, String? collectionId, String groupId) async {
   final WordCollection? collection = collectionId == null
-      ? await ref.watch(wordsNotifierProvider.future)
+      ? await ref.watch(wordsProvider.future)
       : await ref.watch(collectionByIdProvider(collectionId).future);
   if (collection == null) return (group: const <WordPair>[], others: const <WordPair>[]);
   final group = collection.groups.where((g) => g.id == groupId).firstOrNull;
@@ -36,7 +35,7 @@ Future<({List<WordPair> group, List<WordPair> others})> exerciseWords(
 @riverpod
 Future<List<FilmDialogue>> exerciseDialogues(Ref ref, String? collectionId) async {
   final WordCollection? collection = collectionId == null
-      ? await ref.watch(wordsNotifierProvider.future)
+      ? await ref.watch(wordsProvider.future)
       : await ref.watch(collectionByIdProvider(collectionId).future);
   return collection?.dialogues ?? const <FilmDialogue>[];
 }

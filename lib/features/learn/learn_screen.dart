@@ -111,7 +111,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   /// others open for the selected group ([startRouteFor]). A screen already
   /// shown is not shown again.
   Future<void> _start() async {
-    final grouping = ref.read(wordGroupsNotifierProvider(widget.collectionId));
+    final grouping = ref.read(wordGroupsProvider(widget.collectionId));
     final groupId = grouping.selectedGroupId;
     final group = grouping.groups.where((g) => g.id == groupId).firstOrNull;
     final opened = <String>{};
@@ -141,7 +141,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
   }
 
   WordGroupsNotifier get _groups =>
-      ref.read(wordGroupsNotifierProvider(widget.collectionId).notifier);
+      ref.read(wordGroupsProvider(widget.collectionId).notifier);
 
   /// Sticky until OK or until an exercise is ticked.
   void _showHint() {
@@ -177,8 +177,8 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
 
   /// The session whose words the groups name.
   WordCollection? get _collection => widget.collectionId == null
-      ? ref.watch(wordsNotifierProvider).valueOrNull
-      : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
+      ? ref.watch(wordsProvider).value
+      : ref.watch(collectionByIdProvider(widget.collectionId!)).value;
 
   /// The group line, the group pager and the grouping messages above the
   /// exercise cards (AC-01 – AC-05, AC-19).
@@ -234,7 +234,7 @@ class _LearnScreenState extends ConsumerState<LearnScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final grouping = ref.watch(wordGroupsNotifierProvider(widget.collectionId));
+    final grouping = ref.watch(wordGroupsProvider(widget.collectionId));
     // The story is made from the selected group, so Mnemonic story cannot
     // start without one (AC-04, AC-05).
     final canStart = _canStart(grouping);

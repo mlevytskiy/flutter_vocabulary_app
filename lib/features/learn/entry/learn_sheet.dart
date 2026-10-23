@@ -60,7 +60,7 @@ class _LearnSheet extends ConsumerWidget {
     final count = wordsToLearn(collection).length;
     final due = dueCount(collection, DateTime.now());
     final canSplit = count >= splitShowsAt;
-    final split = canSplit && ref.watch(learnSplitNotifierProvider(id));
+    final split = canSplit && ref.watch(learnSplitProvider(id));
 
     String nextLine = '';
     if (split) {
@@ -68,7 +68,7 @@ class _LearnSheet extends ConsumerWidget {
         collection,
         split: true,
         wordsPerSession: null,
-        lastGroup: ref.watch(learnLastGroupNotifierProvider(id)),
+        lastGroup: ref.watch(learnLastGroupProvider(id)),
         now: DateTime.now(),
       ));
     }
@@ -130,7 +130,7 @@ class _LearnSheet extends ConsumerWidget {
                 value: split,
                 title: const Text('Split words into groups of 7–12'),
                 onChanged: (v) => ref
-                    .read(learnSplitNotifierProvider(id).notifier)
+                    .read(learnSplitProvider(id).notifier)
                     .set(v ?? true),
               ),
               if (nextLine.isNotEmpty)

@@ -1,4 +1,3 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/models/tag_kind.dart';
@@ -13,9 +12,9 @@ part 'tag_suggestions.g.dart';
 /// Tags already on the field are not removed here; the widgets filter them.
 @riverpod
 List<TagSuggestion> tagSuggestions(Ref ref, TagKind kind, {String query = ''}) {
-  final library = ref.watch(tagLibraryProvider).valueOrNull ?? const [];
+  final library = ref.watch(tagLibraryProvider).value ?? const [];
   final summaries =
-      ref.watch(collectionSummariesProvider).valueOrNull ?? const [];
+      ref.watch(collectionSummariesProvider).value ?? const [];
   return rankSuggestions(
     kind: kind,
     library: [

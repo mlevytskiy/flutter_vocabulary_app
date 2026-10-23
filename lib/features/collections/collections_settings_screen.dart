@@ -25,7 +25,7 @@ class _CollectionsSettingsScreenState
   Future<void> _replaceDateNames() async {
     setState(() => _replacing = true);
     final result =
-        await ref.read(wordsNotifierProvider.notifier).replaceDateNames();
+        await ref.read(wordsProvider.notifier).replaceDateNames();
     if (!mounted) return;
     setState(() => _replacing = false);
     ScaffoldMessenger.of(context)

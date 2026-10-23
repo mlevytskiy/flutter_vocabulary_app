@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show Provider;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/words/words_notifier.dart';
@@ -469,8 +470,8 @@ class StoryRunTracker extends _$StoryRunTracker {
         ..storyRunId = run.runId
         ..storyWords = [...run.words];
     });
-    final current = ref.read(wordsNotifierProvider).valueOrNull?.collectionId == run.collectionId;
-    final groups = wordGroupsNotifierProvider(current ? null : run.collectionId);
+    final current = ref.read(wordsProvider).value?.collectionId == run.collectionId;
+    final groups = wordGroupsProvider(current ? null : run.collectionId);
     if (ref.exists(groups)) await ref.read(groups.notifier).reload();
   }
 
@@ -481,9 +482,9 @@ class StoryRunTracker extends _$StoryRunTracker {
     if (collection == null) return;
     final dialogueId = collection.groups.where((g) => g.id == run.groupId).firstOrNull?.dialogueId;
     if (dialogueId == null) return;
-    final current = ref.read(wordsNotifierProvider).valueOrNull?.collectionId == run.collectionId;
+    final current = ref.read(wordsProvider).value?.collectionId == run.collectionId;
     if (current) {
-      await ref.read(wordsNotifierProvider.notifier).setScenePicture(dialogueId, run.runId);
+      await ref.read(wordsProvider.notifier).setScenePicture(dialogueId, run.runId);
       return;
     }
     await (await ref.read(collectionStoreProvider.future)).update(run.collectionId, (stored) {
@@ -540,7 +541,7 @@ class StoryRunTracker extends _$StoryRunTracker {
 
   /// The current session's live object, or a History session from the store.
   Future<WordCollection?> _collection(String collectionId) async {
-    final current = await ref.read(wordsNotifierProvider.future);
+    final current = await ref.read(wordsProvider.future);
     if (current.collectionId == collectionId) return current;
     return (await ref.read(collectionStoreProvider.future)).byId(collectionId);
   }

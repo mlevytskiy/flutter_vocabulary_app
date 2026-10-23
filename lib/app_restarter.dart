@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app.dart';
+import 'core/providers.dart';
 import 'core/services/collection_store.dart';
 import 'router/routes.dart';
 import 'router/start_location.dart';
@@ -78,6 +79,12 @@ class AppRestarterState extends State<AppRestarter> {
         home: Scaffold(body: Center(child: CircularProgressIndicator())),
       );
     }
-    return ProviderScope(key: ValueKey(_generation), child: const App());
+    return ProviderScope(
+      key: ValueKey(_generation),
+      // Riverpod 3 retries a failed provider by default; the app shows the
+      // error at once with its own Retry, as on Riverpod 2 (toolchain-upgrade).
+      retry: noProviderRetry,
+      child: const App(),
+    );
   }
 }

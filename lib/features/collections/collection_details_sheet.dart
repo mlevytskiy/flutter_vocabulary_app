@@ -180,7 +180,7 @@ class _DetailsSheetState extends ConsumerState<_DetailsSheet> {
   Widget _tagField(
       TagKind kind, List<String> tags, ValueChanged<List<String>> onChanged) {
     final suggestions = ref.watch(tagSuggestionsProvider(kind));
-    final library = ref.watch(tagLibraryProvider).valueOrNull ?? const [];
+    final library = ref.watch(tagLibraryProvider).value ?? const [];
     return TypedTagField(
       kind: kind,
       tags: tags,

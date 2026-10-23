@@ -108,15 +108,15 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
   @override
   Widget build(BuildContext context) {
     final sources = ref.watch(sourcesWithWordsProvider);
-    final words = ref.watch(wordsNotifierProvider).valueOrNull?.words ??
+    final words = ref.watch(wordsProvider).value?.words ??
         const <WordPair>[];
     final mode = ref.watch(wordDetailModeProvider);
     final preloader = ref.watch(photoPreloaderProvider);
-    final current = ref.watch(wordsNotifierProvider).valueOrNull;
+    final current = ref.watch(wordsProvider).value;
     final collectionTags = current == null
         ? (origin: const <String>[], topic: const <String>[])
         : effectiveTagsOf(current);
-    final notifier = ref.read(wordsNotifierProvider.notifier);
+    final notifier = ref.read(wordsProvider.notifier);
     return Scaffold(
       backgroundColor: AppDecor.of(context).paper,
       appBar: AppBar(
@@ -284,7 +284,7 @@ class _NoteItemState extends ConsumerState<_NoteItem>
   String get _id => widget.item.source.id;
 
   WordsNotifier get _notifier =>
-      ref.read(wordsNotifierProvider.notifier);
+      ref.read(wordsProvider.notifier);
 
   @override
   void initState() {

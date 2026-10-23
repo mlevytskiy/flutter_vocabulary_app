@@ -209,7 +209,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
     // frame instead (the restore writes to the notifier, which a lifecycle
     // method may not).
     if (_restoredCollectionId == null) {
-      final collection = ref.read(wordsNotifierProvider).valueOrNull;
+      final collection = ref.read(wordsProvider).value;
       if (collection != null) {
         _restoredCollectionId = collection.collectionId;
         if (collection.words.isNotEmpty) {
@@ -224,8 +224,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
         ModalRoute.isCurrentOf(context) != true) {
       return;
     }
-    final notifier = ref.read(wordsNotifierProvider.notifier);
-    final collection = ref.read(wordsNotifierProvider).valueOrNull;
+    final notifier = ref.read(wordsProvider.notifier);
+    final collection = ref.read(wordsProvider).value;
     if (collection == null || !notifier.takeEditedElsewhere()) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _restoreFromStore(collection.words);
@@ -242,13 +242,13 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
     // before onResume, so resuming is the race-free point to claim it.
     if (state == AppLifecycleState.resumed) {
       _pollForLostPhoto();
-      ref.read(wordsNotifierProvider.notifier).resume();
+      ref.read(wordsProvider.notifier).resume();
     }
     // The OS can kill the process while the camera is open; `paused` is the
     // last guaranteed callback before that happens, so flush immediately
     // instead of waiting on the debounce timer.
     if (state == AppLifecycleState.paused) {
-      ref.read(wordsNotifierProvider.notifier).flush();
+      ref.read(wordsProvider.notifier).flush();
       ref.read(pronunciationServiceProvider).stop();
     }
   }
@@ -471,7 +471,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
         _wordPairs.add(newPair);
         _addControllersForIndex(_wordPairs.length - 1);
       });
-      ref.read(wordsNotifierProvider.notifier).addAll([newPair]);
+      ref.read(wordsProvider.notifier).addAll([newPair]);
     }
   }
 
@@ -568,7 +568,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   Future<void> _processPickedPhoto(XFile picked,
       {ImageSource source = ImageSource.camera}) async {
     final collectionId = _collectionIdNow;
-    final notifier = ref.read(wordsNotifierProvider.notifier);
+    final notifier = ref.read(wordsProvider.notifier);
     setState(() {
       _isAnalyzingPhoto = true;
     });
@@ -675,11 +675,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   /// collections-screen T14: the current collection's stored name, or its date
   /// name until the backfill has given it one (AC-01).
   String _collectionTitle() {
-    final collection = ref.watch(wordsNotifierProvider).valueOrNull;
+    final collection = ref.watch(wordsProvider).value;
     if (collection == null) return '';
     final stored = ref
         .watch(collectionNamingProvider(collection.collectionId))
-        .valueOrNull
+        .value
         ?.name;
     return stored ??
         defaultCollectionName(
@@ -691,12 +691,12 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   /// undefined one.
   NameKind? _shownNameKind;
   bool _titleReveals() {
-    final collection = ref.watch(wordsNotifierProvider).valueOrNull;
+    final collection = ref.watch(wordsProvider).value;
     final kind = collection == null
         ? null
         : ref
             .watch(collectionNamingProvider(collection.collectionId))
-            .valueOrNull
+            .value
             ?.kind;
     final reveals = kind == NameKind.auto && _shownNameKind == NameKind.undefined;
     _shownNameKind = kind;
@@ -707,13 +707,13 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   /// tags) and saves through the store; the title follows the stored name
   /// (collection-tags AC-05).
   Future<void> _renameCollection() async {
-    final collection = ref.read(wordsNotifierProvider).valueOrNull;
+    final collection = ref.read(wordsProvider).value;
     if (collection == null) return;
     // A name or description nobody gave is still AI's to fill: the field
     // starts empty with New collection's AI hint and note (owner, 2026-10-18).
     final naming = ref
         .read(collectionNamingProvider(collection.collectionId))
-        .valueOrNull;
+        .value;
     final title = _collectionTitle();
     final aiName = naming?.kind == NameKind.undefined;
     final description = collection.description ?? '';
@@ -732,7 +732,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
       ),
     );
     if (details == null) return;
-    await ref.read(wordsNotifierProvider.notifier).saveDetails(
+    await ref.read(wordsProvider.notifier).saveDetails(
           // Left blank: the name stays AI's to give.
           name: details.name.trim().isEmpty ? null : details.name,
           description: details.description,
@@ -747,9 +747,9 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   Future<void> _importFromSubtitles() => runSubtitleImport(
         context: context,
         ref: ref,
-        currentCollectionId: () => ref.read(wordsNotifierProvider).valueOrNull?.collectionId,
+        currentCollectionId: () => ref.read(wordsProvider).value?.collectionId,
         collectionWords: () => [
-          for (final pair in ref.read(wordsNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+          for (final pair in ref.read(wordsProvider).value?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty && pair.word.trim().length <= 500) pair.word.trim(),
         ].take(500).toList(),
         addWords: (words, film, poster) {
@@ -757,15 +757,15 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
           // side-panel-sources AC-22: the film joins the session's sources
           // (or the one already there is reused), and the rows point at it.
           final sourceId =
-              ref.read(wordsNotifierProvider.notifier).upsertSubtitlesSource(film, poster: poster);
+              ref.read(wordsProvider.notifier).upsertSubtitlesSource(film, poster: poster);
           _addWordsFromPhoto(words, sourceId: sourceId);
         },
         addDialogues: (dialogues, keptCount) {
-          if (mounted) ref.read(wordsNotifierProvider.notifier).addImportDialogues(dialogues, keptCount);
+          if (mounted) ref.read(wordsProvider.notifier).addImportDialogues(dialogues, keptCount);
         },
         addWordsTo: (collectionId, words, film, poster, dialogues) async {
           if (!mounted) return;
-          await ref.read(wordsNotifierProvider.notifier).addWordsTo(
+          await ref.read(wordsProvider.notifier).addWordsTo(
                 collectionId,
                 [for (final w in words) wordPairFromPhoto(w)],
                 film: film,
@@ -781,21 +781,21 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   /// each pointing at it (AC-03, AC-13b).
   Future<void> _importFromQuizlet() => runQuizletImport(
         context: context,
-        currentCollectionId: () => ref.read(wordsNotifierProvider).valueOrNull?.collectionId,
+        currentCollectionId: () => ref.read(wordsProvider).value?.collectionId,
         collectionWords: () => [
-          for (final pair in ref.read(wordsNotifierProvider).valueOrNull?.words ?? const <WordPair>[])
+          for (final pair in ref.read(wordsProvider).value?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty) pair.word.trim(),
         ],
         addWords: (words, set) {
           if (!mounted) return;
           final sourceId = ref
-              .read(wordsNotifierProvider.notifier)
+              .read(wordsProvider.notifier)
               .upsertSetSource(set.id, set.name, set.url);
           _addWordsFromPhoto(words, sourceId: sourceId);
         },
         addWordsTo: (collectionId, words, set) async {
           if (!mounted) return;
-          await ref.read(wordsNotifierProvider.notifier).addWordsTo(
+          await ref.read(wordsProvider.notifier).addWordsTo(
                 collectionId,
                 [for (final w in words) wordPairFromPhoto(w)],
                 set: set,
@@ -808,7 +808,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {
-      ref.read(wordsNotifierProvider.notifier).addSource(source);
+      ref.read(wordsProvider.notifier).addSource(source);
     }
     // The new words go after the last word, not after the trailing blank row:
     // drop it here, and _checkAndAddNewPair below adds a fresh one at the end.
@@ -852,7 +852,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
           sourceId: _wordPairs[0].sourceId);
     }
     if (appendedPairs.isNotEmpty) {
-      ref.read(wordsNotifierProvider.notifier).addAll(appendedPairs);
+      ref.read(wordsProvider.notifier).addAll(appendedPairs);
     }
     // After addAll, so the notifier gets the new blank row after the words too.
     _checkAndAddNewPair();
@@ -925,7 +925,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
       _popupControllers.removeWhere((index, _) => index >= _wordPairs.length);
       _definitionPopupControllers.removeWhere((index, _) => index >= _wordPairs.length);
 
-      ref.read(wordsNotifierProvider.notifier).reorder(oldIndex, newIndex);
+      ref.read(wordsProvider.notifier).reorder(oldIndex, newIndex);
     });
   }
 
@@ -1007,7 +1007,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
     // ordinary notifier updates below (all driven by this screen's own
     // mutations, via updateAt/removeAt/reorder/addAll) never re-trigger it,
     // while another session being swapped in does.
-    ref.listen(wordsNotifierProvider, (previous, next) {
+    ref.listen(wordsProvider, (previous, next) {
       next.whenData((collection) {
         if (_restoredCollectionId == collection.collectionId) return;
         final swapped = _restoredCollectionId != null;
@@ -1083,7 +1083,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
             Flexible(
               child: CollectionTitle(
                 text: _collectionTitle(),
-                collectionId: ref.watch(wordsNotifierProvider).valueOrNull?.collectionId,
+                collectionId: ref.watch(wordsProvider).value?.collectionId,
                 animate: _titleReveals(),
               ),
             ),
@@ -1264,8 +1264,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   Future<void> _openNotes(String? id) async {
     await NotesRoute(selectedId: id).push<void>(context);
     if (!mounted) return;
-    final notifier = ref.read(wordsNotifierProvider.notifier);
-    final collection = ref.read(wordsNotifierProvider).valueOrNull;
+    final notifier = ref.read(wordsProvider.notifier);
+    final collection = ref.read(wordsProvider).value;
     if (!notifier.takeEditedElsewhere() || collection == null) return;
     _restoreFromStore(collection.words);
   }
@@ -1273,7 +1273,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   /// The current collection's typed tags; a collection from before the typed
   /// tags shows its legacy tags as topic tags.
   bool get _legacyOnly {
-    final c = ref.watch(wordsNotifierProvider).valueOrNull;
+    final c = ref.watch(wordsProvider).value;
     return c != null &&
         c.originTags.isEmpty &&
         c.topicTags.isEmpty &&
@@ -1281,10 +1281,10 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
   }
 
   List<String> _originTags() =>
-      ref.watch(wordsNotifierProvider).valueOrNull?.originTags ?? const [];
+      ref.watch(wordsProvider).value?.originTags ?? const [];
 
   List<String> _topicTags() {
-    final c = ref.watch(wordsNotifierProvider).valueOrNull;
+    final c = ref.watch(wordsProvider).value;
     if (c == null) return const [];
     return _legacyOnly ? c.tags : c.topicTags;
   }

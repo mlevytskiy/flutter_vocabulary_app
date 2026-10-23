@@ -99,12 +99,12 @@ class StoryRunsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final runsAsync = ref.watch(storyRunsProvider);
-    final existing = ref.watch(existingCollectionIdsProvider).valueOrNull;
+    final existing = ref.watch(existingCollectionIdsProvider).value;
     final theme = Theme.of(context);
     final small = theme.textTheme.bodySmall?.copyWith(color: theme.hintColor);
 
     final Widget body;
-    final runs = runsAsync.valueOrNull;
+    final runs = runsAsync.value;
     if (runs == null) {
       body = const Center(child: CircularProgressIndicator());
     } else if (runs.isEmpty) {

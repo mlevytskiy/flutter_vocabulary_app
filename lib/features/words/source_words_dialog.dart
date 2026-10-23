@@ -50,10 +50,10 @@ class _SourceWordsDialogState extends ConsumerState<SourceWordsDialog>
   @override
   void initState() {
     super.initState();
-    _notifier = ref.read(wordsNotifierProvider.notifier);
+    _notifier = ref.read(wordsProvider.notifier);
     _pronunciation = ref.read(pronunciationServiceProvider);
     final words =
-        ref.read(wordsNotifierProvider).valueOrNull?.words ?? const [];
+        ref.read(wordsProvider).value?.words ?? const [];
     _wordsBefore = _wordsKey(words);
     _loadRows();
   }
@@ -89,7 +89,7 @@ class _SourceWordsDialogState extends ConsumerState<SourceWordsDialog>
       list.clear();
     }
     final words =
-        ref.read(wordsNotifierProvider).valueOrNull?.words ?? const [];
+        ref.read(wordsProvider).value?.words ?? const [];
     for (var i = 0; i < words.length; i++) {
       if (words[i].sourceId != widget.sourceId) continue;
       _rows.add(i);
@@ -136,7 +136,7 @@ class _SourceWordsDialogState extends ConsumerState<SourceWordsDialog>
   /// main screen's blank row when the source has none left).
   void _addWord() {
     final words =
-        ref.read(wordsNotifierProvider).valueOrNull?.words ?? const [];
+        ref.read(wordsProvider).value?.words ?? const [];
     final at = _rows.isNotEmpty
         ? _rows.last + 1
         : words.length - (words.isNotEmpty && words.last.isEmpty ? 1 : 0);
@@ -159,7 +159,7 @@ class _SourceWordsDialogState extends ConsumerState<SourceWordsDialog>
       if (_wordPairs[i].isEmpty) _notifier.removeAt(_rows[i]);
     }
     final words =
-        ref.read(wordsNotifierProvider).valueOrNull?.words ?? const [];
+        ref.read(wordsProvider).value?.words ?? const [];
     if (_wordsKey(words) != _wordsBefore) _notifier.markEditedElsewhere();
   }
 

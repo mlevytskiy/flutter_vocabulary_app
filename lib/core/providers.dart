@@ -1,6 +1,5 @@
 import 'dialogues/dialogue_push.dart' show DialoguePushService;
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -146,9 +145,6 @@ Future<OfferedAiList> offeredAis(Ref ref) async {
   }
 }
 
-/// Short name used across the app and the design docs.
-final aiChoiceProvider = aiChoiceNotifierProvider;
-
 /// The learner's saved AI for each step of a story run (AC-12). Persisted like
 /// the word detail mode; check it with [resolveAiChoice] against [offeredAisProvider]
 /// before showing or using it, so a withdrawn AI falls back to the default (AC-13).
@@ -288,10 +284,6 @@ class DragMode extends _$DragMode {
 /// translation, definition, or both. Changes what is shown, never what is
 /// stored.
 enum WordDetailMode { translation, definition, both }
-
-/// Short name used across the app and the design docs; the class cannot be
-/// called `WordDetailMode` because the enum is.
-final wordDetailModeProvider = wordDetailModeNotifierProvider;
 
 /// The learner's word detail mode. Unlike drag mode it survives a restart, so
 /// it is persisted under one preferences key; it is still a display preference
@@ -530,7 +522,7 @@ class SpeechEngineNotifier extends _$SpeechEngineNotifier {
 /// AC-28, ADR-0009); overridden with a fake in tests.
 @Riverpod(keepAlive: true)
 SpeechInput speechInput(Ref ref) =>
-    switch (ref.watch(speechEngineNotifierProvider)) {
+    switch (ref.watch(speechEngineProvider)) {
       SpeechEngine.speechToText => SpeechToTextInput(),
       SpeechEngine.speechToTextPro => SpeechToTextProInput(),
     };
@@ -576,9 +568,6 @@ class AppThemeNotifier extends _$AppThemeNotifier {
 @Riverpod(keepAlive: true)
 DialoguePushService dialoguePushService(Ref ref) => DialoguePushService();
 
-/// Short name used across the app and the design docs.
-final dialoguesSettingProvider = dialoguesSettingNotifierProvider;
-
 /// The "Get dialogues from subtitles" switch in Settings
 /// (get-words-from-subtitles-improvment, SCR-03): whether a subtitle import
 /// also asks for film dialogues. Persisted like the word detail mode; off
@@ -611,9 +600,6 @@ class DialoguesSettingNotifier extends _$DialoguesSettingNotifier {
     await prefs.setBool(prefsKey, on);
   }
 }
-
-/// Short name used across the app and the design docs.
-final subtitleImportPrefsProvider = subtitleImportPrefsNotifierProvider;
 
 /// The subtitle import values in Settings (words-from-subtitles, data-model.md
 /// Device preferences): one set of level and maximum, the "Update with
@@ -722,9 +708,6 @@ class SubtitleImportPrefsNotifier extends _$SubtitleImportPrefsNotifier {
   }
 }
 
-/// Short name used across the app and the design docs.
-final photoTabTopProvider = photoTabTopNotifierProvider;
-
 /// The photo tab's top, in logical pixels from the top of the main screen's
 /// words page (side-bar-for-main-screen, sad §4). The learner drags the tab
 /// up or down and the height is kept across restarts (spec AC-14). A display
@@ -776,9 +759,6 @@ class PhotoTabTopNotifier extends _$PhotoTabTopNotifier {
 /// refractive index above 1), [blur] scales the blur (liquid-glass-tuning,
 /// owner 2026-10-19).
 typedef LiquidGlassTuning = ({double thickness, double bending, double blur});
-
-/// Short name used across the app and the design docs.
-final liquidGlassTuningProvider = liquidGlassTuningNotifierProvider;
 
 /// The Words settings' Liquid glass sliders (liquid-glass-tuning, owner
 /// 2026-10-19), for the photo tab and the half-open panel. Persisted like
@@ -842,9 +822,6 @@ class LiquidGlassTuningNotifier extends _$LiquidGlassTuningNotifier {
   Future<void> reset() => set(asDesigned);
 }
 
-/// Short name for [RecentFilterTagsNotifier].
-final recentFilterTagsProvider = recentFilterTagsNotifierProvider;
-
 /// The tags the learner applied from the Collections filter sheet, newest
 /// first, at most [keep] (filter-sheet-pills, owner 2026-10-18). Persisted
 /// like [WordDetailModeNotifier] under one preferences key, each entry
@@ -899,4 +876,19 @@ class RecentFilterTagsNotifier extends _$RecentFilterTagsNotifier {
       debugPrint('VOCAB: filter sheet: recent tags not saved: $e');
     }
   }
+}
+
+/// No automatic retry of a failed provider (Riverpod 3's default retries with
+/// a growing pause); failures show at once, as before the toolchain upgrade.
+Duration? noProviderRetry(int retryCount, Object error) => null;
+
+/// Riverpod 2's notify rule for an AsyncNotifier, kept by every AsyncNotifier
+/// here: a new state always notifies, except while loading stays loading.
+/// Riverpod 3 compares with `==`, which would hide an update that stores the
+/// same (changed in place) object again (toolchain-upgrade).
+bool asyncNotifyAsBefore(AsyncValue<Object?> previous, AsyncValue<Object?> next) {
+  final wasLoading = previous.isLoading;
+  final isLoading = next.isLoading;
+  if (wasLoading || isLoading) return wasLoading != isLoading;
+  return true;
 }

@@ -53,14 +53,14 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
   StoryRunTracker get _tracker => ref.read(storyRunTrackerProvider.notifier);
 
   WordCollection? get _collection => widget.collectionId == null
-      ? ref.watch(wordsNotifierProvider).valueOrNull
-      : ref.watch(collectionByIdProvider(widget.collectionId!)).valueOrNull;
+      ? ref.watch(wordsProvider).value
+      : ref.watch(collectionByIdProvider(widget.collectionId!)).value;
 
   @override
   Widget build(BuildContext context) {
     final collection = _collection;
     final group = ref
-        .watch(wordGroupsNotifierProvider(widget.collectionId))
+        .watch(wordGroupsProvider(widget.collectionId))
         .groups
         .where((g) => g.id == widget.groupId)
         .firstOrNull;
@@ -75,7 +75,7 @@ class _DialogueScreenState extends ConsumerState<DialogueScreen> {
     if (collection == null ||
         group == null ||
         dialogue == null ||
-        runs.valueOrNull == null) {
+        runs.value == null) {
       body = const Center(child: CircularProgressIndicator());
     } else {
       final scenes = [
