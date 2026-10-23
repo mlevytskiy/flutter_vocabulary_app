@@ -1,46 +1,15 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
-import '../kit/example_line.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
 import '../kit/result_summary.dart';
 import '../kit/split_rounds.dart';
-import '../kit/word_marks.dart';
+import 'remember_or_not_pages.dart';
+
+export 'remember_or_not_pages.dart' show FlashCard, frontFor;
 
 part 'remember_or_not_notifier.g.dart';
-
-class FlashCard {
-  const FlashCard({
-    required this.rowId,
-    required this.word,
-    required this.front,
-    required this.translation,
-    this.example,
-  });
-
-  final String rowId;
-  final String word;
-  final String front;
-  final String translation;
-  final String? example;
-}
-
-final _letter = RegExp(r'\p{L}', unicode: true);
-
-String? _maskedWithLetters(String text, String word) {
-  final masked = maskWord(text.trim(), word);
-  return masked.replaceAll('___', '').contains(_letter) ? masked : null;
-}
-
-/// The front of a card: the masked definition, else the masked translation
-/// (D-08, D-16); null when neither keeps a letter, so the word is not usable.
-String? frontFor(WordPair w) {
-  final word = w.word.trim();
-  if (word.isEmpty) return null;
-  return _maskedWithLetters(w.definition, word) ?? _maskedWithLetters(w.translation, word);
-}
 
 class RememberState {
   const RememberState({
@@ -123,17 +92,7 @@ class RememberOrNot extends _$RememberOrNot {
     final random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final dialogues = await ref.watch(exerciseDialoguesProvider(collectionId).future);
-    final usable = <FlashCard>[
-      for (final w in words.group)
-        if (frontFor(w) case final front?)
-          FlashCard(
-            rowId: w.rowId,
-            word: w.word.trim(),
-            front: front,
-            translation: w.translation.trim(),
-            example: exampleLineFor(w, dialogues),
-          ),
-    ];
+    final usable = rememberCards(words.group, dialogues);
     final rounds = [
       for (final r in splitRounds(usable, min: 3, max: 9)) ([...r]..shuffle(random)),
     ];

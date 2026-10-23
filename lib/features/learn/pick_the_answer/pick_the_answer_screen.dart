@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../kit/choice_options.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_scaffold.dart';
 import 'pick_the_answer_notifier.dart';
+import 'pick_the_answer_page_body.dart';
 
 /// Pick the right answer for one word group (learn-pick-the-answer): one
 /// question at a time with four options inside the shared frame (S-30). The
@@ -40,14 +40,10 @@ class PickTheAnswerScreen extends ConsumerWidget {
             children: [
               Text('Question ${s.index + 1} of ${s.roundSize}'),
               const SizedBox(height: 8),
-              Text(s.kindIsWord ? 'Pick the translation' : 'Pick the word'),
-              const SizedBox(height: 16),
-              Text(question.prompt, style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 24),
-              ChoiceOptions(
+              PickTheAnswerPageBody(
                 question: question,
+                kind: s.item!.kind,
                 picked: s.picked,
-                reveal: true,
                 onPick: notifier.pick,
               ),
               if (s.picked != null)

@@ -9,65 +9,17 @@ import '../../../core/providers.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
-import '../kit/gap_question.dart';
-import '../kit/question_builder.dart';
 import '../kit/result_summary.dart';
 import '../kit/typed_answer_field.dart';
+import 'quiz_pages.dart';
+
+export 'quiz_pages.dart'
+    show QuizData, QuizQuestion, QuizSlot, choiceLabel, quizLayout, quizMaxQuestions, typedLabel;
 
 part 'quiz_notifier.g.dart';
 
 /// The frozen exercise id the Quiz records its word results under (S-02, S-55).
 const quizExerciseId = 'quiz';
-
-/// The most questions in one attempt (S-54).
-const quizMaxQuestions = 7;
-
-/// One planned position of an attempt (S-54): the word, and the choice kind
-/// it takes, or null for a gap question.
-typedef QuizSlot = ({WordPair word, QuestionKind? kind});
-
-/// The S-54 walk over [order] (already shuffled): at most 7 words from its
-/// front; an odd position takes the first remaining word that [canChoose]
-/// (else the first remaining word, as a gap), an even position the first
-/// remaining word that [canGap] (else the first remaining word, as a
-/// choice). Choice positions take kinds A, B, A… in their own order. Every
-/// word in [order] must take at least one of the two. Pure.
-List<QuizSlot> quizLayout(
-  List<WordPair> order, {
-  required bool Function(WordPair) canChoose,
-  required bool Function(WordPair) canGap,
-}) {
-  final left = order.take(quizMaxQuestions).toList();
-  final slots = <QuizSlot>[];
-  var choices = 0;
-  while (left.isNotEmpty) {
-    final wantChoice = slots.length.isEven; // positions 1, 3, 5… from 0
-    final at = left.indexWhere(wantChoice ? canChoose : canGap);
-    final word = left.removeAt(at < 0 ? 0 : at);
-    final choice = at < 0 ? !wantChoice : wantChoice;
-    QuestionKind? kind;
-    if (choice) kind = (choices++).isEven ? QuestionKind.wordToTranslation : QuestionKind.meaningToWord;
-    slots.add((word: word, kind: kind));
-  }
-  return slots;
-}
-
-/// One question of an attempt: a choice question ([choice], [kind]) or a gap
-/// question ([gap]).
-class QuizQuestion {
-  const QuizQuestion({required this.word, this.choice, this.kind, this.gap})
-      : assert((choice == null) != (gap == null));
-
-  final WordPair word;
-  final Question? choice;
-  final QuestionKind? kind;
-  final GapQuestion? gap;
-
-  String get rowId => word.rowId;
-
-  /// The right answer as the summary shows it: the right option, or the word.
-  String get right => choice != null ? choice!.options[choice!.rightIndex] : gap!.answer;
-}
 
 /// The final answer to one question (S-55): its [label], the learner's
 /// [given] answer (null = skipped) and the option [picked] on a choice question.
@@ -77,29 +29,6 @@ class QuizAnswer {
   final WordResultLabel label;
   final String? given;
   final int? picked;
-}
-
-/// S-55 (3): a choice answer's label.
-WordResultLabel choiceLabel(Question question, int picked) =>
-    picked == question.rightIndex ? WordResultLabel.known : WordResultLabel.repeat;
-
-/// S-55 (3): a typed answer's label; right and almost are known, wrong and Skip repeat.
-WordResultLabel typedLabel(TypedAnswerResult result) =>
-    result.match.isRight && !result.gaveUp ? WordResultLabel.known : WordResultLabel.repeat;
-
-/// What the Quiz loaded at open (S-53), kept for Repeat attempts (no new read
-/// or call).
-class QuizData {
-  const QuizData({required this.pool, required this.choosable, required this.gaps, required this.gapsUnavailable});
-
-  final QuestionPool pool;
-
-  /// Row ids of the words that take a choice question of both kinds (S-25).
-  final Set<String> choosable;
-  final Map<String, GapQuestion> gaps;
-
-  /// The gap load failed: the Quiz asks choice questions only.
-  final bool gapsUnavailable;
 }
 
 /// Where the Quiz stands (S-53 – S-56). [data] is null when there are not
@@ -171,45 +100,26 @@ class Quiz extends _$Quiz {
     _random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final dialogues = await ref.watch(exerciseDialoguesProvider(collectionId).future);
-    final candidates = <WordPair>[
-      for (final w in words.group)
-        if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty) w,
-    ];
+    final candidates = quizCandidates(words.group);
     if (candidates.length < 3) return const QuizState();
 
-    final pool = QuestionPool(group: words.group, others: words.others);
-    // S-25: whether a question can be built never depends on the Random.
-    final choosable = {
-      for (final w in candidates)
-        if (QuestionKind.values.every((k) => buildQuestion(w, pool, k, Random(0)) != null)) w.rowId,
-    };
-    var gaps = const <String, GapQuestion>{};
-    var gapsUnavailable = false;
-    try {
-      gaps = await loadGapQuestions(candidates, dialogues, ref.read(learnApiServiceProvider));
-    } catch (_) {
-      // S-53: any gap failure degrades to choice questions only.
-      gapsUnavailable = true;
-    }
-    final data = QuizData(pool: pool, choosable: choosable, gaps: gaps, gapsUnavailable: gapsUnavailable);
-    final usable = [for (final w in candidates) if (_canChoose(data, w) || _canGap(data, w)) w];
+    final data = await loadQuizData(
+      candidates,
+      group: words.group,
+      others: words.others,
+      dialogues: dialogues,
+      api: ref.read(learnApiServiceProvider),
+    );
+    final usable = quizUsable(data, candidates);
     if (usable.length < 3) return const QuizState();
     return _attempt(data, usable, 0);
   }
 
-  bool _canChoose(QuizData data, WordPair w) => data.choosable.contains(w.rowId);
-  bool _canGap(QuizData data, WordPair w) => data.gaps.containsKey(w.rowId);
-
   /// A new attempt over [words] by the S-54 rule, all questions built now.
   QuizState _attempt(QuizData data, List<WordPair> words, int attempt) {
     final order = [...words]..shuffle(_random);
-    final slots = quizLayout(order, canChoose: (w) => _canChoose(data, w), canGap: (w) => _canGap(data, w));
-    final questions = [
-      for (final s in slots)
-        s.kind == null
-            ? QuizQuestion(word: s.word, gap: data.gaps[s.word.rowId])
-            : QuizQuestion(word: s.word, kind: s.kind, choice: buildQuestion(s.word, data.pool, s.kind!, _random)),
-    ];
+    final slots = quizLayout(order, canChoose: data.canChoose, canGap: data.canGap);
+    final questions = [for (final s in slots) quizQuestion(data, s, _random)];
     return QuizState(data: data, questions: questions, answers: List.filled(questions.length, null), attempt: attempt);
   }
 

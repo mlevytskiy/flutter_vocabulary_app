@@ -3,11 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers.dart';
 import '../../../core/services/pronunciation_service.dart';
-import '../../words/widgets/pronunciation_buttons.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_scaffold.dart';
-import '../kit/word_marks.dart';
 import 'remember_or_not_notifier.dart';
+import 'remember_or_not_page_body.dart';
 
 class RememberOrNotScreen extends ConsumerStatefulWidget {
   const RememberOrNotScreen({super.key, this.collectionId, required this.groupId});
@@ -63,7 +62,6 @@ class _RememberOrNotScreenState extends ConsumerState<RememberOrNotScreen> {
       roundBuilder: (context, round) {
         final s = async.requireValue;
         final card = s.card!;
-        final style = Theme.of(context).textTheme;
         return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -71,46 +69,15 @@ class _RememberOrNotScreenState extends ConsumerState<RememberOrNotScreen> {
             children: [
               Text('Card ${s.position} of ${s.total}'),
               const SizedBox(height: 16),
-              if (!s.flipped) ...[
-                InkWell(
-                  key: const ValueKey('card-front'),
-                  onTap: notifier.flip,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(card.front, style: style.headlineSmall),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(onPressed: notifier.flip, child: const Text('Flip')),
-              ] else ...[
-                Row(
-                  children: [
-                    Flexible(child: Text(card.word, style: style.headlineSmall)),
-                    const SizedBox(width: 8),
-                    PronunciationButtons(onSpeak: (accent) => _speak(card.word, accent)),
-                  ],
-                ),
-                if (card.translation.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(card.translation, style: style.titleMedium),
-                ],
-                if (card.example != null) ...[
-                  const SizedBox(height: 16),
-                  Text.rich(
-                    key: const ValueKey('example'),
-                    TextSpan(children: boldWord(card.example!, card.word)),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () => notifier.rate(true),
-                  child: Text(s.secondShowing ? 'Got it' : 'Remembered'),
-                ),
-                ElevatedButton(
-                  onPressed: () => notifier.rate(false),
-                  child: Text(s.secondShowing ? 'Still not' : 'Not yet'),
-                ),
-              ],
+              RememberOrNotPageBody(
+                card: card,
+                flipped: s.flipped,
+                onFlip: notifier.flip,
+                onSpeak: (accent) => _speak(card.word, accent),
+                rememberedLabel: s.secondShowing ? 'Got it' : 'Remembered',
+                notLabel: s.secondShowing ? 'Still not' : 'Not yet',
+                onRate: notifier.rate,
+              ),
             ],
           ),
         );

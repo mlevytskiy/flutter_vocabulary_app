@@ -6,7 +6,7 @@ part of 'remember_or_not_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$rememberOrNotHash() => r'dd0f6ada60bb334bdfe1543e59def15b9dc8001f';
+String _$rememberOrNotHash() => r'6e144afa56137d31e0a11387efcc8a41465152ab';
 
 /// Copied from Dart SDK
 class _SystemHash {
