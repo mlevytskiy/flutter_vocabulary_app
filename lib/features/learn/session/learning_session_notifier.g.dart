@@ -6,7 +6,7 @@ part of 'learning_session_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$learningSessionHash() => r'321d21dd5e12e2d72a0e7bfa5362d0b9479f9280';
+String _$learningSessionHash() => r'f63cfee62230e202ce57c4fea4955f370c70d42f';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -47,9 +47,8 @@ abstract class _$LearningSession
 /// steps 2 and 3 load in the background and are awaited when the first word
 /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
 /// unused page of that step holding the word, rotating exercise types. AI
-/// data is fetched in batches of at most [batchSize] words. Nothing here
-/// writes the store: leaving a session changes no box (AC-16); finishing
-/// only exposes the outcomes.
+/// data is fetched in batches of at most [batchSize] words. Leaving a
+/// session changes no box (AC-16); only finishing writes them, once.
 ///
 /// Copied from [LearningSession].
 @ProviderFor(LearningSession)
@@ -64,9 +63,8 @@ const learningSessionProvider = LearningSessionFamily();
 /// steps 2 and 3 load in the background and are awaited when the first word
 /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
 /// unused page of that step holding the word, rotating exercise types. AI
-/// data is fetched in batches of at most [batchSize] words. Nothing here
-/// writes the store: leaving a session changes no box (AC-16); finishing
-/// only exposes the outcomes.
+/// data is fetched in batches of at most [batchSize] words. Leaving a
+/// session changes no box (AC-16); only finishing writes them, once.
 ///
 /// Copied from [LearningSession].
 class LearningSessionFamily extends Family<LearningSessionState> {
@@ -79,9 +77,8 @@ class LearningSessionFamily extends Family<LearningSessionState> {
   /// steps 2 and 3 load in the background and are awaited when the first word
   /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
   /// unused page of that step holding the word, rotating exercise types. AI
-  /// data is fetched in batches of at most [batchSize] words. Nothing here
-  /// writes the store: leaving a session changes no box (AC-16); finishing
-  /// only exposes the outcomes.
+  /// data is fetched in batches of at most [batchSize] words. Leaving a
+  /// session changes no box (AC-16); only finishing writes them, once.
   ///
   /// Copied from [LearningSession].
   const LearningSessionFamily();
@@ -95,9 +92,8 @@ class LearningSessionFamily extends Family<LearningSessionState> {
   /// steps 2 and 3 load in the background and are awaited when the first word
   /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
   /// unused page of that step holding the word, rotating exercise types. AI
-  /// data is fetched in batches of at most [batchSize] words. Nothing here
-  /// writes the store: leaving a session changes no box (AC-16); finishing
-  /// only exposes the outcomes.
+  /// data is fetched in batches of at most [batchSize] words. Leaving a
+  /// session changes no box (AC-16); only finishing writes them, once.
   ///
   /// Copied from [LearningSession].
   LearningSessionProvider call(
@@ -141,9 +137,8 @@ class LearningSessionFamily extends Family<LearningSessionState> {
 /// steps 2 and 3 load in the background and are awaited when the first word
 /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
 /// unused page of that step holding the word, rotating exercise types. AI
-/// data is fetched in batches of at most [batchSize] words. Nothing here
-/// writes the store: leaving a session changes no box (AC-16); finishing
-/// only exposes the outcomes.
+/// data is fetched in batches of at most [batchSize] words. Leaving a
+/// session changes no box (AC-16); only finishing writes them, once.
 ///
 /// Copied from [LearningSession].
 class LearningSessionProvider extends AutoDisposeNotifierProviderImpl<
@@ -157,9 +152,8 @@ class LearningSessionProvider extends AutoDisposeNotifierProviderImpl<
   /// steps 2 and 3 load in the background and are awaited when the first word
   /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
   /// unused page of that step holding the word, rotating exercise types. AI
-  /// data is fetched in batches of at most [batchSize] words. Nothing here
-  /// writes the store: leaving a session changes no box (AC-16); finishing
-  /// only exposes the outcomes.
+  /// data is fetched in batches of at most [batchSize] words. Leaving a
+  /// session changes no box (AC-16); only finishing writes them, once.
   ///
   /// Copied from [LearningSession].
   LearningSessionProvider(

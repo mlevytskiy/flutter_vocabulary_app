@@ -18,6 +18,7 @@ import 'ladder_queue.dart';
 import 'leitner.dart';
 import 'page_input.dart';
 import 'page_registry.dart';
+import 'session_result.dart';
 import 'session_words.dart';
 
 part 'learning_session_notifier.g.dart';
@@ -106,9 +107,8 @@ class LearningSessionState {
 /// steps 2 and 3 load in the background and are awaited when the first word
 /// reaches them. Each (word, rung) the [LadderQueue] asks for maps to an
 /// unused page of that step holding the word, rotating exercise types. AI
-/// data is fetched in batches of at most [batchSize] words. Nothing here
-/// writes the store: leaving a session changes no box (AC-16); finishing
-/// only exposes the outcomes.
+/// data is fetched in batches of at most [batchSize] words. Leaving a
+/// session changes no box (AC-16); only finishing writes them, once.
 @riverpod
 class LearningSession extends _$LearningSession {
   /// The most words one page-source call gets (sad §11).
@@ -161,7 +161,10 @@ class LearningSession extends _$LearningSession {
 
   /// Starts the session (AC-02): [split] as ticked on the Learn sheet,
   /// [rowIds] for exactly those rows ("Practise N shaky words").
-  Future<void> start({required bool split, List<String>? rowIds}) async {
+  ///
+  /// [skipGroup] is "Next group": the group just played, left out of the
+  /// picker's due / new rules (AC-12).
+  Future<void> start({required bool split, List<String>? rowIds, int? skipGroup}) async {
     _publish(SessionStatus.loading);
     final collection = await _readOnce(collectionId == null
         ? wordsNotifierProvider.future
@@ -183,6 +186,7 @@ class LearningSession extends _$LearningSession {
       wordsPerSession: settings.wordsPerSession.count,
       lastGroup: ref.read(learnLastGroupNotifierProvider(collection.collectionId)),
       rowIds: rowIds,
+      skipGroup: skipGroup,
       now: DateTime.now(),
     );
     if (pick.words.isEmpty) return _publish(SessionStatus.notEnough);
@@ -324,7 +328,7 @@ class LearningSession extends _$LearningSession {
     final queue = _queue!;
     while (true) {
       final next = queue.next();
-      if (next == null) return _finish();
+      if (next == null) return await _finish();
       final step = next.rung.step;
       if (!_loadedSteps.contains(step)) {
         _page = null;
@@ -389,9 +393,10 @@ class LearningSession extends _$LearningSession {
     _publish(SessionStatus.playing);
   }
 
-  /// Every word passed: each word's outcome, and the played group
-  /// remembered for the next split session (AC-07).
-  void _finish() {
+  /// Every word passed: each word's outcome, the played group remembered for
+  /// the next split session (AC-07), and the boxes moved in ONE store update
+  /// (ADR-0002, AC-13); the [SessionResult] goes to the results screen (AC-12).
+  Future<void> _finish() async {
     final queue = _queue!;
     final pick = _pick!;
     _page = null;
@@ -407,6 +412,19 @@ class LearningSession extends _$LearningSession {
     if (_split && index != null) {
       unawaited(ref.read(learnLastGroupNotifierProvider(_collection.collectionId).notifier).set(index));
     }
+    final store = await ref.read(collectionStoreProvider.future);
+    if (_disposed) return;
+    final result = await finishSession(
+      store: store,
+      collectionId: _collection.collectionId,
+      outcomes: _outcomes,
+      kind: SessionKind.exercises,
+      groupIndex: _split ? index : null,
+      groupCount: _split ? pick.groupCount : 0,
+      pages: _pageIndex,
+    );
+    if (_disposed) return;
+    ref.read(lastSessionResultProvider.notifier).set(result);
     _publish(SessionStatus.finished);
   }
 

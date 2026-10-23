@@ -6,7 +6,7 @@ part of 'talk_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$talkHash() => r'f835395ea064912202054e2a43e3e7ea4e561ea0';
+String _$talkHash() => r'24d2bb9353e6866056fb1185f0cc008955408b3d';
 
 /// Copied from Dart SDK
 class _SystemHash {
