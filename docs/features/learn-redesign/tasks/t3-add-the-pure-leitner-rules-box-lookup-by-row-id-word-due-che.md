@@ -19,4 +19,4 @@ unit tests: clean word up one box (new→1, 5 stays 5), any miss → box 1, up a
 ## Files
 
 - `lib/features/learn/session/leitner.dart`
-- `test/learn_session/leitner_test.dart`
+- `test/learn_session_leitner_test.dart`

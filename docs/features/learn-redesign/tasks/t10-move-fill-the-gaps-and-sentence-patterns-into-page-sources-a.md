@@ -20,4 +20,4 @@ existing tests stay green; new tests: one gap page per word with Check via ready
 
 - `lib/features/learn/fill_the_gaps/`
 - `lib/features/learn/sentence_patterns/`
-- `test/learn_session/pages_gaps_test.dart`
+- `test/learn_session_pages_gaps_test.dart`

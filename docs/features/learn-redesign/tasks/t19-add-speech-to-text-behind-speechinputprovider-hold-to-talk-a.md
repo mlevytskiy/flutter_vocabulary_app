@@ -24,4 +24,4 @@ pubspec pins speech_to_text at one exact version; iOS Info.plist and Android man
 - `lib/features/learn/talk/talk_screen.dart`
 - `ios/Runner/Info.plist`
 - `android/app/src/main/AndroidManifest.xml`
-- `test/learn_session/talk_voice_test.dart`
+- `test/learn_session_talk_voice_test.dart`

@@ -19,4 +19,4 @@ unit tests: 15 words → all; 34 words split → groups 7–12 covering every wo
 ## Files
 
 - `lib/features/learn/session/session_words.dart`
-- `test/learn_session/session_words_test.dart`
+- `test/learn_session_session_words_test.dart`

@@ -22,4 +22,4 @@ existing tests stay green; new tests: boards make one page per 4 words (last boa
 - `lib/features/learn/match_definitions/`
 - `lib/features/learn/guess_my_word/`
 - `lib/features/learn/kit/match_board.dart`
-- `test/learn_session/pages_match_test.dart`
+- `test/learn_session_pages_match_test.dart`

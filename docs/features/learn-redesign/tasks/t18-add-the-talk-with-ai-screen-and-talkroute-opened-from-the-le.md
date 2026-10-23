@@ -21,4 +21,4 @@ widget tests: bubbles, word strip ticks, Hint after 2, End talk → results with
 - `lib/features/learn/talk/talk_screen.dart`
 - `lib/features/learn/entry/learn_sheet.dart`
 - `lib/router/routes.dart`
-- `test/learn_session/talk_screen_test.dart`
+- `test/learn_session_talk_screen_test.dart`

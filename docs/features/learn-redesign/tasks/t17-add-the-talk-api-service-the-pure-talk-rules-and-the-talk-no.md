@@ -22,4 +22,4 @@ tests with a fake API: words from the word picker, scene priority (story text, d
 - `lib/core/providers.dart`
 - `lib/features/learn/talk/talk_rules.dart`
 - `lib/features/learn/talk/talk_notifier.dart`
-- `test/learn_session/talk_test.dart`
+- `test/learn_session_talk_test.dart`

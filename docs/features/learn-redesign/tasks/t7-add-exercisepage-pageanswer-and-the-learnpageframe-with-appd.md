@@ -22,4 +22,4 @@ widget tests: frame shows step bar, 'N / M', chip, card, Check enabled only afte
 - `lib/features/learn/session/learn_page_frame.dart`
 - `lib/core/theme/app_decor.dart`
 - `lib/core/theme/themes/`
-- `test/learn_session/learn_page_frame_test.dart`
+- `test/learn_session_learn_page_frame_test.dart`

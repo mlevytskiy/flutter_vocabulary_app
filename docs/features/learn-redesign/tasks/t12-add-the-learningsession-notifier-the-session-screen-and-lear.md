@@ -22,4 +22,4 @@ notifier tests with fake page sources: types drawn min(3, on) per step, story/di
 - `lib/features/learn/session/learning_session_screen.dart`
 - `lib/features/learn/session/page_registry.dart`
 - `lib/router/routes.dart`
-- `test/learn_session/learning_session_test.dart`
+- `test/learn_session_learning_session_test.dart`

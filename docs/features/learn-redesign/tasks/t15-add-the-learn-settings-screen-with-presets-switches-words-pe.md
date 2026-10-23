@@ -21,4 +21,4 @@ widget tests: Balanced picked by default, preset sets switches, switch change â†
 - `lib/features/learn/entry/learn_settings_screen.dart`
 - `lib/features/learn/learn_screen.dart`
 - `lib/router/routes.dart`
-- `test/learn_session/learn_settings_test.dart`
+- `test/learn_session_learn_settings_test.dart`

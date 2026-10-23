@@ -22,4 +22,4 @@ existing tests stay green; new tests: one page per word, the sentence check repo
 - `lib/features/learn/translate_sentences/`
 - `lib/features/learn/explain_to_friend/`
 - `lib/features/learn/kit/sentence_check.dart`
-- `test/learn_session/pages_sentences_test.dart`
+- `test/learn_session_pages_sentences_test.dart`

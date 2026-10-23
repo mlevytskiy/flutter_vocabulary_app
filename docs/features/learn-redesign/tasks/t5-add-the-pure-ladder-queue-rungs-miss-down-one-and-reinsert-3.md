@@ -19,4 +19,4 @@ unit tests with seeded Random: clean word takes 3 rights; miss on Practise → M
 ## Files
 
 - `lib/features/learn/session/ladder_queue.dart`
-- `test/learn_session/ladder_queue_test.dart`
+- `test/learn_session_ladder_queue_test.dart`

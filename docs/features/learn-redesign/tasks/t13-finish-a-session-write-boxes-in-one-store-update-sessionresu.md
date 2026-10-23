@@ -22,4 +22,4 @@ tests: finishing calls store.update once and boxes move per AC-13; erased collec
 - `lib/features/learn/session/session_results_screen.dart`
 - `lib/features/learn/session/learning_session_notifier.dart`
 - `lib/router/routes.dart`
-- `test/learn_session/session_results_test.dart`
+- `test/learn_session_session_results_test.dart`

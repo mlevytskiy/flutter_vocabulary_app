@@ -22,4 +22,4 @@ widget tests: Learn looks as before and opens the sheet with word and due counts
 - `lib/features/learn/entry/companion_button.dart`
 - `lib/features/words_table/widgets/learn_share_bar.dart`
 - `lib/features/words_table/words_table_screen.dart`
-- `test/learn_session/learn_sheet_test.dart`
+- `test/learn_session_learn_sheet_test.dart`

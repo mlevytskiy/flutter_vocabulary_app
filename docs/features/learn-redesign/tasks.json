@@ -46,7 +46,7 @@
       "dod": "unit tests: clean word up one box (new→1, 5 stays 5), any miss → box 1, up at most once per calendar day, intervals 1/2/4/8/16, word edit → new, deleted row pruned, talk unused → unchanged, result states known/shaky/new/unused",
       "files_hint": [
         "lib/features/learn/session/leitner.dart",
-        "test/learn_session/leitner_test.dart"
+        "test/learn_session_leitner_test.dart"
       ]
     },
     {
@@ -65,7 +65,7 @@
       "dod": "unit tests: 15 words → all; 34 words split → groups 7–12 covering every word incl. waiting words and row-order fallback; first group with due, else new, else after last; Next group skips the played one; split off with cap 10/20/30/All due-new-others; rowIds wins; label 'Group 2 of 4 · 9 words'",
       "files_hint": [
         "lib/features/learn/session/session_words.dart",
-        "test/learn_session/session_words_test.dart"
+        "test/learn_session_session_words_test.dart"
       ]
     },
     {
@@ -80,7 +80,7 @@
       "dod": "unit tests with seeded Random: clean word takes 3 rights; miss on Practise → Meet, back 3 pages later or at end; never the same word next while others remain; miss on Meet stays Meet; per-word miss flag; due words' pages first",
       "files_hint": [
         "lib/features/learn/session/ladder_queue.dart",
-        "test/learn_session/ladder_queue_test.dart"
+        "test/learn_session_ladder_queue_test.dart"
       ]
     },
     {
@@ -99,7 +99,7 @@
       "files_hint": [
         "lib/core/providers.dart",
         "lib/features/learn/entry/learn_presets.dart",
-        "test/learn_session/learn_prefs_test.dart"
+        "test/learn_session_learn_prefs_test.dart"
       ]
     },
     {
@@ -119,7 +119,7 @@
         "lib/features/learn/session/learn_page_frame.dart",
         "lib/core/theme/app_decor.dart",
         "lib/core/theme/themes/",
-        "test/learn_session/learn_page_frame_test.dart"
+        "test/learn_session_learn_page_frame_test.dart"
       ]
     },
     {
@@ -139,7 +139,7 @@
         "lib/features/learn/pick_the_answer/",
         "lib/features/learn/remember_or_not/",
         "lib/features/learn/quiz/",
-        "test/learn_session/pages_basic_test.dart"
+        "test/learn_session_pages_basic_test.dart"
       ]
     },
     {
@@ -160,7 +160,7 @@
         "lib/features/learn/match_definitions/",
         "lib/features/learn/guess_my_word/",
         "lib/features/learn/kit/match_board.dart",
-        "test/learn_session/pages_match_test.dart"
+        "test/learn_session_pages_match_test.dart"
       ]
     },
     {
@@ -179,7 +179,7 @@
       "files_hint": [
         "lib/features/learn/fill_the_gaps/",
         "lib/features/learn/sentence_patterns/",
-        "test/learn_session/pages_gaps_test.dart"
+        "test/learn_session_pages_gaps_test.dart"
       ]
     },
     {
@@ -200,7 +200,7 @@
         "lib/features/learn/translate_sentences/",
         "lib/features/learn/explain_to_friend/",
         "lib/features/learn/kit/sentence_check.dart",
-        "test/learn_session/pages_sentences_test.dart"
+        "test/learn_session_pages_sentences_test.dart"
       ]
     },
     {
@@ -229,7 +229,7 @@
         "lib/features/learn/session/learning_session_screen.dart",
         "lib/features/learn/session/page_registry.dart",
         "lib/router/routes.dart",
-        "test/learn_session/learning_session_test.dart"
+        "test/learn_session_learning_session_test.dart"
       ]
     },
     {
@@ -251,7 +251,7 @@
         "lib/features/learn/session/session_results_screen.dart",
         "lib/features/learn/session/learning_session_notifier.dart",
         "lib/router/routes.dart",
-        "test/learn_session/session_results_test.dart"
+        "test/learn_session_session_results_test.dart"
       ]
     },
     {
@@ -278,7 +278,7 @@
         "lib/features/learn/entry/companion_button.dart",
         "lib/features/words_table/widgets/learn_share_bar.dart",
         "lib/features/words_table/words_table_screen.dart",
-        "test/learn_session/learn_sheet_test.dart"
+        "test/learn_session_learn_sheet_test.dart"
       ]
     },
     {
@@ -299,7 +299,7 @@
         "lib/features/learn/entry/learn_settings_screen.dart",
         "lib/features/learn/learn_screen.dart",
         "lib/router/routes.dart",
-        "test/learn_session/learn_settings_test.dart"
+        "test/learn_session_learn_settings_test.dart"
       ]
     },
     {
@@ -317,7 +317,7 @@
         "vocab-photo-api/src/learn/routes.ts",
         "vocab-photo-api/src/learn/allowance.ts",
         "vocab-photo-api/migrations/0008_talk_allowance.sql",
-        "vocab-photo-api/test/learn_talk.test.ts"
+        "vocab-photo-api/test/learn_talk.test.mjs"
       ]
     },
     {
@@ -342,7 +342,7 @@
         "lib/core/providers.dart",
         "lib/features/learn/talk/talk_rules.dart",
         "lib/features/learn/talk/talk_notifier.dart",
-        "test/learn_session/talk_test.dart"
+        "test/learn_session_talk_test.dart"
       ]
     },
     {
@@ -363,7 +363,7 @@
         "lib/features/learn/talk/talk_screen.dart",
         "lib/features/learn/entry/learn_sheet.dart",
         "lib/router/routes.dart",
-        "test/learn_session/talk_screen_test.dart"
+        "test/learn_session_talk_screen_test.dart"
       ]
     },
     {
@@ -385,7 +385,7 @@
         "lib/features/learn/talk/talk_screen.dart",
         "ios/Runner/Info.plist",
         "android/app/src/main/AndroidManifest.xml",
-        "test/learn_session/talk_voice_test.dart"
+        "test/learn_session_talk_voice_test.dart"
       ]
     },
     {

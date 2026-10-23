@@ -20,4 +20,4 @@ provider tests with mocked SharedPreferences: Balanced default with its 10 exerc
 
 - `lib/core/providers.dart`
 - `lib/features/learn/entry/learn_presets.dart`
-- `test/learn_session/learn_prefs_test.dart`
+- `test/learn_session_learn_prefs_test.dart`

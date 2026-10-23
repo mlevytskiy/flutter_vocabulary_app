@@ -21,4 +21,4 @@ existing tests of the three exercises stay green; new tests: each page source yi
 - `lib/features/learn/pick_the_answer/`
 - `lib/features/learn/remember_or_not/`
 - `lib/features/learn/quiz/`
-- `test/learn_session/pages_basic_test.dart`
+- `test/learn_session_pages_basic_test.dart`
