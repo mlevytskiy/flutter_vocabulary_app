@@ -6,7 +6,7 @@ part of 'own_sentences_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$ownSentencesHash() => r'90c598185820b094d4ada958cf699d6cd41672ac';
+String _$ownSentencesHash() => r'64d5f571bf0331d4c666fe2d012ca6a91463ee56';
 
 /// Copied from Dart SDK
 class _SystemHash {

@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../kit/check_verdict.dart';
 import '../kit/exercise_phase.dart';
@@ -12,6 +11,7 @@ import '../kit/exercise_words.dart';
 import '../kit/result_summary.dart';
 import '../kit/sentence_check.dart';
 import '../kit/split_rounds.dart';
+import 'own_sentences_pages.dart';
 
 part 'own_sentences_notifier.g.dart';
 
@@ -88,11 +88,7 @@ class OwnSentences extends _$OwnSentences {
   Future<OwnState> build(String? collectionId, String groupId) async {
     final random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
-    final usable = <OwnCard>[
-      for (final WordPair w in words.group)
-        if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty)
-          OwnCard(rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-    ];
+    final usable = ownCards(words.group);
     if (usable.length < 3) return const OwnState(rounds: []);
     return OwnState(rounds: [for (final r in splitRounds(usable, min: 3, max: 5)) _shuffled(r, random)]);
   }

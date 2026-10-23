@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/services/learn_api_service.dart';
 import '../kit/exam_countdown.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_scaffold.dart';
 import '../kit/sentence_check.dart';
 import 'explain_to_friend_notifier.dart';
+import 'explain_to_friend_page_body.dart';
 
 /// The explain-to-friend exam of one word group (learn-explain-to-friend)
 /// inside the shared frame (S-30): the mode question once per open, then per
@@ -46,9 +46,13 @@ class ExplainToFriendScreen extends ConsumerWidget {
                   children: [
                     Text('Word ${s.index + 1} of ${s.cards.length}'),
                     const SizedBox(height: 16),
-                    Text(card.word, key: const ValueKey('explain-word'), style: Theme.of(context).textTheme.headlineMedium),
-                    const SizedBox(height: 8),
-                    ...s.mode == ExplainMode.type ? _typeCard(s, card, notifier) : _friendCard(s, card, notifier),
+                    if (s.mode == ExplainMode.type)
+                      ..._typeCard(s, card, notifier)
+                    else ...[
+                      Text(card.word, key: const ValueKey('explain-word'), style: Theme.of(context).textTheme.headlineMedium),
+                      const SizedBox(height: 8),
+                      ..._friendCard(s, card, notifier),
+                    ],
                   ],
                 ),
         );
@@ -80,15 +84,9 @@ class ExplainToFriendScreen extends ConsumerWidget {
       _ => null,
     };
     return [
-      Text('Explain “${card.word}” in English. Do not use the word or a translation.'),
-      const SizedBox(height: 16),
-      SentenceCheckField(
-        key: ValueKey('check-${s.round}-${card.rowId}'),
-        word: card.word,
-        translation: card.translation,
-        task: LearnCheckTask.explain,
-        mode: SentenceCheckMode.exam,
-        timeLimitSeconds: 90,
+      ExplainToFriendPageBody.typed(
+        card: card,
+        fieldKey: ValueKey('check-${s.round}-${card.rowId}'),
         onDone: notifier.done,
       ),
       if (typed != null) ...[
