@@ -1,5 +1,5 @@
-/// Learn presets and the enabled-exercise rules (learn-redesign T6, ADR-0006,
-/// AC-05, AC-17, AC-18). Pure Dart: no Flutter, no storage.
+// Learn presets and the enabled-exercise rules (learn-redesign T6, ADR-0006,
+// AC-05, AC-17, AC-18). Pure Dart: no Flutter, no storage.
 import '../exercises.dart';
 
 /// The ready-made exercise mixes of the Learn entry; [custom] is any other set.
