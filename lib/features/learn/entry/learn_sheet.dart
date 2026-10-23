@@ -12,14 +12,14 @@ import '../session/session_words.dart';
 /// learn, the word and due counts, and the split choice from 20 words.
 ///
 /// [onSettings] opens the Learn settings (the gear hides without it);
-/// [onTalk] starts a talk (without it the card says "Coming soon").
+/// [onTalk] starts a talk, given the split choice (without it the card says "Coming soon").
 Future<void> showLearnSheet(
   BuildContext context,
   WidgetRef ref, {
   String? collectionId,
   required WordCollection collection,
   VoidCallback? onSettings,
-  VoidCallback? onTalk,
+  void Function(bool split)? onTalk,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -51,7 +51,7 @@ class _LearnSheet extends ConsumerWidget {
   final String? collectionId;
   final WordCollection collection;
   final VoidCallback? onSettings;
-  final VoidCallback? onTalk;
+  final void Function(bool split)? onTalk;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -115,7 +115,7 @@ class _LearnSheet extends ConsumerWidget {
               onTap: () {
                 if (onTalk != null) {
                   Navigator.of(context).pop();
-                  onTalk!();
+                  onTalk!(split);
                 } else {
                   ScaffoldMessenger.of(outer).showSnackBar(
                     const SnackBar(content: Text('Coming soon')),

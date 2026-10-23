@@ -68,6 +68,10 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
                       factory: _$LearningSessionRoute._fromState,
                     ),
                     GoRouteData.$route(
+                      path: 'talk',
+                      factory: _$TalkRoute._fromState,
+                    ),
+                    GoRouteData.$route(
                       path: 'results',
                       factory: _$SessionResultsRoute._fromState,
                     ),
@@ -438,6 +442,39 @@ mixin _$LearningSessionRoute on GoRouteData {
           if (_self.rowIds != null) 'row-ids': _self.rowIds,
           if (_self.skipGroup != null)
             'skip-group': _self.skipGroup!.toString(),
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$TalkRoute on GoRouteData {
+  static TalkRoute _fromState(GoRouterState state) => TalkRoute(
+        collectionId: state.uri.queryParameters['collection-id'],
+        split: _$convertMapValue(
+                'split', state.uri.queryParameters, _$boolConverter) ??
+            true,
+      );
+
+  TalkRoute get _self => this as TalkRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/words/table/talk',
+        queryParams: {
+          if (_self.collectionId != null) 'collection-id': _self.collectionId,
+          if (_self.split != true) 'split': _self.split.toString(),
         },
       );
 

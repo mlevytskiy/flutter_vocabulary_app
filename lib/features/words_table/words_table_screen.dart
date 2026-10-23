@@ -200,7 +200,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
         collectionId: widget.collectionId,
         collection: collection,
         onSettings: () =>
-            LearnSettingsRoute(collectionId: widget.collectionId).push(context));
+            LearnSettingsRoute(collectionId: widget.collectionId).push(context),
+        onTalk: (split) =>
+            TalkRoute(collectionId: widget.collectionId, split: split).push(context));
   }
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)

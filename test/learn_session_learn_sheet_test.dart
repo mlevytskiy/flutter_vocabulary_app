@@ -87,8 +87,8 @@ void main() {
     expect(find.byType(CheckboxListTile), findsNothing);
     expect(find.byTooltip('Learn settings'), findsOneWidget);
     await t.tap(find.text('Talk with AI'));
-    await t.pump();
-    expect(find.text('Coming soon'), findsOneWidget);
+    await t.pumpAndSettle();
+    expect(find.text('How do you want to learn?'), findsNothing);
   });
 
   testWidgets('AC-06: Exercises with under 20 words pushes split=false',
