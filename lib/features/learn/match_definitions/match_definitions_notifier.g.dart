@@ -6,7 +6,7 @@ part of 'match_definitions_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$matchDefinitionsHash() => r'15205c77f488dc262f46025179214ee4707da979';
+String _$matchDefinitionsHash() => r'5a15ce744872d707d6c8ec17d1f37c3980145894';
 
 /// Copied from Dart SDK
 class _SystemHash {

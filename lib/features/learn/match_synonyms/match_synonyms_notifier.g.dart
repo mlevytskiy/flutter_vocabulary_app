@@ -6,7 +6,7 @@ part of 'match_synonyms_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$matchSynonymsHash() => r'defdf386440e7af596e0c70ebc74eda7a84cb0c1';
+String _$matchSynonymsHash() => r'40730ddbdc78eb151645d9fca42f96dae558cb8c';
 
 /// Copied from Dart SDK
 class _SystemHash {

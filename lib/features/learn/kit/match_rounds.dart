@@ -5,6 +5,7 @@ import '../../../core/models/word_pair.dart';
 import 'exercise_phase.dart';
 import 'match_board.dart';
 import 'result_summary.dart';
+import 'split_rounds.dart';
 
 /// Shared round code of the match exercises (S-41): cut-and-paste from
 /// match-synonyms, names made neutral.
@@ -45,6 +46,16 @@ List<MatchPair> usableMatchPairs(List<WordPair> words, Map<String, String?> answ
     usable.add(MatchPair(rowId: w.rowId, word: word, answer: answer, translation: w.translation.trim()));
   }
   return usable;
+}
+
+/// The boards of a session's match pages (learn-redesign ADR-0003): one
+/// board per 4 usable words in order, sizes differing by at most one (larger
+/// first), never under 3. Five words make one board of 5, since 3 + 2 would
+/// leave a board under 3. Fewer than 3 words make none.
+List<List<T>> matchBoards<T>(List<T> usable) {
+  if (usable.length < 3) return const [];
+  if (usable.length == 5) return [usable];
+  return splitRounds(usable, min: 2, max: 4);
 }
 
 /// One board: the words in group order, their answers shuffled once (S-36).

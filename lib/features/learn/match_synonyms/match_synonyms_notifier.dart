@@ -3,12 +3,11 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers.dart';
-import '../../../core/services/learn_api_service.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
-import '../kit/match_board.dart';
 import '../kit/match_rounds.dart';
 import '../kit/split_rounds.dart';
+import 'match_synonyms_pages.dart';
 
 part 'match_synonyms_notifier.g.dart';
 
@@ -29,19 +28,9 @@ class MatchSynonyms extends _$MatchSynonyms {
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final group = words.group;
     if (group.length < 3) return const MatchRoundsState(rounds: []);
-    final answers = await ref.read(learnApiServiceProvider).fetchData(LearnDataKind.synonym, [
-      for (final w in group) (rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-    ]);
-    final usable = usableMatchPairs(group, {for (final e in answers.entries) e.key: e.value?.synonym});
+    final usable = await matchSynonymsPairs(group, ref.read(learnApiServiceProvider));
     final rounds = <MatchRound>[
-      for (final pairs in splitRounds(usable, min: 3, max: 6))
-        MatchRound(
-          pairs: pairs,
-          left: [
-            for (final p in pairs) MatchItem(id: p.rowId, text: cardText(p.word), hint: p.translation.isEmpty ? null : p.translation),
-          ],
-          right: shuffledOutOfOrder([for (final p in pairs) MatchItem(id: p.rowId, text: cardText(p.answer))], random),
-        ),
+      for (final pairs in splitRounds(usable, min: 3, max: 6)) matchSynonymsRound(pairs, random),
     ];
     return MatchRoundsState(rounds: rounds, notEnoughMessage: rounds.isEmpty ? notEnoughSynonymsMessage : null);
   }
