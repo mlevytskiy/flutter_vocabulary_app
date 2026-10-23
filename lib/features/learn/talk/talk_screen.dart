@@ -82,6 +82,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
       if (next.messages.length != prev?.messages.length || next.status != prev?.status) _scrollToEnd();
       final draft = next.keepDraft;
       if (draft != null && draft != prev?.keepDraft) _field.text = draft;
+      if (draft == null && prev?.keepDraft != null) _field.clear();
       if (next.status == TalkStatus.over && prev?.status != TalkStatus.over) {
         openSessionResults(context, widget.collectionId);
       }
