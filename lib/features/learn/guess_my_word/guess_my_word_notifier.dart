@@ -1,17 +1,13 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers.dart';
-import '../../../core/services/learn_api_service.dart';
-import '../kit/definition_text.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
 import '../kit/result_summary.dart';
-import '../kit/split_rounds.dart';
-import '../kit/word_marks.dart';
+import 'guess_my_word_pages.dart';
 
 part 'guess_my_word_notifier.g.dart';
 
@@ -112,10 +108,6 @@ class GuessState {
 /// "3 points" / "2 points" / "1 point" / "Not found" (summary results).
 String pointsText(int p) => p <= 0 ? 'Not found' : (p == 1 ? '1 point' : '$p points');
 
-final _usableText = RegExp(r'[\p{L}\p{N}]', unicode: true);
-bool _usable(String clue) => _usableText.hasMatch(clue.replaceAll('___', ''));
-String _norm(String text) => text.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-
 /// The guess-my-word exercise of one group (learn-guess-my-word): one Worker
 /// call for kind `clues`, three masked clues per word (S-51), rounds, scores
 /// (S-52). Auto-disposed, so leaving the screen forgets the round (AC-23).
@@ -128,35 +120,12 @@ class GuessMyWord extends _$GuessMyWord {
     ref.onDispose(() => _next?.cancel());
     final random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
-    // S-51: a word to learn with a word, a translation and a row id; the earlier of equal words stays.
-    final seen = <String>{};
-    final candidates = [
-      for (final w in words.group)
-        if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty && seen.add(_norm(w.word))) w,
-    ];
+    final candidates = guessCandidates(words.group);
     if (candidates.length < 3) return const GuessState(rounds: []);
-    final replies = await ref.read(learnApiServiceProvider).fetchData(LearnDataKind.clues, [
-      for (final w in candidates) (rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-    ]);
-    final usable = <GuessWord>[];
-    for (final w in candidates) {
-      final data = replies[w.rowId];
-      if (data == null || data.clues.length != 3) continue;
-      final word = w.word.trim();
-      final c1 = maskWord(data.clues[0], word).trim();
-      final c2 = maskWord(data.clues[1], word).trim();
-      final c3 = definitionCard(w.definition, word) ?? maskWord(data.clues[2], word).trim();
-      if (!_usable(c1) || !_usable(c2) || !_usable(c3)) continue;
-      usable.add(GuessWord(rowId: w.rowId, word: word, translation: w.translation.trim(), clues: [c1, c2, c3]));
-    }
-    final rounds = <GuessRound>[
-      for (final r in splitRounds(usable, min: 3, max: 9))
-        GuessRound(words: r, grid: _shuffled(r, random), targets: _shuffled(r, random)),
-    ];
+    final usable = await guessWords(candidates, ref.read(learnApiServiceProvider));
+    final rounds = guessRounds(usable, random);
     return GuessState(rounds: rounds, notEnoughMessage: rounds.isEmpty ? notEnoughCluesMessage : null);
   }
-
-  static List<GuessWord> _shuffled(List<GuessWord> words, Random random) => [...words]..shuffle(random);
 
   /// Retry after a failed load: read the words and ask the Worker again.
   void retry() {
@@ -167,22 +136,13 @@ class GuessMyWord extends _$GuessMyWord {
   /// A tap on a grid word (S-52). Found, greyed and revealed-round taps do nothing.
   void tap(String rowId) {
     final s = state.valueOrNull;
-    final target = s?.target;
-    if (s == null || target == null || s.locked || s.revealed) return;
-    if (s.points.containsKey(rowId) || s.greyed.contains(rowId)) return;
-    if (!s.grid.any((w) => w.rowId == rowId)) return;
-    if (rowId == target.rowId) {
-      state = AsyncData(s.copyWith(points: {...s.points, rowId: 4 - s.level}, locked: true));
+    if (s == null) return;
+    final next = guessTap(s, rowId);
+    if (next == null) return;
+    state = AsyncData(next);
+    if (next.locked) {
       _next?.cancel();
       _next = Timer(guessNextDelay, _advance);
-    } else if (s.level >= 3) {
-      state = AsyncData(s.copyWith(
-        greyed: {...s.greyed, rowId},
-        points: {...s.points, target.rowId: 0},
-        revealed: true,
-      ));
-    } else {
-      state = AsyncData(s.copyWith(greyed: {...s.greyed, rowId}, level: s.level + 1));
     }
   }
 

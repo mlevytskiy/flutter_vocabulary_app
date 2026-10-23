@@ -2,6 +2,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../session/exercise_page.dart';
+
 /// One card of a match board (learn-match-synonyms S-35): [id] is unique in
 /// its column and opaque to the board; [hint] shows on a long press (S-36),
 /// null shows nothing.
@@ -255,4 +257,110 @@ class _MatchCardState extends State<MatchCard> {
       child: Transform.translate(offset: Offset(shake, 0), child: card),
     );
   }
+}
+
+/// The body of one match round (cut from the match screens' round builder):
+/// the round line when there is one, the [prompt], then the [MatchBoard].
+/// On an exercise screen ([expand]) the board fills the rest of the screen;
+/// on a learn page (learn-redesign ADR-0003) it sits in the page card, which
+/// scrolls, so the header loses its outer padding and the board its height.
+class MatchRoundBody extends StatelessWidget {
+  const MatchRoundBody({
+    super.key,
+    required this.prompt,
+    this.roundLabel,
+    this.boardKey,
+    required this.left,
+    required this.right,
+    required this.links,
+    required this.onPair,
+    this.expand = true,
+  });
+
+  final String prompt;
+  final String? roundLabel;
+  final Key? boardKey;
+  final List<MatchItem> left;
+  final List<MatchItem> right;
+  final Map<String, String> links;
+  final bool Function(String leftId, String rightId) onPair;
+  final bool expand;
+
+  @override
+  Widget build(BuildContext context) {
+    final board = MatchBoard(
+      key: boardKey,
+      left: left,
+      right: right,
+      links: links,
+      onPair: onPair,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+      children: [
+        Padding(
+          padding: expand ? const EdgeInsets.fromLTRB(16, 16, 16, 0) : EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (roundLabel != null) ...[
+                Text(roundLabel!),
+                const SizedBox(height: 8),
+              ],
+              Text(prompt),
+            ],
+          ),
+        ),
+        if (expand) Expanded(child: board) else board,
+      ],
+    );
+  }
+}
+
+/// One match board as a self-checking learn page (learn-redesign ADR-0003,
+/// ADR-0011): the pairs are checked as tapped, as on the exercise screens
+/// (right iff both ids are the word's rowId; a wrong pair counts a miss on
+/// the left word), and once every word is linked the page reports
+/// `answer.done({rowId: no miss})`. [builder] draws the board from the links
+/// so far and the pair callback.
+class MatchBoardPage extends StatefulWidget {
+  const MatchBoardPage({
+    super.key,
+    required this.left,
+    required this.right,
+    required this.answer,
+    required this.builder,
+  });
+
+  final List<MatchItem> left;
+  final List<MatchItem> right;
+  final PageAnswer answer;
+  final Widget Function(BuildContext context, Map<String, String> links, bool Function(String, String) onPair) builder;
+
+  @override
+  State<MatchBoardPage> createState() => _MatchBoardPageState();
+}
+
+class _MatchBoardPageState extends State<MatchBoardPage> {
+  Map<String, String> _links = const {};
+  final _misses = <String, int>{};
+
+  bool _pair(String leftId, String rightId) {
+    if (widget.answer.isDone) return false;
+    if (_links.containsKey(leftId) || _links.containsValue(rightId)) return false;
+    if (!widget.left.any((x) => x.id == leftId) || !widget.right.any((x) => x.id == rightId)) return false;
+    if (leftId != rightId) {
+      _misses[leftId] = (_misses[leftId] ?? 0) + 1;
+      return false;
+    }
+    setState(() => _links = {..._links, leftId: rightId});
+    if (_links.length == widget.left.length) {
+      widget.answer.done({for (final x in widget.left) x.id: (_misses[x.id] ?? 0) == 0});
+    }
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _links, _pair);
 }

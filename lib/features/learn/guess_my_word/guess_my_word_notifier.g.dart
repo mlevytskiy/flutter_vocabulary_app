@@ -6,7 +6,7 @@ part of 'guess_my_word_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$guessMyWordHash() => r'0596326c3b28a92ccd92fe94875acb4793169cf0';
+String _$guessMyWordHash() => r'b825614e803b45c25891070d95c12dd80c946359';
 
 /// Copied from Dart SDK
 class _SystemHash {

@@ -3,13 +3,11 @@ import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/providers.dart';
-import '../../../core/services/learn_api_service.dart';
-import '../kit/definition_text.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
-import '../kit/match_board.dart';
 import '../kit/match_rounds.dart';
 import '../kit/split_rounds.dart';
+import 'match_definitions_pages.dart';
 
 part 'match_definitions_notifier.g.dart';
 
@@ -31,33 +29,9 @@ class MatchDefinitions extends _$MatchDefinitions {
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final group = words.group;
     if (group.length < 3) return const MatchRoundsState(rounds: []);
-    // Stored line (S-40) first; a word with no stored line is asked (S-42).
-    final answers = <String, String?>{};
-    final asked = [
-      for (final w in group)
-        if (definitionText(w.definition).isEmpty) w,
-    ];
-    for (final w in group) {
-      if (definitionText(w.definition).isNotEmpty) answers[w.rowId] = definitionCard(w.definition, w.word);
-    }
-    if (asked.isNotEmpty) {
-      final fetched = await ref.read(learnApiServiceProvider).fetchData(LearnDataKind.definition, [
-        for (final w in asked) (rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-      ]);
-      for (final w in asked) {
-        final text = fetched[w.rowId]?.definition;
-        answers[w.rowId] = text == null ? null : definitionCard(text, w.word);
-      }
-    }
-    final usable = usableMatchPairs(group, answers);
+    final usable = await matchDefinitionsPairs(group, ref.read(learnApiServiceProvider));
     final rounds = <MatchRound>[
-      for (final pairs in splitRounds(usable, min: 3, max: 6))
-        MatchRound(
-          pairs: pairs,
-          left: [for (final p in pairs) MatchItem(id: p.rowId, text: cardText(p.word))],
-          // The answer is already card text (S-40); cutting twice could cut again.
-          right: shuffledOutOfOrder([for (final p in pairs) MatchItem(id: p.rowId, text: p.answer)], random),
-        ),
+      for (final pairs in splitRounds(usable, min: 3, max: 6)) matchDefinitionsRound(pairs, random),
     ];
     return MatchRoundsState(rounds: rounds, notEnoughMessage: rounds.isEmpty ? notEnoughDefinitionsMessage : null);
   }
