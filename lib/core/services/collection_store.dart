@@ -758,6 +758,10 @@ class CollectionStore {
           // Results are written only by [appendResult]: a caller holding an
           // older copy of the session must not wipe them (learn-kit S-22).
           ..results = existing.results
+          // Boxes likewise move only through [update] (learn-redesign
+          // ADR-0001, ADR-0002): a words-table copy never erases or rolls
+          // them back (AC-15).
+          ..boxes = existing.boxes
           ..name = existing.name
           ..nameKind = existing.nameKind
           ..folderId = existing.folderId
