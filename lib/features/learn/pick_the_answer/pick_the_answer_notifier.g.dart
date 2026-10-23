@@ -6,7 +6,7 @@ part of 'pick_the_answer_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$pickTheAnswerHash() => r'4de191479ef7bde89a3eaba17259d7595cb36528';
+String _$pickTheAnswerHash() => r'a062031e35965a31704b624d4eecf033d36dd58e';
 
 /// Copied from Dart SDK
 class _SystemHash {

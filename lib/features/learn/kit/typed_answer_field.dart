@@ -35,11 +35,16 @@ class TypedAnswerField extends StatefulWidget {
     required this.expected,
     required this.mode,
     required this.onSubmit,
+    this.onChanged,
   });
 
   final String expected;
   final TypedAnswerMode mode;
   final ValueChanged<TypedAnswerResult> onSubmit;
+
+  /// Every edit of the text, for a learn session page that enables Check once
+  /// something is typed (learn-redesign ADR-0011).
+  final ValueChanged<String>? onChanged;
 
   @override
   State<TypedAnswerField> createState() => _TypedAnswerFieldState();
@@ -110,6 +115,7 @@ class _TypedAnswerFieldState extends State<TypedAnswerField> {
           enableSuggestions: false,
           readOnly: done,
           textInputAction: TextInputAction.send,
+          onChanged: widget.onChanged,
           onSubmitted: (_) => _submit(),
         ),
         if (_practice && _tries == 1 && !done) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_hint)),

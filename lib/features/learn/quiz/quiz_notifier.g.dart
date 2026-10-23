@@ -6,7 +6,7 @@ part of 'quiz_notifier.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$quizHash() => r'32d632ffe37c6a3dd43a569b052b338c56a5730a';
+String _$quizHash() => r'339828cf22c6276311f0e45182e2bb70873ecdde';
 
 /// Copied from Dart SDK
 class _SystemHash {

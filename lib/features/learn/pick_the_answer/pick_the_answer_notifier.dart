@@ -1,14 +1,12 @@
-import 'dart:math';
-
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
 import '../kit/question_builder.dart';
 import '../kit/result_summary.dart';
 import '../kit/split_rounds.dart';
+import 'pick_the_answer_pages.dart';
 
 part 'pick_the_answer_notifier.g.dart';
 
@@ -73,8 +71,6 @@ class PickState {
       );
 }
 
-const _kinds = [QuestionKind.wordToTranslation, QuestionKind.meaningToWord];
-
 /// The pick-the-answer exercise of one group (learn-pick-the-answer). Nothing
 /// is saved and nothing leaves the phone (D-04, AC-16, AC-18); the words come
 /// from [exerciseWordsProvider]. Auto-disposed, so leaving the screen forgets
@@ -86,20 +82,16 @@ class PickTheAnswer extends _$PickTheAnswer {
     final random = ref.read(exerciseRandomProvider);
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     final pool = QuestionPool(group: words.group, others: words.others);
-    // S-25: usable = a question exists for both kinds. Null never depends on
-    // the Random, so a fixed seed finds the same words.
-    final usable = <WordPair>[
-      for (final word in words.group)
-        if (_kinds.every((k) => buildQuestion(word, pool, k, Random(0)) != null)) word,
-    ];
+    // S-25: usable = a question exists for both kinds (learn-redesign ADR-0003).
+    final usable = pickUsable(words.group, pool);
     final rounds = <List<PickItem>>[
       for (final round in splitRounds(usable, min: 3, max: 9))
         [
           for (var i = 0; i < round.length; i++)
             PickItem(
               word: round[i].word.trim(),
-              kind: _kinds[i % 2],
-              question: buildQuestion(round[i], pool, _kinds[i % 2], random)!,
+              kind: pickKinds[i % 2],
+              question: buildQuestion(round[i], pool, pickKinds[i % 2], random)!,
             ),
         ],
     ];
