@@ -5,6 +5,7 @@ import 'package:isar_community/isar.dart';
 import 'film_dialogue.dart';
 import 'name_kind.dart';
 import 'session_source.dart';
+import 'word_box.dart';
 import 'word_group.dart';
 import 'word_pair.dart';
 import 'word_result.dart';
@@ -69,6 +70,13 @@ class WordCollection {
   /// result is not a word edit, so it moves neither time — and read through
   /// the `ExamResultSink`. A session from before has none.
   List<WordResult> results = [];
+
+  /// The Leitner boxes of the learning sessions (learn-redesign, ADR-0001),
+  /// one per word row. Written only through `CollectionStore.update` (one
+  /// transaction at a session's end, ADR-0002); `put` keeps the stored ones,
+  /// so a stale words-table copy never erases or rolls them back (AC-15). A
+  /// collection from before has none.
+  List<WordBox> boxes = [];
 
   /// Tags for the whole session, edited at the top of the Notes page (owner,
   /// 2026-10-15, notes-editing). A source's own tags live on the source.
@@ -167,6 +175,10 @@ class WordCollection {
             ?.map((r) => WordResult.fromJson(r as Map<String, dynamic>))
             .toList() ??
         <WordResult>[]
+    ..boxes = (json['boxes'] as List<dynamic>?)
+            ?.map((b) => WordBox.fromJson(b as Map<String, dynamic>))
+            .toList() ??
+        <WordBox>[]
     ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()]
     ..description = json['description'] as String?
     ..originTags = [...?(json['originTags'] as List<dynamic>?)?.cast<String>()]
@@ -186,6 +198,7 @@ class WordCollection {
         'groupedWordsKey': groupedWordsKey,
         'dialogues': dialogues.map((d) => d.toJson()).toList(),
         'results': results.map((r) => r.toJson()).toList(),
+        'boxes': boxes.map((b) => b.toJson()).toList(),
         'tags': tags,
         if (description != null) 'description': description,
         if (originTags.isNotEmpty) 'originTags': originTags,
