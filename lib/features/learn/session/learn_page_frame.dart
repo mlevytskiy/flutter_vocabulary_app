@@ -253,7 +253,11 @@ class _VerdictBar extends StatelessWidget {
                   style: text.titleMedium
                       ?.copyWith(color: on, fontWeight: FontWeight.w700)),
               const SizedBox(height: 4),
-              Text('${verdict.word} — ${verdict.translation}',
+              Text(
+                  // A board's "3 of 4 right" has no translation.
+                  verdict.translation.isEmpty
+                      ? verdict.word
+                      : '${verdict.word} — ${verdict.translation}',
                   style: text.bodyLarge?.copyWith(color: on)),
               if (!right && verdict.rightAnswer != null) ...[
                 const SizedBox(height: 4),
