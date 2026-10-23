@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_theme.dart';
 import '../kit/exercise_phase.dart';
 import '../kit/exercise_scaffold.dart';
-import '../kit/gap_question.dart';
-import '../kit/typed_answer_field.dart';
 import 'fill_the_gaps_notifier.dart';
+import 'fill_the_gaps_page_body.dart';
 
 class FillTheGapsScreen extends ConsumerWidget {
   const FillTheGapsScreen({super.key, this.collectionId, required this.groupId});
@@ -42,25 +40,7 @@ class FillTheGapsScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               const Text('Type the missing word'),
               const SizedBox(height: 16),
-              GapPrompt(question, revealed: result != null),
-              const SizedBox(height: 16),
-              if (result != null)
-                Text(
-                  result.match.isRight ? 'Right' : 'Missed',
-                  key: const ValueKey('gap-verdict'),
-                  style: TextStyle(
-                    color: result.match.isRight
-                        ? AppDecor.of(context).right
-                        : AppDecor.of(context).wrong,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              TypedAnswerField(
-                key: ValueKey('gap-${question.rowId}'),
-                expected: question.answer,
-                mode: TypedAnswerMode.practice,
-                onSubmit: notifier.answer,
-              ),
+              FillTheGapsPageBody(question: question, result: result, onAnswered: notifier.answer),
               if (result != null) ...[
                 const SizedBox(height: 16),
                 ElevatedButton(onPressed: notifier.next, child: const Text('Next')),

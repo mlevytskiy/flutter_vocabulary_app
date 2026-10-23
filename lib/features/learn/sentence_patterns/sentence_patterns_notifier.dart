@@ -1,14 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
-import '../../../core/services/learn_api_service.dart';
 import '../kit/exercise_phase.dart';
+import '../kit/exercise_random.dart';
 import '../kit/exercise_words.dart';
 import '../kit/result_summary.dart';
 import '../kit/sentence_check.dart';
 import '../kit/split_rounds.dart';
-import '../kit/word_marks.dart';
+import '../session/page_input.dart';
+import 'sentence_patterns_pages.dart';
 
 part 'sentence_patterns_notifier.g.dart';
 
@@ -80,28 +80,15 @@ class SentencePatterns extends _$SentencePatterns {
   Future<PatternsState> build(String? collectionId, String groupId) async {
     final words = await ref.watch(exerciseWordsProvider(collectionId, groupId).future);
     // S-50: a word to learn with a word and a translation is a candidate.
-    final candidates = <WordPair>[
-      for (final w in words.group)
-        if (w.rowId.isNotEmpty && w.word.trim().isNotEmpty && w.translation.trim().isNotEmpty) w,
-    ];
+    final candidates = patternCandidates(words.group);
     if (candidates.length < 3) return const PatternsState(rounds: []);
-    final replies = await ref.read(learnApiServiceProvider).fetchData(LearnDataKind.pattern, [
-      for (final w in candidates) (rowId: w.rowId, word: w.word.trim(), translation: w.translation.trim()),
-    ]);
-    final cards = <PatternCard>[];
-    for (final w in candidates) {
-      final data = replies[w.rowId];
-      final word = w.word.trim();
-      if (data == null || !holdsWordOnce(data.sentence, word)) continue;
-      cards.add(PatternCard(
-        rowId: w.rowId,
-        word: word,
-        translation: w.translation.trim(),
-        sentence: data.sentence,
-        pattern: data.pattern,
-        usage: data.usage,
-      ));
-    }
+    final cards = await sentencePatternCards(PageInput(
+      words: candidates,
+      others: words.others,
+      dialogues: const [],
+      api: ref.read(learnApiServiceProvider),
+      random: ref.read(exerciseRandomProvider),
+    ));
     return PatternsState(rounds: splitRounds(cards, min: 3, max: 9));
   }
 
