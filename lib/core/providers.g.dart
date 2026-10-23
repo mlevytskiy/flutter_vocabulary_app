@@ -307,6 +307,25 @@ final learnApiServiceProvider = Provider<LearnApiService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef LearnApiServiceRef = ProviderRef<LearnApiService>;
+String _$talkApiServiceHash() => r'210b666c417cfb782e871aedfb4eeb8ee1dbbaed';
+
+/// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
+///
+/// Copied from [talkApiService].
+@ProviderFor(talkApiService)
+final talkApiServiceProvider = Provider<TalkApiService>.internal(
+  talkApiService,
+  name: r'talkApiServiceProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$talkApiServiceHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef TalkApiServiceRef = ProviderRef<TalkApiService>;
 String _$examResultSinkHash() => r'48e41297d46cc66488d89b803bb61380316ddf96';
 
 /// Where Step 3 exams record each word's known / repeat result (learn-kit
