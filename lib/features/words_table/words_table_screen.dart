@@ -197,7 +197,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
       return;
     }
     showLearnSheet(context, ref,
-        collectionId: widget.collectionId, collection: collection);
+        collectionId: widget.collectionId,
+        collection: collection,
+        onTalk: (split) => TalkRoute(collectionId: widget.collectionId, split: split).push(context));
   }
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)

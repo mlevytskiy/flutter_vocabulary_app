@@ -11,6 +11,7 @@ import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/learn/session/learning_session_screen.dart';
+import '../features/learn/talk/talk_screen.dart';
 import '../features/mnemonic_story/story_screen.dart';
 import '../features/notes/notes_screen.dart';
 import '../features/notes/photo_viewer_screen.dart';
@@ -59,6 +60,7 @@ part 'routes.g.dart';
                   ],
                 ),
                 TypedGoRoute<LearningSessionRoute>(path: 'session'),
+                TypedGoRoute<TalkRoute>(path: 'talk'),
                 TypedGoRoute<WordsSettingsRoute>(
                   path: 'settings',
                   routes: [
@@ -172,6 +174,20 @@ class LearningSessionRoute extends GoRouteData with _$LearningSessionRoute {
         split: split,
         rowIds: rowIds == null || rowIds!.isEmpty ? null : rowIds!.split(','),
       );
+}
+
+/// Talk with AI (learn-redesign SCR-06, AC-20), opened from the Learn sheet's
+/// Talk with AI card. Ids only (rule 1): [collectionId] as on [LearnRoute],
+/// [split] as ticked on the sheet.
+class TalkRoute extends GoRouteData with _$TalkRoute {
+  const TalkRoute({this.collectionId, this.split = true});
+
+  final String? collectionId;
+  final bool split;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      TalkScreen(collectionId: collectionId, split: split);
 }
 
 /// The app's placeholder for an exercise that is not built yet (learn-part-step-1),
