@@ -1,0 +1,408 @@
+{
+  "slug": "learn-redesign",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record the learn-redesign approvals in CLAUDE.md rules 3 and 5",
+      "layer": "docs",
+      "deps": [],
+      "acs": [],
+      "dod": "CLAUDE.md rule 3 lists learn-redesign's visible changes (companion button beside Learn, Learn sheet, learning session frame, results, Learn settings, Talk with AI) and rule 5 lists WordBox/WordCollection.boxes and the pinned speech_to_text package, each 'owner via Fable 5.1 proxy, 2026-10-23'",
+      "files_hint": [
+        "CLAUDE.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add the WordBox model, WordCollection.boxes and keep boxes through CollectionStore.put",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-15"
+      ],
+      "dod": "build_runner regenerates; JSON round-trip test for boxes; store test: put() of a stale copy keeps stored boxes, update() can change them, a binned+restored collection keeps them",
+      "files_hint": [
+        "lib/core/models/word_box.dart",
+        "lib/core/models/word_collection.dart",
+        "lib/core/services/collection_store.dart",
+        "test/word_box_store_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the pure Leitner rules: box lookup by row id + word, due check, applySession, intervals",
+      "layer": "domain",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-13",
+        "AC-15",
+        "AC-22"
+      ],
+      "dod": "unit tests: clean word up one box (new→1, 5 stays 5), any miss → box 1, up at most once per calendar day, intervals 1/2/4/8/16, word edit → new, deleted row pruned, talk unused → unchanged, result states known/shaky/new/unused",
+      "files_hint": [
+        "lib/features/learn/session/leitner.dart",
+        "test/learn_session/leitner_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the pure word picker: under-20 rule, session groups of 7–12 in AI-group order, due/new/after-last choice, words-per-session cap, explicit row ids",
+      "layer": "domain",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-14"
+      ],
+      "dod": "unit tests: 15 words → all; 34 words split → groups 7–12 covering every word incl. waiting words and row-order fallback; first group with due, else new, else after last; Next group skips the played one; split off with cap 10/20/30/All due-new-others; rowIds wins; label 'Group 2 of 4 · 9 words'",
+      "files_hint": [
+        "lib/features/learn/session/session_words.dart",
+        "test/learn_session/session_words_test.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Add the pure ladder queue: rungs, miss down-one and reinsert 3 later, due words first, done when all passed Use",
+      "layer": "domain",
+      "deps": [],
+      "acs": [
+        "AC-08",
+        "AC-09"
+      ],
+      "dod": "unit tests with seeded Random: clean word takes 3 rights; miss on Practise → Meet, back 3 pages later or at end; never the same word next while others remain; miss on Meet stays Meet; per-word miss flag; due words' pages first",
+      "files_hint": [
+        "lib/features/learn/session/ladder_queue.dart",
+        "test/learn_session/ladder_queue_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Add learn preferences: presets, enabled exercises, words per session, split per collection, last played group",
+      "layer": "wiring",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-17",
+        "AC-18"
+      ],
+      "dod": "provider tests with mocked SharedPreferences: Balanced default with its 10 exercises, Quick/Deep contents per spec AC-17, switch change → Custom, last switch of a step refused, split default true per collection, words per session default All",
+      "files_hint": [
+        "lib/core/providers.dart",
+        "lib/features/learn/entry/learn_presets.dart",
+        "test/learn_session/learn_prefs_test.dart"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add ExercisePage/PageAnswer and the LearnPageFrame with AppDecor learnRight/learnWrong in every theme",
+      "layer": "ui",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10"
+      ],
+      "dod": "widget tests: frame shows step bar, 'N / M', chip, card, Check enabled only after ready(), verdict bar right/wrong with word — translation and Continue, done() skips Check; renders without overflow in all 5 themes at 393 pt, text scale 1.3",
+      "files_hint": [
+        "lib/features/learn/session/exercise_page.dart",
+        "lib/features/learn/session/learn_page_frame.dart",
+        "lib/core/theme/app_decor.dart",
+        "lib/core/theme/themes/",
+        "test/learn_session/learn_page_frame_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Move Pick the right answer, Remember or not and Quiz into page sources and page bodies shared with their screens",
+      "layer": "app",
+      "deps": [
+        "T7"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10",
+        "AC-15"
+      ],
+      "dod": "existing tests of the three exercises stay green; new tests: each page source yields one page per usable word with the right step; Remember or not 'I didn't' reports a miss via done(); session pages never call the exam result sink",
+      "files_hint": [
+        "lib/features/learn/pick_the_answer/",
+        "lib/features/learn/remember_or_not/",
+        "lib/features/learn/quiz/",
+        "test/learn_session/pages_basic_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Move Match synonyms, Match word and definition and Guess my word into page sources and page bodies",
+      "layer": "app",
+      "deps": [
+        "T7"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10",
+        "AC-11"
+      ],
+      "dod": "existing tests stay green; new tests: boards make one page per 4 words (last board 3–4) reporting per-word results via done(); Guess my word one page per word; a data failure yields no page and an error, never a half page",
+      "files_hint": [
+        "lib/features/learn/match_synonyms/",
+        "lib/features/learn/match_definitions/",
+        "lib/features/learn/guess_my_word/",
+        "lib/features/learn/kit/match_board.dart",
+        "test/learn_session/pages_match_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Move Fill the gaps and Sentence patterns into page sources and page bodies",
+      "layer": "app",
+      "deps": [
+        "T7"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10",
+        "AC-11"
+      ],
+      "dod": "existing tests stay green; new tests: one gap page per word with Check via ready(); data failure → no page; step 2",
+      "files_hint": [
+        "lib/features/learn/fill_the_gaps/",
+        "lib/features/learn/sentence_patterns/",
+        "test/learn_session/pages_gaps_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Move Make your own sentences, Translate sentences and Explain it to a friend into page sources and page bodies",
+      "layer": "app",
+      "deps": [
+        "T7"
+      ],
+      "acs": [
+        "AC-08",
+        "AC-10",
+        "AC-15"
+      ],
+      "dod": "existing tests stay green; new tests: one page per word, the sentence check reports via done(); Explain it to a friend uses its typed mode with no mode prompt; session pages write no exam word result while the old screens still do",
+      "files_hint": [
+        "lib/features/learn/own_sentences/",
+        "lib/features/learn/translate_sentences/",
+        "lib/features/learn/explain_to_friend/",
+        "lib/features/learn/kit/sentence_check.dart",
+        "test/learn_session/pages_sentences_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Add the LearningSession notifier, the session screen and LearningSessionRoute",
+      "layer": "app",
+      "deps": [
+        "T4",
+        "T5",
+        "T6",
+        "T8",
+        "T9",
+        "T10",
+        "T11"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-08",
+        "AC-09",
+        "AC-11",
+        "AC-16"
+      ],
+      "dod": "notifier tests with fake page sources: types drawn min(3, on) per step, story/dialogue never drawn, pages built step by step, AI data in batches ≤ 19, error + Retry while data-free pages play, leave writes nothing; widget test: leave confirm text; typed route only",
+      "files_hint": [
+        "lib/features/learn/session/learning_session_notifier.dart",
+        "lib/features/learn/session/learning_session_screen.dart",
+        "lib/features/learn/session/page_registry.dart",
+        "lib/router/routes.dart",
+        "test/learn_session/learning_session_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Finish a session: write boxes in one store update, SessionResult holder and the results screen with Practise shaky and Next group",
+      "layer": "ui",
+      "deps": [
+        "T12"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-12",
+        "AC-13",
+        "AC-16"
+      ],
+      "dod": "tests: finishing calls store.update once and boxes move per AC-13; erased collection → results shown with nothing written; results lists known/shaky/new with next review text; Practise N shaky starts a session on those rows; Next group shown only when split",
+      "files_hint": [
+        "lib/features/learn/session/session_result.dart",
+        "lib/features/learn/session/session_results_screen.dart",
+        "lib/features/learn/session/learning_session_notifier.dart",
+        "lib/router/routes.dart",
+        "test/learn_session/session_results_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Open the Learn sheet from Learn and add the companion drop-down beside it",
+      "layer": "ui",
+      "deps": [
+        "T4",
+        "T6",
+        "T12"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-06",
+        "AC-14",
+        "AC-27"
+      ],
+      "dod": "widget tests: Learn looks as before and opens the sheet with word and due counts; no words → 'Add words with a translation to start learning'; split checkbox only at ≥ 20 words, remembered per collection, next-group line; Exercises starts the session; companion menu: alone ticked, teacher/friend disabled 'Soon'; LearnShareBar layouts still fit",
+      "files_hint": [
+        "lib/features/learn/entry/learn_sheet.dart",
+        "lib/features/learn/entry/companion_button.dart",
+        "lib/features/words_table/widgets/learn_share_bar.dart",
+        "lib/features/words_table/words_table_screen.dart",
+        "test/learn_session/learn_sheet_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Add the Learn settings screen with presets, switches, words per session and Try it",
+      "layer": "ui",
+      "deps": [
+        "T6",
+        "T14"
+      ],
+      "acs": [
+        "AC-17",
+        "AC-18",
+        "AC-19"
+      ],
+      "dod": "widget tests: Balanced picked by default, preset sets switches, switch change → Custom, last switch of a step refused with the message, story/dialogue rows Try it only, Try it opens LearnRoute with that exercise ticked; reachable from the sheet's gear via LearnSettingsRoute",
+      "files_hint": [
+        "lib/features/learn/entry/learn_settings_screen.dart",
+        "lib/features/learn/learn_screen.dart",
+        "lib/router/routes.dart",
+        "test/learn_session/learn_settings_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Add the Worker talk route, the 20-talks-a-day counter and migration 0008",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-23",
+        "AC-24"
+      ],
+      "dod": "Worker tests: start takes a unit and the 21st start in a UTC day is refused with the day-limit code; replies never take a unit and are refused past 24 history messages; refuses without the app secret; prompt includes scene, words and target and returns reply + next target; typecheck green",
+      "files_hint": [
+        "vocab-photo-api/src/learn/talk.ts",
+        "vocab-photo-api/src/learn/routes.ts",
+        "vocab-photo-api/src/learn/allowance.ts",
+        "vocab-photo-api/migrations/0008_talk_allowance.sql",
+        "vocab-photo-api/test/learn_talk.test.ts"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Add the talk API service, the pure talk rules and the Talk notifier",
+      "layer": "app",
+      "deps": [
+        "T3",
+        "T4",
+        "T13",
+        "T16"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-21",
+        "AC-22",
+        "AC-24"
+      ],
+      "dod": "tests with a fake API: words from the word picker, scene priority (story text, dialogue, name+description), only learner text ticks words, hint after 2 replies without target, ends after 12 replies or all used, Done scores used/hinted/unused per AC-22 via applySession, day limit message, typed text kept on error",
+      "files_hint": [
+        "lib/core/services/talk_api_service.dart",
+        "lib/core/providers.dart",
+        "lib/features/learn/talk/talk_rules.dart",
+        "lib/features/learn/talk/talk_notifier.dart",
+        "test/learn_session/talk_test.dart"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Add the Talk with AI screen and TalkRoute, opened from the Learn sheet",
+      "layer": "ui",
+      "deps": [
+        "T14",
+        "T17"
+      ],
+      "acs": [
+        "AC-20",
+        "AC-21",
+        "AC-24"
+      ],
+      "dod": "widget tests: bubbles, word strip ticks, Hint after 2, End talk → results with 'N words not used — unchanged', day-limit and error states, sheet's Talk with AI card opens it",
+      "files_hint": [
+        "lib/features/learn/talk/talk_screen.dart",
+        "lib/features/learn/entry/learn_sheet.dart",
+        "lib/router/routes.dart",
+        "test/learn_session/talk_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T19",
+      "title": "Add speech_to_text behind speechInputProvider, hold-to-talk and spoken replies",
+      "layer": "wiring",
+      "deps": [
+        "T18"
+      ],
+      "acs": [
+        "AC-25",
+        "AC-26"
+      ],
+      "dod": "pubspec pins speech_to_text at one exact version; iOS Info.plist and Android manifest permissions added; widget tests with a fake SpeechInput: hold → final text sent, reply spoken via PronunciationService, refused permission → message and typing still works, mic hidden when unavailable; flutter analyze clean",
+      "files_hint": [
+        "pubspec.yaml",
+        "lib/core/services/speech_input.dart",
+        "lib/core/providers.dart",
+        "lib/features/learn/talk/talk_screen.dart",
+        "ios/Runner/Info.plist",
+        "android/app/src/main/AndroidManifest.xml",
+        "test/learn_session/talk_voice_test.dart"
+      ]
+    },
+    {
+      "id": "T20",
+      "title": "Update docs/architecture.md and the feature tracker for learn-redesign",
+      "layer": "docs",
+      "deps": [
+        "T13",
+        "T15",
+        "T19"
+      ],
+      "acs": [],
+      "dod": "architecture.md lists the new blocks (WordBox, session/, entry/, talk/, speech_input, talk route); tracker shows every task done",
+      "files_hint": [
+        "docs/architecture.md",
+        "docs/features/learn-redesign/tasks/tracker.md"
+      ]
+    }
+  ]
+}
