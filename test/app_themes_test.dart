@@ -123,9 +123,9 @@ void main() {
         {AppThemeNotifier.prefsKey: AppThemeId.aurora.name});
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    expect(container.read(appThemeNotifierProvider), AppThemeId.classic);
-    await container.read(appThemeNotifierProvider.notifier).loaded;
-    expect(container.read(appThemeNotifierProvider), AppThemeId.aurora);
+    expect(container.read(appThemeProvider), AppThemeId.classic);
+    await container.read(appThemeProvider.notifier).loaded;
+    expect(container.read(appThemeProvider), AppThemeId.aurora);
   });
 
   test('an unknown or removed stored name is Classic', () async {
@@ -133,8 +133,8 @@ void main() {
         {AppThemeNotifier.prefsKey: 'bauhaus'});
     final container = ProviderContainer();
     addTearDown(container.dispose);
-    await container.read(appThemeNotifierProvider.notifier).loaded;
-    expect(container.read(appThemeNotifierProvider), AppThemeId.classic);
+    await container.read(appThemeProvider.notifier).loaded;
+    expect(container.read(appThemeProvider), AppThemeId.classic);
   });
 
   testWidgets('a tapped theme card switches the theme and is stored',
@@ -154,7 +154,7 @@ void main() {
     }
     await tester.tap(find.byKey(AppSettingsScreen.themeKey(AppThemeId.matcha)));
     await tester.pumpAndSettle();
-    expect(container.read(appThemeNotifierProvider), AppThemeId.matcha);
+    expect(container.read(appThemeProvider), AppThemeId.matcha);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString(AppThemeNotifier.prefsKey), 'matcha');
   });

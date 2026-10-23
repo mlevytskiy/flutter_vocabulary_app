@@ -63,14 +63,14 @@ void main() {
     addTearDown(tester.view.reset);
     groups = FakeGroups(state);
     container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
-      wordGroupsNotifierProvider(null).overrideWith(() => groups),
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
+      wordGroupsProvider(null).overrideWith(() => groups),
       storyRunTrackerProvider.overrideWith(
           () => FakeTracker(StoryTrackerState(refusals: refusals))),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,

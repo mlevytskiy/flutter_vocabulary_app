@@ -71,12 +71,12 @@ void main() {
     addTearDown(tester.view.reset);
     groups = FakeGroups(state);
     final container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
-      wordGroupsNotifierProvider(null).overrideWith(() => groups),
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
+      wordGroupsProvider(null).overrideWith(() => groups),
       storyRunTrackerProvider.overrideWith(() => FakeTracker(const StoryTrackerState())),
     ]);
     addTearDown(container.dispose);
-    await tester.runAsync(() => container.read(wordsNotifierProvider.future));
+    await tester.runAsync(() => container.read(wordsProvider.future));
 
     Widget stub(String text) => Scaffold(appBar: AppBar(), body: Text(text));
     final router = GoRouter(

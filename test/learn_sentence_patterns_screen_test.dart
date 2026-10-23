@@ -105,10 +105,10 @@ void main() {
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    final container = ProviderContainer(overrides: [
+    final container = ProviderContainer(retry: noProviderRetry, overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       pronunciationServiceProvider.overrideWithValue(speech),
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);

@@ -44,8 +44,8 @@ void main() {
     container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
-    final first = await container.read(wordsNotifierProvider.future);
-    notifier = container.read(wordsNotifierProvider.notifier);
+    final first = await container.read(wordsProvider.future);
+    notifier = container.read(wordsProvider.notifier);
     a = first.collectionId;
     notifier.setPairs([WordPair(word: 'tide', rowId: 'row-1'), WordPair()]);
     await notifier.flush();

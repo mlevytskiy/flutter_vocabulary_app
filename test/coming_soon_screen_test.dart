@@ -33,12 +33,11 @@ void main() {
     addTearDown(tester.view.reset);
     final container = ProviderContainer(overrides: [
       ...fakeGroupOverrides(),
-      ...fakeGroupOverrides(),
-      wordsNotifierProvider.overrideWith(() => _FakeInput()),
+      wordsProvider.overrideWith(() => _FakeInput()),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(
-        () => container.read(wordsNotifierProvider.future));
+        () => container.read(wordsProvider.future));
     final router = GoRouter(initialLocation: '/words/table', routes: $appRoutes);
     addTearDown(router.dispose);
     await tester.pumpWidget(UncontrolledProviderScope(

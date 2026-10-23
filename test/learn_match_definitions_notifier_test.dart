@@ -48,7 +48,7 @@ void main() {
   final provider = matchDefinitionsProvider(null, 'g');
 
   ProviderContainer open(List<WordPair> g, FakeLearnApi api, {int seed = 1}) {
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: noProviderRetry, overrides: [
       exerciseRandomProvider.overrideWithValue(Random(seed)),
       learnApiServiceProvider.overrideWithValue(api),
       exerciseWordsProvider(null, 'g').overrideWith((ref) async => (group: g, others: const <WordPair>[])),

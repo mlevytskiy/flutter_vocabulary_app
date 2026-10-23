@@ -51,7 +51,7 @@ void main() {
   ProviderContainer open(List<WordPair> g, {void Function(_Api api)? setup}) {
     api = _Api();
     setup?.call(api);
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: noProviderRetry, overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       exerciseWordsProvider(null, 'g').overrideWith((ref) async => (group: g, others: const <WordPair>[])),
     ]);

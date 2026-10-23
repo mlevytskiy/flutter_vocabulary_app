@@ -105,7 +105,7 @@ void main() {
       dictionaryServiceProvider.overrideWithValue(dictionary),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -113,14 +113,14 @@ void main() {
       container: container,
       child: const MaterialApp(home: WordsScreen()),
     ));
-    final notifier = container.read(wordsNotifierProvider.notifier);
+    final notifier = container.read(wordsProvider.notifier);
     notifier.setPairs(
-        List.of(container.read(wordsNotifierProvider).value!.words));
+        List.of(container.read(wordsProvider).value!.words));
     await tester.pump();
     await tester.pump();
 
     List<WordPair> words() =>
-        container.read(wordsNotifierProvider).value!.words;
+        container.read(wordsProvider).value!.words;
     Finder definitionField(int row) => find
         .byWidgetPredicate(
             (w) => w is TextField && w.decoration?.labelText == 'Definition')

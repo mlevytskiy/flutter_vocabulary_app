@@ -37,13 +37,13 @@ void main() {
         WordPair(word: 'bare'),
       ];
     container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _FakeInput(current)),
+      wordsProvider.overrideWith(() => _FakeInput(current)),
       collectionByIdProvider(past.collectionId).overrideWith((ref) async => past),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       await container.read(collectionByIdProvider(past.collectionId).future);
     });
     final router = GoRouter(
@@ -111,14 +111,14 @@ void main() {
   testWidgets('AC-13: a History session opens the sheet for it, current untouched',
       (tester) async {
     await pump(tester, shownId: 'past');
-    final before = container.read(wordsNotifierProvider).value!;
+    final before = container.read(wordsProvider).value!;
     final beforeId = before.collectionId;
     final beforeWords = before.words.length;
     await tester.tap(learn);
     await tester.pumpAndSettle();
     // The past collection has two words with a translation, one without.
     expect(find.text('2 words · 0 due'), findsOneWidget);
-    final after = container.read(wordsNotifierProvider).value!;
+    final after = container.read(wordsProvider).value!;
     expect(after.collectionId, beforeId);
     expect(after.words.length, beforeWords);
   });

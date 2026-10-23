@@ -72,7 +72,7 @@ class PanelHost {
           // The panel's sources (photos and sets); photosWithWords derives
           // from it.
           sourcesWithWordsProvider.overrideWith((ref) {
-            void update() => ref.state = photos.value;
+            void update() => ref.invalidateSelf();
             photos.addListener(update);
             ref.onDispose(() => photos.removeListener(update));
             return photos.value;

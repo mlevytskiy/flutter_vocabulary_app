@@ -109,7 +109,7 @@ void main() {
     input = _FakeInput(current);
     await t.pumpWidget(ProviderScope(
       overrides: [
-        wordsNotifierProvider.overrideWith(() => input),
+        wordsProvider.overrideWith(() => input),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([films, podcasts])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([

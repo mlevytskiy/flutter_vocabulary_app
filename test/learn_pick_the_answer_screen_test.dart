@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
@@ -58,7 +59,7 @@ void main() {
     final container = ProviderContainer(overrides: [
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
       ...extra,
     ]);

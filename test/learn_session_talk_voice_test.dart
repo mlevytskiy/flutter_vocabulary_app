@@ -221,8 +221,8 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       final c = ProviderContainer();
       addTearDown(c.dispose);
-      await c.read(speechEngineNotifierProvider.notifier).loaded;
-      expect(c.read(speechEngineNotifierProvider), SpeechEngine.speechToText);
+      await c.read(speechEngineProvider.notifier).loaded;
+      expect(c.read(speechEngineProvider), SpeechEngine.speechToText);
       expect(c.read(speechInputProvider), isA<SpeechToTextInput>());
     });
 
@@ -230,8 +230,8 @@ void main() {
       SharedPreferences.setMockInitialValues({'learn.speechEngine': 'speechToTextPro'});
       final c = ProviderContainer();
       addTearDown(c.dispose);
-      await c.read(speechEngineNotifierProvider.notifier).loaded;
-      expect(c.read(speechEngineNotifierProvider), SpeechEngine.speechToTextPro);
+      await c.read(speechEngineProvider.notifier).loaded;
+      expect(c.read(speechEngineProvider), SpeechEngine.speechToTextPro);
       expect(c.read(speechInputProvider), isA<SpeechToTextProInput>());
     });
 
@@ -242,7 +242,7 @@ void main() {
       addTearDown(t.view.reset);
       final c = ProviderContainer();
       addTearDown(c.dispose);
-      await t.runAsync(() => c.read(speechEngineNotifierProvider.notifier).loaded);
+      await t.runAsync(() => c.read(speechEngineProvider.notifier).loaded);
       await t.pumpWidget(
           UncontrolledProviderScope(container: c, child: const MaterialApp(home: LearnSettingsScreen())));
       await t.pumpAndSettle();
@@ -255,7 +255,7 @@ void main() {
           SpeechEngine.speechToText);
       await t.tap(find.text('speech_to_text_pro'));
       await t.pumpAndSettle();
-      expect(c.read(speechEngineNotifierProvider), SpeechEngine.speechToTextPro);
+      expect(c.read(speechEngineProvider), SpeechEngine.speechToTextPro);
       expect(c.read(speechInputProvider), isA<SpeechToTextProInput>());
       final prefs = await t.runAsync(SharedPreferences.getInstance);
       expect(prefs!.getString('learn.speechEngine'), 'speechToTextPro');

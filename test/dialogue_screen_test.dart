@@ -99,14 +99,14 @@ void main() {
     addTearDown(tester.view.reset);
     tracker = SceneTracker(StoryTrackerState(refusals: refusals));
     final container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
-      wordGroupsNotifierProvider(null).overrideWith(
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
+      wordGroupsProvider(null).overrideWith(
           () => FakeGroups(WordGroupsState(groups: [group], selectedGroupId: group.id))),
       storyRunTrackerProvider.overrideWith(() => tracker),
       groupStoryRunsProvider(group.id).overrideWith((ref) => Stream.value(runs)),
     ]);
     addTearDown(container.dispose);
-    await tester.runAsync(() => container.read(wordsNotifierProvider.future));
+    await tester.runAsync(() => container.read(wordsProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: const MaterialApp(home: DialogueScreen(groupId: 'dialogue-d1')),

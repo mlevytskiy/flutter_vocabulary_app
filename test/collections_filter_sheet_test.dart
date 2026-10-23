@@ -281,7 +281,7 @@ void main() {
   testWidgets('apply shows the chips on the results', (t) async {
     await t.pumpWidget(ProviderScope(
       overrides: [
-        wordsNotifierProvider.overrideWith(() => _FakeInput()),
+        wordsProvider.overrideWith(() => _FakeInput()),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value(<CollectionFolder>[])),
         collectionLevelProvider(null)

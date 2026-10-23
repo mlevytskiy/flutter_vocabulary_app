@@ -77,7 +77,7 @@ void main() {
       exerciseRandomProvider.overrideWithValue(Random(3)),
       learnApiServiceProvider.overrideWithValue(_NoNetwork()),
       pronunciationServiceProvider.overrideWithValue(speech),
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
     ]);
     addTearDown(container.dispose);
@@ -263,7 +263,7 @@ void main() {
     await tapText(tester, 'learn page');
     await tester.pumpAndSettle();
     expect(find.text('Card 1 of 5'), findsOneWidget);
-    expect(c.read(wordsNotifierProvider).requireValue.words.length, 5);
+    expect(c.read(wordsProvider).requireValue.words.length, 5);
   });
 
   testWidgets('AC-16: fewer than 3 usable words: only the message and Back', (tester) async {

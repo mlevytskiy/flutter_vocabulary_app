@@ -75,7 +75,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -109,7 +109,7 @@ void main() {
     expect(find.byType(WordsScreen), findsOneWidget);
     expect(find.byType(BackButton), findsNothing);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
-    expect(container.read(wordsNotifierProvider).value!.words.first.word,
+    expect(container.read(wordsProvider).value!.words.first.word,
         'apple');
     // The rows show the collection's words, not an empty placeholder row.
     final appleRow = find.byWidgetPredicate(

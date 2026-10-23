@@ -55,8 +55,8 @@ void main() {
 
   Future<WordsNotifier> seeded(
       {List<SessionSource> sources = const [], List<WordPair> pairs = const []}) async {
-    await container.read(wordsNotifierProvider.future);
-    final notifier = container.read(wordsNotifierProvider.notifier);
+    await container.read(wordsProvider.future);
+    final notifier = container.read(wordsProvider.notifier);
     for (final s in sources) {
       notifier.addSource(s);
     }

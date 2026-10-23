@@ -115,7 +115,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     controller = PhotoPanelController();
     final container = ProviderContainer(overrides: [
-      wordsNotifierProvider
+      wordsProvider
           .overrideWith(() => _FakeInput(collection ?? _collection())),
       sourcePhotoStoreProvider.overrideWithValue(photos),
       // A note's debounced write waits for a store that never opens.
@@ -124,7 +124,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester
-        .runAsync(() => container.read(wordsNotifierProvider.future));
+        .runAsync(() => container.read(wordsProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: MaterialApp(

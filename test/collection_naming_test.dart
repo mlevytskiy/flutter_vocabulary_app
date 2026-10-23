@@ -372,12 +372,12 @@ void main() {
       tearDown(() => container.dispose());
 
       WordsNotifier notifier() =>
-          container.read(wordsNotifierProvider.notifier);
+          container.read(wordsProvider.notifier);
       WordCollection shown() =>
-          container.read(wordsNotifierProvider).value!;
+          container.read(wordsProvider).value!;
 
       Future<WordCollection> open() async {
-        await container.read(wordsNotifierProvider.future);
+        await container.read(wordsProvider.future);
         return shown();
       }
 

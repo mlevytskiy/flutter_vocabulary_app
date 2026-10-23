@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_vocabulary_app/core/providers.dart' show noProviderRetry;
 
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
@@ -20,7 +21,7 @@ void main() {
   List<WordPair> group(int count) => [for (var i = 0; i < count; i++) w('word$i', 'слово$i')];
 
   ProviderContainer open(List<WordPair> g, {List<WordPair> others = const [], int seed = 1, Object? error}) {
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: noProviderRetry, overrides: [
       exerciseRandomProvider.overrideWithValue(Random(seed)),
       exerciseWordsProvider(null, 'g').overrideWith((ref) async {
         if (error != null) throw error;

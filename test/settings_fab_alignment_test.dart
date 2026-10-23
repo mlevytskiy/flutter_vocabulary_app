@@ -51,7 +51,7 @@ void main() {
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
     await tester
-        .runAsync(() => container.read(wordsNotifierProvider.future));
+        .runAsync(() => container.read(wordsProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: const MaterialApp(home: WordsScreen()),

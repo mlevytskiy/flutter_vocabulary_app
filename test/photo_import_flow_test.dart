@@ -178,7 +178,7 @@ void main() {
       sourcePhotoStoreProvider.overrideWithValue(photos),
     ]);
     await tester
-        .runAsync(() => container.read(wordsNotifierProvider.future));
+        .runAsync(() => container.read(wordsProvider.future));
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: const MaterialApp(home: WordsScreen()),
@@ -194,7 +194,7 @@ void main() {
   }
 
   List<String> collectionWords() => [
-        for (final p in container.read(wordsNotifierProvider).value!.words)
+        for (final p in container.read(wordsProvider).value!.words)
           p.word
       ];
 
@@ -220,7 +220,7 @@ void main() {
   final resultsDialog = find.byType(AlertDialog);
 
   CollectionSnapshot snapshot() {
-    final s = container.read(wordsNotifierProvider).value!;
+    final s = container.read(wordsProvider).value!;
     return CollectionSnapshot(
       [for (final p in s.words) p.word],
       [for (final p in s.words) p.sourceId],

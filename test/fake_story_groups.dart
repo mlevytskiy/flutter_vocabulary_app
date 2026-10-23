@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
@@ -53,7 +53,7 @@ class FakeTracker extends StoryRunTracker {
 /// The overrides a screen that shows the learn page needs: one selected group
 /// and no refusals.
 List<Override> fakeGroupOverrides([FakeGroups? groups]) => [
-      wordGroupsNotifierProvider(null).overrideWith(() =>
+      wordGroupsProvider(null).overrideWith(() =>
           groups ??
           FakeGroups(WordGroupsState(groups: [_all], selectedGroupId: 'all'))),
       storyRunTrackerProvider

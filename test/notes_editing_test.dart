@@ -121,18 +121,18 @@ void main() {
     testWidgets('the notifier inserts a word and tracks edits made elsewhere',
         (tester) async {
       final container = ProviderContainer(overrides: [
-        wordsNotifierProvider.overrideWith(() => _FakeInput(_collection())),
+        wordsProvider.overrideWith(() => _FakeInput(_collection())),
         collectionStoreProvider
             .overrideWith((ref) => Completer<CollectionStore>().future),
       ]);
       addTearDown(container.dispose);
-      await container.read(wordsNotifierProvider.future);
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      await container.read(wordsProvider.future);
+      final notifier = container.read(wordsProvider.notifier);
 
       notifier.insertAt(
           2, WordPair(word: 'jug', translation: '', sourceId: 'p1'));
       expect([
-        for (final w in container.read(wordsNotifierProvider).value!.words)
+        for (final w in container.read(wordsProvider).value!.words)
           w.word
       ], [
         'cup',
@@ -162,7 +162,7 @@ void main() {
       tester.view.devicePixelRatio = 2.7;
       addTearDown(tester.view.reset);
       container = ProviderContainer(overrides: [
-        wordsNotifierProvider.overrideWith(() => _FakeInput(_collection())),
+        wordsProvider.overrideWith(() => _FakeInput(_collection())),
         // The debounced write waits for a store that never opens.
         collectionStoreProvider
             .overrideWith((ref) => Completer<CollectionStore>().future),
@@ -171,7 +171,7 @@ void main() {
       ]);
       addTearDown(container.dispose);
       await tester
-          .runAsync(() => container.read(wordsNotifierProvider.future));
+          .runAsync(() => container.read(wordsProvider.future));
       final router = GoRouter(initialLocation: '/words', routes: [
         GoRoute(
           path: '/words',
@@ -202,7 +202,7 @@ void main() {
         });
 
     WordCollection collection() =>
-        container.read(wordsNotifierProvider).value!;
+        container.read(wordsProvider).value!;
     SessionSource source(String id) =>
         collection().sources.firstWhere((s) => s.id == id);
     Finder pager(String id) => find.byKey(NotesScreen.pagerKey(id));
@@ -482,7 +482,7 @@ void main() {
       expect(dialog, findsNothing);
       expect([for (final w in collection().words) w.word],
           ['cup', 'spoon', 'jug', 'pan', '']);
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      final notifier = container.read(wordsProvider.notifier);
       expect(notifier.takeEditedElsewhere(), isTrue,
           reason: 'the main screen builds its rows again');
       // The page's words follow.

@@ -49,7 +49,7 @@ void main() {
   });
 
   Future<WordCollection> launch() =>
-      container.read(wordsNotifierProvider.future);
+      container.read(wordsProvider.future);
 
   Future<WordCollection> seed({
     required Duration ago,
@@ -242,7 +242,7 @@ void main() {
             c!..binnedAt = DateTime.now().subtract(const Duration(days: 31)));
       });
 
-      await container.read(wordsNotifierProvider.notifier).resume();
+      await container.read(wordsProvider.notifier).resume();
 
       expect(await store.byId(old.collectionId), isNull);
     });
@@ -251,9 +251,9 @@ void main() {
       final prev = await seed(ago: const Duration(days: 2));
       await launch();
 
-      await container.read(wordsNotifierProvider.notifier).resume();
+      await container.read(wordsProvider.notifier).resume();
 
-      expect(container.read(wordsNotifierProvider).value!.collectionId,
+      expect(container.read(wordsProvider).value!.collectionId,
           prev.collectionId);
       expect(await count(), 1);
     });
@@ -273,9 +273,9 @@ void main() {
         await isar.wordCollections.put(c!..binnedAt = DateTime.now());
       });
 
-      await container.read(wordsNotifierProvider.notifier).resume();
+      await container.read(wordsProvider.notifier).resume();
 
-      expect(container.read(wordsNotifierProvider).value!.collectionId,
+      expect(container.read(wordsProvider).value!.collectionId,
           ok.collectionId);
       expect(await store.currentCollectionId(), ok.collectionId);
     });
@@ -302,7 +302,7 @@ void main() {
       }
       expect(prefs.getString('current_session_id'), 'keep');
 
-      final c = container.read(wordsNotifierProvider.notifier);
+      final c = container.read(wordsProvider.notifier);
       await seed(ago: const Duration(minutes: 1));
       await c.future;
       await c.resume();

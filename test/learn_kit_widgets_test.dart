@@ -337,7 +337,7 @@ void main() {
       final current = collection();
       final history = collection()..words.add(w('h', 'horse'));
       final container = ProviderContainer(overrides: [
-        wordsNotifierProvider.overrideWith(() => _FakeInput(current)),
+        wordsProvider.overrideWith(() => _FakeInput(current)),
         collectionByIdProvider(history.collectionId).overrideWith((ref) async => history),
       ]);
       addTearDown(container.dispose);

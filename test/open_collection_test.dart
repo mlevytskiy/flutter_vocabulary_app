@@ -62,13 +62,13 @@ void main() {
   Future<WordCollection> current() async {
     final left = await store.create();
     await store.setCurrentCollectionId(left.collectionId);
-    await container.read(wordsNotifierProvider.future);
+    await container.read(wordsProvider.future);
     return left;
   }
 
   WordsNotifier notifier() =>
-      container.read(wordsNotifierProvider.notifier);
-  WordCollection shown() => container.read(wordsNotifierProvider).value!;
+      container.read(wordsProvider.notifier);
+  WordCollection shown() => container.read(wordsProvider).value!;
 
   group('open', () {
     test('shows the opened collection and sets the pointer', () async {

@@ -160,8 +160,8 @@ void main() {
 
     test('adds the set after the existing sources, then renames it in place',
         () async {
-      await container.read(wordsNotifierProvider.future);
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      await container.read(wordsProvider.future);
+      final notifier = container.read(wordsProvider.notifier);
 
       final id = notifier.upsertSetSource(
           '123456', 'Animals', 'https://quizlet.com/123456/animals/');
@@ -171,7 +171,7 @@ void main() {
           '123456', 'Wild animals', 'https://quizlet.com/123456/wild/');
       expect(again, 'quizlet-123456');
 
-      final sources = container.read(wordsNotifierProvider).value!.sources;
+      final sources = container.read(wordsProvider).value!.sources;
       expect(sources.map((s) => s.id),
           ['photo-a', 'photo-b', 'quizlet-123456', 'photo-c']);
       final set = sources[2];
@@ -222,7 +222,7 @@ void main() {
         googleTranslateServiceProvider.overrideWithValue(FakeTranslate()),
       ]);
       await tester
-          .runAsync(() => container.read(wordsNotifierProvider.future));
+          .runAsync(() => container.read(wordsProvider.future));
       await tester.pumpWidget(UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
@@ -239,7 +239,7 @@ void main() {
       await importFrom(tester,
           'Check out this set: https://quizlet.com/ua/123456/animals/?x=1');
 
-      WordCollection collection() => container.read(wordsNotifierProvider).value!;
+      WordCollection collection() => container.read(wordsProvider).value!;
       List<WordPair> rows() =>
           collection().words.where((p) => !p.isEmpty).toList();
 

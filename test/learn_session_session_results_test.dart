@@ -88,7 +88,7 @@ ProviderContainer _container(WordCollection collection, _Store store) {
     collectionStoreProvider.overrideWith((ref) async => store),
     exerciseRandomProvider.overrideWithValue(Random(1)),
     learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-    wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+    wordsProvider.overrideWith(() => _FakeInput(collection)),
     pageSourcesProvider.overrideWithValue(_sources()),
   ]);
   addTearDown(c.dispose);

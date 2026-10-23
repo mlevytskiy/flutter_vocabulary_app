@@ -497,7 +497,7 @@ void main() {
         if (pastExists) past.collectionId: past,
       });
       final container = ProviderContainer(overrides: [
-        wordsNotifierProvider.overrideWith(() => input),
+        wordsProvider.overrideWith(() => input),
         collectionByIdProvider(past.collectionId).overrideWith((ref) async => past),
         collectionByIdProvider(current.collectionId)
             .overrideWith((ref) async => current),
@@ -505,7 +505,7 @@ void main() {
       addTearDown(container.dispose);
       await tester.runAsync(() async {
         await container.read(wordDetailModeProvider.notifier).loaded;
-        await container.read(wordsNotifierProvider.future);
+        await container.read(wordsProvider.future);
         await container.read(collectionByIdProvider(past.collectionId).future);
         await container.read(collectionByIdProvider(current.collectionId).future);
       });
@@ -607,7 +607,7 @@ class _MainStub extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final words = ref.watch(wordsNotifierProvider).valueOrNull?.words ??
+    final words = ref.watch(wordsProvider).value?.words ??
         const <WordPair>[];
     return Scaffold(
       body: Text('main: ${words.map((w) => w.word).join(', ')}'),

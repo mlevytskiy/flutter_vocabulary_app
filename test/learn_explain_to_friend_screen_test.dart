@@ -105,7 +105,7 @@ void main() {
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(3)),
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
       collectionByIdProvider('hist').overrideWith((ref) async => collection),
       if (read != null)
         exerciseWordsProvider(collectionId, 'g').overrideWith((ref) async => (group: await read(), others: const <WordPair>[])),

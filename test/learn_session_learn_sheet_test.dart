@@ -34,12 +34,12 @@ void main() {
     c = _collection(n);
     sessionUri = null;
     container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _Fake(c)),
+      wordsProvider.overrideWith(() => _Fake(c)),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     final router = GoRouter(initialLocation: '/words/table', routes: [
       GoRoute(
@@ -114,7 +114,7 @@ void main() {
 
     await t.tap(find.byType(CheckboxListTile));
     await t.pumpAndSettle();
-    expect(container.read(learnSplitNotifierProvider(c.collectionId)), isFalse);
+    expect(container.read(learnSplitProvider(c.collectionId)), isFalse);
     expect(find.textContaining('Next: '), findsNothing);
     await t.tap(find.text('Exercises'));
     await t.pumpAndSettle();

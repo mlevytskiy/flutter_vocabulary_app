@@ -87,7 +87,7 @@ void main() {
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -275,9 +275,9 @@ void main() {
       expect((await store.byId(current.collectionId))!.name, 'Garden');
       // The next autosave must not bring the old name back.
       container
-          .read(wordsNotifierProvider.notifier)
+          .read(wordsProvider.notifier)
           .addAll([WordPair(word: 'pear')]);
-      await container.read(wordsNotifierProvider.notifier).flush();
+      await container.read(wordsProvider.notifier).flush();
       expect((await store.byId(current.collectionId))!.name, 'Garden');
     });
     await tearDownMain(tester);

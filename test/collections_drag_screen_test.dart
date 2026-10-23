@@ -73,7 +73,7 @@ void main() {
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
         binItemsProvider.overrideWith((ref) => Stream.value(const [])),
-        wordsNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
+        wordsProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english, unit3])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([

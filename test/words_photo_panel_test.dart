@@ -50,7 +50,7 @@ void main() {
       bool startOnMain = false}) async {
     SharedPreferences.setMockInitialValues({});
     final container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _FakeWords(main)),
+      wordsProvider.overrideWith(() => _FakeWords(main)),
       if (shown != null)
         collectionByIdProvider(shown.collectionId)
             .overrideWith((ref) async => shown),
@@ -59,7 +59,7 @@ void main() {
     addTearDown(container.dispose);
     await tester.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       if (shown != null) {
         await container.read(collectionByIdProvider(shown.collectionId).future);
       }

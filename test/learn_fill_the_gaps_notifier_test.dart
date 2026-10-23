@@ -42,7 +42,7 @@ void main() {
 
   ProviderContainer open(List<WordPair> g, {List<FilmDialogue> dialogues = const []}) {
     api = _Api();
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: noProviderRetry, overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       exerciseWordsProvider(null, 'g').overrideWith((ref) async => (group: g, others: const <WordPair>[])),
       exerciseDialoguesProvider(null).overrideWith((ref) async => dialogues),

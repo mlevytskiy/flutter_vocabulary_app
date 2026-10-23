@@ -11,7 +11,7 @@ ProviderContainer _container() {
 }
 
 Future<LearnSettingsNotifier> _settings(ProviderContainer c) async {
-  final n = c.read(learnSettingsNotifierProvider.notifier);
+  final n = c.read(learnSettingsProvider.notifier);
   await n.loaded;
   return n;
 }
@@ -37,7 +37,7 @@ void main() {
   test('defaults: Balanced, its 10 exercises, all words', () async {
     final c = _container();
     await _settings(c);
-    final s = c.read(learnSettingsNotifierProvider);
+    final s = c.read(learnSettingsProvider);
     expect(s.preset, LearnPreset.balanced);
     expect(s.enabled, presetExercises(LearnPreset.balanced));
     expect(s.wordsPerSession, WordsPerSession.all);
@@ -48,14 +48,14 @@ void main() {
     final c = _container();
     final n = await _settings(c);
     await n.pickPreset(LearnPreset.quick);
-    expect(c.read(learnSettingsNotifierProvider).enabled,
+    expect(c.read(learnSettingsProvider).enabled,
         presetExercises(LearnPreset.quick));
     expect(await n.setEnabled('guess-my-word', true), isTrue);
-    expect(c.read(learnSettingsNotifierProvider).preset, LearnPreset.custom);
+    expect(c.read(learnSettingsProvider).preset, LearnPreset.custom);
     expect(await n.setEnabled('guess-my-word', false), isTrue);
-    expect(c.read(learnSettingsNotifierProvider).preset, LearnPreset.quick);
+    expect(c.read(learnSettingsProvider).preset, LearnPreset.quick);
     await n.pickPreset(LearnPreset.deep);
-    expect(c.read(learnSettingsNotifierProvider).enabled.length, 11);
+    expect(c.read(learnSettingsProvider).enabled.length, 11);
   });
 
   test('the last switch of a step is refused', () async {
@@ -64,8 +64,8 @@ void main() {
     // Step 3 in Quick holds only the quiz.
     await n.pickPreset(LearnPreset.quick);
     expect(await n.setEnabled('quiz', false), isFalse);
-    expect(c.read(learnSettingsNotifierProvider).enabled, contains('quiz'));
-    expect(c.read(learnSettingsNotifierProvider).preset, LearnPreset.quick);
+    expect(c.read(learnSettingsProvider).enabled, contains('quiz'));
+    expect(c.read(learnSettingsProvider).preset, LearnPreset.quick);
   });
 
   test('settings persist across a new container', () async {
@@ -76,7 +76,7 @@ void main() {
     await n.setWordsPerSession(WordsPerSession.twenty);
     final c2 = _container();
     await _settings(c2);
-    final s = c2.read(learnSettingsNotifierProvider);
+    final s = c2.read(learnSettingsProvider);
     expect(s.preset, LearnPreset.custom);
     expect(s.enabled, contains('guess-my-word'));
     expect(s.wordsPerSession, WordsPerSession.twenty);
@@ -84,24 +84,24 @@ void main() {
 
   test('split defaults true per collection and is remembered', () async {
     final c1 = _container();
-    expect(c1.read(learnSplitNotifierProvider('a')), isTrue);
-    await c1.read(learnSplitNotifierProvider('a').notifier).set(false);
-    expect(c1.read(learnSplitNotifierProvider('b')), isTrue);
+    expect(c1.read(learnSplitProvider('a')), isTrue);
+    await c1.read(learnSplitProvider('a').notifier).set(false);
+    expect(c1.read(learnSplitProvider('b')), isTrue);
     final c2 = _container();
-    final n = c2.read(learnSplitNotifierProvider('a').notifier);
+    final n = c2.read(learnSplitProvider('a').notifier);
     await n.loaded;
-    expect(c2.read(learnSplitNotifierProvider('a')), isFalse);
-    expect(c2.read(learnSplitNotifierProvider('b')), isTrue);
+    expect(c2.read(learnSplitProvider('a')), isFalse);
+    expect(c2.read(learnSplitProvider('b')), isTrue);
   });
 
   test('last group is stored per collection', () async {
     final c1 = _container();
-    expect(c1.read(learnLastGroupNotifierProvider('a')), isNull);
-    await c1.read(learnLastGroupNotifierProvider('a').notifier).set(2);
+    expect(c1.read(learnLastGroupProvider('a')), isNull);
+    await c1.read(learnLastGroupProvider('a').notifier).set(2);
     final c2 = _container();
-    final n = c2.read(learnLastGroupNotifierProvider('a').notifier);
+    final n = c2.read(learnLastGroupProvider('a').notifier);
     await n.loaded;
-    expect(c2.read(learnLastGroupNotifierProvider('a')), 2);
-    expect(c2.read(learnLastGroupNotifierProvider('b')), isNull);
+    expect(c2.read(learnLastGroupProvider('a')), 2);
+    expect(c2.read(learnLastGroupProvider('b')), isNull);
   });
 }

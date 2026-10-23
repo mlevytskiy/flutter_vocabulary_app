@@ -102,13 +102,13 @@ void main() {
     s.lastLocalModifiedAt = DateTime.now();
     await seedCollection(store, s);
     await store.setCurrentCollectionId(s.collectionId);
-    return (await container.read(wordsNotifierProvider.future));
+    return (await container.read(wordsProvider.future));
   }
 
   WordGroupsNotifier current() =>
-      container.read(wordGroupsNotifierProvider(null).notifier);
+      container.read(wordGroupsProvider(null).notifier);
   WordGroupsState stateOf([String? id]) =>
-      container.read(wordGroupsNotifierProvider(id));
+      container.read(wordGroupsProvider(id));
 
   test('a session of 19 words or fewer becomes one "All words" group, with no call (AC-02)',
       () async {
@@ -121,7 +121,7 @@ void main() {
     expect(stateOf().groups.map((g) => g.name), [allWordsName]);
     expect(stateOf().groups.single.rowIds, ids(1, 10));
     final saved = await store.byId(
-        (await container.read(wordsNotifierProvider.future)).collectionId);
+        (await container.read(wordsProvider.future)).collectionId);
     expect(saved!.groups.single.name, allWordsName);
     expect(saved.groupedWordsKey, isNotEmpty);
   });
@@ -270,7 +270,7 @@ void main() {
     final saved = await store.byId(cur.collectionId);
     expect(saved!.selectedGroupId, second);
 
-    container.invalidate(wordGroupsNotifierProvider(null));
+    container.invalidate(wordGroupsProvider(null));
     await current().ensureGrouped();
     expect(stateOf().selectedGroupId, second);
     expect(api.asked, hasLength(1));
@@ -337,7 +337,7 @@ void main() {
           SplitGroup(name: 'Travel', rowIds: ids(14, 25, prefix: 'h')),
         ];
 
-    final notifier = container.read(wordGroupsNotifierProvider(history.collectionId).notifier);
+    final notifier = container.read(wordGroupsProvider(history.collectionId).notifier);
     await notifier.ensureGrouped();
     await notifier.select(stateOf(history.collectionId).groups[1].id);
 
@@ -350,8 +350,8 @@ void main() {
     expect(savedCurrent!.groups, isEmpty);
     expect(savedCurrent.groupedWordsKey, isNull);
     expect(await store.currentCollectionId(), cur.collectionId);
-    expect(container.read(wordsNotifierProvider).value!.collectionId, cur.collectionId);
-    expect(container.read(wordsNotifierProvider).value!.groups, isEmpty);
+    expect(container.read(wordsProvider).value!.collectionId, cur.collectionId);
+    expect(container.read(wordsProvider).value!.groups, isEmpty);
   });
 
   group('dialogue groups (get-words-from-subtitles-improvment AC-24, AC-25)',

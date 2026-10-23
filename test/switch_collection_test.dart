@@ -119,7 +119,7 @@ void main() {
         dictionaryServiceProvider.overrideWithValue(dictionary),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -130,7 +130,7 @@ void main() {
     // The session resolved before the screen mounted, so nudge the notifier
     // once for the screen's listener to fill the rows. A blank row is not a
     // content change: it stamps nothing.
-    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
   }
@@ -144,21 +144,21 @@ void main() {
 
   Future<void> switchToPicked(WidgetTester tester) async {
     await tester.runAsync(() => container
-        .read(wordsNotifierProvider.notifier)
+        .read(wordsProvider.notifier)
         .switchTo(picked.collectionId));
     await tester.pump();
     await tester.pump();
   }
 
   List<WordPair> words() =>
-      container.read(wordsNotifierProvider).value!.words;
+      container.read(wordsProvider).value!.words;
 
   Finder field(String label) => find.byWidgetPredicate(
       (w) => w is TextField && w.decoration?.labelText == label);
 
   Future<void> expectPickedUntouched(WidgetTester tester,
       {String leftTranslation = ''}) async {
-    expect(container.read(wordsNotifierProvider).value!.collectionId,
+    expect(container.read(wordsProvider).value!.collectionId,
         picked.collectionId);
     expect(words().where((w) => !w.isEmpty).map((w) => w.word),
         ['tea', 'milk']);
@@ -169,7 +169,7 @@ void main() {
     // Whatever is waiting to be saved goes to the store now (in the real
     // zone: a debounced Isar write started under the fake clock never ends).
     await tester.runAsync(
-        () => container.read(wordsNotifierProvider.notifier).flush());
+        () => container.read(wordsProvider.notifier).flush());
     await tester.runAsync(() async {
       final stored = await store.byId(picked.collectionId);
       expect(stored!.lastLocalModifiedAt, DateTime(2026, 9, 1, 12),
@@ -241,7 +241,7 @@ void main() {
     await tester.runAsync(() async {
       await seedCollection(store, empty);
       await container
-          .read(wordsNotifierProvider.notifier)
+          .read(wordsProvider.notifier)
           .switchTo(empty.collectionId);
     });
     await tester.pump();
@@ -249,7 +249,7 @@ void main() {
 
     expect(find.widgetWithText(TextField, 'apple'), findsNothing);
     expect(field('Word'), findsOneWidget);
-    expect(container.read(wordsNotifierProvider).value!.words, isEmpty);
+    expect(container.read(wordsProvider).value!.words, isEmpty);
     await tearDownMain(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

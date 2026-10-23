@@ -235,8 +235,8 @@ void main() {
       s.lastLocalModifiedAt = DateTime.now();
       await seedCollection(store, s);
       await store.setCurrentCollectionId(s.collectionId);
-      await container.read(wordsNotifierProvider.future);
-      return container.read(wordsNotifierProvider.notifier);
+      await container.read(wordsProvider.future);
+      return container.read(wordsProvider.notifier);
     }
 
     test('links the import\'s rows, drops removed words, appends after the existing (AC-03, AC-10)',

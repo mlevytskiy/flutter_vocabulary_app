@@ -107,7 +107,7 @@ void main() {
       googleTranslateServiceProvider.overrideWithValue(translate),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       container.read(wordDetailModeProvider);
       await container.read(wordDetailModeProvider.notifier).loaded;
     });
@@ -152,7 +152,7 @@ void main() {
     await tester.tap(find.text('Done'));
     await settle();
 
-    WordCollection collection() => container.read(wordsNotifierProvider).value!;
+    WordCollection collection() => container.read(wordsProvider).value!;
     // Blank rows may sit between batches, as after a photo import; they are
     // not words.
     final rows = collection().words.where((p) => !p.isEmpty).toList();

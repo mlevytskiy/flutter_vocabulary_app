@@ -287,12 +287,12 @@ void main() {
       if (dir.existsSync()) dir.deleteSync(recursive: true);
     });
 
-    WordCollection collection() => container.read(wordsNotifierProvider).value!;
+    WordCollection collection() => container.read(wordsProvider).value!;
 
     // AC-25
     test('a photo and its rows are saved; a typed row has no photo', () async {
-      await container.read(wordsNotifierProvider.future);
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      await container.read(wordsProvider.future);
+      final notifier = container.read(wordsProvider.notifier);
       notifier.setPairs([WordPair(word: 'typed', translation: 'набраний')]);
 
       notifier.addSource(photo('p1'));
@@ -312,8 +312,8 @@ void main() {
 
     test('editing a row keeps its photo; clearing it drops the photo',
         () async {
-      await container.read(wordsNotifierProvider.future);
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      await container.read(wordsProvider.future);
+      final notifier = container.read(wordsProvider.notifier);
       notifier.setPairs([WordPair(word: 'apple', sourceId: 'p1'), WordPair()]);
 
       notifier.updateAt(0, translation: 'яблуко');
@@ -333,8 +333,8 @@ void main() {
       await seedCollection(store, prev);
       await store.setCurrentCollectionId(prev.collectionId);
 
-      await container.read(wordsNotifierProvider.future);
-      container.read(wordsNotifierProvider.notifier).addSource(photo('p2'));
+      await container.read(wordsProvider.future);
+      container.read(wordsProvider.notifier).addSource(photo('p2'));
 
       expect(collection().sources.map((s) => s.id).toList(), ['p1', 'p2']);
     });

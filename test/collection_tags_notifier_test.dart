@@ -63,7 +63,7 @@ void main() {
     container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
-    await container.read(wordsNotifierProvider.future);
+    await container.read(wordsProvider.future);
   }
 
   Future<void> close() async {
@@ -73,8 +73,8 @@ void main() {
   }
 
   WordsNotifier notifier() =>
-      container.read(wordsNotifierProvider.notifier);
-  WordCollection shown() => container.read(wordsNotifierProvider).value!;
+      container.read(wordsProvider.notifier);
+  WordCollection shown() => container.read(wordsProvider).value!;
   Future<WordCollection> stored() async =>
       (await store.byId(seeded.collectionId))!;
 
@@ -164,8 +164,8 @@ void main() {
       // A fresh empty one with no source.
       final bare = await store.create(folderId: null, keep: false);
       await store.setCurrentCollectionId(bare.collectionId);
-      container.invalidate(wordsNotifierProvider);
-      await container.read(wordsNotifierProvider.future);
+      container.invalidate(wordsProvider);
+      await container.read(wordsProvider.future);
       expect(await notifier().saveDetails(description: 'Notes only'), isTrue);
       await notifier().newCollection(null);
       expect(await store.byId(bare.collectionId), isNotNull);

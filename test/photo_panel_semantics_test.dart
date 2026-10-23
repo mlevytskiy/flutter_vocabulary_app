@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -55,12 +57,12 @@ void main() {
 
     final photo = tester.getSemantics(find.bySemanticsLabel('Photo 2 of 3')).getSemanticsData();
     expect(photo.flagsCollection.isButton, isTrue);
-    expect(photo.flagsCollection.isSelected, isFalse);
+    expect(photo.flagsCollection.isSelected, Tristate.isFalse);
     await semanticTap(tester, 'Photo 2 of 3');
     expect(host.controller.selectedId, 'p1');
     expect(
       tester.getSemantics(find.bySemanticsLabel('Photo 2 of 3')).getSemanticsData().flagsCollection.isSelected,
-      isTrue,
+      Tristate.isTrue,
     );
 
     await semanticTap(tester, 'Show photos large');

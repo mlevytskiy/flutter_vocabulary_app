@@ -42,6 +42,10 @@ void main() {
           .overrideWith((ref) => Stream.value(summaries)),
     ]);
     addTearDown(c.dispose);
+    // Keeps the two auto-dispose streams alive between the reads below
+    // (Riverpod 3 disposes them once a container read lets go).
+    c.listen(tagLibraryProvider, (_, __) {});
+    c.listen(collectionSummariesProvider, (_, __) {});
     return c;
   }
 

@@ -42,7 +42,7 @@ void main() {
       (t) async {
     final input = _FakeInput();
     await t.pumpWidget(ProviderScope(
-      overrides: [wordsNotifierProvider.overrideWith(() => input)],
+      overrides: [wordsProvider.overrideWith(() => input)],
       child: MaterialApp.router(
         routerConfig: GoRouter(
           routes: $appRoutes,

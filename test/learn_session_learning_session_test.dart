@@ -123,7 +123,7 @@ ProviderContainer _container(WordCollection collection, _Fakes fakes, {int seed 
     collectionStoreProvider.overrideWith((ref) async => _FinishStore(collection)),
     exerciseRandomProvider.overrideWithValue(Random(seed)),
     learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-    wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+    wordsProvider.overrideWith(() => _FakeInput(collection)),
     pageSourcesProvider.overrideWithValue(fakes.map),
   ]);
   addTearDown(c.dispose);
@@ -294,7 +294,7 @@ void main() {
       final c = ProviderContainer(overrides: [
         exerciseRandomProvider.overrideWithValue(Random(1)),
         learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-        wordsNotifierProvider.overrideWith(() => _FakeInput(_collection(3))),
+        wordsProvider.overrideWith(() => _FakeInput(_collection(3))),
         pageSourcesProvider.overrideWithValue(empty),
       ]);
       addTearDown(c.dispose);
@@ -338,7 +338,7 @@ void main() {
         collectionStoreProvider.overrideWith((ref) async => store),
         exerciseRandomProvider.overrideWithValue(Random(1)),
         learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-        wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+        wordsProvider.overrideWith(() => _FakeInput(collection)),
         pageSourcesProvider.overrideWithValue(fakes.map),
       ]);
       addTearDown(c.dispose);
@@ -407,7 +407,7 @@ void main() {
       final c = ProviderContainer(overrides: [
         exerciseRandomProvider.overrideWithValue(Random(1)),
         learnApiServiceProvider.overrideWithValue(_NoNetwork()),
-        wordsNotifierProvider.overrideWith(() => _FakeInput(_collection(3))),
+        wordsProvider.overrideWith(() => _FakeInput(_collection(3))),
         pageSourcesProvider.overrideWithValue(fakes.map),
       ]);
       addTearDown(c.dispose);

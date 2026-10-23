@@ -84,7 +84,7 @@ void main() {
     tester.view.devicePixelRatio = 2.7;
     addTearDown(tester.view.reset);
     final container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => fake),
+      wordsProvider.overrideWith(() => fake),
       collectionStoreProvider
           .overrideWith((ref) => Completer<CollectionStore>().future),
       sourcePhotoStoreProvider
@@ -92,7 +92,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester
-        .runAsync(() => container.read(wordsNotifierProvider.future));
+        .runAsync(() => container.read(wordsProvider.future));
     final router = GoRouter(routes: [
       GoRoute(
           path: '/', builder: (_, __) => const NotesScreen(selectedId: 'p1')),

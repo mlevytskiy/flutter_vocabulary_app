@@ -115,7 +115,7 @@ void main() {
       dir = Directory.systemTemp.createTempSync('subtitle_sources_notifier');
       store = await CollectionStore.open(directory: dir.path);
       container = ProviderContainer(overrides: [collectionStoreProvider.overrideWith((ref) async => store)]);
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
 
     tearDown(() async {
@@ -125,37 +125,37 @@ void main() {
     });
 
     test('one source per film; importing the same film again reuses it', () {
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      final notifier = container.read(wordsProvider.notifier);
       final a = notifier.upsertSubtitlesSource('Harbour Lights (2024)');
       final b = notifier.upsertSubtitlesSource('The Storm');
       final again = notifier.upsertSubtitlesSource('Harbour Lights (2024)');
       expect(a, startsWith('subtitles-'));
       expect(again, a);
       expect(b, isNot(a));
-      final sources = container.read(wordsNotifierProvider).value!.sources;
+      final sources = container.read(wordsProvider).value!.sources;
       expect([for (final s in sources) '${s.id}|${s.kind.name}|${s.name}'],
           ['$a|subtitles|Harbour Lights (2024)', '$b|subtitles|The Storm']);
       expect(RegExp(r'^[A-Za-z0-9-]{1,64}$').hasMatch(a), isTrue, reason: 'a valid source id');
     });
 
     test('the film keeps its poster as its url; a film without one gets it on a later import', () {
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      final notifier = container.read(wordsProvider.notifier);
       final a = notifier.upsertSubtitlesSource('Harbour', poster: 'https://posters.test/1.jpg');
       final b = notifier.upsertSubtitlesSource('Storm');
       expect(notifier.upsertSubtitlesSource('Storm', poster: 'https://posters.test/2.jpg'), b);
       expect(notifier.upsertSubtitlesSource('Harbour', poster: 'https://posters.test/other.jpg'), a);
-      final sources = container.read(wordsNotifierProvider).value!.sources;
+      final sources = container.read(wordsProvider).value!.sources;
       expect([for (final s in sources) s.url], ['https://posters.test/1.jpg', 'https://posters.test/2.jpg']);
     });
 
     test('a Quizlet set with the same name is not reused for a film', () {
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      final notifier = container.read(wordsProvider.notifier);
       final set = notifier.upsertSetSource('1', 'Harbour', 'https://quizlet.com/1/harbour/');
       expect(notifier.upsertSubtitlesSource('Harbour'), isNot(set));
     });
 
     test('the film is listed with its rows among the panel sources', () {
-      final notifier = container.read(wordsNotifierProvider.notifier);
+      final notifier = container.read(wordsProvider.notifier);
       final film = notifier.upsertSubtitlesSource('Harbour Lights');
       notifier.setPairs([
         WordPair(word: 'typed'),

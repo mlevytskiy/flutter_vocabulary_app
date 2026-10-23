@@ -93,13 +93,13 @@ void main() {
       sourcePhotoStoreProvider.overrideWithValue(MapSourcePhotoStore({})),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: MaterialApp.router(routerConfig: mainScreenRouter()),
     ));
-    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -460,7 +460,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(selected(tester), 'p2');
 
-    container.read(wordsNotifierProvider.notifier).updateAt(18, word: '');
+    container.read(wordsProvider.notifier).updateAt(18, word: '');
     await tester.pumpAndSettle();
     expect(selected(tester), isNull);
     expect(find.byKey(PhotoPanel.smallPhotoKey('p2')), findsNothing);
@@ -475,7 +475,7 @@ void main() {
     await pumpMain(tester);
     FocusManager.instance.primaryFocus?.unfocus();
     await openHalf(tester);
-    final rows = container.read(wordsNotifierProvider).value!.words.length;
+    final rows = container.read(wordsProvider).value!.words.length;
 
     await tester.tap(line(1), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -492,7 +492,7 @@ void main() {
     await openHalf(tester);
     await tester.tapAt(delete);
     await tester.pumpAndSettle();
-    expect(container.read(wordsNotifierProvider).value!.words.length, rows);
+    expect(container.read(wordsProvider).value!.words.length, rows);
 
     // Another row's one line: only closes the panel. (The tap above may have
     // selected a source, whose first row then went to the top.)
@@ -500,7 +500,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
     expect(FocusManager.instance.primaryFocus?.context?.widget is EditableText, isFalse);
-    expect(container.read(wordsNotifierProvider).value!.words.length, rows);
+    expect(container.read(wordsProvider).value!.words.length, rows);
     await tearDownMain(tester);
   });
 
@@ -563,7 +563,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.runAsync(() =>
-        container.read(wordsNotifierProvider.notifier).switchTo(other.collectionId));
+        container.read(wordsProvider.notifier).switchTo(other.collectionId));
     await tester.pump();
     await tester.pumpAndSettle();
     expect(stop(tester), PanelStop.closed);
@@ -607,7 +607,7 @@ void main() {
     // Written now, outside the fake clock: a debounced Isar write begun
     // inside it never finishes and holds up the next tests' writes.
     await tester.runAsync(
-        () => container.read(wordsNotifierProvider.notifier).flush());
+        () => container.read(wordsProvider.notifier).flush());
     await tester.pump();
     await tester.tap(find.byKey(SourceWordsDialog.closeKey));
     await tester.pumpAndSettle();
@@ -616,7 +616,7 @@ void main() {
 
     expect(tester.widget<WordRowMorph>(row(3)).word!.text, 'teapot');
     expect(
-        container.read(wordsNotifierProvider).value!.words[3].word, 'teapot');
+        container.read(wordsProvider).value!.words[3].word, 'teapot');
     await tearDownMain(tester);
   });
 

@@ -279,7 +279,7 @@ void main() {
       };
       final c = start();
 
-      await c.read(wordGroupsNotifierProvider(history.collectionId).notifier).ensureGrouped();
+      await c.read(wordGroupsProvider(history.collectionId).notifier).ensureGrouped();
 
       await expectFiledAway(history.collectionId);
       expect((await raw(history.collectionId))!.groups.map((g) => g.name), ['Food', 'Travel']);
@@ -292,7 +292,7 @@ void main() {
       };
       final c = start();
 
-      await c.read(wordGroupsNotifierProvider(history.collectionId).notifier).ensureGrouped();
+      await c.read(wordGroupsProvider(history.collectionId).notifier).ensureGrouped();
 
       await expectErased(history.collectionId);
     });

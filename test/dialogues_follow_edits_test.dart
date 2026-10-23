@@ -66,8 +66,8 @@ void main() {
       ..lastLocalModifiedAt = DateTime.now();
     await seedCollection(store, s);
     await store.setCurrentCollectionId(s.collectionId);
-    await container.read(wordsNotifierProvider.future);
-    return (container.read(wordsNotifierProvider.notifier), s.collectionId);
+    await container.read(wordsProvider.future);
+    return (container.read(wordsProvider.notifier), s.collectionId);
   }
 
   Future<List<FilmDialogue>> saved(WordsNotifier n, String id) async {
@@ -125,7 +125,7 @@ void main() {
     n.removeAt(0);
     n.addAll([WordPair(word: 'attic', translation: 'т')]);
     n.setPairs([
-      ...container.read(wordsNotifierProvider).value!.words,
+      ...container.read(wordsProvider).value!.words,
       WordPair(word: 'stairs', translation: 'т'),
     ]);
     expect((await saved(n, id)).single.wordRowIds, ['r2']);

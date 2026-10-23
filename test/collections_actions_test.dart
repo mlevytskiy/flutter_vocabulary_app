@@ -95,7 +95,7 @@ void main() {
         collectionStoreProvider.overrideWith((ref) async => store),
         tagLibraryProvider.overrideWith((ref) => Stream.value([])),
         collectionSummariesProvider.overrideWith((ref) => Stream.value([])),
-        wordsNotifierProvider.overrideWith(() => input),
+        wordsProvider.overrideWith(() => input),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
         collectionLevelProvider('f1').overrideWith((ref) => Stream.value([])),

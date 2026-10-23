@@ -78,7 +78,7 @@ void main() {
   ProviderContainer open(List<WordPair> group, {String? collectionId, int seed = 1}) {
     api = _Api();
     sink = _Sink();
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: noProviderRetry, overrides: [
       learnApiServiceProvider.overrideWithValue(api),
       examResultSinkProvider.overrideWithValue(sink),
       exerciseRandomProvider.overrideWithValue(Random(seed)),

@@ -94,7 +94,7 @@ void main() {
     await t.pumpWidget(ProviderScope(
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
-        wordsNotifierProvider.overrideWith(() => _FakeInput(phrasal)),
+        wordsProvider.overrideWith(() => _FakeInput(phrasal)),
         collectionFoldersProvider
             .overrideWith((ref) => Stream.value([english])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([

@@ -123,7 +123,7 @@ void main() {
       systemGestureExclusionProvider.overrideWithValue(exclusion),
     ]);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
@@ -131,7 +131,7 @@ void main() {
     ));
     // A notifier change makes the screen restore the session's rows (as
     // main_screen_photo_panel_test.dart).
-    container.read(wordsNotifierProvider.notifier).addAll([WordPair()]);
+    container.read(wordsProvider.notifier).addAll([WordPair()]);
     await tester.pump();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -420,7 +420,7 @@ void main() {
     testWidgets('open: a tap on a row or a button only closes it (AC-11)', (tester) async {
       await pumpMain(tester);
       await openHalf(tester);
-      final count = container.read(wordsNotifierProvider).value!.words.length;
+      final count = container.read(wordsProvider).value!.words.length;
 
       await tester.tap(line(1), warnIfMissed: false);
       await tester.pumpAndSettle();
@@ -432,7 +432,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);
       expect(find.byType(WordsScreen), findsOneWidget);
-      expect(container.read(wordsNotifierProvider).value!.words.length, count);
+      expect(container.read(wordsProvider).value!.words.length, count);
       await tearDownMain(tester);
     });
 
@@ -457,7 +457,7 @@ void main() {
     testWidgets('a vertical drag moves the tab and nothing under it responds (AC-14)',
         (tester) async {
       await pumpMain(tester);
-      final count = container.read(wordsNotifierProvider).value!.words.length;
+      final count = container.read(wordsProvider).value!.words.length;
       final before = tester.getRect(find.byKey(PhotoPanel.tabKey));
 
       await tester.drag(find.byKey(PhotoPanel.tabKey), const Offset(0, 200));
@@ -469,7 +469,7 @@ void main() {
 
       await tester.tap(find.byKey(PhotoPanel.tabKey));
       await tester.pumpAndSettle();
-      expect(container.read(wordsNotifierProvider).value!.words.length, count,
+      expect(container.read(wordsProvider).value!.words.length, count,
           reason: 'no row control fired through the tab');
       await tearDownMain(tester);
     });
@@ -505,14 +505,14 @@ void main() {
       expect(stop(tester), PanelStop.halfOpen);
       expect(selected(tester), 'p2');
 
-      container.read(wordsNotifierProvider.notifier).updateAt(18, word: '');
+      container.read(wordsProvider.notifier).updateAt(18, word: '');
       await tester.pumpAndSettle();
       expect(selected(tester), isNull);
       expect(find.byKey(PhotoPanel.smallPhotoKey('p2')), findsNothing);
       expect(stop(tester), PanelStop.halfOpen);
 
       await tester.runAsync(() =>
-          container.read(wordsNotifierProvider.notifier).switchTo(other.collectionId));
+          container.read(wordsProvider.notifier).switchTo(other.collectionId));
       await tester.pump();
       await tester.pumpAndSettle();
       expect(stop(tester), PanelStop.closed);

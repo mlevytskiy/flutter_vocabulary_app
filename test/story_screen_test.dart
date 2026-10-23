@@ -166,8 +166,8 @@ void main() {
     tracker = _Tracker(StoryTrackerState(refusals: refusals));
     pictures = _Pictures();
     final container = ProviderContainer(overrides: [
-      wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
-      wordGroupsNotifierProvider(null).overrideWith(() => FakeGroups(
+      wordsProvider.overrideWith(() => _FakeInput(collection)),
+      wordGroupsProvider(null).overrideWith(() => FakeGroups(
           WordGroupsState(groups: [theGroup], selectedGroupId: 'g1'))),
       storyRunTrackerProvider.overrideWith(() => tracker),
       storyPictureStoreProvider.overrideWithValue(pictures),
@@ -175,7 +175,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,

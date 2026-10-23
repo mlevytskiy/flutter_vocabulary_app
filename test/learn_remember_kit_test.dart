@@ -63,7 +63,7 @@ void main() {
       final cur = WordCollection.create()..dialogues = [_d(['cur'], ['b'])];
       final hist = WordCollection.create()..dialogues = [_d(['hist'], ['b'])];
       final c = ProviderContainer(overrides: [
-        wordsNotifierProvider.overrideWith(() => _FakeInput(cur)),
+        wordsProvider.overrideWith(() => _FakeInput(cur)),
         collectionByIdProvider('h').overrideWith((ref) async => hist),
       ]);
       addTearDown(c.dispose);

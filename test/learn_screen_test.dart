@@ -40,13 +40,13 @@ void main() {
     addTearDown(tester.view.reset);
     container = ProviderContainer(overrides: [
       ...fakeGroupOverrides(),
-      wordsNotifierProvider.overrideWith(() => _FakeInput(current)),
+      wordsProvider.overrideWith(() => _FakeInput(current)),
       collectionByIdProvider(history.collectionId)
           .overrideWith((ref) async => history),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
       await container.read(collectionByIdProvider(history.collectionId).future);
     });
     await tester.pumpWidget(UncontrolledProviderScope(
@@ -314,7 +314,7 @@ void main() {
       (tester) async {
     await pump(tester, collectionId: history.collectionId);
     expect(find.byType(LearnScreen), findsOneWidget);
-    expect(container.read(wordsNotifierProvider).value!.collectionId,
+    expect(container.read(wordsProvider).value!.collectionId,
         current.collectionId);
   });
 

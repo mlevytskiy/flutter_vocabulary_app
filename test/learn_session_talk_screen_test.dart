@@ -94,6 +94,8 @@ void main() {
     await t.pumpWidget(UncontrolledProviderScope(container: container, child: MaterialApp.router(routerConfig: router)));
     router.push('/words/table/talk?collectionId=$id');
     await t.pump();
+    // Flutter 3.47's default Android page transition slides; let it finish.
+    await t.pump(const Duration(milliseconds: 800));
     await settle(t);
   }
 
@@ -217,11 +219,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final c = WordCollection.create()
       ..words = [for (var i = 0; i < 5; i++) WordPair(word: 'word$i', translation: 'слово$i')..rowId = 'r$i'];
-    final container = ProviderContainer(overrides: [wordsNotifierProvider.overrideWith(() => _Fake(c))]);
+    final container = ProviderContainer(overrides: [wordsProvider.overrideWith(() => _Fake(c))]);
     addTearDown(container.dispose);
     await t.runAsync(() async {
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     String? talkUri;
     final r = GoRouter(initialLocation: '/words/table', routes: [

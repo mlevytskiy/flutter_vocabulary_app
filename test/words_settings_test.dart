@@ -350,12 +350,12 @@ void main() {
       final collection = WordCollection.create()
         ..words = [WordPair(word: 'coffee', translation: 'кава')];
       final container = ProviderContainer(overrides: [
-        wordsNotifierProvider.overrideWith(() => _FakeInput(collection)),
+        wordsProvider.overrideWith(() => _FakeInput(collection)),
         offeredAisProvider.overrideWith((ref) async => _offered),
         storyRunsProvider.overrideWith((ref) => Stream.value(const [])),
       ]);
       addTearDown(container.dispose);
-      await tester.runAsync(() => container.read(wordsNotifierProvider.future));
+      await tester.runAsync(() => container.read(wordsProvider.future));
       final router = GoRouter(initialLocation: '/words/table', routes: [
         GoRoute(
           path: '/words/table',

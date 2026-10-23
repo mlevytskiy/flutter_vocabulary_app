@@ -38,13 +38,13 @@ void main() {
     addTearDown(tester.view.reset);
     container = ProviderContainer(overrides: [
       ...fakeGroupOverrides(),
-      wordsNotifierProvider.overrideWith(() => _Fake(collection)),
+      wordsProvider.overrideWith(() => _Fake(collection)),
     ]);
     addTearDown(container.dispose);
     await tester.runAsync(() async {
-      await container.read(learnSettingsNotifierProvider.notifier).loaded;
+      await container.read(learnSettingsProvider.notifier).loaded;
       await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordsNotifierProvider.future);
+      await container.read(wordsProvider.future);
     });
     final router = GoRouter(initialLocation: initial, routes: [
       GoRoute(
@@ -83,7 +83,7 @@ void main() {
   bool on(WidgetTester t, String name) =>
       t.widget<Switch>(switchOf(name)).value;
 
-  LearnPreset picked() => container.read(learnSettingsNotifierProvider).preset;
+  LearnPreset picked() => container.read(learnSettingsProvider).preset;
 
   testWidgets('AC-17: Balanced is picked by default, with subtitles',
       (t) async {
@@ -146,7 +146,7 @@ void main() {
     await t.pumpAndSettle();
     await t.tap(find.text('20').last);
     await t.pumpAndSettle();
-    expect(container.read(learnSettingsNotifierProvider).wordsPerSession,
+    expect(container.read(learnSettingsProvider).wordsPerSession,
         WordsPerSession.twenty);
   });
 

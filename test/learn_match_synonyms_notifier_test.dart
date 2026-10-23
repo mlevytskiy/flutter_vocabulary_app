@@ -54,7 +54,7 @@ void main() {
   /// [listen] keeps the auto-disposed exercise alive across awaits, as the
   /// open screen does.
   ProviderContainer open(List<WordPair> g, FakeLearnApi api, {int seed = 1, bool listen = true}) {
-    final c = ProviderContainer(overrides: [
+    final c = ProviderContainer(retry: noProviderRetry, overrides: [
       exerciseRandomProvider.overrideWithValue(Random(seed)),
       learnApiServiceProvider.overrideWithValue(api),
       exerciseWordsProvider(null, 'g').overrideWith((ref) async => (group: g, others: const <WordPair>[])),

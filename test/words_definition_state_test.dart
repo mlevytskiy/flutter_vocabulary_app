@@ -49,7 +49,7 @@ void main() {
     ]);
     // Resolve the session outside the fake-async zone: Isar needs real I/O.
     await tester
-        .runAsync(() => container.read(wordsNotifierProvider.future));
+        .runAsync(() => container.read(wordsProvider.future));
     // Not closing the store: Isar would wait for a write begun inside the
     // widget test's fake-async zone, which never finishes. One test per file
     // keeps the open instance from colliding.
@@ -65,15 +65,15 @@ void main() {
     // In the app the session resolves after the screen mounts, and the
     // screen's ref.listen rebuilds its rows from it. Here it resolved first
     // (Isar needs real I/O), so re-emit it once to drive that same path.
-    final notifier = container.read(wordsNotifierProvider.notifier);
+    final notifier = container.read(wordsProvider.notifier);
     notifier.setPairs(
-        List.of(container.read(wordsNotifierProvider).value!.words));
+        List.of(container.read(wordsProvider).value!.words));
     await tester.pump();
     await tester.pump();
   }
 
   List<WordPair> words() =>
-      container.read(wordsNotifierProvider).value!.words;
+      container.read(wordsProvider).value!.words;
 
   /// Unmounts the screen (its dispose() still reads providers) and disposes
   /// the container, which cancels the notifier's debounced save timer.
