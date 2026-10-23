@@ -1,6 +1,6 @@
 ---
 status: Living
-updated_at: "2026-10-16"
+updated_at: "2026-10-23"
 ---
 
 # Domain Context — flutter_vocabulary_app
@@ -22,3 +22,11 @@ updated_at: "2026-10-16"
 - tag library — every origin and topic tag the learner has ever added, kept on the device; how often each is used is worked out from the collections and sources outside the recycle bin, and tag fields suggest and autocomplete from it. "Forget this tag" removes an entry from the library and from suggestions, never from a collection or source. NOT the tags of one collection.
 - translation — the Ukrainian equivalent of an English word in a word row. NOT definition (a definition explains the meaning in English).
 - word row — one line of a collection: an English word together with its details. NOT a table row in an export (the export is derived from word rows).
+- learning session — one run of Learn → Exercises over a set of words (all the collection's words, or one word group when split is on): exercise pages in word-ladder order, ending with the results screen. NOT a collection (formerly "session"), NOT a login session.
+- exercise page — the smallest playable part of an exercise: one word, one gap sentence, or one board of four pairs, answered and checked on its own. A learning session mixes pages of several exercises. NOT a round (a round is several pages of one exercise on the old exercise screens).
+- word ladder — the three rungs a word climbs in a learning session: Meet (step 1), Practise (step 2), Use (step 3). A right answer moves the word up a rung; a miss moves it one rung down and back into the queue a few pages later. NOT the Leitner box (the ladder lives inside one session; the box lasts across sessions).
+- Leitner box — where a word stands across learning sessions: new (never learned) or box 1 to 5, with a review due after 1, 2, 4, 8 or 16 days. A clean ladder moves the word up one box; any miss sends it to box 1. NOT the word result of the step-3 exams (known/repeat).
+- due word — a word whose Leitner box review date has come. A learning session takes due words first, then new words.
+- learning companion — who the learner learns with: alone, with teacher, with friend; picked from the drop-down beside Learn. Only "alone" works now. NOT a partner (a partner opens a shared link).
+- learn preset — a ready-made choice of exercises per step and words per session in Learn settings: Quick, Balanced, Deep, or Custom (the learner's own switches).
+- Talk with AI — the learning mode where the learner converses (typing, later speaking) with an AI partner who steers toward the session's words; the app, not the AI, decides which words were used. NOT the exercise "Explain it to a friend".
