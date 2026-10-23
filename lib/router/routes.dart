@@ -114,7 +114,7 @@ class AppSettingsBranch extends StatefulShellBranchData {
 }
 
 /// The Collections screen (collections-screen): folders and collections as icons.
-class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
+class CollectionsRoute extends GoRouteData with $CollectionsRoute {
   const CollectionsRoute({this.tagKind, this.tag});
 
   /// A tag tap on the Words screen filters the screen (collection-tags ADR-0008).
@@ -128,7 +128,7 @@ class CollectionsRoute extends GoRouteData with _$CollectionsRoute {
 
 /// The Words screen: the current collection's word rows (the app's main
 /// screen before navigation, owner 2026-10-18).
-class WordsRoute extends GoRouteData with _$WordsRoute {
+class WordsRoute extends GoRouteData with $WordsRoute {
   const WordsRoute();
 
   @override
@@ -138,7 +138,7 @@ class WordsRoute extends GoRouteData with _$WordsRoute {
 /// [collectionId] is optional and travels as a query param: with no id the table
 /// shows the current session (the AppBar "Next" button), with one it shows that
 /// stored session, read-only (a History row). An id, never the object — rule 1.
-class WordsTableRoute extends GoRouteData with _$WordsTableRoute {
+class WordsTableRoute extends GoRouteData with $WordsTableRoute {
   const WordsTableRoute({this.collectionId});
 
   final String? collectionId;
@@ -151,7 +151,7 @@ class WordsTableRoute extends GoRouteData with _$WordsTableRoute {
 /// The learn page (learn-part-step-1), opened from the Words screen. Carries
 /// the same optional [collectionId] as [WordsTableRoute]: none for the current
 /// session, an id for a History row, read-only either way (AC-13).
-class LearnRoute extends GoRouteData with _$LearnRoute {
+class LearnRoute extends GoRouteData with $LearnRoute {
   const LearnRoute({this.collectionId, this.exercise});
 
   final String? collectionId;
@@ -166,7 +166,7 @@ class LearnRoute extends GoRouteData with _$LearnRoute {
 
 /// The Learn settings (learn-redesign SCR-05, AC-17..19), opened from the
 /// Learn sheet's gear. [collectionId] as on [LearnRoute], for "Try it".
-class LearnSettingsRoute extends GoRouteData with _$LearnSettingsRoute {
+class LearnSettingsRoute extends GoRouteData with $LearnSettingsRoute {
   const LearnSettingsRoute({this.collectionId});
 
   final String? collectionId;
@@ -180,7 +180,7 @@ class LearnSettingsRoute extends GoRouteData with _$LearnSettingsRoute {
 /// sheet's Exercises card. Ids only (rule 1): [collectionId] as on
 /// [LearnRoute], [split] as ticked on the sheet, [rowIds] the comma-joined
 /// rows of "Practise N shaky words" (none: the picker chooses).
-class LearningSessionRoute extends GoRouteData with _$LearningSessionRoute {
+class LearningSessionRoute extends GoRouteData with $LearningSessionRoute {
   const LearningSessionRoute({this.collectionId, this.split = true, this.rowIds, this.skipGroup});
 
   final String? collectionId;
@@ -202,7 +202,7 @@ class LearningSessionRoute extends GoRouteData with _$LearningSessionRoute {
 /// Talk with AI (learn-redesign SCR-06, AC-20), opened from the Learn sheet's
 /// Talk with AI card. Ids only (rule 1): [collectionId] as on [LearnRoute],
 /// [split] as ticked on the sheet.
-class TalkRoute extends GoRouteData with _$TalkRoute {
+class TalkRoute extends GoRouteData with $TalkRoute {
   const TalkRoute({this.collectionId, this.split = true});
 
   final String? collectionId;
@@ -216,7 +216,7 @@ class TalkRoute extends GoRouteData with _$TalkRoute {
 /// [LearningSessionRoute].
 }
 
-class SessionResultsRoute extends GoRouteData with _$SessionResultsRoute {
+class SessionResultsRoute extends GoRouteData with $SessionResultsRoute {
   const SessionResultsRoute({this.collectionId});
 
   final String? collectionId;
@@ -227,7 +227,7 @@ class SessionResultsRoute extends GoRouteData with _$SessionResultsRoute {
 
 /// The app's placeholder for an exercise that is not built yet (learn-part-step-1),
 /// pushed from Start. Carries the exercise id, never the object (rule 1).
-class ComingSoonRoute extends GoRouteData with _$ComingSoonRoute {
+class ComingSoonRoute extends GoRouteData with $ComingSoonRoute {
   const ComingSoonRoute({required this.exercise});
 
   final String exercise;
@@ -240,7 +240,7 @@ class ComingSoonRoute extends GoRouteData with _$ComingSoonRoute {
 /// The mnemonic story of one group (mnemonic-story, SCR-04), pushed from Start
 /// with Mnemonic story ticked. Ids only, never objects (rule 1): [collectionId] is
 /// as on [LearnRoute] (none is the current session), [groupId] the group.
-class StoryRoute extends GoRouteData with _$StoryRoute {
+class StoryRoute extends GoRouteData with $StoryRoute {
   const StoryRoute({this.collectionId, required this.groupId});
 
   final String? collectionId;
@@ -254,7 +254,7 @@ class StoryRoute extends GoRouteData with _$StoryRoute {
 /// One exercise for one word group (learn-kit S-03), pushed from Start like
 /// [StoryRoute]. Ids only (rule 1): [collectionId] as on [LearnRoute], the
 /// frozen [exercise] id and the [groupId]. `exerciseScreen` picks the screen.
-class ExerciseRoute extends GoRouteData with _$ExerciseRoute {
+class ExerciseRoute extends GoRouteData with $ExerciseRoute {
   const ExerciseRoute({this.collectionId, required this.exercise, required this.groupId});
 
   final String? collectionId;
@@ -268,7 +268,7 @@ class ExerciseRoute extends GoRouteData with _$ExerciseRoute {
 
 /// "Dialogs from movie" for one dialogue group (get-words-from-subtitles-
 /// improvment, SCR-07), pushed from Start like [StoryRoute]. Ids only (rule 1).
-class DialogueRoute extends GoRouteData with _$DialogueRoute {
+class DialogueRoute extends GoRouteData with $DialogueRoute {
   const DialogueRoute({this.collectionId, required this.groupId});
 
   final String? collectionId;
@@ -281,7 +281,7 @@ class DialogueRoute extends GoRouteData with _$DialogueRoute {
 
 /// Words settings (mnemonic-story, SCR-05): the AI for each step of a story
 /// run. Global, like the app's settings, so it carries no session id.
-class WordsSettingsRoute extends GoRouteData with _$WordsSettingsRoute {
+class WordsSettingsRoute extends GoRouteData with $WordsSettingsRoute {
   const WordsSettingsRoute({this.collectionId});
 
   /// The Words screen's collection, as in [WordsTableRoute]: its "Include
@@ -296,7 +296,7 @@ class WordsSettingsRoute extends GoRouteData with _$WordsSettingsRoute {
 }
 
 /// Every story run, newest first (SCR-06).
-class StoryRunsRoute extends GoRouteData with _$StoryRunsRoute {
+class StoryRunsRoute extends GoRouteData with $StoryRunsRoute {
   const StoryRunsRoute();
 
   @override
@@ -306,7 +306,7 @@ class StoryRunsRoute extends GoRouteData with _$StoryRunsRoute {
 }
 
 /// One story run's details (SCR-07). An id, never the object — rule 1.
-class StoryRunRoute extends GoRouteData with _$StoryRunRoute {
+class StoryRunRoute extends GoRouteData with $StoryRunRoute {
   const StoryRunRoute({required this.runId});
 
   final String runId;
@@ -318,7 +318,7 @@ class StoryRunRoute extends GoRouteData with _$StoryRunRoute {
 /// Notes (owner, 2026-10-15): every source the photo panel lists, pushed
 /// from the half-open panel's expand control. [selectedId] is the source
 /// selected in the panel, an id, never the object (rule 1).
-class NotesRoute extends GoRouteData with _$NotesRoute {
+class NotesRoute extends GoRouteData with $NotesRoute {
   const NotesRoute({this.selectedId});
 
   final String? selectedId;
@@ -343,7 +343,7 @@ class NotesRoute extends GoRouteData with _$NotesRoute {
 
 /// A source's photo full screen, pushed from its picture on the Notes page
 /// (notes-editing, owner 2026-10-15). An id, never the object (rule 1).
-class PhotoViewerRoute extends GoRouteData with _$PhotoViewerRoute {
+class PhotoViewerRoute extends GoRouteData with $PhotoViewerRoute {
   const PhotoViewerRoute({required this.sourceId});
 
   final String sourceId;
@@ -355,7 +355,7 @@ class PhotoViewerRoute extends GoRouteData with _$PhotoViewerRoute {
 
 /// A plain pushed screen, not a dialog: it is where preferences live, and
 /// more rows are expected here than the one it ships with (task-13).
-class SettingsRoute extends GoRouteData with _$SettingsRoute {
+class SettingsRoute extends GoRouteData with $SettingsRoute {
   const SettingsRoute();
 
   @override
@@ -364,7 +364,7 @@ class SettingsRoute extends GoRouteData with _$SettingsRoute {
 
 /// App settings (app-themes): settings for the whole app, opened from the
 /// side menu. Holds the theme gallery.
-class AppSettingsRoute extends GoRouteData with _$AppSettingsRoute {
+class AppSettingsRoute extends GoRouteData with $AppSettingsRoute {
   const AppSettingsRoute();
 
   @override
@@ -373,7 +373,7 @@ class AppSettingsRoute extends GoRouteData with _$AppSettingsRoute {
 
 /// The recycle bin (collections-screen SCR-08); opened from the top-level bin
 /// icon on the Collections screen.
-class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
+class RecycleBinRoute extends GoRouteData with $RecycleBinRoute {
   const RecycleBinRoute();
 
   @override
@@ -383,7 +383,7 @@ class RecycleBinRoute extends GoRouteData with _$RecycleBinRoute {
 /// Collections settings (owner, 2026-10-18): the Collections screen's
 /// Settings button. Holds "Replace all date names".
 class CollectionsSettingsRoute extends GoRouteData
-    with _$CollectionsSettingsRoute {
+    with $CollectionsSettingsRoute {
   const CollectionsSettingsRoute();
 
   @override
