@@ -368,16 +368,17 @@
     },
     {
       "id": "T19",
-      "title": "Add speech_to_text behind speechInputProvider, hold-to-talk and spoken replies",
+      "title": "Add speech_to_text and speech_to_text_pro behind speechInputProvider with an engine choice in Learn settings, hold-to-talk and spoken replies",
       "layer": "wiring",
       "deps": [
         "T18"
       ],
       "acs": [
         "AC-25",
-        "AC-26"
+        "AC-26",
+        "AC-28"
       ],
-      "dod": "pubspec pins speech_to_text at one exact version; iOS Info.plist and Android manifest permissions added; widget tests with a fake SpeechInput: hold → final text sent, reply spoken via PronunciationService, refused permission → message and typing still works, mic hidden when unavailable; flutter analyze clean",
+      "dod": "pubspec pins speech_to_text at one exact version; iOS Info.plist and Android manifest permissions added; widget tests with a fake SpeechInput: hold → final text sent, reply spoken via PronunciationService, refused permission → message and typing still works, mic hidden when unavailable; flutter analyze clean; speech_to_text_pro pinned at 0.0.1; Learn settings 'Speech recognition' picks the engine (persisted, default speech_to_text); tests with fakes for both engines",
       "files_hint": [
         "pubspec.yaml",
         "lib/core/services/speech_input.dart",
@@ -385,7 +386,8 @@
         "lib/features/learn/talk/talk_screen.dart",
         "ios/Runner/Info.plist",
         "android/app/src/main/AndroidManifest.xml",
-        "test/learn_session_talk_voice_test.dart"
+        "test/learn_session_talk_voice_test.dart",
+        "lib/features/learn/entry/learn_settings_screen.dart"
       ]
     },
     {

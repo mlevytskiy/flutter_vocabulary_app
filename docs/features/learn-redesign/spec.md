@@ -222,6 +222,11 @@ Committed approach: the Learn button keeps its look and place; a small button be
 **When** a partner opens it
 **Then** the shared page's Learn and exercises stay as today: no Learn sheet, no companion drop-down, no Leitner box shown
 
+### AC-28 (US-09) — happy path
+**Given** Learn settings are open
+**When** the learner picks the speech recognition engine — "speech_to_text" (default) or "speech_to_text_pro"
+**Then** the choice is remembered, the next hold-to-talk in Talk with AI uses that engine, and an engine that is not available on the phone shows the same permission/unavailable message as AC-26 while typing keeps working (owner, 2026-10-24)
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

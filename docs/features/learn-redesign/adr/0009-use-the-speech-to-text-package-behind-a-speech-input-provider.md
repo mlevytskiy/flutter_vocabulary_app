@@ -37,3 +37,7 @@ Chosen: option 1. Add `speech_to_text` at one exact version (latest stable at le
 - + least code, both platforms
 - − one new dependency and platform permission strings
 - − recognition quality depends on the phone
+
+## Amendment (owner, 2026-10-24)
+
+The owner asked for a second engine, `speech_to_text_pro` (0.0.1, MIT, verified publisher shirsh.dev, Android SpeechRecognizer / iOS SFSpeechRecognizer, published ~3 months before), and a choice in Learn settings. `SpeechInput` gets two implementations — `SpeechToTextInput` and `SpeechToTextProInput` — and `speechInputProvider` returns the one named by a persisted `SpeechEngine` preference (`speechToText` default, `speechToTextPro`). Both packages are pinned to exact versions. Because 0.0.1 is the only release, the default stays `speech_to_text`.
