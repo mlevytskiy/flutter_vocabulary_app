@@ -36,6 +36,7 @@ import 'services/story_api_service.dart';
 import 'services/story_picture_store.dart';
 import 'services/story_run_store.dart';
 import 'services/subtitle_google_words.dart';
+import 'services/talk_api_service.dart';
 import 'services/subtitle_search_service.dart';
 import 'services/subtitle_words_service.dart';
 import 'services/system_gesture_exclusion.dart';
@@ -110,6 +111,10 @@ CollectionNamingService collectionNamingService(Ref ref) =>
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 @Riverpod(keepAlive: true)
 LearnApiService learnApiService(Ref ref) => LearnApiService();
+
+/// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
+@Riverpod(keepAlive: true)
+TalkApiService talkApiService(Ref ref) => TalkApiService();
 
 /// Where Step 3 exams record each word's known / repeat result (learn-kit
 /// S-23), on the session in the session store.
