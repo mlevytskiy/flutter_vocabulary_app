@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/providers.dart';
+import '../../../core/services/pronunciation_service.dart';
+import '../../../core/services/speech_input.dart';
 import '../../../core/theme/app_theme.dart';
 import 'talk_navigation.dart';
 import 'talk_notifier.dart';
 
+/// Said when the speech permission is refused or no recognizer is there
+/// (learn-redesign AC-26, AC-28); typing keeps working.
+const talkVoiceRefusedMessage = 'Allow the microphone and speech recognition in Settings to talk';
+
 /// Talk with AI (learn-redesign SCR-06; AC-20, AC-21, AC-24): bubbles, the
-/// word strip, Hint, the reply field and End talk. Opened by `TalkRoute`.
+/// word strip, Hint, the reply field and End talk; hold-to-talk beside Send,
+/// whose use has the AI's replies read aloud (AC-25, AC-26, ADR-0009).
+/// Opened by `TalkRoute`.
 class TalkScreen extends ConsumerStatefulWidget {
   const TalkScreen({super.key, this.collectionId, this.split = true});
 
@@ -28,6 +37,19 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   final _focus = FocusNode();
   final _scroll = ScrollController();
 
+  /// The speech input, read on the first hold; null until then.
+  SpeechInput? _speech;
+
+  /// What the first hold's init found; null while not asked yet.
+  SpeechAvailability? _availability;
+
+  /// Whether the finger is on the mic, and whether it is listening.
+  bool _holding = false;
+  bool _listening = false;
+
+  /// Set once the mic was used in this talk: new AI replies are read aloud.
+  bool _voiceUsed = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +62,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
 
   @override
   void dispose() {
+    if (_listening) _speech?.cancel();
     _field.dispose();
     _focus.dispose();
     _scroll.dispose();
@@ -61,6 +84,45 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     ref.read(talkProvider(widget.collectionId).notifier).send(text);
   }
 
+  /// The mic went down: init on the first hold, then listen while held.
+  Future<void> _holdDown() async {
+    _holding = true;
+    final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
+    if (_availability != SpeechAvailability.ready) {
+      final found = await speech.init();
+      if (!mounted) return;
+      setState(() => _availability = found);
+      if (found != SpeechAvailability.ready) return;
+    }
+    if (!_holding) return;
+    _field.clear();
+    setState(() {
+      _listening = true;
+      _voiceUsed = true;
+    });
+    await speech.listen(onText: (text, _) {
+      if (mounted) _field.text = text;
+    });
+  }
+
+  /// The mic was let go: stop and send the final words, if any.
+  Future<void> _holdUp() async {
+    _holding = false;
+    if (!_listening) return;
+    await _speech?.stop();
+    if (!mounted) return;
+    setState(() => _listening = false);
+    _send();
+  }
+
+  /// Reads a new AI reply aloud once the mic was used (AC-25).
+  void _speak(String text) {
+    ref
+        .read(pronunciationServiceProvider)
+        .speak(text, accent: Accent.us)
+        .catchError((Object _) {});
+  }
+
   Future<void> _confirmLeave() async {
     final leave = await showDialog<bool>(
       context: context,
@@ -80,6 +142,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     final provider = talkProvider(widget.collectionId);
     ref.listen(provider, (prev, next) {
       if (next.messages.length != prev?.messages.length || next.status != prev?.status) _scrollToEnd();
+      if (_voiceUsed &&
+          next.messages.length > (prev?.messages.length ?? 0) &&
+          next.messages.last.role == TalkRole.ai) {
+        _speak(next.messages.last.text);
+      }
       final draft = next.keepDraft;
       if (draft != null && draft != prev?.keepDraft) _field.text = draft;
       if (draft == null && prev?.keepDraft != null) _field.clear();
@@ -93,6 +160,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     final scheme = Theme.of(context).colorScheme;
     final busy = s.status == TalkStatus.starting || s.status == TalkStatus.waiting;
     final inProgress = s.messages.isNotEmpty && s.status != TalkStatus.over;
+    final micShown = _availability == null || _availability == SpeechAvailability.ready;
+    final voiceRefused = _availability == SpeechAvailability.permissionDenied ||
+        _availability == SpeechAvailability.unavailable;
 
     Widget body;
     if (s.status == TalkStatus.limit) {
@@ -154,6 +224,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
                 child: Text('Try using: ${s.hintWord}', style: TextStyle(color: decor.muted)),
               ),
             ),
+          if (_listening || voiceRefused)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(_listening ? 'Listening…' : talkVoiceRefusedMessage,
+                    style: TextStyle(color: decor.muted)),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
             child: Row(children: [
@@ -173,6 +252,21 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
                 ),
               ),
               IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
+              if (micShown)
+                Semantics(
+                  label: 'Hold to talk',
+                  button: true,
+                  child: Listener(
+                    onPointerDown: busy ? null : (_) => _holdDown(),
+                    onPointerUp: (_) => _holdUp(),
+                    onPointerCancel: (_) => _holdUp(),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Icon(_listening ? Icons.mic : Icons.mic_none,
+                          color: _listening ? scheme.primary : (busy ? scheme.onSurface.withValues(alpha: 0.38) : null)),
+                    ),
+                  ),
+                ),
             ]),
           ),
           Padding(

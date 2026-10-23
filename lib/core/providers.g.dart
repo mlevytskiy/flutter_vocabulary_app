@@ -1146,6 +1146,25 @@ final collectionFoldersProvider =
 // ignore: unused_element
 typedef CollectionFoldersRef
     = AutoDisposeStreamProviderRef<List<CollectionFolder>>;
+String _$speechInputHash() => r'c8073c0fef4fdaeafb87648c1d37a09f6e034f70';
+
+/// The hold-to-talk input of the engine picked in Learn settings (AC-25,
+/// AC-28, ADR-0009); overridden with a fake in tests.
+///
+/// Copied from [speechInput].
+@ProviderFor(speechInput)
+final speechInputProvider = Provider<SpeechInput>.internal(
+  speechInput,
+  name: r'speechInputProvider',
+  debugGetCreateSourceHash:
+      const bool.fromEnvironment('dart.vm.product') ? null : _$speechInputHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef SpeechInputRef = ProviderRef<SpeechInput>;
 String _$dialoguePushServiceHash() =>
     r'9bb797404de35c446b3c7b4c3ae6d59018005bba';
 
@@ -1575,6 +1594,27 @@ class _LearnLastGroupNotifierProviderElement
       (origin as LearnLastGroupNotifierProvider).collectionId;
 }
 
+String _$speechEngineNotifierHash() =>
+    r'9666cc44621d443a55c3fce09692c94d71b6016d';
+
+/// The speech recognition engine for Talk with AI's hold-to-talk, picked in
+/// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
+/// [LearnSettingsNotifier]. Starts as [SpeechEngine.speechToText].
+///
+/// Copied from [SpeechEngineNotifier].
+@ProviderFor(SpeechEngineNotifier)
+final speechEngineNotifierProvider =
+    NotifierProvider<SpeechEngineNotifier, SpeechEngine>.internal(
+  SpeechEngineNotifier.new,
+  name: r'speechEngineNotifierProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$speechEngineNotifierHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
+
+typedef _$SpeechEngineNotifier = Notifier<SpeechEngine>;
 String _$appThemeNotifierHash() => r'6224233ff14b800d30acbad8a25b501db5c323f0';
 
 /// The app's theme, picked on the App settings page (app-themes, owner
