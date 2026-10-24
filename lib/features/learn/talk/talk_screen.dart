@@ -1015,6 +1015,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
         voiceProgress: voiceProgress,
         onWord: _openWord,
         onOtherWord: _openLookup,
+        onPhrase: _openLookup,
       );
 }
 

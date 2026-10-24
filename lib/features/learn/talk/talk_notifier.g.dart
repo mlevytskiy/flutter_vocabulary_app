@@ -43,8 +43,7 @@ final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   /// meanwhile. It ticks words from the learner's own replies only
   /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
   /// Leaving without [finish] writes nothing (AC-22).
-  TalkProvider._(
-      {required TalkFamily super.from, required String? super.argument})
+  TalkProvider._({required TalkFamily super.from, required String? super.argument})
       : super(
           retry: null,
           name: r'talkProvider',
@@ -99,8 +98,7 @@ String _$talkHash() => r'a4a17ba45d8c99015428d95b3f73e3613ff488a2';
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
 
-final class TalkFamily extends $Family
-    with $ClassFamilyOverride<Talk, TalkState, TalkState, TalkState, String?> {
+final class TalkFamily extends $Family with $ClassFamilyOverride<Talk, TalkState, TalkState, TalkState, String?> {
   TalkFamily._()
       : super(
           retry: null,
@@ -152,8 +150,8 @@ abstract class _$Talk extends $Notifier<TalkState> {
   @override
   WhenComplete runBuild() {
     final ref = this.ref as $Ref<TalkState, TalkState>;
-    final element = ref.element as $ClassProviderElement<
-        AnyNotifier<TalkState, TalkState>, TalkState, Object?, Object?>;
+    final element =
+        ref.element as $ClassProviderElement<AnyNotifier<TalkState, TalkState>, TalkState, Object?, Object?>;
     return element.handleCreate(
         ref,
         () => build(

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderParagraph;
 
@@ -121,6 +122,7 @@ class TalkBubble extends StatefulWidget {
     this.voiceProgress = 0,
     this.onWord,
     this.onOtherWord,
+    this.onPhrase,
   });
 
   final int index;
@@ -147,6 +149,11 @@ class TalkBubble extends StatefulWidget {
   /// screen, to look its translation up (owner, 2026-10-24).
   final void Function(String word, Rect globalRect)? onOtherWord;
 
+  /// A long press dragged over several words of an AI line: the words from
+  /// the first to the last touched, and their place on screen, to translate
+  /// together (owner, 2026-10-24).
+  final void Function(String phrase, Rect globalRect)? onPhrase;
+
   @override
   State<TalkBubble> createState() => _TalkBubbleState();
 }
@@ -172,6 +179,77 @@ class _TalkBubbleState extends State<TalkBubble> {
             if (cb != null) cb(widget.text.substring(start, end), _rangeRect([(start, end)], null));
           },
       );
+
+  /// The long-press selection: the word it started on and the word under
+  /// the finger now (indexes into [_tokens]); null when there is none.
+  int? _selFrom;
+  int? _selTo;
+
+  /// Every word of the line, by place in the text.
+  List<(int, int)> get _tokens => [for (final m in _otherWord.allMatches(widget.text)) (m.start, m.end)];
+
+  /// The word under (or nearest before) [global], as an index into [tokens].
+  int? _tokenAt(Offset global, List<(int, int)> tokens) {
+    final paragraph = _textKey.currentContext?.findRenderObject();
+    if (paragraph is! RenderParagraph || !paragraph.attached || tokens.isEmpty) return null;
+    final offset = paragraph.getPositionForOffset(paragraph.globalToLocal(global)).offset;
+    var best = 0;
+    for (final (i, (start, _)) in tokens.indexed) {
+      if (start <= offset) best = i;
+    }
+    return best;
+  }
+
+  /// The selected text range, from the first to the last touched word.
+  (int, int)? get _selRange {
+    final (a, b) = (_selFrom, _selTo);
+    if (a == null || b == null) return null;
+    final tokens = _tokens;
+    final (lo, hi) = a <= b ? (a, b) : (b, a);
+    return (tokens[lo].$1, tokens[hi].$2);
+  }
+
+  void _selStart(LongPressStartDetails d) {
+    final at = _tokenAt(d.globalPosition, _tokens);
+    if (at == null) return;
+    HapticFeedback.selectionClick();
+    setState(() => _selFrom = _selTo = at);
+  }
+
+  void _selMove(LongPressMoveUpdateDetails d) {
+    if (_selFrom == null) return;
+    final at = _tokenAt(d.globalPosition, _tokens);
+    if (at != null && at != _selTo) {
+      HapticFeedback.selectionClick();
+      setState(() => _selTo = at);
+    }
+  }
+
+  void _selEnd([LongPressEndDetails? _]) {
+    final range = _selRange;
+    setState(() => _selFrom = _selTo = null);
+    final cb = widget.onPhrase;
+    if (range == null || cb == null) return;
+    cb(widget.text.substring(range.$1, range.$2), _unionRect(range.$1, range.$2));
+  }
+
+  /// The boxes of the text range [start]–[end], in the paragraph's own space.
+  List<Rect> _boxes(int start, int end) {
+    final paragraph = _textKey.currentContext?.findRenderObject();
+    if (paragraph is! RenderParagraph || !paragraph.attached) return const [];
+    return [
+      for (final b in paragraph.getBoxesForSelection(TextSelection(baseOffset: start, extentOffset: end))) b.toRect(),
+    ];
+  }
+
+  /// The range's boxes joined, on screen: where the popup points.
+  Rect _unionRect(int start, int end) {
+    final paragraph = _textKey.currentContext?.findRenderObject();
+    final boxes = _boxes(start, end);
+    if (paragraph is! RenderParagraph || boxes.isEmpty) return Rect.zero;
+    final all = boxes.reduce((a, b) => a.expandToInclude(b));
+    return paragraph.localToGlobal(all.topLeft) & all.size;
+  }
 
   @override
   void didUpdateWidget(TalkBubble old) {
@@ -326,10 +404,33 @@ class _TalkBubbleState extends State<TalkBubble> {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Text.rich(
-                key: _textKey,
-                TextSpan(children: rich),
-                style: base,
+              child: GestureDetector(
+                // Long press and drag: highlight several words to translate them together.
+                onLongPressStart: !mine && widget.onPhrase != null ? _selStart : null,
+                onLongPressMoveUpdate: !mine && widget.onPhrase != null ? _selMove : null,
+                onLongPressEnd: !mine && widget.onPhrase != null ? _selEnd : null,
+                onLongPressCancel: _selFrom == null ? null : () => setState(() => _selFrom = _selTo = null),
+                child: Stack(
+                  children: [
+                    Text.rich(
+                      key: _textKey,
+                      TextSpan(children: rich),
+                      style: base,
+                    ),
+                    if (_selRange case final range?)
+                      Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            key: talkSelectionKey,
+                            painter: _SelectionPainter(
+                              boxes: _boxes(range.$1, range.$2),
+                              color: scheme.primary.withValues(alpha: 0.28),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
             Positioned(
@@ -500,6 +601,27 @@ class TalkMissionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The long-press highlight over the words being picked.
+const talkSelectionKey = ValueKey('talk-selection');
+
+class _SelectionPainter extends CustomPainter {
+  const _SelectionPainter({required this.boxes, required this.color});
+
+  final List<Rect> boxes;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    for (final b in boxes) {
+      canvas.drawRRect(RRect.fromRectAndRadius(b.inflate(2), const Radius.circular(4)), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SelectionPainter old) => old.boxes != boxes || old.color != color;
 }
 
 /// A word in an AI line: letters, with inner apostrophes and hyphens.

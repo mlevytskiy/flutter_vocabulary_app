@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
@@ -480,6 +481,30 @@ void main() {
     expect(find.text('2 / 4'), findsOneWidget);
     expect(find.textContaining('_____'), findsOneWidget);
     expect(t.takeException(), isNull);
+  });
+  testWidgets('a long press dragged over several words translates them together (owner, 2026-10-24)', (t) async {
+    const line = 'Was the market crowded today?';
+    await open(t, opening: line);
+    final paragraph = t.renderObject<RenderParagraph>(
+        find.descendant(of: find.byKey(talkBubbleKey(0)), matching: find.byType(RichText)).first);
+    Offset centerOf(String part) {
+      final start = line.indexOf(part);
+      final box = paragraph.getBoxesForSelection(TextSelection(baseOffset: start, extentOffset: start + part.length)).first;
+      return paragraph.localToGlobal(box.toRect().center);
+    }
+
+    translate.asked.clear();
+    final g = await t.startGesture(centerOf('market'));
+    await t.pump(const Duration(milliseconds: 600)); // long press
+    expect(find.byKey(talkSelectionKey), findsOneWidget, reason: 'the held word lights up');
+    await g.moveTo(centerOf('today'));
+    await t.pump();
+    await g.up();
+    await t.pump();
+    await settle(t);
+    expect(find.byKey(talkSelectionKey), findsNothing);
+    expect(translate.asked, ['market crowded today']);
+    expect(find.text('т-market crowded today'), findsOneWidget);
   });
 }
 
