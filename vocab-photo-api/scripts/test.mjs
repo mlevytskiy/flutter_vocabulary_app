@@ -23,6 +23,7 @@ import { startZenStub } from "../test/zen-stub.mjs";
 import { startOpenSubtitlesStub } from "../test/opensubtitles-stub.mjs";
 import { startXaiStub } from "../test/xai-stub.mjs";
 import { startHiggsfieldStub } from "../test/higgsfield-stub.mjs";
+import { startOpenAiStub } from "../test/openai-stub.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -73,6 +74,7 @@ const zenStub = await startZenStub();
 const openSubtitlesStub = await startOpenSubtitlesStub();
 const xaiStub = await startXaiStub();
 const higgsfieldStub = await startHiggsfieldStub();
+const openAiStub = await startOpenAiStub();
 
 const migrate = spawnSync(
   "npx",
@@ -111,6 +113,9 @@ const worker = spawn(
     "--var", "XAI_API_KEY:test-key",
     "--var", `HIGGSFIELD_API_URL:${higgsfieldStub.url}`,
     "--var", "HIGGSFIELD_API_KEY:test-key",
+    // The talk voice (learn-redesign openai-voice): OpenAI's speech API is a stub too.
+    "--var", `OPENAI_API_URL:${openAiStub.url}`,
+    "--var", "OPENAI_API_KEY:test-key",
     "--var", "STORY_TEXT_TIMEOUT_MS:3000",
     // The stub's slow learn reply (2 s) must outlast this (learn-kit AC-24, AC-34).
     "--var", "LEARN_AI_TIMEOUT_MS:1000",
@@ -142,6 +147,7 @@ function stopWorker() {
   openSubtitlesStub.close();
   xaiStub.close();
   higgsfieldStub.close();
+  openAiStub.close();
 }
 process.on("SIGINT", () => {
   stopWorker();
@@ -172,6 +178,7 @@ try {
       VOCAB_API_OPENSUBTITLES_STUB_URL: openSubtitlesStub.url,
       VOCAB_API_XAI_STUB_URL: xaiStub.url,
       VOCAB_API_HIGGSFIELD_STUB_URL: higgsfieldStub.url,
+      VOCAB_API_OPENAI_STUB_URL: openAiStub.url,
     },
   });
   if (code !== 0) console.error("--- wrangler dev output ---\n" + log);

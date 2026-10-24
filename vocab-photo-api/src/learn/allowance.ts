@@ -36,3 +36,12 @@ export const takeLearnCheck = (env: Pick<Env, "DB">, now = new Date()) => takeUn
 
 /** One unit of today's talk allowance, for a talk start; false when the day is used up (AC-24). */
 export const takeLearnTalk = (env: Pick<Env, "DB">, now = new Date()) => takeUnit(env, "all_learn_talks", LEARN_TALK_DAY_LIMIT, now);
+
+/**
+ * The speech allowance (learn-redesign openai-voice, AC-31): one unit per POST /learn/speech call,
+ * app-wide per UTC day; past it the app speaks with the phone voice.
+ */
+export const LEARN_SPEECH_DAY_LIMIT = 400;
+
+/** One unit of today's speech allowance; false when the day is used up (AC-31). */
+export const takeLearnSpeech = (env: Pick<Env, "DB">, now = new Date()) => takeUnit(env, "all_learn_speech", LEARN_SPEECH_DAY_LIMIT, now);

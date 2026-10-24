@@ -28,6 +28,14 @@ export interface Env {
   OPENSUBTITLES_API_KEY: string;
   /** Overrides OpenSubtitles' base URL; unset in production. The tests point it at a local stub. */
   OPENSUBTITLES_API_URL?: string;
+  /**
+   * OpenAI key for the AI's voice in Talk (learn-redesign openai-voice). A secret:
+   * `wrangler secret put OPENAI_API_KEY`. Optional: without it POST /learn/speech answers 503
+   * speech_unavailable and the app speaks with the phone voice.
+   */
+  OPENAI_API_KEY?: string;
+  /** Overrides OpenAI's base URL; unset in production. The tests point it at a local stub. */
+  OPENAI_API_URL?: string;
   APP_SHARED_SECRET: string;
   RATE_LIMITER: { limit: (opts: { key: string }) => Promise<{ success: boolean }> };
   /** Page writes per IP: save cell, add row, delete row, define (good-looking-web, sad §8). */
