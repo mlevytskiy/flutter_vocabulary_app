@@ -16,6 +16,7 @@ import '../../words/widgets/open_dots_menu.dart';
 import 'talk_navigation.dart';
 import 'talk_notifier.dart';
 import 'talk_text.dart';
+import 'talk_quiz_card.dart';
 import 'talk_widgets.dart';
 import 'talk_word_popup.dart';
 
@@ -188,7 +189,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final text = _field.text.trim();
     if (text.isEmpty) return;
     _field.clear();
-    ref.read(talkProvider(widget.collectionId).notifier).send(text);
+    final notifier = ref.read(talkProvider(widget.collectionId).notifier);
+    // A spoken quiz step takes the answer instead of the AI (owner, 2026-10-24).
+    if (ref.read(talkProvider(widget.collectionId)).spokenQuizItem != null) {
+      notifier.answerQuiz(text);
+      return;
+    }
+    notifier.send(text);
   }
 
   /// The mic went down: init on the first hold, then listen while held.
@@ -281,8 +288,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// Whether the mic opens by itself on the learner's turn: hands-free in a
   /// plain talk; in a mixed mission only a speaking turn or "Say something
   /// else", whatever the read-aloud switch (owner, 2026-10-24).
-  bool _autoListen(TalkState talk) =>
-      talk.mixed ? !talk.complete && (talk.interaction == 'speak' || _customReply) : ref.read(handsFreeProvider);
+  bool _autoListen(TalkState talk) => talk.openQuiz != null
+      // A quick check listens on its spoken steps only.
+      ? talk.spokenQuizItem != null
+      : talk.mixed
+          ? !talk.complete && (talk.interaction == 'speak' || _customReply)
+          : ref.read(handsFreeProvider);
 
   /// Speaks AI line [index] with the karaoke and, while its voice is fetched,
   /// the loading bar; then hands-free listens when [thenListen]. Play and
@@ -324,7 +335,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _spokenIndex = null;
       _voiceLoading = false;
     });
-    if (thenListen) await _hfListen();
+    // A quiz step that opened while the line was read listens now too.
+    if (thenListen || ref.read(talkProvider(widget.collectionId)).spokenQuizItem != null) await _hfListen();
   }
 
   /// The voice has started: the bar fills up and fades, and how long it
@@ -529,6 +541,20 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final provider = talkProvider(widget.collectionId);
     ref.listen(provider, (prev, next) {
       if (next.messages.length != prev?.messages.length || next.status != prev?.status) _scrollToEnd();
+      if (next.quizzes != prev?.quizzes) {
+        _scrollToEnd();
+        // A spoken quiz step, or back to a speaking turn, listens at once.
+        final step = next.spokenQuizItem;
+        final stepChanged = step != null && (prev?.spokenQuizItem == null || !identical(prev!.spokenQuizItem, step));
+        final backToTalk = prev?.openQuiz != null && next.openQuiz == null && _autoListen(next);
+        if ((stepChanged || backToTalk) && _hf != _HandsFree.speaking && !_listening) {
+          setState(() {
+            _hfPaused = false;
+            _hfNothingHeard = false;
+          });
+          _hfListen();
+        }
+      }
       if (next.messages.length > (prev?.messages.length ?? 0)) _customReply = false;
       if (next.messages.length > (prev?.messages.length ?? 0) && next.messages.last.role == TalkRole.ai) {
         _onAiLine(next.messages.last.text);
@@ -553,7 +579,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final autoVoice = ref.watch(handsFreeProvider);
     // Mixed missions may read the character aloud, but never start recording automatically.
     final handsFree = s.mixed ? _autoListen(s) : autoVoice;
-    final composer = !s.complete && (!s.mixed || s.interaction == 'speak' || _customReply);
+    final composer = s.openQuiz != null
+        ? s.spokenQuizItem != null
+        : !s.complete && (!s.mixed || s.interaction == 'speak' || _customReply);
     final pauseSeconds = ref.watch(talkPauseProvider);
     final micOn = _listening || _hf == _HandsFree.listening;
     final String? line;
@@ -636,8 +664,16 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                           onReplay: _listening ? null : () => _replay(i),
                         ),
                       ),
+                    for (final q in s.quizzes)
+                      if (q.at == i + 1)
+                        TalkQuizCard(
+                          quiz: q.quiz,
+                          onPick: notifier.answerQuiz,
+                          onMatch: notifier.matchQuiz,
+                          onNext: notifier.nextQuiz,
+                        ),
                   ],
-                  if (s.mixed && s.status == TalkStatus.talking && !s.complete) ...[
+                  if (s.mixed && s.status == TalkStatus.talking && !s.complete && s.openQuiz == null) ...[
                     if (s.interaction == 'choice') ...[
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),

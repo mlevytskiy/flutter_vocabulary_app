@@ -13,12 +13,14 @@ import 'package:flutter_vocabulary_app/core/models/word_group.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
+import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_picture_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_result.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_notifier.dart';
+import 'package:flutter_vocabulary_app/features/learn/talk/talk_quiz.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_rules.dart';
 
 /// One call the fake talk service saw.
@@ -54,6 +56,20 @@ class FakeTalkApi implements TalkApiService {
 
 /// A talk picture service that answers [bytes] (null: no picture) and
 /// remembers the prompts (talk-mission).
+/// Exercise data for the talk's quick check: a sentence and a definition
+/// for every word (talk quiz, owner 2026-10-24).
+class FakeQuizData implements LearnApiService {
+  @override
+  Future<Map<String, T?>> fetchData<T>(LearnDataKind<T> kind, List<LearnWord> words) async => {
+        for (final w in words)
+          w.rowId: (kind.wire == 'definition' ? (definition: 'Meaning of ${w.word}.') : (sentence: 'We saw the ${w.word} today.'))
+              as T,
+      };
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class FakeTalkPicture extends TalkPictureService {
   Uint8List? bytes;
   final prompts = <String>[];
@@ -112,6 +128,7 @@ void main() {
       storyRunStoreProvider.overrideWith((ref) async => runs),
       talkApiServiceProvider.overrideWithValue(api),
       talkPictureServiceProvider.overrideWithValue(pictures ?? FakeTalkPicture()),
+      learnApiServiceProvider.overrideWithValue(FakeQuizData()),
     ]);
     addTearDown(c.dispose);
     return c;
@@ -430,6 +447,51 @@ void main() {
       // A second Done writes nothing more.
       await talk.finish();
       expect((await store.byId(id))!.boxes.length, 3);
+    });
+
+    test('talk quiz: 5 words in the talk open a quick check; its answers score the words', () async {
+      final id = await newCollection(['shore', 'tide', 'fog', 'gale', 'harbour']);
+      final api = FakeTalkApi()
+        ..answers.addAll([
+          const TalkTurn(reply: 'The fog hides the shore and the tide.', target: 'shore'),
+          const TalkTurn(reply: 'A gale is coming to the harbour!', target: 'tide'),
+        ]);
+      final (c, talk) = await started(id, api);
+      await pumpEventQueue();
+      expect(c.read(talkProvider(id)).openQuiz, isNull, reason: 'only 3 words so far');
+      await talk.send('What now?');
+      await pumpEventQueue();
+      var s = c.read(talkProvider(id));
+      final quiz = s.openQuiz!.quiz!;
+      expect(s.openQuiz!.at, 3, reason: 'after the AI line that brought the 5th word');
+      expect([for (final i in quiz.items) i.kind], [
+        TalkQuizKind.translate,
+        TalkQuizKind.fillGap,
+        TalkQuizKind.pickAnswer,
+        TalkQuizKind.matchDefinitions,
+      ]);
+      expect(s.spokenQuizItem?.word.word, 'shore');
+
+      talk.answerQuiz('shore'); // right
+      talk.nextQuiz();
+      talk.answerQuiz('wave'); // wrong: tide
+      talk.nextQuiz();
+      talk.answerQuiz('fog'); // right
+      talk.nextQuiz();
+      final match = c.read(talkProvider(id)).openQuiz!.quiz!.current;
+      for (final w in match.words) {
+        talk.matchQuiz(w.rowId, w.rowId);
+      }
+      talk.nextQuiz();
+      s = c.read(talkProvider(id));
+      expect(s.openQuiz, isNull, reason: 'back to the talk');
+      expect(s.quizzes.single.quiz!.closed, isTrue);
+      expect(s.quizzes.single.quiz!.wrongRows, {'r2'});
+
+      await talk.finish();
+      final states = {for (final m in c.read(lastSessionResultProvider)!.moves) m.word: m.state};
+      expect(states['shore'], WordState.knownWell, reason: 'right in the quiz counts as a use');
+      expect(states['tide'], WordState.isNew, reason: 'wrong in the quiz counts as a miss');
     });
 
     test('leaving without Done writes nothing', () async {

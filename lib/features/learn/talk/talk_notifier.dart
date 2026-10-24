@@ -5,9 +5,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/learn_api_service.dart' show LearnDataKind;
 import '../../../core/services/talk_api_service.dart';
 import '../session/session_result.dart';
 import '../session/session_words.dart';
+import 'talk_quiz.dart';
 import 'talk_rules.dart';
 
 part 'talk_notifier.g.dart';
@@ -67,7 +69,28 @@ class TalkState {
     this.choices = const [],
     this.speakingPrompt = '',
     this.keepChoice = false,
+    this.quizzes = const [],
+    this.quizzedRows = const {},
   });
+
+  /// The quick checks of this talk (owner, 2026-10-24), each after the
+  /// message count [at]; a null quiz is still loading.
+  final List<({int at, TalkQuiz? quiz})> quizzes;
+
+  /// Row ids a quiz has already covered.
+  final Set<String> quizzedRows;
+
+  /// The quiz the learner is in: the last one, until they go back to the talk.
+  ({int at, TalkQuiz? quiz})? get openQuiz {
+    final last = quizzes.lastOrNull;
+    return last == null || (last.quiz?.closed ?? false) ? null : last;
+  }
+
+  /// The open quiz's step when it is answered by voice or typing.
+  TalkQuizItem? get spokenQuizItem {
+    final item = openQuiz?.quiz?.current;
+    return item != null && item.spoken && !item.done ? item : null;
+  }
 
   final String? interaction;
   final List<String> choices;
@@ -137,6 +160,8 @@ class TalkState {
     List<String>? choices,
     String? speakingPrompt,
     bool? keepChoice,
+    List<({int at, TalkQuiz? quiz})>? quizzes,
+    Set<String>? quizzedRows,
   }) =>
       TalkState(
         status: status ?? this.status,
@@ -157,6 +182,8 @@ class TalkState {
         choices: choices ?? this.choices,
         speakingPrompt: speakingPrompt ?? this.speakingPrompt,
         keepChoice: keepChoice ?? this.keepChoice,
+        quizzes: quizzes ?? this.quizzes,
+        quizzedRows: quizzedRows ?? this.quizzedRows,
       );
 }
 
@@ -254,6 +281,7 @@ class Talk extends _$Talk {
         pictureLoading: mission != null,
       ));
       if (mission != null) unawaited(_drawPicture(mission.picture));
+      unawaited(_maybeQuiz());
     } on TalkApiException catch (e) {
       _set(e.error == TalkApiError.dayLimit
           ? state.copyWith(status: TalkStatus.limit, errorText: () => talkDayLimitMessage)
@@ -325,11 +353,87 @@ class Talk extends _$Talk {
         hintWord: moved ? () => null : null,
         repliesWithoutTarget: moved ? 0 : null,
       ));
+      unawaited(_maybeQuiz());
     } catch (_) {
       if (_finished || _disposed) return;
       _set(before.copyWith(
           status: TalkStatus.error, errorText: () => talkFailedMessage, keepDraft: () => reply, keepChoice: isChoice));
     }
+  }
+
+  /// Opens a quick check once [talkQuizBatch] words have come up in the talk
+  /// and none is open: the card shows at once, loading, then fills with the
+  /// exercise data (sentences, definitions; cached on the Worker). Without
+  /// that data every step is Translate.
+  Future<void> _maybeQuiz() async {
+    if (state.openQuiz != null || _finished || state.complete) return;
+    final batch = quizBatch([for (final m in state.messages) m.text], _words, state.quizzedRows);
+    if (batch == null) return;
+    final at = state.messages.length;
+    _set(state.copyWith(
+      quizzes: [...state.quizzes, (at: at, quiz: null)],
+      quizzedRows: {...state.quizzedRows, for (final w in batch) w.rowId},
+    ));
+    final wire = [for (final w in batch) (rowId: w.rowId, word: w.word, translation: w.translation)];
+    final api = ref.read(learnApiServiceProvider);
+    Map<String, String> sentences = const {}, definitions = const {};
+    try {
+      final (s, d) = await (
+        api.fetchData(LearnDataKind.sentence, wire),
+        api.fetchData(LearnDataKind.definition, wire),
+      ).wait;
+      sentences = {
+        for (final e in s.entries)
+          if (e.value != null) e.key: e.value!.sentence
+      };
+      definitions = {
+        for (final e in d.entries)
+          if (e.value != null) e.key: e.value!.definition
+      };
+    } catch (_) {
+      // Translate needs no data.
+    }
+    if (_disposed) return;
+    final quiz = TalkQuiz(items: buildTalkQuiz(batch, sentences: sentences, definitions: definitions));
+    _setQuiz(quiz);
+  }
+
+  void _setQuiz(TalkQuiz quiz) {
+    final open = state.openQuiz;
+    if (open == null) return;
+    _set(state.copyWith(quizzes: [
+      for (final q in state.quizzes) identical(q, open) ? (at: q.at, quiz: quiz) : q,
+    ]));
+  }
+
+  /// A said, typed or picked answer to the open quiz's step.
+  void answerQuiz(String answer) {
+    final quiz = state.openQuiz?.quiz;
+    if (quiz == null) return;
+    final item = quiz.current;
+    if (item.done || item.kind == TalkQuizKind.matchDefinitions) return;
+    final right = item.kind == TalkQuizKind.pickAnswer
+        ? answer.trim().toLowerCase() == item.word.word.trim().toLowerCase()
+        : quizAnswerRight(answer, item.word.word);
+    _setQuiz(quiz.withCurrent(item.copyWith(answer: answer.trim(), correct: right)));
+  }
+
+  /// Match definitions: [rowId]'s word put on the definition of [definitionRowId].
+  void matchQuiz(String rowId, String definitionRowId) {
+    final quiz = state.openQuiz?.quiz;
+    if (quiz == null) return;
+    final item = quiz.current;
+    if (item.kind != TalkQuizKind.matchDefinitions || item.matched.contains(rowId)) return;
+    _setQuiz(quiz.withCurrent(rowId == definitionRowId
+        ? item.copyWith(matched: {...item.matched, rowId})
+        : item.copyWith(wrongRows: {...item.wrongRows, rowId})));
+  }
+
+  /// The next step of the open quiz, or back to the talk after the last.
+  void nextQuiz() {
+    final quiz = state.openQuiz?.quiz;
+    if (quiz == null || !quiz.current.done) return;
+    _setQuiz(quiz.isLast ? quiz.copyWith(closed: true) : quiz.copyWith(index: quiz.index + 1));
   }
 
   /// Retry after an error: the opening again, or the kept reply.
@@ -360,12 +464,16 @@ class Talk extends _$Talk {
     final result = await finishSession(
       store: store,
       collectionId: _id,
-      outcomes: scoreTalk(_words,
-          used: {
-            for (final w in state.words)
-              if (w.used) w.word.rowId
-          },
-          hinted: state.hinted),
+      // A quiz answer counts too: right is a use, wrong a miss (owner, 2026-10-24).
+      outcomes: scoreTalk(_words, used: {
+        for (final w in state.words)
+          if (w.used) w.word.rowId,
+        for (final q in state.quizzes) ...?q.quiz?.rightRows,
+        for (final q in state.quizzes) ...?q.quiz?.wrongRows,
+      }, hinted: {
+        ...state.hinted,
+        for (final q in state.quizzes) ...?q.quiz?.wrongRows,
+      }),
       kind: SessionKind.talk,
       now: now,
       groupIndex: pick?.groupIndex,

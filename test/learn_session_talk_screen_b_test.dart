@@ -17,11 +17,12 @@ import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
 import 'package:flutter_vocabulary_app/core/theme/themes/themes.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_text.dart';
+import 'package:flutter_vocabulary_app/features/learn/talk/talk_quiz_card.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_widgets.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_word_popup.dart';
 
 import 'learn_session_talk_handsfree_test.dart' show EngineSpeech, HoldTts;
-import 'learn_session_talk_test.dart' show FakeTalkApi, FakeTalkPicture;
+import 'learn_session_talk_test.dart' show FakeQuizData, FakeTalkApi, FakeTalkPicture;
 
 /// talk-screen-b (owner, 2026-10-24): Talk with AI as Direction B — long
 /// bubbles, the practice words highlighted and tappable (the Words screen's
@@ -131,6 +132,7 @@ void main() {
       pronunciationServiceProvider.overrideWithValue(tts),
       talkPictureServiceProvider.overrideWithValue(pictures ?? FakeTalkPicture()),
       googleTranslateServiceProvider.overrideWithValue(translate),
+      learnApiServiceProvider.overrideWithValue(FakeQuizData()),
     ]);
     addTearDown(container.dispose);
     await t.pumpWidget(UncontrolledProviderScope(
@@ -453,6 +455,31 @@ void main() {
     api.answers.add(const TalkTurn(reply: 'Where to?', target: 'crowded'));
     await reply(t, 'Yes I did');
     expect(find.byKey(talkPlayKey), findsNWidgets(2), reason: 'one under each AI line');
+  });
+  testWidgets('a quick check opens in the chat once 5 words came up; a typed answer goes to it, not the AI',
+      (t) async {
+    await open(t,
+        opening: 'The fog hides the shore, the tide rises, a gale hits the harbour.',
+        words: const ['shore', 'tide', 'fog', 'gale', 'harbour']);
+    await settle(t);
+    expect(find.byKey(talkQuizCardKey), findsOneWidget);
+    expect(find.text('Quick check'), findsOneWidget);
+    expect(find.text('t-shore'), findsOneWidget, reason: 'Translate shows the translation');
+    tts.finishSpeaking();
+    await t.pump();
+    await settle(t);
+    expect(speech.untilPauseCalls, greaterThan(0), reason: 'a spoken step listens at once');
+    final calls = api.calls.length;
+    await t.enterText(find.byType(TextField), 'shore');
+    await t.tap(find.byIcon(Icons.send));
+    await t.pump();
+    expect(api.calls.length, calls, reason: 'the answer never reaches the AI');
+    expect(find.text('Right!'), findsOneWidget);
+    await t.tap(find.byKey(const ValueKey('talk-quiz-next')));
+    await t.pump();
+    expect(find.text('2 / 4'), findsOneWidget);
+    expect(find.textContaining('_____'), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 }
 
