@@ -107,7 +107,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   PronunciationService? _tts;
 
   /// The karaoke of the AI line being spoken (its index in the messages, null
-  /// when none) and the pause ring, which restarts with every piece heard.
+  /// when none; its value is the voice's progress) and the pause ring, which
+  /// restarts with every piece heard.
   late final _karaoke = AnimationController(vsync: this);
   late final _ring = AnimationController(vsync: this);
   int? _spokenIndex;
@@ -247,15 +248,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _hf = _HandsFree.speaking;
       _spokenIndex = ref.read(talkProvider(widget.collectionId)).messages.length - 1;
     });
-    _karaoke
-      ..duration = karaokeDuration(text)
-      ..forward(from: 0);
+    _karaoke.value = 0;
     try {
-      // Never listening while speaking: no echo.
-      await tts.speakAndWait(text, accent: Accent.us, voice: ref.read(ttsVoiceProvider));
+      // Never listening while speaking: no echo. The voice's progress fills
+      // the karaoke.
+      await tts.speakAndWait(text, accent: Accent.us, voice: ref.read(ttsVoiceProvider), onProgress: (p) {
+        if (mounted && run == _hfRun) _karaoke.value = p.clamp(0, 1);
+      });
     } catch (_) {}
     if (!mounted || run != _hfRun) return;
-    _karaoke.stop();
     setState(() {
       _hf = _HandsFree.idle;
       _spokenIndex = null;
@@ -320,7 +321,6 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     if (_hf == _HandsFree.speaking) _tts?.stop().catchError((Object _) {});
     _hf = _HandsFree.idle;
     _spokenIndex = null;
-    _karaoke.stop();
     _ring.reset();
   }
 

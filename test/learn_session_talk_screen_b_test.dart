@@ -54,11 +54,6 @@ void main() {
       final cut = talkSpans('wandered', [wander], spokenEnd: 3);
       expect([for (final s in cut) (s.text, s.spoken, s.word != null)], [('wan', true, true), ('dered', false, true)]);
     });
-
-    test('karaokeDuration grows with the text', () {
-      expect(karaokeDuration(long) > karaokeDuration('Hi there.'), isTrue);
-      expect(karaokeDuration('Hi') >= const Duration(seconds: 1), isTrue);
-    });
   });
 
   late Directory dir;
@@ -236,12 +231,15 @@ void main() {
     expect(find.text(talkSendingInText(3)), findsOneWidget);
   });
 
-  testWidgets('the line being spoken colours its spoken words; done, it is plain again', (t) async {
+  testWidgets('the voice\'s progress colours the spoken words; done, the line is plain again', (t) async {
     const line = 'one two three four five six seven eight nine ten';
     await open(t, opening: line);
-    await t.pump(karaokeDuration(line) ~/ 2);
-    Color? colour(TextSpan s) => s.style?.color;
     var spans = spansOf(t, 0);
+    expect(tts.progress, isNotNull);
+    tts.progress!(0.5);
+    await t.pump();
+    Color? colour(TextSpan s) => s.style?.color;
+    spans = spansOf(t, 0);
     expect(colour(spans.first), isNot(colour(spans.last)));
     tts.finishSpeaking();
     await t.pump();

@@ -64,10 +64,3 @@ int karaokeSplit(String text, double progress) {
   }
   return i;
 }
-
-/// About how long a phone voice takes to read [text] (no voice reports its
-/// progress through `PronunciationService`): ~14 characters a second, at
-/// least a second. The fill waits at the end if the voice is slower and
-/// finishes at once when it is done sooner.
-Duration karaokeDuration(String text) =>
-    Duration(milliseconds: (text.length * 70).clamp(1000, 1 << 30));
