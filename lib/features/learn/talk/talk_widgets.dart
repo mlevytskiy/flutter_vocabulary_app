@@ -118,6 +118,7 @@ class TalkBubble extends StatefulWidget {
     this.usedRows = const {},
     this.spokenEnd,
     this.voiceLoading = false,
+    this.voiceProgress = 0,
     this.onWord,
   });
 
@@ -133,6 +134,9 @@ class TalkBubble extends StatefulWidget {
   /// bubble's top edge, the text left as it is (talk-mission, owner
   /// 2026-10-24).
   final bool voiceLoading;
+
+  /// How far that bar has filled, 0 to 1.
+  final double voiceProgress;
 
   /// A tap on a practice word, with the tapped word's place on screen, so
   /// the popup points at the word itself.
@@ -272,15 +276,13 @@ class _TalkBubbleState extends State<TalkBubble> {
                 child: AnimatedOpacity(
                   opacity: widget.voiceLoading ? 1 : 0,
                   duration: const Duration(milliseconds: 150),
-                  child: widget.voiceLoading
-                      ? LinearProgressIndicator(
-                          key: talkVoiceLoadingKey,
-                          minHeight: 2,
-                          backgroundColor: Colors.transparent,
-                          color: scheme.primary.withValues(alpha: 0.7),
-                          value: MediaQuery.of(context).disableAnimations ? 0.3 : null,
-                        )
-                      : const SizedBox(height: 2),
+                  child: LinearProgressIndicator(
+                    key: widget.voiceLoading ? talkVoiceLoadingKey : null,
+                    minHeight: 3,
+                    backgroundColor: scheme.primary.withValues(alpha: 0.12),
+                    color: scheme.primary,
+                    value: widget.voiceProgress.clamp(0.0, 1.0),
+                  ),
                 ),
               ),
             ),
@@ -348,8 +350,8 @@ class TalkVoiceControls extends StatelessWidget {
 }
 
 /// The mission at the top of the talk (talk-mission, owner 2026-10-24): its
-/// 16:9 opening picture — a thin running bar while it is drawn, faded in once
-/// it comes, left out when it never does — then the title, the learner's
+/// 16:9 opening picture — a quiet tinted slot while it is drawn (no loader,
+/// owner 2026-10-24), faded in once it comes, left out when it never does — then the title, the learner's
 /// role and the goal.
 class TalkMissionCard extends StatelessWidget {
   const TalkMissionCard({
@@ -414,16 +416,6 @@ class TalkMissionCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 400),
                       curve: Curves.easeOut,
                       child: child,
-                    ),
-                  ),
-                if (bytes == null)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: LinearProgressIndicator(
-                      minHeight: 2,
-                      backgroundColor: Colors.transparent,
-                      color: scheme.primary.withValues(alpha: 0.7),
-                      value: MediaQuery.of(context).disableAnimations ? 0.3 : null,
                     ),
                   ),
               ]),

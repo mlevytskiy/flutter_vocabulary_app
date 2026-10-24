@@ -97,7 +97,6 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// Set once the mic was used in this talk: new AI replies are read aloud.
   bool _voiceUsed = false;
   bool _customReply = false;
-  bool _showWords = false;
 
   void _choose(String choice) {
     setState(_hfStop);
@@ -122,12 +121,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   int? _spokenIndex;
 
   /// The voice of the line being spoken is still being fetched (no progress
-  /// yet), and whether its loading bar shows: only after [_loaderDelay], so
-  /// a quick voice never flashes it (talk-mission, owner 2026-10-24).
+  /// yet). Its bar fills over how long the last voices took to arrive
+  /// ([_loadEstimate]; the Worker sends no size ahead, so there is nothing
+  /// truer to count), stops short of the end while it waits, and fills up
+  /// when the voice starts (owner, 2026-10-24: a real progress line, not an
+  /// endless one).
   bool _voiceLoading = false;
-  bool _loaderShown = false;
-  Timer? _loaderTimer;
-  static const _loaderDelay = Duration(milliseconds: 250);
+  late final _loadBar = AnimationController(vsync: this);
+  Duration _loadEstimate = const Duration(seconds: 3);
+  DateTime? _loadStarted;
 
   /// The word popup (the Words screen's dots popup, talk-screen-b): one menu,
   /// moved to the tapped word before it opens.
@@ -153,10 +155,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   @override
   void dispose() {
     _pressTimer?.cancel();
-    _loaderTimer?.cancel();
     _hfStop();
     if (_listening) _speech?.cancel();
     _karaoke.dispose();
+    _loadBar.dispose();
     _ring.dispose();
     _field.dispose();
     _focus.dispose();
@@ -244,14 +246,34 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   Future<void> _onAiLine(String text) async {
     await ref.read(handsFreeProvider.notifier).loaded;
     if (!mounted) return;
-    final index = ref.read(talkProvider(widget.collectionId)).messages.length - 1;
+    final talk = ref.read(talkProvider(widget.collectionId));
+    final index = talk.messages.length - 1;
+    if (talk.mixed) {
+      // Each turn starts afresh: a speaking turn listens at once (after the
+      // line is read, when replies are read aloud; owner, 2026-10-24).
+      _hfPaused = false;
+      _hfNothingHeard = false;
+      final listen = _autoListen(talk);
+      if (ref.read(handsFreeProvider) || _voiceUsed) {
+        await _speakLine(index, thenListen: listen);
+      } else if (listen) {
+        await _hfListen();
+      }
+      return;
+    }
     if (!ref.read(handsFreeProvider)) {
       if (_voiceUsed) await _speakLine(index, thenListen: false);
       return;
     }
     if (_hfPaused) return;
-    await _speakLine(index, thenListen: !ref.read(talkProvider(widget.collectionId)).mixed);
+    await _speakLine(index, thenListen: true);
   }
+
+  /// Whether the mic opens by itself on the learner's turn: hands-free in a
+  /// plain talk; in a mixed mission only a speaking turn or "Say something
+  /// else", whatever the read-aloud switch (owner, 2026-10-24).
+  bool _autoListen(TalkState talk) =>
+      talk.mixed ? !talk.complete && (talk.interaction == 'speak' || _customReply) : ref.read(handsFreeProvider);
 
   /// Speaks AI line [index] with the karaoke and, while its voice is fetched,
   /// the loading bar; then hands-free listens when [thenListen]. Play and
@@ -269,12 +291,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _hf = _HandsFree.speaking;
       _spokenIndex = index;
       _voiceLoading = true;
-      _loaderShown = false;
     });
-    _loaderTimer?.cancel();
-    _loaderTimer = Timer(_loaderDelay, () {
-      if (mounted && run == _hfRun && _voiceLoading) setState(() => _loaderShown = true);
-    });
+    _loadStarted = DateTime.now();
+    _loadBar
+      ..value = 0
+      ..animateTo(0.9, duration: _loadEstimate, curve: Curves.easeOutCubic);
     _karaoke.value = 0;
     try {
       // Never listening while speaking: no echo. The voice's progress fills
@@ -287,23 +308,26 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       });
     } catch (_) {}
     if (!mounted || run != _hfRun) return;
-    _loaderTimer?.cancel();
+    _loadBar.stop();
     setState(() {
       _hf = _HandsFree.idle;
       _spokenIndex = null;
       _voiceLoading = false;
-      _loaderShown = false;
     });
     if (thenListen) await _hfListen();
   }
 
-  /// The voice has started: the loading bar goes.
+  /// The voice has started: the bar fills up and fades, and how long it
+  /// took tunes the next estimate.
   void _endLoading() {
-    _loaderTimer?.cancel();
-    setState(() {
-      _voiceLoading = false;
-      _loaderShown = false;
-    });
+    final started = _loadStarted;
+    if (started != null) {
+      final took = DateTime.now().difference(started).inMilliseconds;
+      final next = (_loadEstimate.inMilliseconds + took) ~/ 2;
+      _loadEstimate = Duration(milliseconds: next.clamp(800, 10000));
+    }
+    _loadBar.animateTo(1, duration: const Duration(milliseconds: 120));
+    setState(() => _voiceLoading = false);
   }
 
   /// Play or Replay under the latest AI line: speaks it from the start; in
@@ -316,13 +340,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _hfPaused = false;
       _hfNothingHeard = false;
     }
-    _speakLine(index, thenListen: handsFree && !ref.read(talkProvider(widget.collectionId)).mixed);
+    _speakLine(index, thenListen: _autoListen(ref.read(talkProvider(widget.collectionId))));
   }
 
   /// Stop under the line being spoken: the voice stops; in hands-free the
   /// learner's turn starts as if it had ended.
   void _stopVoice() {
-    final listen = ref.read(handsFreeProvider) && !_hfPaused && !ref.read(talkProvider(widget.collectionId)).mixed;
+    final listen = _autoListen(ref.read(talkProvider(widget.collectionId))) && !_hfPaused;
     setState(_hfStop);
     if (listen) _hfListen();
   }
@@ -330,9 +354,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// Listens until the learner's pause, then sends what was heard; with
   /// nothing heard it stops the loop until the mic is tapped.
   Future<void> _hfListen() async {
-    if (!mounted || !ref.read(handsFreeProvider) || _hfPaused) return;
+    if (!mounted || _hfPaused) return;
     final talk = ref.read(talkProvider(widget.collectionId));
-    if (talk.status != TalkStatus.talking || talk.mixed) return;
+    if (talk.status != TalkStatus.talking || !_autoListen(talk)) return;
     final run = ++_hfRun;
     final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
     if (_availability != SpeechAvailability.ready) {
@@ -385,9 +409,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     if (_hf == _HandsFree.speaking) _tts?.stop().catchError((Object _) {});
     _hf = _HandsFree.idle;
     _spokenIndex = null;
-    _loaderTimer?.cancel();
+    _loadBar.stop();
     _voiceLoading = false;
-    _loaderShown = false;
     _ring.reset();
   }
 
@@ -504,7 +527,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
         _availability == SpeechAvailability.permissionDenied || _availability == SpeechAvailability.unavailable;
     final autoVoice = ref.watch(handsFreeProvider);
     // Mixed missions may read the character aloud, but never start recording automatically.
-    final handsFree = autoVoice && !s.mixed;
+    final handsFree = s.mixed ? _autoListen(s) : autoVoice;
     final composer = !s.complete && (!s.mixed || s.interaction == 'speak' || _customReply);
     final pauseSeconds = ref.watch(talkPauseProvider);
     final micOn = _listening || _hf == _HandsFree.listening;
@@ -571,9 +594,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                   for (final (i, m) in s.messages.indexed) ...[
                     i == _spokenIndex
                         ? AnimatedBuilder(
-                            animation: _karaoke,
+                            animation: Listenable.merge([_karaoke, _loadBar]),
                             builder: (_, __) => _bubble(i, m, maxWidth, words, usedRows,
-                                spokenEnd: karaokeSplit(m.text, _karaoke.value), voiceLoading: _loaderShown),
+                                spokenEnd: karaokeSplit(m.text, _karaoke.value),
+                                voiceLoading: _voiceLoading,
+                                voiceProgress: _loadBar.value),
                           )
                         : _bubble(i, m, maxWidth, words, usedRows),
                     if (i == lastAi)
@@ -598,12 +623,30 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                           padding: const EdgeInsets.only(bottom: 6),
                           child: OutlinedButton(
                             onPressed: _listening ? null : () => _choose(choice),
-                            child: Text(choice, textAlign: TextAlign.center),
+                            child: Text.rich(
+                              TextSpan(children: [
+                                for (final part in talkSpans(choice, words))
+                                  TextSpan(
+                                    text: part.text,
+                                    style: part.word == null
+                                        ? null
+                                        : TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                            decoration: TextDecoration.underline,
+                                            decorationStyle: TextDecorationStyle.dotted,
+                                          ),
+                                  ),
+                              ]),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ),
                       if (!_customReply)
                         TextButton(
-                          onPressed: () => setState(() => _customReply = true),
+                          onPressed: () {
+                            setState(() => _customReply = true);
+                            _hfListen();
+                          },
                           child: const Text('Say something else'),
                         ),
                     ],
@@ -645,47 +688,43 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                 TextButton(onPressed: notifier.retry, child: const Text('Retry')),
               ]),
             ),
-          if (composer)
-            DecoratedBox(
-              decoration: BoxDecoration(border: Border(top: BorderSide(color: scheme.outlineVariant))),
-              child: Column(
-                children: [
-                  if (s.hintWord != null)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text('Try using: ${s.hintWord}',
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600)),
-                      ),
+          // The word strip shows on every turn, choices too (owner,
+          // 2026-10-24); the mic and the field only when the learner speaks.
+          DecoratedBox(
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: scheme.outlineVariant))),
+            child: Column(
+              children: [
+                if (composer && s.hintWord != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Try using: ${s.hintWord}',
+                          style:
+                              theme.textTheme.bodyMedium?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600)),
                     ),
-                  if (s.mixed)
-                    TextButton(
-                      onPressed: () => setState(() => _showWords = !_showWords),
-                      child: Text(_showWords ? 'Hide practice words' : 'Show practice words'),
-                    ),
-                  if (!s.mixed || _showWords)
-                    SizedBox(
-                      height: 44,
-                      child: ListView(
-                        key: talkStripKey,
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                        children: [
-                          for (final w in s.words)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 3),
-                              child: TalkStripChip(
-                                word: w.word.word,
-                                used: w.used,
-                                target: !w.used && w.word.word == s.target,
-                                onTap: (rect) => _openWord(w.word, rect),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+                  ),
+                SizedBox(
+                  height: 44,
+                  child: ListView(
+                    key: talkStripKey,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    children: [
+                      for (final w in s.words)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: TalkStripChip(
+                            word: w.word.word,
+                            used: w.used,
+                            target: !w.used && w.word.word == s.target,
+                            onTap: (rect) => _openWord(w.word, rect),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                if (composer) ...[
                   Padding(
                     padding: const EdgeInsets.fromLTRB(12, 2, 16, 0),
                     child: Row(children: [
@@ -787,9 +826,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                       IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
                     ]),
                   ),
-                ],
-              ),
+                ] else
+                  const SizedBox(height: 8),
+              ],
             ),
+          ),
         ],
       );
     }
@@ -888,7 +929,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   }
 
   Widget _bubble(int i, TalkMessage m, double maxWidth, List<WordPair> words, Set<String> usedRows,
-          {int? spokenEnd, bool voiceLoading = false}) =>
+          {int? spokenEnd, bool voiceLoading = false, double voiceProgress = 0}) =>
       TalkBubble(
         index: i,
         text: m.text,
@@ -898,6 +939,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
         usedRows: usedRows,
         spokenEnd: spokenEnd,
         voiceLoading: voiceLoading,
+        voiceProgress: voiceProgress,
         onWord: _openWord,
       );
 }

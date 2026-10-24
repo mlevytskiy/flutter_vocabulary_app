@@ -60,3 +60,14 @@ The mission's role, goal, brief and image description accompany each reply.
 
 Both the updated Worker and app build are needed to enable mixed missions. Local
 stub tests do not establish the live model's narrative quality or device audio behaviour.
+
+## Owner follow-up (2026-10-24)
+
+- The practice words are always shown (the word strip on every turn, choices included); words in the
+  AI's lines and in choices are highlighted and open the word popup. "Show practice words" is gone.
+- The AI uses 1-2 practice words in every choice-turn reply and puts one in at least one choice; a
+  speaking turn sets up a task whose natural answer needs the target word, without saying it.
+- A speaking turn, and "Say something else", start listening at once (after the line is read when
+  replies are read aloud), with the hands-free pause sending; choice turns never record.
+- The voice loading line is a determinate bar on the AI bubble's top edge, filling over the learned
+  arrival time and completing when the voice starts. The opening picture has no loader.

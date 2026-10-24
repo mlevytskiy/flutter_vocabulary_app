@@ -255,15 +255,17 @@ void main() {
     expect(spans.map(colour).toSet(), hasLength(1));
   });
 
-  testWidgets('mixed choices lead to an explicit speaking task without automatic recording', (t) async {
+  testWidgets('mixed choices keep the word strip; a speaking task starts listening at once (owner, 2026-10-24)', (t) async {
     await open(t,
         turn: const TalkTurn(
             reply: 'What will you do?', target: 'crowded', interaction: 'choice', choices: ['Stay here', 'Leave now']));
     tts.finishSpeaking();
     await t.pump();
-    expect(speech.inits, 0);
+    expect(speech.inits, 0, reason: 'a choice turn never records');
     expect(find.byType(TextField), findsNothing);
     expect(find.text('Stay here'), findsOneWidget);
+    expect(find.descendant(of: find.byKey(talkStripKey), matching: find.text('ticket')), findsOneWidget,
+        reason: 'the practice words show on choice turns too');
     api.answers.add(const TalkTurn(
         reply: 'Where next?', target: 'crowded', interaction: 'choice', choices: ['Find a bus', 'Walk home']));
     await t.tap(find.text('Stay here'));
@@ -283,12 +285,9 @@ void main() {
     expect(find.text('Your turn to speak'), findsOneWidget);
     expect(find.text('Explain why you cannot get on the bus.'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
-    expect(speech.inits, 0);
-    expect(speech.untilPauseCalls, 0);
+    await settle(t);
+    expect(speech.untilPauseCalls, 1, reason: 'the speaking turn listens as soon as the line was read');
     expect(find.text('2 / 9'), findsOneWidget);
-    await t.tap(find.bySemanticsLabel('Tap to talk'));
-    await t.pump();
-    expect(speech.inits, 1, reason: 'Recording starts only on an explicit mic tap');
     expect(t.takeException(), isNull);
   });
 
@@ -296,16 +295,32 @@ void main() {
     await open(t,
         turn: const TalkTurn(
             reply: 'Choose a plan.', target: 'crowded', interaction: 'choice', choices: ['Stay here', 'Leave now']));
+    tts.finishSpeaking();
+    await t.pump();
     await t.tap(find.text('Say something else'));
     await t.pump();
+    await settle(t);
     expect(find.byType(TextField), findsOneWidget);
+    expect(speech.untilPauseCalls, 1, reason: 'Say something else listens at once');
     api.answers.add(const TalkTurn(reply: 'You found a way home.', target: 'crowded', interaction: 'complete'));
     await reply(t, 'Take a taxi');
     expect(api.calls.last.history.last.isChoice, isFalse);
     expect(find.text('See results'), findsOneWidget);
     expect(find.byType(TextField), findsNothing);
-    expect(speech.inits, 0);
     expect(t.takeException(), isNull);
+  });
+
+  testWidgets('a practice word in a choice is highlighted', (t) async {
+    await open(t,
+        turn: const TalkTurn(
+            reply: 'Pick one.', target: 'crowded', interaction: 'choice', choices: ['Buy a ticket', 'Leave now']));
+    final text = t.widget<Text>(find.descendant(of: find.byType(OutlinedButton), matching: find.byType(Text)).first);
+    final spans = <TextSpan>[];
+    text.textSpan!.visitChildren((x) {
+      if (x is TextSpan && x.text != null) spans.add(x);
+      return true;
+    });
+    expect(spans.firstWhere((x) => x.text == 'ticket').style?.fontWeight, FontWeight.w800);
   });
 
   // ---- talk-mission (owner, 2026-10-24) ----
@@ -317,13 +332,16 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('while the voice is fetched a thin bar runs on the bubble, the text stays; the voice starting ends it',
+  testWidgets('while the voice is fetched a progress line fills on the bubble, the text stays; the voice starting ends it',
       (t) async {
     const line = 'Was the market crowded today?';
     await open(t, opening: line);
-    expect(find.byKey(talkVoiceLoadingKey), findsNothing, reason: 'not at once: a quick voice never flashes it');
-    await t.pump(const Duration(milliseconds: 300));
     expect(find.byKey(talkVoiceLoadingKey), findsOneWidget);
+    double value() => t.widget<LinearProgressIndicator>(find.byKey(talkVoiceLoadingKey)).value!;
+    final first = value();
+    await t.pump(const Duration(milliseconds: 1500));
+    expect(value(), greaterThan(first), reason: 'a real, filling progress line');
+    expect(value(), lessThan(1));
     expect(
         find.descendant(of: find.byKey(talkBubbleKey(0)), matching: find.byKey(talkVoiceLoadingKey)), findsOneWidget);
     expect(find.text(line), findsOneWidget);
