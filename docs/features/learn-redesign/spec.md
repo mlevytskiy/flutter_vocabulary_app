@@ -227,6 +227,16 @@ Committed approach: the Learn button keeps its look and place; a small button be
 **When** the learner picks the speech recognition engine — "speech_to_text" (default) or "speech_to_text_pro"
 **Then** the choice is remembered, the next hold-to-talk in Talk with AI uses that engine, and an engine that is not available on the phone shows the same permission/unavailable message as AC-26 while typing keeps working (owner, 2026-10-24)
 
+### AC-29 (US-09) — happy path
+**Given** a talk in progress with hands-free on (the default; the headset in the Talk bar or Learn settings switches it) and the pause set to N seconds (2, 3, 4 default, or 6, in Learn settings)
+**When** the AI's opening or reply arrives
+**Then** it is read aloud first, and only once it has finished the app listens without any tap, showing the words in the reply field and "Listening… pause N s to send"; N seconds of silence after the learner's words send them; when the recognizer stops early by itself it listens again and keeps the earlier words; nothing heard for 60 s stops listening with "Didn't hear anything — tap the mic to talk"; it never listens while the AI's line is being spoken or the AI's reply is awaited; the mic pauses and resumes listening; leaving the talk, its end, the day limit or an error stops it; with hands-free off the mic works by tap or hold as in AC-25 (owner, 2026-10-24)
+
+### AC-30 (US-09) — happy path
+**Given** Learn settings are open
+**When** the learner looks at "AI voice"
+**Then** the phone's installed English voices are listed best first with "Premium", "Enhanced" or "Standard", the best one is picked until the learner picks another, the pick is remembered and used for the AI's spoken lines in Talk with AI, "Play sample" says "Hello! Let's practise your words." in the picked voice, and on iOS a line says where to download an Enhanced or Premium voice (owner, 2026-10-24)
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |
