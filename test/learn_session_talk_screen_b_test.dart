@@ -232,8 +232,8 @@ void main() {
     await t.pump();
     expect(find.text('I took the bus'), findsWidgets);
     await t.pump(const Duration(milliseconds: 1500));
-    expect(t.widget<TalkRing>(find.byType(TalkRing)).progress, greaterThan(0.3));
-    expect(find.text(talkSendingInText(3)), findsOneWidget);
+    expect(t.widget<TalkRing>(find.byType(TalkRing)).progress, greaterThan(0.12));
+    expect(find.text(talkSendingInText(9)), findsOneWidget);
   });
 
   testWidgets('the voice\'s progress colours the spoken words; done, the line is plain again', (t) async {

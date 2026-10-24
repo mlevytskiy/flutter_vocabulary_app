@@ -2392,15 +2392,18 @@ abstract class _$HandsFreeNotifier extends $Notifier<bool> {
   }
 }
 
-/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 10 by default
+/// (owner, 2026-10-24: 4 s sent replies too soon).
 
 @ProviderFor(TalkPauseNotifier)
 final talkPauseProvider = TalkPauseNotifierProvider._();
 
-/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 10 by default
+/// (owner, 2026-10-24: 4 s sent replies too soon).
 final class TalkPauseNotifierProvider
     extends $NotifierProvider<TalkPauseNotifier, int> {
-  /// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+  /// The hands-free pause in seconds, one of [talkPauseChoices]; 10 by default
+  /// (owner, 2026-10-24: 4 s sent replies too soon).
   TalkPauseNotifierProvider._()
       : super(
           from: null,
@@ -2428,9 +2431,10 @@ final class TalkPauseNotifierProvider
   }
 }
 
-String _$talkPauseNotifierHash() => r'c536dd550a527a3c3ed694ea2220215e93db14b2';
+String _$talkPauseNotifierHash() => r'fd2145d6a99593fa4a6b0a155e32127ff709cd66';
 
-/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 10 by default
+/// (owner, 2026-10-24: 4 s sent replies too soon).
 
 abstract class _$TalkPauseNotifier extends $Notifier<int> {
   int build();

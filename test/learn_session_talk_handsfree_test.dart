@@ -288,13 +288,13 @@ void main() {
     await finishSpeaking(t);
     expect(log, ['speak', 'listen']);
     expect(speech.untilPauseCalls, 1);
-    expect(speech.pause, const Duration(seconds: 4));
-    expect(find.text(talkListeningPauseText(4)), findsOneWidget);
+    expect(speech.pause, const Duration(seconds: 10));
+    expect(find.text(talkListeningPauseText(10)), findsOneWidget);
     expect(talkListeningPauseText(4), 'Listening… pause 4 s to send');
   });
 
   testWidgets('AC-29: 4 s of silence sends the words; no listening while waiting or speaking', (t) async {
-    await open(t);
+    await open(t, prefs: {'learn.pauseSeconds': 4});
     await finishSpeaking(t);
     final calls = api.calls.length;
     api.answers.add(const TalkTurn(reply: 'Was it late?', target: 'ticket'));
@@ -319,7 +319,7 @@ void main() {
   });
 
   testWidgets('AC-29: an early engine stop restarts listening and appends', (t) async {
-    await open(t);
+    await open(t, prefs: {'learn.pauseSeconds': 4});
     await finishSpeaking(t);
     speech.partial('the bus');
     await t.pump(const Duration(seconds: 2));
@@ -353,7 +353,7 @@ void main() {
   });
 
   testWidgets('AC-29: the mic pauses and resumes the loop', (t) async {
-    await open(t);
+    await open(t, prefs: {'learn.pauseSeconds': 4});
     await finishSpeaking(t);
     expect(speech.listening, isTrue);
     await t.tap(mic);
@@ -423,8 +423,8 @@ void main() {
       await c.read(handsFreeProvider.notifier).loaded;
       await c.read(talkPauseProvider.notifier).loaded;
       expect(c.read(handsFreeProvider), isTrue);
-      expect(c.read(talkPauseProvider), 4);
-      expect(talkPauseChoices, [2, 3, 4, 6]);
+      expect(c.read(talkPauseProvider), 10);
+      expect(talkPauseChoices, [2, 3, 4, 6, 8, 10, 15]);
     });
 
     for (final s in [2, 3, 4, 6]) {

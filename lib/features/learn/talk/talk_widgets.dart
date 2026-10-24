@@ -293,19 +293,17 @@ class _TalkBubbleState extends State<TalkBubble> {
 
 /// Play/Stop and Replay under the latest AI line, like a player's controls
 /// (talk-mission, owner 2026-10-24). While the voice is fetched the play
-/// button turns into a small spinner (which still stops it).
+/// button is already Stop; the bubble's bar shows the loading.
 class TalkVoiceControls extends StatelessWidget {
   const TalkVoiceControls({
     super.key,
     required this.speaking,
-    required this.loading,
     required this.onPlay,
     required this.onStop,
     required this.onReplay,
   });
 
   final bool speaking;
-  final bool loading;
 
   /// Null while the line cannot be played (the learner is speaking).
   final VoidCallback? onPlay;
@@ -331,13 +329,7 @@ class TalkVoiceControls extends StatelessWidget {
             iconSize: 24,
             color: ink,
             onPressed: speaking ? onStop : onPlay,
-            icon: speaking && loading
-                ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
-                  )
-                : Icon(speaking ? Icons.stop_rounded : Icons.play_arrow_rounded),
+            icon: Icon(speaking ? Icons.stop_rounded : Icons.play_arrow_rounded),
           ),
           IconButton(
             key: talkReplayKey,

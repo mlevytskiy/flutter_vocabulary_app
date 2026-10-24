@@ -581,9 +581,10 @@ class HandsFreeNotifier extends _$HandsFreeNotifier {
 }
 
 /// The seconds of silence that send a hands-free reply (AC-29).
-const talkPauseChoices = [2, 3, 4, 6];
+const talkPauseChoices = [2, 3, 4, 6, 8, 10, 15];
 
-/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 10 by default
+/// (owner, 2026-10-24: 4 s sent replies too soon).
 @Riverpod(keepAlive: true)
 class TalkPauseNotifier extends _$TalkPauseNotifier {
   static const key = 'learn.pauseSeconds';
@@ -594,7 +595,7 @@ class TalkPauseNotifier extends _$TalkPauseNotifier {
   @override
   int build() {
     loaded;
-    return 4;
+    return 10;
   }
 
   Future<void> _load() async {

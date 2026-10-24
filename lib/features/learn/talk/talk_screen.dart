@@ -565,7 +565,6 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                         alignment: Alignment.centerLeft,
                         child: TalkVoiceControls(
                           speaking: _spokenIndex == i,
-                          loading: _voiceLoading,
                           onPlay: _listening ? null : () => _replay(i),
                           onStop: _stopVoice,
                           onReplay: _listening ? null : () => _replay(i),
@@ -672,7 +671,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                                 color: micOn
                                     ? scheme.primary
                                     : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
-                                borderRadius: BorderRadius.circular(talkRound(decor, talkMicSize / 2)),
+                                // Round in every theme (owner, 2026-10-24).
+                                shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 micOn ? Icons.mic : Icons.mic_none,
