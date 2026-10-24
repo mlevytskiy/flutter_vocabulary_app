@@ -40,7 +40,8 @@ String scenePick({String? storyText, String? dialogueText, required String name,
 /// How each talk word ends (AC-22): used without its hint → clean, used after
 /// its hint → missed, never used → unused (box and next review kept). Keyed
 /// by the [words] instances, as [applySession] wants.
-Map<WordPair, WordOutcome> scoreTalk(List<WordPair> words, {required Set<String> used, required Set<String> hinted}) => {
+Map<WordPair, WordOutcome> scoreTalk(List<WordPair> words, {required Set<String> used, required Set<String> hinted}) =>
+    {
       for (final w in words)
         w: !used.contains(w.rowId)
             ? WordOutcome.unused

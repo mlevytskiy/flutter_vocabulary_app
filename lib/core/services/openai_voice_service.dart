@@ -83,9 +83,25 @@ class OpenAiVoiceService {
       : _client = client ?? http.Client(),
         _timeout = timeout;
 
+  /// The last lines spoken, so Play and Replay on a line heard before play
+  /// it again without a second call (owner, 2026-10-24).
+  static const _cacheSize = 40;
+  final _cache = <String, Uint8List>{};
+
   /// The mp3 of [text] (1 to [maxChars] characters) spoken by [voice], one
-  /// of [openAiVoices]. Takes one of the day's 400 speech calls app-wide.
+  /// of [openAiVoices]. Takes one of the day's 400 speech calls app-wide,
+  /// unless the same line was spoken lately (then it comes from memory).
   Future<Uint8List> synthesize(String text, String voice) async {
+    final key = '$voice\n$text';
+    final cached = _cache.remove(key);
+    if (cached != null) return _cache[key] = cached;
+    final mp3 = await _fetch(text, voice);
+    _cache[key] = mp3;
+    if (_cache.length > _cacheSize) _cache.remove(_cache.keys.first);
+    return mp3;
+  }
+
+  Future<Uint8List> _fetch(String text, String voice) async {
     final http.Response response;
     try {
       response = await _client

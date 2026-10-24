@@ -11,6 +11,8 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
+import 'package:flutter_vocabulary_app/core/models/translation_result.dart';
+import 'package:flutter_vocabulary_app/core/services/google_translate_service.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
 import 'package:flutter_vocabulary_app/core/theme/themes/themes.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_screen.dart';
@@ -82,6 +84,7 @@ void main() {
   });
 
   late FakeTalkApi api;
+  late _FakeTranslate translate;
   late EngineSpeech speech;
   late HoldTts tts;
 
@@ -106,6 +109,7 @@ void main() {
     t.view.physicalSize = const Size(393 * 3, 852 * 3);
     t.view.devicePixelRatio = 3;
     addTearDown(t.view.reset);
+    translate = _FakeTranslate();
     api = FakeTalkApi()..answers.add(turn ?? TalkTurn(reply: opening, target: words.first, mission: mission));
     final log = <String>[];
     speech = EngineSpeech(log);
@@ -126,6 +130,7 @@ void main() {
       speechInputProvider.overrideWithValue(speech),
       pronunciationServiceProvider.overrideWithValue(tts),
       talkPictureServiceProvider.overrideWithValue(pictures ?? FakeTalkPicture()),
+      googleTranslateServiceProvider.overrideWithValue(translate),
     ]);
     addTearDown(container.dispose);
     await t.pumpWidget(UncontrolledProviderScope(
@@ -406,4 +411,58 @@ void main() {
     expect(popup.right, lessThanOrEqualTo(393 - 12));
     expect(popup.bottom, lessThanOrEqualTo(852));
   });
+
+  testWidgets('tapping any other word of an AI line shows its translation (owner, 2026-10-24)', (t) async {
+    await open(t, opening: 'Was the market crowded today?');
+    translate.asked.clear();
+    await t.tapOnText(find.textRange.ofSubstring('market', descendentOf: find.byKey(talkBubbleKey(0))));
+    await t.pump();
+    await settle(t);
+    expect(translate.asked, ['market']);
+    expect(find.byType(TalkLookupPopup), findsOneWidget);
+    expect(find.text('т-market'), findsOneWidget);
+    final popup = t.getRect(find.byType(TalkLookupPopup));
+    expect(popup.left, greaterThanOrEqualTo(12));
+    expect(popup.right, lessThanOrEqualTo(393 - 12));
+    await t.tap(find.byIcon(Icons.close));
+    await t.pump();
+    expect(find.text('т-market'), findsNothing);
+
+    // A practice word still opens its own popup with the saved translation.
+    await t.tapOnText(find.textRange.ofSubstring('crowded', descendentOf: find.byKey(talkBubbleKey(0))));
+    await t.pump();
+    await t.pump();
+    expect(find.text('t-crowded'), findsOneWidget);
+    expect(find.byType(TalkLookupPopup), findsNothing);
+  });
+  testWidgets('Replay on a line already heard plays it again without the loading bar; every AI line has Play',
+      (t) async {
+    await open(t, opening: 'Did you buy a ticket?');
+    tts.progress!(0.2);
+    await t.pump();
+    tts.finishSpeaking();
+    await t.pump();
+    await settle(t);
+    await t.tap(find.byKey(talkReplayKey));
+    await t.pump();
+    expect(find.byKey(talkVoiceLoadingKey), findsNothing, reason: 'heard before: played from memory');
+    expect(tts.spoken.last, 'Did you buy a ticket?');
+    await t.tap(find.byTooltip('Stop'));
+    await t.pump();
+    await settle(t);
+    api.answers.add(const TalkTurn(reply: 'Where to?', target: 'crowded'));
+    await reply(t, 'Yes I did');
+    expect(find.byKey(talkPlayKey), findsNWidgets(2), reason: 'one under each AI line');
+  });
+}
+
+
+class _FakeTranslate extends GoogleTranslateService {
+  final asked = <String>[];
+
+  @override
+  Future<WordTranslation> translateWord(String word, {required String to, String from = 'en'}) async {
+    asked.add(word);
+    return WordTranslation(result: TranslationResult(text: 'т-$word'), best: 'т-$word');
+  }
 }

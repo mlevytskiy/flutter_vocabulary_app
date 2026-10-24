@@ -120,6 +120,7 @@ class TalkBubble extends StatefulWidget {
     this.voiceLoading = false,
     this.voiceProgress = 0,
     this.onWord,
+    this.onOtherWord,
   });
 
   final int index;
@@ -142,6 +143,10 @@ class TalkBubble extends StatefulWidget {
   /// the popup points at the word itself.
   final void Function(WordPair word, Rect globalRect)? onWord;
 
+  /// A tap on any other word of an AI line, with the word and its place on
+  /// screen, to look its translation up (owner, 2026-10-24).
+  final void Function(String word, Rect globalRect)? onOtherWord;
+
   @override
   State<TalkBubble> createState() => _TalkBubbleState();
 }
@@ -155,6 +160,30 @@ class _TalkBubbleState extends State<TalkBubble> {
   /// Where each practice word sits in the text, from the last build.
   var _ranges = <(int, int, String)>[];
 
+  /// One recognizer per other word of an AI line, keyed by where the word
+  /// starts in the text, so a word the karaoke cuts in two keeps one.
+  final _otherTaps = <int, TapGestureRecognizer>{};
+
+  TapGestureRecognizer _otherTapFor(int start, int end) => _otherTaps.putIfAbsent(
+        start,
+        () => TapGestureRecognizer()
+          ..onTapUp = (_) {
+            final cb = widget.onOtherWord;
+            if (cb != null) cb(widget.text.substring(start, end), _rangeRect([(start, end)], null));
+          },
+      );
+
+  @override
+  void didUpdateWidget(TalkBubble old) {
+    super.didUpdateWidget(old);
+    if (old.text != widget.text) {
+      for (final t in _otherTaps.values) {
+        t.dispose();
+      }
+      _otherTaps.clear();
+    }
+  }
+
   TapGestureRecognizer _tapFor(WordPair w) => _taps.putIfAbsent(
         w.rowId,
         () => TapGestureRecognizer()
@@ -167,18 +196,25 @@ class _TalkBubbleState extends State<TalkBubble> {
   /// The tapped word's box on screen: of the word's places in the text, the
   /// one under (or nearest) the tap; the tap's spot when the text is not
   /// laid out.
-  Rect _wordRect(String rowId, Offset tap) {
-    final fallback = Rect.fromCenter(center: tap, width: 24, height: 22);
+  Rect _wordRect(String rowId, Offset tap) => _rangeRect([
+        for (final (start, end, id) in _ranges)
+          if (id == rowId) (start, end)
+      ], tap);
+
+  /// The box on screen of the text range of [ranges] under (or nearest)
+  /// [tap] — the first one without a tap.
+  Rect _rangeRect(List<(int, int)> ranges, Offset? tap) {
+    final fallback = tap == null ? Rect.zero : Rect.fromCenter(center: tap, width: 24, height: 22);
     final paragraph = _textKey.currentContext?.findRenderObject();
     if (paragraph is! RenderParagraph || !paragraph.attached) return fallback;
-    final local = paragraph.globalToLocal(tap);
+    final local = tap == null ? null : paragraph.globalToLocal(tap);
     Rect? best;
     var bestDistance = double.infinity;
-    for (final (start, end, id) in _ranges) {
-      if (id != rowId) continue;
+    for (final (start, end) in ranges) {
       for (final box in paragraph.getBoxesForSelection(TextSelection(baseOffset: start, extentOffset: end))) {
         final r = box.toRect();
-        final distance = r.inflate(4).contains(local) ? 0.0 : (r.center - local).distance;
+        final distance = local == null ? 0.0 : (r.inflate(4).contains(local) ? 0.0 : (r.center - local).distance);
+        if (local == null && best != null) continue;
         if (distance < bestDistance) (best, bestDistance) = (r, distance);
       }
     }
@@ -188,7 +224,7 @@ class _TalkBubbleState extends State<TalkBubble> {
 
   @override
   void dispose() {
-    for (final t in _taps.values) {
+    for (final t in [..._taps.values, ..._otherTaps.values]) {
       t.dispose();
     }
     super.dispose();
@@ -233,6 +269,42 @@ class _TalkBubbleState extends State<TalkBubble> {
       at += s.text.length;
     }
     _ranges = ranges;
+    // The other words of an AI line, tappable for a translation.
+    final others = !mine && widget.onOtherWord != null
+        ? [for (final m in _otherWord.allMatches(widget.text)) (m.start, m.end)]
+        : const <(int, int)>[];
+    List<TextSpan> pieces(TalkSpan s, int from) {
+      final style = styleOf(s);
+      if (s.word != null || others.isEmpty) {
+        return [
+          TextSpan(
+            text: s.text,
+            style: style,
+            recognizer: s.word != null && widget.onWord != null ? _tapFor(s.word!) : null,
+          ),
+        ];
+      }
+      final to = from + s.text.length;
+      final out = <TextSpan>[];
+      var at = from;
+      for (final (start, end) in others) {
+        if (end <= from || start >= to) continue;
+        final a = start < from ? from : start;
+        final b = end > to ? to : end;
+        if (a > at) out.add(TextSpan(text: widget.text.substring(at, a), style: style));
+        out.add(TextSpan(text: widget.text.substring(a, b), style: style, recognizer: _otherTapFor(start, end)));
+        at = b;
+      }
+      if (at < to) out.add(TextSpan(text: widget.text.substring(at, to), style: style));
+      return out;
+    }
+
+    final rich = <TextSpan>[];
+    var from = 0;
+    for (final s in spans) {
+      rich.addAll(pieces(s, from));
+      from += s.text.length;
+    }
     final shape = BorderRadius.only(
       topLeft: Radius.circular(r),
       topRight: Radius.circular(r),
@@ -256,14 +328,7 @@ class _TalkBubbleState extends State<TalkBubble> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Text.rich(
                 key: _textKey,
-                TextSpan(children: [
-                  for (final s in spans)
-                    TextSpan(
-                      text: s.text,
-                      style: styleOf(s),
-                      recognizer: s.word != null && widget.onWord != null ? _tapFor(s.word!) : null,
-                    ),
-                ]),
+                TextSpan(children: rich),
                 style: base,
               ),
             ),
@@ -436,6 +501,9 @@ class TalkMissionCard extends StatelessWidget {
     );
   }
 }
+
+/// A word in an AI line: letters, with inner apostrophes and hyphens.
+final _otherWord = RegExp(r"[\p{L}]+(?:['’-][\p{L}]+)*", unicode: true);
 
 /// The words being heard, in a dashed accent outline on the learner's side.
 class TalkLiveBubble extends StatelessWidget {

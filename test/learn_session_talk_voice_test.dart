@@ -213,7 +213,8 @@ void main() {
     await hold.up();
     await t.pump();
     await settle(t);
-    expect(find.text('Did you buy a ticket?'), findsOneWidget);
+    // Each AI line now has its player row, so the newest one may sit below the fold.
+    expect(find.text('Did you buy a ticket?', skipOffstage: false), findsOneWidget);
     expect(tts.spoken, ['Did you buy a ticket?']);
   });
 

@@ -131,6 +131,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   Duration _loadEstimate = const Duration(seconds: 3);
   DateTime? _loadStarted;
 
+  /// AI lines whose voice has already played: Play and Replay on them play
+  /// it again from memory, without the loading bar (owner, 2026-10-24).
+  final _heard = <int>{};
+
   /// The word popup (the Words screen's dots popup, talk-screen-b): one menu,
   /// moved to the tapped word before it opens.
   final _popup = MyCustomPopupMenuController();
@@ -138,6 +142,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   Rect _anchor = Rect.zero;
   Rect _anchorGlobal = Rect.zero;
   WordPair? _popupWord;
+
+  /// Any other word of an AI line whose translation the popup shows instead
+  /// (owner, 2026-10-24), and the translations already looked up.
+  String? _lookupWord;
+  final _lookups = <String, TranslationResult?>{};
 
   @override
   void initState() {
@@ -287,15 +296,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final run = _hfRun;
     final tts = ref.read(pronunciationServiceProvider);
     _tts = tts;
+    final fetch = !_heard.contains(index);
     setState(() {
       _hf = _HandsFree.speaking;
       _spokenIndex = index;
-      _voiceLoading = true;
+      _voiceLoading = fetch;
     });
     _loadStarted = DateTime.now();
-    _loadBar
-      ..value = 0
-      ..animateTo(0.9, duration: _loadEstimate, curve: Curves.easeOutCubic);
+    _loadBar.value = 0;
+    if (fetch) _loadBar.animateTo(0.9, duration: _loadEstimate, curve: Curves.easeOutCubic);
     _karaoke.value = 0;
     try {
       // Never listening while speaking: no echo. The voice's progress fills
@@ -303,6 +312,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       await tts.speakAndWait(messages[index].text, accent: Accent.us, voice: ref.read(ttsVoiceProvider),
           onProgress: (p) {
         if (!mounted || run != _hfRun) return;
+        _heard.add(index);
         if (_voiceLoading) _endLoading();
         _karaoke.value = p.clamp(0, 1);
       });
@@ -450,12 +460,18 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   }
 
   /// Opens the word popup on [word], its arrow at [global] (talk-screen-b).
-  void _openWord(WordPair word, Rect global) {
+  void _openWord(WordPair word, Rect global) => _openPopup(global, word: word);
+
+  /// Opens the popup on any other word of an AI line: its translation.
+  void _openLookup(String word, Rect global) => _openPopup(global, lookup: word);
+
+  void _openPopup(Rect global, {WordPair? word, String? lookup}) {
     final box = _stackKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     if (_popup.menuIsShowing) _popup.hideMenu();
     setState(() {
       _popupWord = word;
+      _lookupWord = lookup;
       _anchor = box.globalToLocal(global.topLeft) & global.size;
       _anchorGlobal = global;
     });
@@ -474,6 +490,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     } catch (_) {
       return null;
     }
+  }
+
+  /// [word]'s translation, looked up once per talk.
+  Future<TranslationResult?> _lookup(String word) async {
+    final key = word.trim().toLowerCase();
+    if (_lookups.containsKey(key)) return _lookups[key];
+    final result = await _loadTranslations(WordPair(word: word, translation: ''));
+    if (result != null) _lookups[key] = result;
+    return result;
   }
 
   Future<List<String>?> _loadSenses(WordPair word) async {
@@ -571,7 +596,6 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       };
       final micActive = micOn && _availability == SpeechAvailability.ready;
       final mission = s.mission;
-      final lastAi = s.messages.lastIndexWhere((m) => m.role == TalkRole.ai);
       body = Column(
         children: [
           TalkTutorHeader(collectionName: s.name, onEnd: s.messages.isEmpty ? null : notifier.finish),
@@ -601,7 +625,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                                 voiceProgress: _loadBar.value),
                           )
                         : _bubble(i, m, maxWidth, words, usedRows),
-                    if (i == lastAi)
+                    // Under every AI line, to listen to earlier ones again too.
+                    if (m.role == TalkRole.ai)
                       Align(
                         alignment: Alignment.centerLeft,
                         child: TalkVoiceControls(
@@ -880,21 +905,33 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                     arrowSize: 10,
                     barrierColor: Colors.transparent,
                     verticalMargin: 6,
-                    menuBuilder: () => word == null
-                        ? const SizedBox.shrink()
-                        : _fitPopup(
+                    menuBuilder: () => _lookupWord != null
+                        ? _fitPopup(
                             context,
                             dotsMenuPanel(
                               context,
-                              TalkWordPopup(
-                                word: _popupWord ?? word,
-                                mode: ref.read(wordDetailModeProvider),
-                                onLoadTranslations: () => _loadTranslations(_popupWord ?? word),
-                                onLoadSenses: () => _loadSenses(_popupWord ?? word),
+                              TalkLookupPopup(
+                                word: _lookupWord!,
+                                onLoad: () => _lookup(_lookupWord!),
                                 onClose: _popup.hideMenu,
                               ),
                             ),
-                          ),
+                          )
+                        : word == null
+                            ? const SizedBox.shrink()
+                            : _fitPopup(
+                                context,
+                                dotsMenuPanel(
+                                  context,
+                                  TalkWordPopup(
+                                    word: _popupWord ?? word,
+                                    mode: ref.read(wordDetailModeProvider),
+                                    onLoadTranslations: () => _loadTranslations(_popupWord ?? word),
+                                    onLoadSenses: () => _loadSenses(_popupWord ?? word),
+                                    onClose: _popup.hideMenu,
+                                  ),
+                                ),
+                              ),
                     child: const SizedBox.expand(),
                   ),
                 ),
@@ -941,6 +978,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
         voiceLoading: voiceLoading,
         voiceProgress: voiceProgress,
         onWord: _openWord,
+        onOtherWord: _openLookup,
       );
 }
 

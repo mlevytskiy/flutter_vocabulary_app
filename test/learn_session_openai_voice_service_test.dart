@@ -28,6 +28,30 @@ void main() {
     expect(jsonDecode(sent.body), {'text': 'Hello there.', 'voice': 'nova'});
   });
 
+  test('a line spoken lately comes from memory: no second call (owner, 2026-10-24)', () async {
+    var calls = 0;
+    final service = OpenAiVoiceService(client: MockClient((r) async {
+      calls++;
+      return http.Response.bytes(mp3, 200, headers: {'content-type': 'audio/mpeg'});
+    }));
+    expect(await service.synthesize('Hello there.', 'nova'), mp3);
+    expect(await service.synthesize('Hello there.', 'nova'), mp3);
+    expect(calls, 1);
+    await service.synthesize('Hello there.', 'coral');
+    expect(calls, 2, reason: 'another voice is another recording');
+  });
+
+  test('a failed call is not remembered', () async {
+    var calls = 0;
+    final service = OpenAiVoiceService(client: MockClient((r) async {
+      calls++;
+      return calls == 1 ? http.Response('{"code":"speech_failed"}', 502) : http.Response.bytes(mp3, 200);
+    }));
+    await expectLater(service.synthesize('Hi', 'coral'), throwsA(isA<OpenAiVoiceException>()));
+    expect(await service.synthesize('Hi', 'coral'), mp3);
+    expect(calls, 2);
+  });
+
   Future<OpenAiVoiceError> errorOf(OpenAiVoiceService service) async {
     try {
       await service.synthesize('Hi', 'coral');
