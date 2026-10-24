@@ -49,6 +49,17 @@ class FakeSpeech implements SpeechInput {
 
   @override
   Future<void> cancel() async => listening = false;
+
+  @override
+  Future<void> listenUntilPause({
+    required Duration pause,
+    required void Function(String text) onPartial,
+    required void Function(String text) onDone,
+  }) async =>
+      listening = true;
+
+  @override
+  Future<void> stopListening() async => listening = false;
 }
 
 class FakePronunciation implements PronunciationService {
@@ -56,6 +67,12 @@ class FakePronunciation implements PronunciationService {
 
   @override
   Future<void> speak(String word, {required Accent accent}) async => spoken.add(word);
+
+  @override
+  Future<void> speakAndWait(String text, {required Accent accent, VoiceId? voice}) async => spoken.add(text);
+
+  @override
+  Future<List<TtsVoice>> englishVoices() async => const [];
 
   @override
   Future<void> stop() async {}
@@ -100,7 +117,8 @@ void main() {
   }
 
   Future<void> open(WidgetTester t) async {
-    SharedPreferences.setMockInitialValues({});
+    // Tap/hold as before: hands-free (on by default, AC-29) off.
+    SharedPreferences.setMockInitialValues({'learn.handsFree': false});
     api = FakeTalkApi();
     speech = FakeSpeech();
     tts = FakePronunciation();

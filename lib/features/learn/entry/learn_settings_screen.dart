@@ -6,6 +6,7 @@ import '../../../router/routes.dart';
 import '../exercises.dart';
 import 'learn_presets.dart';
 import 'speech_engine_section.dart';
+import 'talk_voice_section.dart';
 
 /// Said when a switch would leave a step with no exercise (AC-18).
 const learnStepNeedsOneMessage = 'Each step needs at least one exercise';
@@ -19,7 +20,8 @@ const _stepTitles = {
 /// The Learn settings (learn-redesign SCR-05, ADR-0006, AC-17..19): the
 /// preset, words per session, and every exercise of the plan with its switch
 /// (the eleven session pages) and a "Try it" that opens it alone; on top,
-/// the speech recognition engine of Talk with AI (AC-28).
+/// the speech recognition engine of Talk with AI (AC-28), then its
+/// hands-free talk and AI voice (AC-29, AC-30).
 class LearnSettingsScreen extends ConsumerWidget {
   const LearnSettingsScreen({super.key, this.collectionId});
 
@@ -49,6 +51,8 @@ class LearnSettingsScreen extends ConsumerWidget {
         children: [
           // First, so it is found at once (owner, 2026-10-24).
           const SpeechEngineSection(),
+          const Divider(),
+          const TalkVoiceSection(),
           const Divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),

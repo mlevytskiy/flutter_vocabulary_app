@@ -527,6 +527,111 @@ SpeechInput speechInput(Ref ref) =>
       SpeechEngine.speechToTextPro => SpeechToTextProInput(),
     };
 
+/// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
+/// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken
+/// and then it listens again. On by default; the Talk bar's headset and
+/// Learn settings switch it.
+@Riverpod(keepAlive: true)
+class HandsFreeNotifier extends _$HandsFreeNotifier {
+  static const key = 'learn.handsFree';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  bool build() {
+    loaded;
+    return true;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    state = prefs.getBool(key) ?? true;
+  }
+
+  Future<void> set(bool on) async {
+    _setByLearner = true;
+    state = on;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, on);
+  }
+}
+
+/// The seconds of silence that send a hands-free reply (AC-29).
+const talkPauseChoices = [2, 3, 4, 6];
+
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+@Riverpod(keepAlive: true)
+class TalkPauseNotifier extends _$TalkPauseNotifier {
+  static const key = 'learn.pauseSeconds';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  int build() {
+    loaded;
+    return 4;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    final stored = prefs.getInt(key);
+    if (stored != null && talkPauseChoices.contains(stored)) state = stored;
+  }
+
+  Future<void> set(int seconds) async {
+    if (!talkPauseChoices.contains(seconds)) return;
+    _setByLearner = true;
+    state = seconds;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(key, seconds);
+  }
+}
+
+/// The voice Talk with AI speaks with, picked in Learn settings (AC-30);
+/// null for the best installed voice.
+@Riverpod(keepAlive: true)
+class TtsVoiceNotifier extends _$TtsVoiceNotifier {
+  static const key = 'learn.ttsVoice';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  VoiceId? build() {
+    loaded;
+    return null;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    final stored = prefs.getString(key);
+    if (stored == null) return;
+    try {
+      final map = jsonDecode(stored) as Map<String, dynamic>;
+      state = (name: map['name'] as String, locale: map['locale'] as String);
+    } catch (_) {
+      // A broken value: the best voice.
+    }
+  }
+
+  Future<void> set(VoiceId voice) async {
+    _setByLearner = true;
+    state = voice;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, jsonEncode({'name': voice.name, 'locale': voice.locale}));
+  }
+}
+
+/// The installed English voices, best first, for the AI voice picker (AC-30).
+@riverpod
+Future<List<TtsVoice>> englishVoices(Ref ref) =>
+    ref.watch(pronunciationServiceProvider).englishVoices();
+
 /// The app's theme, picked on the App settings page (app-themes, owner
 /// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
 /// [AppThemeId.classic] and switches once the stored value is read.

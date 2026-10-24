@@ -162,7 +162,8 @@ void main() {
           findsOneWidget);
     }
     expect(find.text('Try it'), findsNWidgets(13));
-    expect(find.byType(Switch), findsNWidgets(11));
+    // The eleven session pages, plus Hands-free talk (AC-29).
+    expect(find.byType(Switch), findsNWidgets(12));
   });
 
   testWidgets('AC-19: Try it opens the Learn page with that exercise ticked',

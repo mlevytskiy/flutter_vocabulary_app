@@ -2219,6 +2219,217 @@ final class SpeechInputProvider
 
 String _$speechInputHash() => r'fe768665d4122671a2a0ab8a9717fbd1d2eb4e87';
 
+/// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
+/// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken
+/// and then it listens again. On by default; the Talk bar's headset and
+/// Learn settings switch it.
+
+@ProviderFor(HandsFreeNotifier)
+final handsFreeProvider = HandsFreeNotifierProvider._();
+
+/// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
+/// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken
+/// and then it listens again. On by default; the Talk bar's headset and
+/// Learn settings switch it.
+final class HandsFreeNotifierProvider
+    extends $NotifierProvider<HandsFreeNotifier, bool> {
+  /// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
+  /// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken
+  /// and then it listens again. On by default; the Talk bar's headset and
+  /// Learn settings switch it.
+  HandsFreeNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'handsFreeProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$handsFreeNotifierHash();
+
+  @$internal
+  @override
+  HandsFreeNotifier create() => HandsFreeNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$handsFreeNotifierHash() => r'6c7169ff56ef9ad2cb5dfd45f51e490b4ea61cb4';
+
+/// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
+/// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken
+/// and then it listens again. On by default; the Talk bar's headset and
+/// Learn settings switch it.
+
+abstract class _$HandsFreeNotifier extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<bool, bool>, bool, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+
+@ProviderFor(TalkPauseNotifier)
+final talkPauseProvider = TalkPauseNotifierProvider._();
+
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+final class TalkPauseNotifierProvider
+    extends $NotifierProvider<TalkPauseNotifier, int> {
+  /// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+  TalkPauseNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'talkPauseProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$talkPauseNotifierHash();
+
+  @$internal
+  @override
+  TalkPauseNotifier create() => TalkPauseNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(int value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<int>(value),
+    );
+  }
+}
+
+String _$talkPauseNotifierHash() => r'c536dd550a527a3c3ed694ea2220215e93db14b2';
+
+/// The hands-free pause in seconds, one of [talkPauseChoices]; 4 by default.
+
+abstract class _$TalkPauseNotifier extends $Notifier<int> {
+  int build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<int, int>;
+    final element = ref.element
+        as $ClassProviderElement<AnyNotifier<int, int>, int, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The voice Talk with AI speaks with, picked in Learn settings (AC-30);
+/// null for the best installed voice.
+
+@ProviderFor(TtsVoiceNotifier)
+final ttsVoiceProvider = TtsVoiceNotifierProvider._();
+
+/// The voice Talk with AI speaks with, picked in Learn settings (AC-30);
+/// null for the best installed voice.
+final class TtsVoiceNotifierProvider
+    extends $NotifierProvider<TtsVoiceNotifier, VoiceId?> {
+  /// The voice Talk with AI speaks with, picked in Learn settings (AC-30);
+  /// null for the best installed voice.
+  TtsVoiceNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'ttsVoiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$ttsVoiceNotifierHash();
+
+  @$internal
+  @override
+  TtsVoiceNotifier create() => TtsVoiceNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(VoiceId? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<VoiceId?>(value),
+    );
+  }
+}
+
+String _$ttsVoiceNotifierHash() => r'0309563bfd386ef1122d953f92dd6b21affc32ef';
+
+/// The voice Talk with AI speaks with, picked in Learn settings (AC-30);
+/// null for the best installed voice.
+
+abstract class _$TtsVoiceNotifier extends $Notifier<VoiceId?> {
+  VoiceId? build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<VoiceId?, VoiceId?>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<VoiceId?, VoiceId?>, VoiceId?, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The installed English voices, best first, for the AI voice picker (AC-30).
+
+@ProviderFor(englishVoices)
+final englishVoicesProvider = EnglishVoicesProvider._();
+
+/// The installed English voices, best first, for the AI voice picker (AC-30).
+
+final class EnglishVoicesProvider extends $FunctionalProvider<
+        AsyncValue<List<TtsVoice>>, List<TtsVoice>, FutureOr<List<TtsVoice>>>
+    with $FutureModifier<List<TtsVoice>>, $FutureProvider<List<TtsVoice>> {
+  /// The installed English voices, best first, for the AI voice picker (AC-30).
+  EnglishVoicesProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'englishVoicesProvider',
+          isAutoDispose: true,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$englishVoicesHash();
+
+  @$internal
+  @override
+  $FutureProviderElement<List<TtsVoice>> $createElement(
+          $ProviderPointer pointer) =>
+      $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<List<TtsVoice>> create(Ref ref) {
+    return englishVoices(ref);
+  }
+}
+
+String _$englishVoicesHash() => r'1fdaa43a1eb49d82b3fedfc9069205e72bf851aa';
+
 /// The app's theme, picked on the App settings page (app-themes, owner
 /// 2026-10-17); persisted like [WordDetailModeNotifier]. Starts as
 /// [AppThemeId.classic] and switches once the stored value is read.

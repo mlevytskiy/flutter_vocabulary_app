@@ -19,10 +19,24 @@ const talkMicHintText = 'Tap the mic to speak, tap again to send';
 const talkListeningTapText = 'Listening… tap the mic to send';
 const talkListeningHoldText = 'Listening… let go to send';
 
+/// Hands-free talk's toggle tips and lines (learn-redesign AC-29, owner
+/// 2026-10-24).
+const talkHandsFreeOnTip = 'Hands-free on';
+const talkHandsFreeOffTip = 'Hands-free off';
+const talkSpeakingText = 'Speaking…';
+const talkNothingHeardText = "Didn't hear anything — tap the mic to talk";
+String talkListeningPauseText(int seconds) => 'Listening… pause $seconds s to send';
+String talkHandsFreeHintText(int seconds) => 'Hands-free: just talk; a pause of $seconds s sends';
+
+/// Where the hands-free loop stands: between turns, reading the AI's line
+/// aloud, or listening for the learner.
+enum _HandsFree { idle, speaking, listening }
+
 /// Talk with AI (learn-redesign SCR-06; AC-20, AC-21, AC-24): bubbles, the
 /// word strip, Hint, the reply field and End talk; hold-to-talk beside Send,
 /// whose use has the AI's replies read aloud (AC-25, AC-26, ADR-0009).
-/// Opened by `TalkRoute`.
+/// Hands-free (AC-29, on by default, the bar's headset): each AI line is
+/// spoken, then it listens until a pause and sends. Opened by `TalkRoute`.
 class TalkScreen extends ConsumerStatefulWidget {
   const TalkScreen({super.key, this.collectionId, this.split = true});
 
@@ -65,6 +79,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   /// Set once the mic was used in this talk: new AI replies are read aloud.
   bool _voiceUsed = false;
 
+  /// The hands-free loop (AC-29): its step, whether the learner paused it
+  /// with the mic (or nothing was heard), and a run number that drops the
+  /// callbacks of a stopped step.
+  _HandsFree _hf = _HandsFree.idle;
+  bool _hfPaused = false;
+  bool _hfNothingHeard = false;
+  int _hfRun = 0;
+  PronunciationService? _tts;
+
   @override
   void initState() {
     super.initState();
@@ -78,6 +101,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   @override
   void dispose() {
     _pressTimer?.cancel();
+    _hfStop();
     if (_listening) _speech?.cancel();
     _field.dispose();
     _focus.dispose();
@@ -94,6 +118,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   }
 
   void _send() {
+    if (_hf != _HandsFree.idle) _hfStop();
     final text = _field.text.trim();
     if (text.isEmpty) return;
     _field.clear();
@@ -166,6 +191,117 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
         .catchError((Object _) {});
   }
 
+  /// A new AI line (AC-25, AC-29): hands-free speaks it and then listens;
+  /// otherwise it is read aloud once the mic was used.
+  Future<void> _onAiLine(String text) async {
+    await ref.read(handsFreeProvider.notifier).loaded;
+    if (!mounted) return;
+    if (!ref.read(handsFreeProvider)) {
+      if (_voiceUsed) _speak(text);
+      return;
+    }
+    if (_hfPaused) return;
+    await ref.read(ttsVoiceProvider.notifier).loaded;
+    if (!mounted) return;
+    _hfStop();
+    final run = _hfRun;
+    final tts = ref.read(pronunciationServiceProvider);
+    _tts = tts;
+    setState(() => _hf = _HandsFree.speaking);
+    try {
+      // Never listening while speaking: no echo.
+      await tts.speakAndWait(text, accent: Accent.us, voice: ref.read(ttsVoiceProvider));
+    } catch (_) {}
+    if (!mounted || run != _hfRun) return;
+    setState(() => _hf = _HandsFree.idle);
+    await _hfListen();
+  }
+
+  /// Listens until the learner's pause, then sends what was heard; with
+  /// nothing heard it stops the loop until the mic is tapped.
+  Future<void> _hfListen() async {
+    if (!mounted || !ref.read(handsFreeProvider) || _hfPaused) return;
+    if (ref.read(talkProvider(widget.collectionId)).status != TalkStatus.talking) return;
+    final run = ++_hfRun;
+    final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
+    if (_availability != SpeechAvailability.ready) {
+      final found = await speech.init();
+      if (!mounted) return;
+      setState(() => _availability = found);
+      if (found != SpeechAvailability.ready) return;
+    }
+    if (run != _hfRun) return;
+    await ref.read(talkPauseProvider.notifier).loaded;
+    if (!mounted || run != _hfRun) return;
+    _field.clear();
+    setState(() {
+      _hf = _HandsFree.listening;
+      _hfNothingHeard = false;
+    });
+    await speech.listenUntilPause(
+      pause: Duration(seconds: ref.read(talkPauseProvider)),
+      onPartial: (text) {
+        if (mounted && run == _hfRun) _field.text = text;
+      },
+      onDone: (text) {
+        if (!mounted || run != _hfRun) return;
+        setState(() => _hf = _HandsFree.idle);
+        if (text.trim().isEmpty) {
+          setState(() {
+            _hfNothingHeard = true;
+            _hfPaused = true;
+          });
+          return;
+        }
+        _field.text = text;
+        _send();
+      },
+    );
+  }
+
+  /// Stops the loop's current step (no setState: callers rebuild).
+  void _hfStop() {
+    _hfRun++;
+    if (_hf == _HandsFree.listening) _speech?.stopListening();
+    if (_hf == _HandsFree.speaking) _tts?.stop().catchError((Object _) {});
+    _hf = _HandsFree.idle;
+  }
+
+  /// The mic in hands-free: pauses the loop, or listens again.
+  void _hfMicTap() {
+    if (_hf != _HandsFree.idle) {
+      setState(() {
+        _hfStop();
+        _hfPaused = true;
+      });
+      return;
+    }
+    setState(() {
+      _hfPaused = false;
+      _hfNothingHeard = false;
+    });
+    _hfListen();
+  }
+
+  /// The bar's headset: hands-free on (listens now when it is the
+  /// learner's turn) or off (tap/hold as before).
+  Future<void> _toggleHandsFree() async {
+    final on = !ref.read(handsFreeProvider);
+    setState(() {
+      _hfStop();
+      _hfPaused = false;
+      _hfNothingHeard = false;
+    });
+    if (on && _listening) {
+      await _speech?.cancel();
+      _holding = false;
+      _tapMode = false;
+      if (mounted) setState(() => _listening = false);
+    }
+    await ref.read(handsFreeProvider.notifier).set(on);
+    if (on && mounted) await _hfListen();
+  }
+
   Future<void> _confirmLeave() async {
     final leave = await showDialog<bool>(
       context: context,
@@ -185,11 +321,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     final provider = talkProvider(widget.collectionId);
     ref.listen(provider, (prev, next) {
       if (next.messages.length != prev?.messages.length || next.status != prev?.status) _scrollToEnd();
-      if (_voiceUsed &&
-          next.messages.length > (prev?.messages.length ?? 0) &&
-          next.messages.last.role == TalkRole.ai) {
-        _speak(next.messages.last.text);
+      if (next.messages.length > (prev?.messages.length ?? 0) && next.messages.last.role == TalkRole.ai) {
+        _onAiLine(next.messages.last.text);
       }
+      if (next.status != TalkStatus.talking && _hf != _HandsFree.idle) setState(_hfStop);
       final draft = next.keepDraft;
       if (draft != null && draft != prev?.keepDraft) _field.text = draft;
       if (draft == null && prev?.keepDraft != null) _field.clear();
@@ -206,6 +341,31 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     final micShown = _availability == null || _availability == SpeechAvailability.ready;
     final voiceRefused = _availability == SpeechAvailability.permissionDenied ||
         _availability == SpeechAvailability.unavailable;
+    final handsFree = ref.watch(handsFreeProvider);
+    final pauseSeconds = ref.watch(talkPauseProvider);
+    final micOn = _listening || _hf == _HandsFree.listening;
+    final String? line;
+    if (handsFree) {
+      line = switch (_hf) {
+        _HandsFree.speaking => talkSpeakingText,
+        _HandsFree.listening => talkListeningPauseText(pauseSeconds),
+        _HandsFree.idle => voiceRefused
+            ? talkVoiceRefusedMessage
+            : _hfNothingHeard
+                ? talkNothingHeardText
+                : micShown && s.status == TalkStatus.talking
+                    ? talkHandsFreeHintText(pauseSeconds)
+                    : null,
+      };
+    } else {
+      line = _listening || voiceRefused || (micShown && s.status == TalkStatus.talking)
+          ? (_listening
+              ? (_tapMode ? talkListeningTapText : talkListeningHoldText)
+              : voiceRefused
+                  ? talkVoiceRefusedMessage
+                  : talkMicHintText)
+          : null;
+    }
 
     Widget body;
     if (s.status == TalkStatus.limit) {
@@ -267,18 +427,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
                 child: Text('Try using: ${s.hintWord}', style: TextStyle(color: decor.muted)),
               ),
             ),
-          if (_listening || voiceRefused || (micShown && s.status == TalkStatus.talking))
+          if (line != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                    _listening
-                        ? (_tapMode ? talkListeningTapText : talkListeningHoldText)
-                        : voiceRefused
-                            ? talkVoiceRefusedMessage
-                            : talkMicHintText,
-                    style: TextStyle(color: decor.muted)),
+                child: Text(line, style: TextStyle(color: decor.muted)),
               ),
             ),
           Padding(
@@ -305,13 +459,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
                   label: 'Tap to talk',
                   button: true,
                   child: Listener(
-                    onPointerDown: busy && !_listening ? null : (_) => _micDown(),
-                    onPointerUp: (_) => _micUp(),
-                    onPointerCancel: (_) => _micUp(),
+                    onPointerDown: handsFree || (busy && !_listening) ? null : (_) => _micDown(),
+                    onPointerUp: handsFree
+                        ? (busy && _hf == _HandsFree.idle ? null : (_) => _hfMicTap())
+                        : (_) => _micUp(),
+                    onPointerCancel: handsFree ? null : (_) => _micUp(),
                     child: Padding(
                       padding: const EdgeInsets.all(8),
-                      child: Icon(_listening ? Icons.mic : Icons.mic_none,
-                          color: _listening ? scheme.primary : (busy ? scheme.onSurface.withValues(alpha: 0.38) : null)),
+                      child: Icon(micOn ? Icons.mic : Icons.mic_none,
+                          color: micOn ? scheme.primary : (busy ? scheme.onSurface.withValues(alpha: 0.38) : null)),
                     ),
                   ),
                 ),
@@ -340,6 +496,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
         appBar: AppBar(
           title: const Text('Talk with AI'),
           actions: [
+            IconButton(
+              tooltip: handsFree ? talkHandsFreeOnTip : talkHandsFreeOffTip,
+              icon: Icon(handsFree ? Icons.headset_mic : Icons.headset_off),
+              onPressed: _toggleHandsFree,
+            ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
               child: Center(child: Text('${s.repliesCount} / $maxReplies')),
