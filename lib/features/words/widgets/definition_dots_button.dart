@@ -69,28 +69,19 @@ class DefinitionDotsButton extends StatelessWidget {
         arrowSize: 10,
         barrierColor: Colors.transparent,
         verticalMargin: 6,
-        menuBuilder: () {
-          final maxWidth = MediaQuery.of(context).size.width * 0.7;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Material(
-              color: decor.popup,
-              child: Container(
-                constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: 420),
-                child: DefinitionOptionsContent(
-                  senses: senses,
-                  canLoad: canLoadSenses,
-                  onLoadSenses: onLoadSenses,
-                  onSelectSense: (sense) {
-                    onClose();
-                    onSelectSense(sense);
-                  },
-                  onClose: onClose,
-                ),
-              ),
-            ),
-          );
-        },
+        menuBuilder: () => dotsMenuPanel(
+          context,
+          DefinitionOptionsContent(
+            senses: senses,
+            canLoad: canLoadSenses,
+            onLoadSenses: onLoadSenses,
+            onSelectSense: (sense) {
+              onClose();
+              onSelectSense(sense);
+            },
+            onClose: onClose,
+          ),
+        ),
         // The tap is handled here rather than by the package's own InkWell, so
         // the menu can wait for the keyboard to finish closing -- see
         // openDotsMenu.

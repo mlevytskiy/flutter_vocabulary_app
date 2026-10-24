@@ -88,6 +88,9 @@ class HoldTts implements PronunciationService {
   Completer<void>? _pending;
   int stops = 0;
 
+  /// The last line's progress callback, for the karaoke (talk-screen-b).
+  void Function(double progress)? progress;
+
   void finishSpeaking() => _pending?.complete();
 
   @override
@@ -95,6 +98,7 @@ class HoldTts implements PronunciationService {
       {required Accent accent, VoiceId? voice, String? openAiVoice, void Function(double progress)? onProgress}) {
     spoken.add(text);
     voices.add(voice);
+    progress = onProgress;
     log.add('speak');
     return (_pending = Completer<void>()).future;
   }

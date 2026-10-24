@@ -1,5 +1,7 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
+
+import '../../../core/theme/app_theme.dart';
 
 /// Opens a dots popup once the keyboard is out of the way.
 ///
@@ -46,4 +48,25 @@ void openDotsMenu(
   WidgetsBinding.instance
     ..addPostFrameCallback(check)
     ..scheduleFrame();
+}
+
+/// The dots popup's panel: the menu colour, rounded corners, at most 70 % of
+/// the screen wide and 420 px high. Cut from the two dots buttons so Talk's
+/// word popup shows the very same panel (talk-screen-b, owner 2026-10-24).
+Widget dotsMenuPanel(BuildContext context, Widget child) {
+  final maxWidth = MediaQuery.of(context).size.width * 0.7;
+
+  return ClipRRect(
+    borderRadius: BorderRadius.circular(8),
+    child: Material(
+      color: AppDecor.of(context).popup,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: maxWidth,
+          maxHeight: 420,
+        ),
+        child: child,
+      ),
+    ),
+  );
 }

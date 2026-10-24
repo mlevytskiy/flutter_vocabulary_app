@@ -96,32 +96,19 @@ class TranslationDotsButton extends StatelessWidget {
         arrowSize: 10,
         barrierColor: Colors.transparent,
         verticalMargin: 6,
-        menuBuilder: () {
-          final maxWidth = MediaQuery.of(context).size.width * 0.7;
-
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Material(
-              color: decor.popup,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: maxWidth,
-                  maxHeight: 420,
-                ),
-                child: TranslationOptionsContent(
-                  options: options,
-                  canLoad: canLoadOptions,
-                  onLoadTranslations: onLoadTranslations,
-                  onSelectTranslation: (text) {
-                    onClose();
-                    onSelectTranslation(text);
-                  },
-                  onClose: onClose,
-                ),
-              ),
-            ),
-          );
-        },
+        menuBuilder: () => dotsMenuPanel(
+          context,
+          TranslationOptionsContent(
+            options: options,
+            canLoad: canLoadOptions,
+            onLoadTranslations: onLoadTranslations,
+            onSelectTranslation: (text) {
+              onClose();
+              onSelectTranslation(text);
+            },
+            onClose: onClose,
+          ),
+        ),
         // The tap is handled here rather than by the package's own InkWell, so
         // the menu can wait for the keyboard to finish closing -- see
         // openDotsMenu.
