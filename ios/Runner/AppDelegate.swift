@@ -12,5 +12,9 @@ import UIKit
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Apple's SpeechAnalyzer for Talk with AI (owner, 2026-10-24).
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpeechAnalyzerBridge") {
+      SpeechAnalyzerBridge.register(with: registrar)
+    }
   }
 }

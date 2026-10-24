@@ -30,7 +30,7 @@ class SpeechEngineSection extends ConsumerWidget {
             }
           },
           child: Column(children: [
-            for (final e in SpeechEngine.values)
+            for (final e in SpeechEngine.offered)
               RadioListTile<SpeechEngine>(
                 value: e,
                 title: Text(e.label),

@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
+
+import 'package:flutter/services.dart';
 
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -8,13 +11,24 @@ import 'package:speech_to_text_pro/speech_to_text_pro.dart';
 /// settings (learn-redesign AC-28, ADR-0009 Amendment).
 enum SpeechEngine {
   speechToText,
-  speechToTextPro;
+  speechToTextPro,
+
+  /// Apple's SpeechAnalyzer, iOS 26 and later (owner, 2026-10-24): on the
+  /// phone, Apple's newer speech model ([AppleSpeechAnalyzerInput]).
+  appleSpeechAnalyzer;
 
   /// The package's name, as the Learn settings radio shows it.
   String get label => switch (this) {
         SpeechEngine.speechToText => 'speech_to_text',
         SpeechEngine.speechToTextPro => 'speech_to_text_pro',
+        SpeechEngine.appleSpeechAnalyzer => 'Apple SpeechAnalyzer',
       };
+
+  /// The engines this phone can offer: Apple's only on iOS.
+  static List<SpeechEngine> get offered => [
+        for (final e in values)
+          if (e != appleSpeechAnalyzer || Platform.isIOS) e,
+      ];
 }
 
 /// What [SpeechInput.init] found: ready to listen, the microphone or speech
@@ -438,5 +452,141 @@ class SpeechToTextProInput implements SpeechInput {
     try {
       await _speech?.cancel();
     } catch (_) {}
+  }
+}
+
+/// [SpeechInput] over Apple's SpeechAnalyzer (iOS 26+), through the Runner's
+/// `SpeechAnalyzerBridge` (ios/Runner/SpeechAnalyzerBridge.swift; owner,
+/// 2026-10-24). Always on the phone. One session listens until stopped and
+/// keeps every word, so hands-free needs no restarts. Elsewhere, or on an
+/// older iOS, [init] answers unavailable.
+class AppleSpeechAnalyzerInput implements SpeechInput {
+  static const _methods = MethodChannel('vocab/speech_analyzer');
+  static const _events = EventChannel('vocab/speech_analyzer/events');
+
+  bool _ready = false;
+  StreamSubscription<dynamic>? _words;
+  void Function(String text, bool isFinal)? _onText;
+  String _heard = '';
+  UntilPause? _untilPause;
+
+  @override
+  Future<SpeechAvailability> init() async {
+    if (_ready) return SpeechAvailability.ready;
+    try {
+      final answer = await _methods.invokeMethod<String>('prepare');
+      switch (answer) {
+        case 'ready':
+          _ready = true;
+          return SpeechAvailability.ready;
+        case 'permissionDenied':
+          return SpeechAvailability.permissionDenied;
+        default:
+          return SpeechAvailability.unavailable;
+      }
+    } catch (_) {
+      return SpeechAvailability.unavailable;
+    }
+  }
+
+  /// Starts a session whose words go to [onWords].
+  Future<bool> _start(void Function(String text) onWords) async {
+    await _words?.cancel();
+    _words = _events.receiveBroadcastStream().listen((e) {
+      if (e is Map && e['text'] is String) onWords(e['text'] as String);
+    });
+    try {
+      await _methods.invokeMethod<bool>('start');
+      return true;
+    } catch (_) {
+      await _words?.cancel();
+      _words = null;
+      return false;
+    }
+  }
+
+  Future<String> _stop() async {
+    String text = '';
+    try {
+      text = await _methods.invokeMethod<String>('stop') ?? '';
+    } catch (_) {}
+    await _words?.cancel();
+    _words = null;
+    return text;
+  }
+
+  @override
+  Future<void> listen({required void Function(String text, bool isFinal) onText}) async {
+    if (!_ready) return;
+    _onText = onText;
+    _heard = '';
+    final started = await _start((t) {
+      _heard = t;
+      _onText?.call(t, false);
+    });
+    if (!started) _onText = null;
+  }
+
+  @override
+  Future<void> stop() async {
+    final onText = _onText;
+    if (onText == null) return;
+    _onText = null;
+    final text = await _stop();
+    final last = text.trim().isEmpty ? _heard : text;
+    if (last.trim().isNotEmpty) onText(last, true);
+  }
+
+  @override
+  Future<void> cancel() async {
+    _onText = null;
+    await _words?.cancel();
+    _words = null;
+    try {
+      await _methods.invokeMethod<void>('cancel');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> listenUntilPause({
+    required Duration pause,
+    required void Function(String text) onPartial,
+    required void Function(String text) onDone,
+  }) async {
+    if (!_ready) {
+      onDone('');
+      return;
+    }
+    await stopListening();
+    late final UntilPause run;
+    run = UntilPause(
+      pause: pause,
+      onPartial: onPartial,
+      onDone: onDone,
+      restart: () async {},
+      stopEngine: () async {
+        _untilPause = null;
+        await _stop();
+      },
+    );
+    _untilPause = run;
+    run.begin();
+    final started = await _start((t) {
+      if (_untilPause == run) run.heard(t);
+    });
+    if (!started && _untilPause == run) {
+      run.cancel();
+      _untilPause = null;
+      onDone('');
+    }
+  }
+
+  @override
+  Future<void> stopListening() async {
+    final run = _untilPause;
+    if (run == null) return;
+    _untilPause = null;
+    run.cancel();
+    await cancel();
   }
 }

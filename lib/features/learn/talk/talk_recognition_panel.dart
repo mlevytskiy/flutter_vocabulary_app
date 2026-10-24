@@ -33,7 +33,8 @@ class TalkRecognitionTab extends StatefulWidget {
   final ValueChanged<bool> onOnDevice;
 
   /// Whether the mode in use keeps speech on the phone.
-  static bool onPhone(SpeechEngine engine, bool onDevice) => engine == SpeechEngine.speechToText && onDevice;
+  static bool onPhone(SpeechEngine engine, bool onDevice) =>
+      engine == SpeechEngine.appleSpeechAnalyzer || (engine == SpeechEngine.speechToText && onDevice);
 
   @override
   State<TalkRecognitionTab> createState() => _TalkRecognitionTabState();
@@ -127,12 +128,14 @@ class _TalkRecognitionTabState extends State<TalkRecognitionTab> {
     final scheme = theme.colorScheme;
     final decor = AppDecor.of(context);
     final pro = widget.engine == SpeechEngine.speechToTextPro;
+    final apple = widget.engine == SpeechEngine.appleSpeechAnalyzer;
     final onPhone = TalkRecognitionTab.onPhone(widget.engine, widget.onDevice);
     final small = theme.textTheme.bodySmall?.copyWith(color: decor.muted, height: 1.3);
 
     Widget mode({required bool phone, required String title, required String note}) {
       final selected = onPhone == phone;
-      final enabled = !pro || !phone;
+      // Pro has no on-device mode; Apple's SpeechAnalyzer is only on the phone.
+      final enabled = apple ? phone : (!pro || !phone);
       return InkWell(
         borderRadius: BorderRadius.circular(10),
         onTap: enabled && !selected ? () => widget.onOnDevice(phone) : null,
@@ -179,7 +182,7 @@ class _TalkRecognitionTabState extends State<TalkRecognitionTab> {
             Text('Engine', style: small),
             const SizedBox(height: 4),
             Wrap(spacing: 6, children: [
-              for (final e in SpeechEngine.values)
+              for (final e in SpeechEngine.offered)
                 ChoiceChip(
                   label: Text(e.label, style: const TextStyle(fontSize: 12)),
                   selected: widget.engine == e,
@@ -192,14 +195,18 @@ class _TalkRecognitionTabState extends State<TalkRecognitionTab> {
             mode(
               phone: false,
               title: 'Online allowed',
-              note: 'Apple or Google may use their servers when you are online. Usually more accurate.',
+              note: apple
+                  ? 'Not available with Apple SpeechAnalyzer.'
+                  : 'Apple or Google may use their servers when you are online. Usually more accurate.',
             ),
             mode(
               phone: true,
               title: 'On the phone only',
               note: pro
                   ? 'Not available with speech_to_text_pro.'
-                  : 'Speech never leaves the phone and works offline. Often less accurate.',
+                  : apple
+                      ? "Apple's newer speech model (iOS 26). Never leaves the phone, works offline."
+                      : 'Speech never leaves the phone and works offline. Often less accurate.',
             ),
             const SizedBox(height: 4),
             Text('Language: English (US)', style: small),

@@ -2258,7 +2258,7 @@ final class SpeechEngineNotifierProvider
 }
 
 String _$speechEngineNotifierHash() =>
-    r'9666cc44621d443a55c3fce09692c94d71b6016d';
+    r'532fee4e08a2716341381dd69d0d480bf3c95031';
 
 /// The speech recognition engine for Talk with AI's hold-to-talk, picked in
 /// Learn settings (learn-redesign AC-28, ADR-0009 Amendment); persisted like
@@ -2326,7 +2326,7 @@ final class SpeechInputProvider
   }
 }
 
-String _$speechInputHash() => r'4cca923548b7ccac3556259cc0bdfa3a9c498377';
+String _$speechInputHash() => r'933b543108b8341624512d9c72c7fa768c639f3e';
 
 /// Whether speech_to_text must recognise on the phone only (owner,
 /// 2026-10-24: show and pick the recognition mode on the Talk screen). Off

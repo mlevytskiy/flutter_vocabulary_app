@@ -528,7 +528,8 @@ class SpeechEngineNotifier extends _$SpeechEngineNotifier {
     final prefs = await SharedPreferences.getInstance();
     if (_setByLearner) return;
     final stored = prefs.getString(key);
-    state = SpeechEngine.values.firstWhere((e) => e.name == stored,
+    // Apple's engine only where it is offered (iOS).
+    state = SpeechEngine.offered.firstWhere((e) => e.name == stored,
         orElse: () => SpeechEngine.speechToText);
   }
 
@@ -547,6 +548,7 @@ SpeechInput speechInput(Ref ref) =>
     switch (ref.watch(speechEngineProvider)) {
       SpeechEngine.speechToText => SpeechToTextInput(onDevice: ref.watch(speechOnDeviceProvider)),
       SpeechEngine.speechToTextPro => SpeechToTextProInput(),
+      SpeechEngine.appleSpeechAnalyzer => AppleSpeechAnalyzerInput(),
     };
 
 /// Whether speech_to_text must recognise on the phone only (owner,
