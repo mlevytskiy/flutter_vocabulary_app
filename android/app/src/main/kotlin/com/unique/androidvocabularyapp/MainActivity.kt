@@ -1,7 +1,10 @@
 package com.unique.androidvocabularyapp
 
+import android.content.Intent
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -31,6 +34,24 @@ class MainActivity : FlutterActivity() {
                     window.decorView.systemGestureExclusionRects = rects
                 }
                 result.success(null)
+            }
+        // "Move to Settings" when the microphone is refused (owner, 2026-10-24):
+        // this app's info page, with Permissions one tap away.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "vocab/app_settings")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "open") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                try {
+                    startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.success(false)
+                }
             }
     }
 }

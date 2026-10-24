@@ -241,6 +241,13 @@ void main() {
     expect(speech.listening, isFalse);
     expect(find.text(talkVoiceRefusedMessage), findsOneWidget);
     expect(talkVoiceRefusedMessage, 'Allow the microphone and speech recognition in Settings to talk');
+    // owner, 2026-10-24: a dialog offers to open the app's Settings page.
+    await t.pump();
+    expect(find.text('Microphone is off'), findsOneWidget);
+    expect(find.text('Move to Settings'), findsOneWidget);
+    await t.tap(find.text('Not now'));
+    await t.pumpAndSettle(const Duration(milliseconds: 50));
+    expect(find.text('Microphone is off'), findsNothing);
     await t.enterText(find.byType(TextField), 'typed instead');
     await t.tap(find.byIcon(Icons.send));
     await t.pump();

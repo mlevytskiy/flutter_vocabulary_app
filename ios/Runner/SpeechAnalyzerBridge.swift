@@ -112,10 +112,12 @@ final class AnalyzerSession {
   /// Permissions, the analyzer and the English model.
   static func prepare() async -> String {
     let mic = await AVAudioApplication.requestRecordPermission()
+    NSLog("SpeechAnalyzerBridge: microphone permission \(mic)")
     if !mic { return "permissionDenied" }
     let speech = await withCheckedContinuation { (done: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
       SFSpeechRecognizer.requestAuthorization { done.resume(returning: $0) }
     }
+    NSLog("SpeechAnalyzerBridge: speech recognition status \(speech.rawValue)")
     if speech == .denied || speech == .restricted { return "permissionDenied" }
     guard SpeechTranscriber.isAvailable else { return "unavailable" }
     guard await SpeechTranscriber.supportedLocale(equivalentTo: locale) != nil else { return "unavailable" }

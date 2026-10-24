@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import '../../../core/models/definition_result.dart';
 import '../../../core/models/translation_result.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/app_settings.dart';
 import '../../../core/services/pronunciation_service.dart';
 import '../../../core/services/speech_input.dart';
 import '../../../core/theme/app_theme.dart';
@@ -207,7 +209,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     if (_availability != SpeechAvailability.ready) {
       final found = await speech.init();
       if (!mounted) return;
-      setState(() => _availability = found);
+      _setAvailability(found);
       if (found != SpeechAvailability.ready) return;
     }
     if (!_holding) return;
@@ -385,7 +387,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     if (_availability != SpeechAvailability.ready) {
       final found = await speech.init();
       if (!mounted) return;
-      setState(() => _availability = found);
+      _setAvailability(found);
       if (found != SpeechAvailability.ready) return;
     }
     if (run != _hfRun) return;
@@ -470,6 +472,47 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     }
     await ref.read(handsFreeProvider.notifier).set(on);
     if (on && mounted) await _hfListen();
+  }
+
+  /// Whether the permission dialog was shown on this visit.
+  bool _permissionAsked = false;
+
+  /// What the recognizer's init found; a refused permission opens the
+  /// dialog with "Move to Settings" once per visit (owner, 2026-10-24).
+  void _setAvailability(SpeechAvailability found) {
+    setState(() => _availability = found);
+    if (found == SpeechAvailability.permissionDenied && !_permissionAsked) {
+      _permissionAsked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showPermissionDialog();
+      });
+    }
+  }
+
+  Future<void> _showPermissionDialog() async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.mic_off_rounded),
+        title: const Text('Microphone is off'),
+        content: Text(Platform.isIOS
+            ? 'To talk, turn on Microphone and Speech Recognition for this app in Settings.'
+            : 'To talk, allow the Microphone for this app: Settings → Permissions → Microphone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Not now')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Move to Settings')),
+        ],
+      ),
+    );
+    if (go != true || !mounted) return;
+    await openAppSettings();
+    if (!mounted) return;
+    // Back from Settings, the next mic tap asks the recognizer again.
+    setState(() {
+      _availability = null;
+      _speech = null;
+      _permissionAsked = false;
+    });
   }
 
   /// Switches the engine or the recognition mode: listening stops, and the
