@@ -8,7 +8,7 @@ import { test } from "node:test";
 import { sqliteD1 } from "./sqlite-d1.mjs";
 import { appHeaders, baseUrl, d1 } from "./helpers.mjs";
 import { LEARN_TALK_DAY_LIMIT, takeLearnTalk } from "../src/learn/allowance.ts";
-import { MISSION_KINDS, missionPrompt, nextTarget, parseMission, parseTalkRequest, talkPrompt } from "../src/learn/talk.ts";
+import { MISSION_KINDS, missionPrompt, nextTarget, parseMission, parseTalkRequest, readMission, talkPrompt } from "../src/learn/talk.ts";
 import { parseTalkPictureRequest, TALK_PICTURE_MODEL } from "../src/learn/talk-picture.ts";
 import { LEARN_TALK_PICTURE_DAY_LIMIT, takeLearnTalkPicture } from "../src/learn/allowance.ts";
 
@@ -112,6 +112,16 @@ test("talk-mission: parseMission keeps the learner's spelling of the known words
   assert.equal(parseMission(JSON.stringify({ ...PLAN, words: ["anchor"] }), WORDS), null, "none of the words");
   const many = Array.from({ length: 9 }, (_, i) => ({ word: `w${i}`, translation: "t" }));
   assert.equal(parseMission(JSON.stringify({ ...PLAN, words: many.map((w) => w.word) }), many).mission.words.length, 6, "at most 6");
+});
+
+test("talk-mission: readMission flattens an object brief, cuts long fields, takes inflected words and names what is missing", () => {
+  const got = readMission(`Sure! ${JSON.stringify({ ...PLAN, brief: { character: "A fisherman", secret: "He hid the boat" }, title: "x".repeat(200), words: "tides, fog" })} Enjoy.`, WORDS);
+  assert.equal(got.mission.brief, "character: A fisherman. secret: He hid the boat.");
+  assert.ok(got.mission.title.length <= 81);
+  assert.deepEqual(got.mission.words, ["tide", "fog"]);
+  assert.equal(readMission("no json here", WORDS), "not_json");
+  assert.equal(readMission(JSON.stringify({ ...PLAN, opening: undefined }), WORDS), "missing_opening");
+  assert.equal(readMission(JSON.stringify({ ...PLAN, words: [] }), WORDS), "no_words");
 });
 
 test("talk-mission: a picture prompt is 1 to 600 characters", () => {
