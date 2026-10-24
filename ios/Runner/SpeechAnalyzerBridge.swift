@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreMedia
 import Flutter
 import Speech
 
@@ -20,7 +21,8 @@ import Speech
 /// - `stop` → finishes and answers the final text;
 /// - `cancel` → stops and drops what was heard.
 /// Event channel `vocab/speech_analyzer/events`: `{"text": all words heard
-/// in this session, "isFinal": false}` as the words come.
+/// in this session, "isFinal": false, "session": the number `start` got}`
+/// as the words come.
 final class SpeechAnalyzerBridge: NSObject, FlutterStreamHandler {
   private static var shared: SpeechAnalyzerBridge?
 
@@ -46,9 +48,11 @@ final class SpeechAnalyzerBridge: NSObject, FlutterStreamHandler {
     return nil
   }
 
-  private func send(_ text: String) {
+  /// [text] of the session the app numbered [session], so words of a
+  /// session that already ended are told apart and dropped.
+  private func send(_ text: String, session: Int) {
     DispatchQueue.main.async { [weak self] in
-      self?.sink?(["text": text, "isFinal": false])
+      self?.sink?(["text": text, "isFinal": false, "session": session])
     }
   }
 
@@ -63,10 +67,12 @@ final class SpeechAnalyzerBridge: NSObject, FlutterStreamHandler {
         result(await AnalyzerSession.prepare())
       case "start":
         if let old = self.session as? AnalyzerSession { await old.cancel() }
-        let words = ((call.arguments as? [String: Any])?["words"] as? [String] ?? [])
+        let args = call.arguments as? [String: Any]
+        let id = args?["session"] as? Int ?? 0
+        let words = (args?["words"] as? [String] ?? [])
           .map { $0.trimmingCharacters(in: .whitespaces) }
           .filter { !$0.isEmpty }
-        let s = AnalyzerSession(hints: words) { [weak self] text in self?.send(text) }
+        let s = AnalyzerSession(hints: words) { [weak self] text in self?.send(text, session: id) }
         self.session = s
         do {
           try await s.start()
@@ -103,7 +109,9 @@ final class AnalyzerSession {
   private var analyzer: SpeechAnalyzer?
   private var input: AsyncStream<AnalyzerInput>.Continuation?
   private var results: Task<Void, Never>?
-  private var finalized = ""
+  /// The settled pieces, in time order, each with its audio time range; and
+  /// the piece still being worked out.
+  private var pieces: [(start: Double, end: Double, text: String)] = []
   private var volatile = ""
 
   init(hints: [String], onText: @escaping (String) -> Void) {
@@ -114,7 +122,22 @@ final class AnalyzerSession {
   /// All the words of this session: the settled ones, then the ones still
   /// being worked out.
   var text: String {
-    [finalized, volatile].filter { !$0.isEmpty }.joined(separator: " ")
+    let settled = finalized
+    // A piece in progress may repeat the settled words before its new ones.
+    if !settled.isEmpty, Self.contains(volatile, prefix: settled) { return volatile }
+    return [settled, volatile].filter { !$0.isEmpty }.joined(separator: " ")
+  }
+
+  private var finalized: String { pieces.map(\.text).joined(separator: " ") }
+
+  /// Whether [text] starts with [prefix], ignoring case and punctuation.
+  private static func contains(_ text: String, prefix: String) -> Bool {
+    func norm(_ s: String) -> String {
+      s.lowercased().unicodeScalars.filter { CharacterSet.letters.union(.decimalDigits).union(.whitespaces).contains($0) }
+        .map(String.init).joined().split(separator: " ").joined(separator: " ")
+    }
+    let p = norm(prefix)
+    return !p.isEmpty && norm(text).hasPrefix(p)
   }
 
   private static func transcriber() -> SpeechTranscriber {
@@ -163,11 +186,25 @@ final class AnalyzerSession {
       reportingOptions: [.volatileResults, .alternativeTranscriptions], attributeOptions: [])
   }
 
-  /// One result: its words settle ([isFinal]) or are still being worked out.
-  private func take(_ words: String, isFinal: Bool) {
+  /// One result over the audio of [range]: its words settle ([isFinal]) or
+  /// are still being worked out. A settled piece replaces the pieces whose
+  /// audio it covers again, and all of them when it repeats their words
+  /// (Apple sends a piece after a pause that can hold the earlier words too;
+  /// owner, 2026-10-24: "it attaches everything that was before").
+  private func take(_ words: String, range: CMTimeRange, isFinal: Bool) {
     let words = words.trimmingCharacters(in: .whitespaces)
     if isFinal {
-      if !words.isEmpty { finalized = [finalized, words].filter { !$0.isEmpty }.joined(separator: " ") }
+      if range.isValid && !range.isIndefinite {
+        let (s, e) = (range.start.seconds, range.end.seconds)
+        pieces.removeAll { $0.start < e && s < $0.end }
+      }
+      if Self.contains(words, prefix: finalized) { pieces.removeAll() }
+      if !words.isEmpty {
+        let start = range.isValid ? range.start.seconds : (pieces.last?.end ?? 0)
+        let end = range.isValid ? range.end.seconds : start
+        pieces.append((start: start, end: end, text: words))
+        pieces.sort { $0.start < $1.start }
+      }
       volatile = ""
     } else {
       volatile = words
@@ -207,7 +244,7 @@ final class AnalyzerSession {
       results = Task { [weak self] in
         do {
           for try await r in transcriber.results {
-            self?.take(String(r.text.characters), isFinal: r.isFinal)
+            self?.take(String(r.text.characters), range: r.range, isFinal: r.isFinal)
           }
         } catch {}
       }
@@ -223,7 +260,7 @@ final class AnalyzerSession {
           for try await r in dictation.results {
             guard let self else { return }
             let words = self.best(String(r.text.characters), r.alternatives.map { String($0.characters) })
-            self.take(words, isFinal: r.isFinal)
+            self.take(words, range: r.range, isFinal: r.isFinal)
           }
         } catch {}
       }

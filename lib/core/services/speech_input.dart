@@ -518,14 +518,19 @@ class AppleSpeechAnalyzerInput implements SpeechInput, SpeechHints, SpeechProble
     }
   }
 
+  /// The number of the session listening now; words of earlier ones that
+  /// arrive late are dropped (owner, 2026-10-24: old words repeated).
+  int _session = 0;
+
   /// Starts a session whose words go to [onWords].
   Future<bool> _start(void Function(String text) onWords) async {
     await _words?.cancel();
+    final session = ++_session;
     _words = _events.receiveBroadcastStream().listen((e) {
-      if (e is Map && e['text'] is String) onWords(e['text'] as String);
+      if (e is Map && e['text'] is String && (e['session'] ?? session) == session) onWords(e['text'] as String);
     });
     try {
-      await _methods.invokeMethod<bool>('start', {'words': _hints});
+      await _methods.invokeMethod<bool>('start', {'words': _hints, 'session': session});
       return true;
     } catch (_) {
       await _words?.cancel();

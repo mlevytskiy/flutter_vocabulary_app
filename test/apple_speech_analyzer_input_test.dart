@@ -98,6 +98,19 @@ void main() {
     (input as SpeechHints).hints = ['saline', ' ', 'tide'];
     await input.listen(onText: (_, __) {});
     await input.stop();
-    expect(startArgs.single, {'words': ['saline', 'tide']});
+    expect(startArgs.single, {'words': ['saline', 'tide'], 'session': 1});
+  });
+
+  test('words of an earlier session that arrive late are dropped', () async {
+    final input = AppleSpeechAnalyzerInput();
+    await input.init();
+    final got = <String>[];
+    await input.listen(onText: (t, _) => got.add(t));
+    await input.stop();
+    await input.listen(onText: (t, _) => got.add(t));
+    sink!.success({'text': 'old words', 'isFinal': false, 'session': 1});
+    sink!.success({'text': 'new words', 'isFinal': false, 'session': 2});
+    await pumpEventQueue();
+    expect(got, ['new words']);
   });
 }
