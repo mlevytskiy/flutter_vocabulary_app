@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,6 +13,11 @@ import 'talk_notifier.dart';
 /// Said when the speech permission is refused or no recognizer is there
 /// (learn-redesign AC-26, AC-28); typing keeps working.
 const talkVoiceRefusedMessage = 'Allow the microphone and speech recognition in Settings to talk';
+
+/// The mic's hint and listening lines (owner, 2026-10-24: say how to use it).
+const talkMicHintText = 'Tap the mic to speak, tap again to send';
+const talkListeningTapText = 'Listening… tap the mic to send';
+const talkListeningHoldText = 'Listening… let go to send';
 
 /// Talk with AI (learn-redesign SCR-06; AC-20, AC-21, AC-24): bubbles, the
 /// word strip, Hint, the reply field and End talk; hold-to-talk beside Send,
@@ -47,6 +54,14 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   bool _holding = false;
   bool _listening = false;
 
+  /// A press shorter than [_tapMax] is a tap: listening goes on until the
+  /// next tap sends it; a longer press is a hold that sends on release
+  /// (owner, 2026-10-24: holding was not obvious).
+  static const _tapMax = Duration(milliseconds: 400);
+  Timer? _pressTimer;
+  bool _pressHeld = false;
+  bool _tapMode = false;
+
   /// Set once the mic was used in this talk: new AI replies are read aloud.
   bool _voiceUsed = false;
 
@@ -62,6 +77,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
 
   @override
   void dispose() {
+    _pressTimer?.cancel();
     if (_listening) _speech?.cancel();
     _field.dispose();
     _focus.dispose();
@@ -103,6 +119,33 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     await speech.listen(onText: (text, _) {
       if (mounted) _field.text = text;
     });
+  }
+
+  /// The mic went down: a second tap while listening only waits for its
+  /// release; otherwise listening starts and the press is timed.
+  void _micDown() {
+    if (_listening && _tapMode) return;
+    _pressHeld = false;
+    _pressTimer?.cancel();
+    _pressTimer = Timer(_tapMax, () => _pressHeld = true);
+    _holdDown();
+  }
+
+  /// The mic came up: the tap that ends tap mode sends; a short first press
+  /// keeps listening (tap mode); a hold sends at once.
+  void _micUp() {
+    _pressTimer?.cancel();
+    if (_tapMode) {
+      _tapMode = false;
+      _holdUp();
+      return;
+    }
+    if (!_pressHeld) {
+      _tapMode = true;
+      if (mounted) setState(() {});
+      return;
+    }
+    _holdUp();
   }
 
   /// The mic was let go: stop and send the final words, if any.
@@ -224,12 +267,17 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
                 child: Text('Try using: ${s.hintWord}', style: TextStyle(color: decor.muted)),
               ),
             ),
-          if (_listening || voiceRefused)
+          if (_listening || voiceRefused || (micShown && s.status == TalkStatus.talking))
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Text(_listening ? 'Listening…' : talkVoiceRefusedMessage,
+                child: Text(
+                    _listening
+                        ? (_tapMode ? talkListeningTapText : talkListeningHoldText)
+                        : voiceRefused
+                            ? talkVoiceRefusedMessage
+                            : talkMicHintText,
                     style: TextStyle(color: decor.muted)),
               ),
             ),
@@ -254,12 +302,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
               IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
               if (micShown)
                 Semantics(
-                  label: 'Hold to talk',
+                  label: 'Tap to talk',
                   button: true,
                   child: Listener(
-                    onPointerDown: busy ? null : (_) => _holdDown(),
-                    onPointerUp: (_) => _holdUp(),
-                    onPointerCancel: (_) => _holdUp(),
+                    onPointerDown: busy && !_listening ? null : (_) => _micDown(),
+                    onPointerUp: (_) => _micUp(),
+                    onPointerCancel: (_) => _micUp(),
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: Icon(_listening ? Icons.mic : Icons.mic_none,

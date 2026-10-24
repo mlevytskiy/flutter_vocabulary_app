@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_vocabulary_app/core/models/subtitle_import_options.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/core/services/speech_input.dart';
 import 'package:flutter_vocabulary_app/features/settings/settings_screen.dart';
 
 /// definition-mode T3: three word detail mode choices in Settings, translation
@@ -49,6 +50,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(wordDetailModeProvider), WordDetailMode.definition);
+  });
+
+  testWidgets('the speech recognition engine can be picked here too (owner, 2026-10-24)', (tester) async {
+    final container = await pump(tester);
+    expect(find.text('Speech recognition'), findsOneWidget);
+    expect(find.text('speech_to_text'), findsOneWidget);
+    await tester.tap(find.text('speech_to_text_pro'));
+    await tester.pumpAndSettle();
+    expect(container.read(speechEngineProvider), SpeechEngine.speechToTextPro);
   });
 
   testWidgets('the drag-and-drop switch is still there', (tester) async {

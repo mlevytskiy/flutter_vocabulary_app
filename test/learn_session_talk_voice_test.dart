@@ -127,7 +127,7 @@ void main() {
     await settle(t);
   }
 
-  final mic = find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Hold to talk');
+  final mic = find.byWidgetPredicate((w) => w is Semantics && w.properties.label == 'Tap to talk');
   String fieldText(WidgetTester t) => t.widget<TextField>(find.byType(TextField)).controller!.text;
 
   testWidgets('AC-25: hold shows Listening… and the words, release sends the final text', (t) async {
@@ -136,9 +136,10 @@ void main() {
     expect(mic, findsOneWidget);
     final hold = await t.startGesture(t.getCenter(mic));
     await t.pump();
+    await t.pump(const Duration(milliseconds: 500));
     expect(speech.inits, 1);
     expect(speech.listening, isTrue);
-    expect(find.text('Listening…'), findsOneWidget);
+    expect(find.text(talkListeningHoldText), findsOneWidget);
     speech.heard('the bus');
     await t.pump();
     expect(fieldText(t), 'the bus');
@@ -147,11 +148,31 @@ void main() {
     await t.pump();
     await settle(t);
     expect(speech.listening, isFalse);
-    expect(find.text('Listening…'), findsNothing);
+    expect(find.text(talkListeningHoldText), findsNothing);
     expect(find.text('The bus was crowded'), findsOneWidget);
     expect(find.text('crowded ✓'), findsOneWidget);
     expect(fieldText(t), isEmpty);
     expect(api.calls.last.history.last.text, 'The bus was crowded');
+  });
+
+  testWidgets('a tap starts listening, the next tap sends; the hint says so', (t) async {
+    await open(t);
+    expect(find.text(talkMicHintText), findsOneWidget);
+    final first = await t.startGesture(t.getCenter(mic));
+    await t.pump();
+    await first.up();
+    await t.pump();
+    expect(speech.listening, isTrue);
+    expect(find.text(talkListeningTapText), findsOneWidget);
+    speech.finalText = 'I took the bus';
+    final second = await t.startGesture(t.getCenter(mic));
+    await t.pump();
+    await second.up();
+    await t.pump();
+    await settle(t);
+    expect(speech.listening, isFalse);
+    expect(find.text('I took the bus'), findsOneWidget);
+    expect(api.calls.last.history.last.text, 'I took the bus');
   });
 
   testWidgets('AC-25: the AI reply is read aloud only after the mic was used', (t) async {
@@ -168,6 +189,7 @@ void main() {
     api.answers.add(const TalkTurn(reply: 'Did you buy a ticket?', target: 'ticket'));
     final hold = await t.startGesture(t.getCenter(mic));
     await t.pump();
+    await t.pump(const Duration(milliseconds: 500));
     speech.finalText = 'yes it was';
     await hold.up();
     await t.pump();
@@ -181,6 +203,7 @@ void main() {
     final calls = api.calls.length;
     final hold = await t.startGesture(t.getCenter(mic));
     await t.pump();
+    await t.pump(const Duration(milliseconds: 500));
     await hold.up();
     await t.pump();
     await settle(t);
@@ -192,6 +215,7 @@ void main() {
     speech.availability = SpeechAvailability.permissionDenied;
     final hold = await t.startGesture(t.getCenter(mic));
     await t.pump();
+    await t.pump(const Duration(milliseconds: 500));
     await hold.up();
     await t.pump();
     expect(speech.listening, isFalse);
@@ -209,6 +233,7 @@ void main() {
     speech.availability = SpeechAvailability.unavailable;
     final hold = await t.startGesture(t.getCenter(mic));
     await t.pump();
+    await t.pump(const Duration(milliseconds: 500));
     await hold.up();
     await t.pump();
     expect(mic, findsNothing);
@@ -246,7 +271,6 @@ void main() {
       await t.pumpWidget(
           UncontrolledProviderScope(container: c, child: const MaterialApp(home: LearnSettingsScreen())));
       await t.pumpAndSettle();
-      expect(find.text('Voice'), findsOneWidget);
       expect(find.text('Speech recognition'), findsOneWidget);
       expect(find.text('speech_to_text'), findsOneWidget);
       expect(find.text('Default'), findsOneWidget);

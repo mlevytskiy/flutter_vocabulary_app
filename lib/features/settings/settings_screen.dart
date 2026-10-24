@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/subtitle_import_options.dart';
 import '../../core/providers.dart';
+import '../learn/entry/speech_engine_section.dart';
 import '../words/photo_panel/looks/edge_glass.dart';
 
 /// Preferences for the app: the drag-and-drop mode toggle that used to be an
@@ -40,6 +41,8 @@ class SettingsScreen extends ConsumerWidget {
             const LiquidGlassSection(),
             const Divider(),
           ],
+          const SpeechEngineSection(),
+          const Divider(),
           SwitchListTile(
             secondary: const Icon(Icons.drag_indicator),
             title: const Text('Drag and Drop мод'),
