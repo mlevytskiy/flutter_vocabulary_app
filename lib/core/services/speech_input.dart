@@ -71,6 +71,20 @@ abstract interface class SpeechInput {
   Future<void> stopListening();
 }
 
+/// A [SpeechInput] that can listen for given words (owner, 2026-10-24: rare
+/// practice words like "saline" were never heard): the talk sets its words
+/// before each listen. Only Apple's SpeechAnalyzer takes them.
+abstract interface class SpeechHints {
+  set hints(List<String> words);
+}
+
+/// A [SpeechInput] that can say why it is unavailable, for the learner
+/// (owner, 2026-10-24: "allow the microphone" was shown with both allowed).
+abstract interface class SpeechProblem {
+  /// Why the last [SpeechInput.init] found it unavailable; null when it did not.
+  String? get problem;
+}
+
 /// The silence detection of [SpeechInput.listenUntilPause], shared by both
 /// engines (AC-29): the engine feeds it the words of its current session
 /// ([heard]) and tells it when that session ended by itself
@@ -460,11 +474,21 @@ class SpeechToTextProInput implements SpeechInput {
 /// 2026-10-24). Always on the phone. One session listens until stopped and
 /// keeps every word, so hands-free needs no restarts. Elsewhere, or on an
 /// older iOS, [init] answers unavailable.
-class AppleSpeechAnalyzerInput implements SpeechInput {
+class AppleSpeechAnalyzerInput implements SpeechInput, SpeechHints, SpeechProblem {
   static const _methods = MethodChannel('vocab/speech_analyzer');
   static const _events = EventChannel('vocab/speech_analyzer/events');
 
   bool _ready = false;
+
+  @override
+  String? problem;
+
+  /// The practice words the next session listens for (Apple's dictation
+  /// model with them as hints; none: the plain transcriber).
+  @override
+  set hints(List<String> words) => _hints = [for (final w in words) if (w.trim().isNotEmpty) w.trim()];
+  List<String> _hints = const [];
+
   StreamSubscription<dynamic>? _words;
   void Function(String text, bool isFinal)? _onText;
   String _heard = '';
@@ -473,18 +497,23 @@ class AppleSpeechAnalyzerInput implements SpeechInput {
   @override
   Future<SpeechAvailability> init() async {
     if (_ready) return SpeechAvailability.ready;
+    problem = null;
     try {
-      final answer = await _methods.invokeMethod<String>('prepare');
-      switch (answer) {
-        case 'ready':
-          _ready = true;
-          return SpeechAvailability.ready;
-        case 'permissionDenied':
-          return SpeechAvailability.permissionDenied;
-        default:
-          return SpeechAvailability.unavailable;
+      final answer = await _methods.invokeMethod<String>('prepare') ?? '';
+      if (answer == 'ready') {
+        _ready = true;
+        return SpeechAvailability.ready;
       }
-    } catch (_) {
+      if (answer == 'permissionDenied') return SpeechAvailability.permissionDenied;
+      // "unavailable:<why>".
+      final why = answer.startsWith('unavailable:') ? answer.substring('unavailable:'.length).trim() : '';
+      problem = why.isEmpty ? 'Apple SpeechAnalyzer is not available on this iPhone.' : why;
+      return SpeechAvailability.unavailable;
+    } on MissingPluginException {
+      problem = 'Apple SpeechAnalyzer is not available on this phone.';
+      return SpeechAvailability.unavailable;
+    } catch (e) {
+      problem = 'Apple SpeechAnalyzer could not start ($e).';
       return SpeechAvailability.unavailable;
     }
   }
@@ -496,7 +525,7 @@ class AppleSpeechAnalyzerInput implements SpeechInput {
       if (e is Map && e['text'] is String) onWords(e['text'] as String);
     });
     try {
-      await _methods.invokeMethod<bool>('start');
+      await _methods.invokeMethod<bool>('start', {'words': _hints});
       return true;
     } catch (_) {
       await _words?.cancel();

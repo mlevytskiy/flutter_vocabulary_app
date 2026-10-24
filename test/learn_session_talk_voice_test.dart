@@ -264,7 +264,9 @@ void main() {
     await hold.up();
     await t.pump();
     expect(mic, findsNothing);
-    expect(find.text(talkVoiceRefusedMessage), findsOneWidget);
+    // owner, 2026-10-24: an engine that cannot run is not a permission matter.
+    expect(find.text(talkVoiceUnavailableMessage), findsOneWidget);
+    expect(find.text(talkVoiceRefusedMessage), findsNothing);
     expect(find.byIcon(Icons.send), findsOneWidget);
   });
 

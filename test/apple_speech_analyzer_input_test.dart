@@ -12,16 +12,19 @@ void main() {
   final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 
   late List<String> calls;
+  late List<Object?> startArgs;
   late String prepare;
   late String finalText;
   MockStreamHandlerEventSink? sink;
 
   setUp(() {
     calls = [];
+    startArgs = [];
     prepare = 'ready';
     finalText = '';
     messenger.setMockMethodCallHandler(methods, (call) async {
       calls.add(call.method);
+      if (call.method == 'start') startArgs.add(call.arguments);
       return switch (call.method) {
         'prepare' => prepare,
         'start' => true,
@@ -44,8 +47,10 @@ void main() {
     expect(await AppleSpeechAnalyzerInput().init(), SpeechAvailability.ready);
     prepare = 'permissionDenied';
     expect(await AppleSpeechAnalyzerInput().init(), SpeechAvailability.permissionDenied);
-    prepare = 'unavailable';
-    expect(await AppleSpeechAnalyzerInput().init(), SpeechAvailability.unavailable);
+    prepare = 'unavailable:This iPhone has no English model for Apple SpeechAnalyzer.';
+    final input = AppleSpeechAnalyzerInput();
+    expect(await input.init(), SpeechAvailability.unavailable);
+    expect(input.problem, 'This iPhone has no English model for Apple SpeechAnalyzer.');
   });
 
   test('no bridge (Android, older iOS) is unavailable', () async {
@@ -85,5 +90,14 @@ void main() {
     // Tests run on the desktop.
     expect(SpeechEngine.offered, [SpeechEngine.speechToText, SpeechEngine.speechToTextPro]);
     expect(SpeechEngine.appleSpeechAnalyzer.label, 'Apple SpeechAnalyzer');
+  });
+
+  test('the practice words go to the bridge as hints with each start', () async {
+    final input = AppleSpeechAnalyzerInput();
+    await input.init();
+    (input as SpeechHints).hints = ['saline', ' ', 'tide'];
+    await input.listen(onText: (_, __) {});
+    await input.stop();
+    expect(startArgs.single, {'words': ['saline', 'tide']});
   });
 }

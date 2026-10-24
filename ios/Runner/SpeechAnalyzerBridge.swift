@@ -8,9 +8,15 @@ import Speech
 /// a package (CLAUDE.md: no new packages).
 ///
 /// Method channel `vocab/speech_analyzer`:
-/// - `prepare` → "ready" | "permissionDenied" | "unavailable" (asks for the
-///   microphone and speech permissions, downloads the English model once);
-/// - `start` → starts listening; words arrive on the event channel;
+/// - `prepare` → "ready" | "permissionDenied" | "unavailable:<why, for the
+///   learner>" (asks for the microphone and speech permissions, downloads the
+///   English model once). Apple's newer SpeechTranscriber runs only on some
+///   iPhones; elsewhere its DictationTranscriber listens (owner, 2026-10-24);
+/// - `start` `{"words": [practice words]}` → starts listening; words arrive
+///   on the event channel. With words, Apple's dictation model listens with
+///   them as hints (`AnalysisContext.contextualStrings`) and, when its best
+///   guess misses them but an alternative has one, takes that alternative
+///   (owner, 2026-10-24: "saline" was never heard);
 /// - `stop` → finishes and answers the final text;
 /// - `cancel` → stops and drops what was heard.
 /// Event channel `vocab/speech_analyzer/events`: `{"text": all words heard
@@ -48,7 +54,7 @@ final class SpeechAnalyzerBridge: NSObject, FlutterStreamHandler {
 
   private func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
     guard #available(iOS 26.0, *) else {
-      result(call.method == "prepare" ? "unavailable" : nil)
+      result(call.method == "prepare" ? "unavailable:Apple SpeechAnalyzer needs iOS 26 or newer." : nil)
       return
     }
     Task { @MainActor in
@@ -57,7 +63,10 @@ final class SpeechAnalyzerBridge: NSObject, FlutterStreamHandler {
         result(await AnalyzerSession.prepare())
       case "start":
         if let old = self.session as? AnalyzerSession { await old.cancel() }
-        let s = AnalyzerSession { [weak self] text in self?.send(text) }
+        let words = ((call.arguments as? [String: Any])?["words"] as? [String] ?? [])
+          .map { $0.trimmingCharacters(in: .whitespaces) }
+          .filter { !$0.isEmpty }
+        let s = AnalyzerSession(hints: words) { [weak self] text in self?.send(text) }
         self.session = s
         do {
           try await s.start()
@@ -88,6 +97,8 @@ final class AnalyzerSession {
   static let locale = Locale(identifier: "en-US")
 
   private let onText: (String) -> Void
+  /// The practice words to listen for; none: the plain transcriber.
+  private let hints: [String]
   private let audio = AVAudioEngine()
   private var analyzer: SpeechAnalyzer?
   private var input: AsyncStream<AnalyzerInput>.Continuation?
@@ -95,7 +106,8 @@ final class AnalyzerSession {
   private var finalized = ""
   private var volatile = ""
 
-  init(onText: @escaping (String) -> Void) {
+  init(hints: [String], onText: @escaping (String) -> Void) {
+    self.hints = hints
     self.onText = onText
   }
 
@@ -109,6 +121,10 @@ final class AnalyzerSession {
     SpeechTranscriber(locale: locale, transcriptionOptions: [], reportingOptions: [.volatileResults], attributeOptions: [])
   }
 
+  /// Whether this iPhone runs SpeechTranscriber (Apple's newer model) in
+  /// English; otherwise DictationTranscriber listens. Set by [prepare].
+  static var transcriberUsable = false
+
   /// Permissions, the analyzer and the English model.
   static func prepare() async -> String {
     let mic = await AVAudioApplication.requestRecordPermission()
@@ -119,43 +135,111 @@ final class AnalyzerSession {
     }
     NSLog("SpeechAnalyzerBridge: speech recognition status \(speech.rawValue)")
     if speech == .denied || speech == .restricted { return "permissionDenied" }
-    guard SpeechTranscriber.isAvailable else { return "unavailable" }
-    guard await SpeechTranscriber.supportedLocale(equivalentTo: locale) != nil else { return "unavailable" }
+
+    let transcriberLocale = await SpeechTranscriber.supportedLocale(equivalentTo: locale)
+    transcriberUsable = SpeechTranscriber.isAvailable && transcriberLocale != nil
+    let dictationUsable = (await DictationTranscriber.supportedLocale(equivalentTo: locale)) != nil
+    NSLog("SpeechAnalyzerBridge: transcriber \(transcriberUsable), dictation \(dictationUsable)")
+    if !transcriberUsable && !dictationUsable {
+      return "unavailable:This iPhone has no English model for Apple SpeechAnalyzer."
+    }
     do {
-      if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber()]) {
+      var modules: [any SpeechModule] = []
+      if transcriberUsable { modules.append(transcriber()) }
+      if dictationUsable { modules.append(dictation()) }
+      if let request = try await AssetInventory.assetInstallationRequest(supporting: modules) {
         try await request.downloadAndInstall()
       }
     } catch {
-      return "unavailable"
+      NSLog("SpeechAnalyzerBridge: model download failed \(error)")
+      return "unavailable:Apple's English speech model could not be downloaded. Check the internet and try again."
     }
     return "ready"
   }
 
+  private static func dictation() -> DictationTranscriber {
+    DictationTranscriber(
+      locale: locale, contentHints: [.shortForm], transcriptionOptions: [],
+      reportingOptions: [.volatileResults, .alternativeTranscriptions], attributeOptions: [])
+  }
+
+  /// One result: its words settle ([isFinal]) or are still being worked out.
+  private func take(_ words: String, isFinal: Bool) {
+    let words = words.trimmingCharacters(in: .whitespaces)
+    if isFinal {
+      if !words.isEmpty { finalized = [finalized, words].filter { !$0.isEmpty }.joined(separator: " ") }
+      volatile = ""
+    } else {
+      volatile = words
+    }
+    onText(text)
+  }
+
+  /// Whether [text] holds one of the hints as a word or the start of one
+  /// ("salines" holds "saline").
+  private func hasHint(_ text: String) -> Bool {
+    let lower = text.lowercased()
+    return hints.contains { hint in
+      let h = hint.lowercased()
+      var from = lower.startIndex
+      while let r = lower.range(of: h, range: from..<lower.endIndex) {
+        let before = r.lowerBound == lower.startIndex || !lower[lower.index(before: r.lowerBound)].isLetter
+        if before { return true }
+        from = r.upperBound
+      }
+      return false
+    }
+  }
+
+  /// The best words of a dictation result: its text, or the first
+  /// alternative holding a practice word when the text holds none.
+  private func best(_ text: String, _ alternatives: [String]) -> String {
+    if hints.isEmpty || hasHint(text) { return text }
+    return alternatives.first(where: hasHint) ?? text
+  }
+
   func start() async throws {
-    let transcriber = Self.transcriber()
-    let analyzer = SpeechAnalyzer(modules: [transcriber])
+    let module: any SpeechModule
+    // Hints need the dictation model; so does an iPhone without the newer one.
+    if hints.isEmpty && Self.transcriberUsable {
+      let transcriber = Self.transcriber()
+      module = transcriber
+      results = Task { [weak self] in
+        do {
+          for try await r in transcriber.results {
+            self?.take(String(r.text.characters), isFinal: r.isFinal)
+          }
+        } catch {}
+      }
+    } else {
+      // Apple's dictation model is the one that listens with hints.
+      let dictation = Self.dictation()
+      module = dictation
+      if let request = try await AssetInventory.assetInstallationRequest(supporting: [dictation]) {
+        try await request.downloadAndInstall()
+      }
+      results = Task { [weak self] in
+        do {
+          for try await r in dictation.results {
+            guard let self else { return }
+            let words = self.best(String(r.text.characters), r.alternatives.map { String($0.characters) })
+            self.take(words, isFinal: r.isFinal)
+          }
+        } catch {}
+      }
+    }
+    let analyzer = SpeechAnalyzer(modules: [module])
     self.analyzer = analyzer
-    guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]) else {
+    if !hints.isEmpty {
+      let context = AnalysisContext()
+      context.contextualStrings[.general] = hints
+      try await analyzer.setContext(context)
+    }
+    guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [module]) else {
       throw NSError(domain: "SpeechAnalyzerBridge", code: 1, userInfo: [NSLocalizedDescriptionKey: "no audio format"])
     }
     let (stream, builder) = AsyncStream<AnalyzerInput>.makeStream()
     input = builder
-
-    results = Task { [weak self] in
-      do {
-        for try await r in transcriber.results {
-          let words = String(r.text.characters).trimmingCharacters(in: .whitespaces)
-          guard let self else { return }
-          if r.isFinal {
-            if !words.isEmpty { self.finalized = [self.finalized, words].filter { !$0.isEmpty }.joined(separator: " ") }
-            self.volatile = ""
-          } else {
-            self.volatile = words
-          }
-          self.onText(self.text)
-        }
-      } catch {}
-    }
 
     try await analyzer.start(inputSequence: stream)
 

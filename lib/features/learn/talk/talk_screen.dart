@@ -27,6 +27,11 @@ import 'talk_word_popup.dart';
 /// (learn-redesign AC-26, AC-28); typing keeps working.
 const talkVoiceRefusedMessage = 'Allow the microphone and speech recognition in Settings to talk';
 
+/// Said when the engine itself cannot run (owner, 2026-10-24: not a
+/// permission matter), after the engine's own reason when it gives one.
+const talkVoiceUnavailableMessage = 'Speech recognition is not available. Pick another engine with the tab on the right, or type.';
+String talkVoiceUnavailableWith(String why) => '$why Pick another engine with the tab on the right, or type.';
+
 /// The mic's hint and listening lines (owner, 2026-10-24: say how to use it).
 const talkMicHintText = 'Tap the mic to speak, tap again to send';
 const talkListeningTapText = 'Listening… tap the mic to send';
@@ -206,6 +211,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     _holding = true;
     if (_hf == _HandsFree.speaking) setState(_hfStop);
     final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
+    _giveHints(speech);
     if (_availability != SpeechAvailability.ready) {
       final found = await speech.init();
       if (!mounted) return;
@@ -384,6 +390,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     if (talk.status != TalkStatus.talking || !_autoListen(talk)) return;
     final run = ++_hfRun;
     final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
+    _giveHints(speech);
     if (_availability != SpeechAvailability.ready) {
       final found = await speech.init();
       if (!mounted) return;
@@ -472,6 +479,14 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     }
     await ref.read(handsFreeProvider.notifier).set(on);
     if (on && mounted) await _hfListen();
+  }
+
+  /// Tells a recognizer that can take them the talk's practice words, so
+  /// rare ones ("saline") are heard (owner, 2026-10-24).
+  void _giveHints(SpeechInput speech) {
+    if (speech is SpeechHints) {
+      (speech as SpeechHints).hints = [for (final w in ref.read(talkProvider(widget.collectionId)).words) w.word.word];
+    }
   }
 
   /// Whether the permission dialog was shown on this visit.
@@ -637,6 +652,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final busy = s.status == TalkStatus.starting || s.status == TalkStatus.waiting;
     final inProgress = s.messages.isNotEmpty && s.status != TalkStatus.over;
     final micShown = _availability == null || _availability == SpeechAvailability.ready;
+    final speechProblem = _speech is SpeechProblem ? (_speech as SpeechProblem).problem : null;
+    final refusedText = _availability == SpeechAvailability.unavailable
+        ? (speechProblem == null ? talkVoiceUnavailableMessage : talkVoiceUnavailableWith(speechProblem))
+        : talkVoiceRefusedMessage;
     final voiceRefused =
         _availability == SpeechAvailability.permissionDenied || _availability == SpeechAvailability.unavailable;
     final autoVoice = ref.watch(handsFreeProvider);
@@ -653,7 +672,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
         _HandsFree.speaking => talkSpeakingText,
         _HandsFree.listening => talkListeningPauseText(pauseSeconds),
         _HandsFree.idle => voiceRefused
-            ? talkVoiceRefusedMessage
+            ? refusedText
             : _hfNothingHeard
                 ? talkNothingHeardText
                 : micShown && s.status == TalkStatus.talking
@@ -665,7 +684,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
           ? (_listening
               ? (_tapMode ? talkListeningTapText : talkListeningHoldText)
               : voiceRefused
-                  ? talkVoiceRefusedMessage
+                  ? refusedText
                   : talkMicHintText)
           : null;
     }
@@ -754,7 +773,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                                     text: part.text,
                                     style: part.word == null
                                         ? null
-                                        : TextStyle(
+                                        : const TextStyle(
                                             fontWeight: FontWeight.w800,
                                             decoration: TextDecoration.underline,
                                             decorationStyle: TextDecorationStyle.dotted,
