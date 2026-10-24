@@ -1,4 +1,4 @@
-package com.unique.androidvocabularyapp2
+package com.unique.androidvocabularyapp
 
 import android.graphics.Rect
 import android.os.Build
