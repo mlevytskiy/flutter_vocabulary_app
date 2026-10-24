@@ -45,3 +45,13 @@ export const LEARN_SPEECH_DAY_LIMIT = 400;
 
 /** One unit of today's speech allowance; false when the day is used up (AC-31). */
 export const takeLearnSpeech = (env: Pick<Env, "DB">, now = new Date()) => takeUnit(env, "all_learn_speech", LEARN_SPEECH_DAY_LIMIT, now);
+
+/**
+ * The talk picture allowance (talk-mission, owner 2026-10-24): one unit per POST /learn/talk/picture
+ * call, app-wide per UTC day, as many as the day's talks; past it a talk opens without its picture.
+ */
+export const LEARN_TALK_PICTURE_DAY_LIMIT = 20;
+
+/** One unit of today's talk picture allowance; false when the day is used up. */
+export const takeLearnTalkPicture = (env: Pick<Env, "DB">, now = new Date()) =>
+  takeUnit(env, "all_learn_talk_pictures", LEARN_TALK_PICTURE_DAY_LIMIT, now);

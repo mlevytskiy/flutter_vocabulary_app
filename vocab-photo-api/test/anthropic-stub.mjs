@@ -36,8 +36,10 @@
 //   "STUB:notask" -> usesTask false
 //   "STUB:error" / "STUB:malformed" / "STUB:slow" as above
 // A talk turn (learn-redesign T16; system names an "English conversation partner", user = JSON {scene, words, target,
-// history}) answers a short line and a question. Markers in the learner's last message (or the scene for a start):
+// history}) answers a short line and a question. Markers in the learner's last message:
 //   "STUB:empty" -> an empty reply; "STUB:error" -> 500; "STUB:slow" -> the reply after 2 s
+// A talk start (user = JSON {topic, words, kind}, talk-mission) answers a mission plan on the first three words in
+// a fenced JSON block; "STUB:malformed" in the topic -> prose, "STUB:error" -> 500, "STUB:slow" -> after 2 s.
 // A naming request (system names a "vocabulary collection", user = JSON {words}, collection-naming) answers
 // {"name": "Kitchen Tools"}. Markers, as the first word: "STUB:error" -> 500, "STUB:malformed" -> prose,
 // "STUB:long" -> a name of 80 characters in quotes with a full stop, "STUB:empty" -> {"name": ""}.
@@ -179,7 +181,19 @@ function learnCheckAnswer(model, content) {
 }
 
 function learnTalkAnswer(model, content) {
-  const { scene = "", history = [] } = JSON.parse(content);
+  const { scene = "", topic, words = [], history = [] } = JSON.parse(content);
+  if (topic !== undefined) {
+    // A mission plan (talk-mission): the first three words, or a reply that breaks the shape.
+    if (topic.includes("STUB:error")) return answer(model, "STUB:error");
+    if (topic.includes("STUB:malformed")) return { status: 200, body: message(model, "Let's go to the beach!") };
+    const plan = {
+      title: "The Lost Boat", role: "You are a tourist at a small harbour.", goal: "Find out who took your boat.",
+      brief: "The character is a grumpy harbour keeper who saw everything but wants a coffee first.",
+      words: words.slice(0, 3).map((w) => w.word), opening: "Morning. You look worried. What brings you here so early?",
+      picture: "A grumpy harbour keeper on a misty pier at dawn.",
+    };
+    return { status: 200, body: message(model, "```json\n" + JSON.stringify(plan) + "\n```") };
+  }
   const last = history.length ? history[history.length - 1].text : scene;
   if (last.includes("STUB:error")) return answer(model, "STUB:error");
   return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };

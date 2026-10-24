@@ -65,6 +65,8 @@ export interface Env {
   LEARN_DATA?: KVNamespace;
   /** Overrides the 25 s (data) and 12 s (check) limits on a learn AI call, in ms; unset in production. The tests shorten it. */
   LEARN_AI_TIMEOUT_MS?: string;
+  /** Overrides the 40 s limit on a talk mission picture, in ms; unset in production (talk-mission). */
+  LEARN_PICTURE_TIMEOUT_MS?: string;
   /** The story run Workflow, one instance per run, named by the app's run id (mnemonic-story, ADR-0002). */
   STORY_RUN: Workflow<StoryRunParams>;
 }

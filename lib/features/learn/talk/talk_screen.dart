@@ -113,11 +113,20 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   late final _ring = AnimationController(vsync: this);
   int? _spokenIndex;
 
+  /// The voice of the line being spoken is still being fetched (no progress
+  /// yet), and whether its loading bar shows: only after [_loaderDelay], so
+  /// a quick voice never flashes it (talk-mission, owner 2026-10-24).
+  bool _voiceLoading = false;
+  bool _loaderShown = false;
+  Timer? _loaderTimer;
+  static const _loaderDelay = Duration(milliseconds: 250);
+
   /// The word popup (the Words screen's dots popup, talk-screen-b): one menu,
   /// moved to the tapped word before it opens.
   final _popup = MyCustomPopupMenuController();
   final _stackKey = GlobalKey();
   Rect _anchor = Rect.zero;
+  Rect _anchorGlobal = Rect.zero;
   WordPair? _popupWord;
 
   @override
@@ -136,6 +145,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   @override
   void dispose() {
     _pressTimer?.cancel();
+    _loaderTimer?.cancel();
     _hfStop();
     if (_listening) _speech?.cancel();
     _karaoke.dispose();
@@ -165,6 +175,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// The mic went down: init on the first hold, then listen while held.
   Future<void> _holdDown() async {
     _holding = true;
+    if (_hf == _HandsFree.speaking) setState(_hfStop);
     final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
     if (_availability != SpeechAvailability.ready) {
       final found = await speech.init();
@@ -220,24 +231,26 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     _send();
   }
 
-  /// Reads a new AI reply aloud once the mic was used (AC-25).
-  void _speak(String text) {
-    ref
-        .read(pronunciationServiceProvider)
-        .speak(text, accent: Accent.us)
-        .catchError((Object _) {});
-  }
-
   /// A new AI line (AC-25, AC-29): hands-free speaks it and then listens;
   /// otherwise it is read aloud once the mic was used.
   Future<void> _onAiLine(String text) async {
     await ref.read(handsFreeProvider.notifier).loaded;
     if (!mounted) return;
+    final index = ref.read(talkProvider(widget.collectionId)).messages.length - 1;
     if (!ref.read(handsFreeProvider)) {
-      if (_voiceUsed) _speak(text);
+      if (_voiceUsed) await _speakLine(index, thenListen: false);
       return;
     }
     if (_hfPaused) return;
+    await _speakLine(index, thenListen: true);
+  }
+
+  /// Speaks AI line [index] with the karaoke and, while its voice is fetched,
+  /// the loading bar; then hands-free listens when [thenListen]. Play and
+  /// Replay call it too (talk-mission).
+  Future<void> _speakLine(int index, {required bool thenListen}) async {
+    final messages = ref.read(talkProvider(widget.collectionId)).messages;
+    if (index < 0 || index >= messages.length || messages[index].role != TalkRole.ai) return;
     await ref.read(ttsVoiceProvider.notifier).loaded;
     if (!mounted) return;
     _hfStop();
@@ -246,22 +259,64 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     _tts = tts;
     setState(() {
       _hf = _HandsFree.speaking;
-      _spokenIndex = ref.read(talkProvider(widget.collectionId)).messages.length - 1;
+      _spokenIndex = index;
+      _voiceLoading = true;
+      _loaderShown = false;
+    });
+    _loaderTimer?.cancel();
+    _loaderTimer = Timer(_loaderDelay, () {
+      if (mounted && run == _hfRun && _voiceLoading) setState(() => _loaderShown = true);
     });
     _karaoke.value = 0;
     try {
       // Never listening while speaking: no echo. The voice's progress fills
-      // the karaoke.
-      await tts.speakAndWait(text, accent: Accent.us, voice: ref.read(ttsVoiceProvider), onProgress: (p) {
-        if (mounted && run == _hfRun) _karaoke.value = p.clamp(0, 1);
+      // the karaoke; its first report ends the loading.
+      await tts.speakAndWait(messages[index].text, accent: Accent.us, voice: ref.read(ttsVoiceProvider),
+          onProgress: (p) {
+        if (!mounted || run != _hfRun) return;
+        if (_voiceLoading) _endLoading();
+        _karaoke.value = p.clamp(0, 1);
       });
     } catch (_) {}
     if (!mounted || run != _hfRun) return;
+    _loaderTimer?.cancel();
     setState(() {
       _hf = _HandsFree.idle;
       _spokenIndex = null;
+      _voiceLoading = false;
+      _loaderShown = false;
     });
-    await _hfListen();
+    if (thenListen) await _hfListen();
+  }
+
+  /// The voice has started: the loading bar goes.
+  void _endLoading() {
+    _loaderTimer?.cancel();
+    setState(() {
+      _voiceLoading = false;
+      _loaderShown = false;
+    });
+  }
+
+  /// Play or Replay under the latest AI line: speaks it from the start; in
+  /// hands-free it listens afterwards unless the loop is paused.
+  void _replay(int index) {
+    if (_listening) return;
+    _voiceUsed = true;
+    final handsFree = ref.read(handsFreeProvider);
+    if (handsFree) {
+      _hfPaused = false;
+      _hfNothingHeard = false;
+    }
+    _speakLine(index, thenListen: handsFree);
+  }
+
+  /// Stop under the line being spoken: the voice stops; in hands-free the
+  /// learner's turn starts as if it had ended.
+  void _stopVoice() {
+    final listen = ref.read(handsFreeProvider) && !_hfPaused;
+    setState(_hfStop);
+    if (listen) _hfListen();
   }
 
   /// Listens until the learner's pause, then sends what was heard; with
@@ -321,6 +376,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     if (_hf == _HandsFree.speaking) _tts?.stop().catchError((Object _) {});
     _hf = _HandsFree.idle;
     _spokenIndex = null;
+    _loaderTimer?.cancel();
+    _voiceLoading = false;
+    _loaderShown = false;
     _ring.reset();
   }
 
@@ -367,6 +425,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     setState(() {
       _popupWord = word;
       _anchor = box.globalToLocal(global.topLeft) & global.size;
+      _anchorGlobal = global;
     });
     // Once the anchor has moved there.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -464,7 +523,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       body = _Message(
           text: s.errorText ?? talkDayLimitMessage, button: 'Back', onPressed: () => Navigator.of(context).pop());
     } else if (s.status == TalkStatus.starting && s.messages.isEmpty) {
-      body = const _Message(text: 'Setting the scene…', busy: true);
+      body = const _Message(text: 'Planning your mission…', busy: true);
     } else if (s.status == TalkStatus.error && s.messages.isEmpty) {
       body = _Message(text: s.errorText ?? talkFailedMessage, button: 'Retry', onPressed: notifier.retry);
     } else {
@@ -472,6 +531,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       final words = [for (final w in s.words) w.word];
       final usedRows = {for (final w in s.words) if (w.used) w.word.rowId};
       final micActive = micOn && _availability == SpeechAvailability.ready;
+      final mission = s.mission;
+      final lastAi = s.messages.lastIndexWhere((m) => m.role == TalkRole.ai);
       body = Column(
         children: [
           TalkTutorHeader(collectionName: s.name, onEnd: s.messages.isEmpty ? null : notifier.finish),
@@ -483,14 +544,34 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                 controller: _scroll,
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
                 children: [
-                  for (final (i, m) in s.messages.indexed)
+                  if (mission != null)
+                    TalkMissionCard(
+                      title: mission.title,
+                      role: mission.role,
+                      goal: mission.goal,
+                      picture: s.picture,
+                      pictureLoading: s.pictureLoading,
+                    ),
+                  for (final (i, m) in s.messages.indexed) ...[
                     i == _spokenIndex
                         ? AnimatedBuilder(
                             animation: _karaoke,
                             builder: (_, __) => _bubble(i, m, maxWidth, words, usedRows,
-                                spokenEnd: karaokeSplit(m.text, _karaoke.value)),
+                                spokenEnd: karaokeSplit(m.text, _karaoke.value), voiceLoading: _loaderShown),
                           )
                         : _bubble(i, m, maxWidth, words, usedRows),
+                    if (i == lastAi)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TalkVoiceControls(
+                          speaking: _spokenIndex == i,
+                          loading: _voiceLoading,
+                          onPlay: _listening ? null : () => _replay(i),
+                          onStop: _stopVoice,
+                          onReplay: _listening ? null : () => _replay(i),
+                        ),
+                      ),
+                  ],
                   if (s.status == TalkStatus.waiting)
                     TalkBubble(index: -1, text: '…', mine: false, maxWidth: maxWidth),
                   ValueListenableBuilder<TextEditingValue>(
@@ -556,10 +637,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                         alignment: Alignment.centerLeft,
                         child: OutlinedButton(
                           onPressed: s.hintAvailable && s.status == TalkStatus.talking ? notifier.showHint : null,
+                          // Narrower padding: the big mic leaves less room beside it.
+                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
                           child: const Row(mainAxisSize: MainAxisSize.min, children: [
                             Icon(Icons.lightbulb_outline, size: 18),
                             SizedBox(width: 6),
-                            Text('Hint'),
+                            Flexible(child: Text('Hint', overflow: TextOverflow.fade, softWrap: false)),
                           ]),
                         ),
                       ),
@@ -583,16 +666,17 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                             ),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              width: 52,
-                              height: 52,
+                              width: talkMicSize,
+                              height: talkMicSize,
                               decoration: BoxDecoration(
                                 color: micOn
                                     ? scheme.primary
                                     : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
-                                borderRadius: BorderRadius.circular(talkRound(decor, 26)),
+                                borderRadius: BorderRadius.circular(talkRound(decor, talkMicSize / 2)),
                               ),
                               child: Icon(
                                 micOn ? Icons.mic : Icons.mic_none,
+                                size: 46,
                                 color: micOn
                                     ? scheme.onPrimary
                                     : scheme.onPrimaryContainer.withValues(alpha: busy ? 0.38 : 1),
@@ -698,14 +782,17 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                     verticalMargin: 6,
                     menuBuilder: () => word == null
                         ? const SizedBox.shrink()
-                        : dotsMenuPanel(
+                        : _fitPopup(
                             context,
-                            TalkWordPopup(
-                              word: _popupWord ?? word,
-                              mode: ref.read(wordDetailModeProvider),
-                              onLoadTranslations: () => _loadTranslations(_popupWord ?? word),
-                              onLoadSenses: () => _loadSenses(_popupWord ?? word),
-                              onClose: _popup.hideMenu,
+                            dotsMenuPanel(
+                              context,
+                              TalkWordPopup(
+                                word: _popupWord ?? word,
+                                mode: ref.read(wordDetailModeProvider),
+                                onLoadTranslations: () => _loadTranslations(_popupWord ?? word),
+                                onLoadSenses: () => _loadSenses(_popupWord ?? word),
+                                onClose: _popup.hideMenu,
+                              ),
                             ),
                           ),
                     child: const SizedBox.expand(),
@@ -719,8 +806,30 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     );
   }
 
+  /// The word popup kept on screen (talk-mission, owner 2026-10-24): a
+  /// margin from the screen's sides, and no taller than the room on the side
+  /// it opens to — above the word in the lower half, below it in the upper
+  /// half, as `popup_menu_2` places it — so it never runs under the bars or
+  /// off the screen.
+  Widget _fitPopup(BuildContext context, Widget panel) {
+    final media = MediaQuery.of(context);
+    final screen = media.size;
+    const gap = 6 + 10 + 8; // verticalMargin + arrow + breathing room
+    final above = _anchorGlobal.bottom > screen.height / 2;
+    final room = above
+        ? _anchorGlobal.top - media.padding.top - gap
+        : screen.height - _anchorGlobal.bottom - media.padding.bottom - gap;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: room.clamp(120, 420)),
+        child: panel,
+      ),
+    );
+  }
+
   Widget _bubble(int i, TalkMessage m, double maxWidth, List<WordPair> words, Set<String> usedRows,
-          {int? spokenEnd}) =>
+          {int? spokenEnd, bool voiceLoading = false}) =>
       TalkBubble(
         index: i,
         text: m.text,
@@ -729,7 +838,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
         words: words,
         usedRows: usedRows,
         spokenEnd: spokenEnd,
-        onWord: (w, at) => _openWord(w, Rect.fromCenter(center: at, width: 24, height: 22)),
+        voiceLoading: voiceLoading,
+        onWord: _openWord,
       );
 }
 

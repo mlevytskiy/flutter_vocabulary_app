@@ -23,6 +23,7 @@ import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
 import 'services/openai_voice_service.dart';
 import 'services/pronunciation_service.dart';
+import 'services/talk_picture_service.dart';
 import 'services/voice_player.dart';
 import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
@@ -132,6 +133,10 @@ LearnApiService learnApiService(Ref ref) => LearnApiService();
 /// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
 @Riverpod(keepAlive: true)
 TalkApiService talkApiService(Ref ref) => TalkApiService();
+
+/// The Worker's opening picture of a Talk mission (talk-mission).
+@Riverpod(keepAlive: true)
+TalkPictureService talkPictureService(Ref ref) => TalkPictureService();
 
 /// Where Step 3 exams record each word's known / repeat result (learn-kit
 /// S-23), on the session in the session store.

@@ -8,7 +8,9 @@ import { test } from "node:test";
 import { sqliteD1 } from "./sqlite-d1.mjs";
 import { appHeaders, baseUrl, d1 } from "./helpers.mjs";
 import { LEARN_TALK_DAY_LIMIT, takeLearnTalk } from "../src/learn/allowance.ts";
-import { nextTarget, parseTalkRequest, talkPrompt } from "../src/learn/talk.ts";
+import { MISSION_KINDS, missionPrompt, nextTarget, parseMission, parseTalkRequest, talkPrompt } from "../src/learn/talk.ts";
+import { parseTalkPictureRequest, TALK_PICTURE_MODEL } from "../src/learn/talk-picture.ts";
+import { LEARN_TALK_PICTURE_DAY_LIMIT, takeLearnTalkPicture } from "../src/learn/allowance.ts";
 
 const stubUrl = process.env.VOCAB_API_AI_STUB_URL;
 const stubCalls = async () => (await fetch(new URL("__calls", stubUrl))).json();
@@ -72,12 +74,13 @@ test("ADR-0007: the target stays until the learner's last message uses it, then 
   assert.equal(nextTarget(reply(turns(2, "The shore."), { words: [WORDS[0]] })), "shore", "one word stays itself");
 });
 
-test("ADR-0007: the prompt carries the scene, the words, the target and the history as data and steers without the target", () => {
+test("talk-mission: a reply's prompt plays the mission's character in turns of at most 18 words, steering without the target", () => {
   const { system, user } = talkPrompt(reply());
   assert.match(system, /English conversation partner/);
   assert.match(system, /Ukrainian/);
   assert.match(system, /without saying the target word/i);
-  assert.match(system, /1.?3 short sentences/);
+  assert.match(system, /at most 18 words/);
+  assert.match(system, /no storytelling/i);
   assert.match(system, /never claim which words the learner used/i);
   assert.match(system, /plain text only/i);
   const data = JSON.parse(user);
@@ -85,6 +88,53 @@ test("ADR-0007: the prompt carries the scene, the words, the target and the hist
   assert.deepEqual(data.words, WORDS);
   assert.equal(data.target, "shore");
   assert.deepEqual(data.history, turns(2));
+});
+
+test("talk-mission: a start's prompt plans a fresh mission of the given kind on 4-6 of the words, as JSON", () => {
+  const { system, user } = missionPrompt(start(), "a rescue");
+  assert.match(system, /pick 4-6 of the words/i);
+  assert.match(system, /not a story/i);
+  assert.match(system, /hidden facts/);
+  assert.match(system, /one JSON object only/);
+  assert.deepEqual(JSON.parse(user), { topic: SCENE, words: WORDS, kind: "a rescue" });
+  assert.ok(MISSION_KINDS.length >= 6);
+});
+
+const PLAN = { title: "Fog Rescue", role: "You are a lifeguard.", goal: "Find the lost swimmer.", brief: "A nervous fisherman saw him.", words: ["Tide", "fog", "anchor"], opening: "Help! Did you see anyone out there?", picture: "A foggy beach." };
+
+test("talk-mission: parseMission keeps the learner's spelling of the known words and refuses a broken plan", () => {
+  const got = parseMission("```json\n" + JSON.stringify(PLAN) + "\n```", WORDS);
+  assert.equal(got.opening, PLAN.opening);
+  assert.deepEqual(got.mission.words, ["tide", "fog"], "unknown words dropped, the learner's spelling kept");
+  assert.equal(got.mission.brief, PLAN.brief);
+  assert.equal(parseMission("Hello there!", WORDS), null, "prose");
+  assert.equal(parseMission(JSON.stringify({ ...PLAN, goal: "" }), WORDS), null, "a missing field");
+  assert.equal(parseMission(JSON.stringify({ ...PLAN, words: ["anchor"] }), WORDS), null, "none of the words");
+  const many = Array.from({ length: 9 }, (_, i) => ({ word: `w${i}`, translation: "t" }));
+  assert.equal(parseMission(JSON.stringify({ ...PLAN, words: many.map((w) => w.word) }), many).mission.words.length, 6, "at most 6");
+});
+
+test("talk-mission: a picture prompt is 1 to 600 characters", () => {
+  assert.deepEqual(parseTalkPictureRequest({ prompt: " A pier. " }), { prompt: "A pier." });
+  for (const body of [{}, { prompt: "" }, { prompt: "x".repeat(601) }, [], null]) assert.ok(parseTalkPictureRequest(body).error);
+  assert.equal(TALK_PICTURE_MODEL, "grok-imagine-image");
+});
+
+test("talk-mission: 20 talk pictures a UTC day app-wide", async () => {
+  assert.equal(LEARN_TALK_PICTURE_DAY_LIMIT, 20);
+  const db = sqliteD1();
+  const day = new Date("2026-10-23T12:00:00.000Z");
+  for (let i = 0; i < 20; i += 1) assert.equal(await takeLearnTalkPicture({ DB: db }, day), true);
+  assert.equal(await takeLearnTalkPicture({ DB: db }, day), false);
+});
+
+test("0010 reverts cleanly with its down file and forgets itself", () => {
+  const db = sqliteD1();
+  db.raw.exec("CREATE TABLE d1_migrations (name TEXT)");
+  db.raw.exec("INSERT INTO d1_migrations VALUES ('0009_speech_allowance.sql'), ('0010_talk_picture_allowance.sql')");
+  db.raw.exec(readFileSync(new URL("../migrations/down/0010_talk_picture_allowance.sql", import.meta.url), "utf8"));
+  assert.equal(db.raw.prepare("SELECT 1 FROM sqlite_master WHERE name = 'all_learn_talk_pictures'").get(), undefined);
+  assert.deepEqual(db.raw.prepare("SELECT name FROM d1_migrations").all().map((r) => r.name), ["0009_speech_allowance.sql"]);
 });
 
 // ---- the counter ----
@@ -128,24 +178,54 @@ test("AC-23: without the app secret nothing is spent", async () => {
   assert.deepEqual({ calls: (await stubCalls()).count, used: dayUsed() }, before);
 });
 
-test("ADR-0007: a start takes one unit, asks the cheap model once and returns the opening and the target", async () => {
+test("talk-mission: a start takes one unit, asks the cheap model once and returns the opening, the mission and its first word as target", async () => {
   const keep = dayUsed();
   const before = (await stubCalls()).count;
   const res = await post(start());
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.equal(typeof body.reply, "string");
-  assert.ok(body.reply.length > 0);
+  assert.equal(body.reply, "Morning. You look worried. What brings you here so early?");
   assert.equal(body.target, "shore");
+  assert.deepEqual(body.mission.words, ["shore", "tide", "fog"]);
+  assert.equal(body.mission.title, "The Lost Boat");
+  assert.match(body.mission.brief, /harbour keeper/);
+  assert.equal(typeof body.mission.picture, "string");
   assert.equal(dayUsed(), keep + 1);
   const calls = await stubCalls();
   assert.equal(calls.count, before + 1);
   assert.equal(calls.last.model, "claude-haiku-4-5-20251001");
   assert.match(calls.last.system, /English conversation partner/);
   const data = JSON.parse(calls.last.messages[0].content);
-  assert.equal(data.scene, SCENE);
+  assert.equal(data.topic, SCENE);
   assert.deepEqual(data.words, WORDS);
-  assert.equal(data.target, "shore");
+  assert.ok(MISSION_KINDS.includes(data.kind));
+});
+
+test("talk-mission: a start whose plan is not a mission gives 502 talk_failed", async () => {
+  const res = await post(start({ scene: "STUB:malformed" }));
+  assert.equal(res.status, 502);
+  assert.equal((await res.json()).code, "talk_failed");
+});
+
+const xaiUrl = process.env.VOCAB_API_XAI_STUB_URL;
+const pictureUsed = () => d1(`SELECT used FROM all_learn_talk_pictures WHERE utc_day = '${today()}'`)[0]?.used ?? 0;
+const postPicture = (body, headers = appHeaders({ "content-type": "application/json" })) =>
+  fetch(`${baseUrl}/learn/talk/picture`, { method: "POST", headers, body: JSON.stringify(body) });
+
+test("talk-mission: the picture route draws one picture with the cheap model and takes one unit", async () => {
+  const keep = pictureUsed();
+  const before = (await (await fetch(new URL("__calls", xaiUrl))).json()).count;
+  const res = await postPicture({ prompt: "A grumpy harbour keeper on a misty pier." });
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type"), /^image\//);
+  assert.ok((await res.arrayBuffer()).byteLength > 0);
+  assert.equal(pictureUsed(), keep + 1);
+  const xai = await (await fetch(new URL("__calls", xaiUrl))).json();
+  assert.equal(xai.count, before + 1);
+  assert.equal(xai.last.model, "grok-imagine-image");
+  assert.match(xai.last.prompt, /no text/);
+  assert.equal((await postPicture({ prompt: "" })).status, 400);
+  assert.equal((await postPicture({ prompt: "A pier." }, { "content-type": "application/json" })).status, 401);
 });
 
 test("AC-24: replies never take a unit and the next target follows the learner's last message", async () => {

@@ -33,13 +33,55 @@ class TalkLine {
   Map<String, String> toJson() => {'role': role, 'text': text};
 }
 
+/// The mission a talk plays out (talk-mission, owner 2026-10-24), planned by
+/// the Worker at the start. [title], [role] and [goal] are shown; [brief]
+/// (the character and the hidden facts) never is: it goes back as the scene
+/// of every reply. [words] are the 4–6 talk words it is built on and
+/// [picture] is the opening picture's prompt.
+class TalkMission {
+  const TalkMission({
+    required this.title,
+    required this.role,
+    required this.goal,
+    required this.brief,
+    required this.words,
+    required this.picture,
+  });
+
+  final String title;
+  final String role;
+  final String goal;
+  final String brief;
+  final List<String> words;
+  final String picture;
+
+  /// The mission in [json], or null when a field is missing.
+  static TalkMission? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final (title, role, goal, brief, words, picture) =
+        (json['title'], json['role'], json['goal'], json['brief'], json['words'], json['picture']);
+    if (title is! String || role is! String || goal is! String || brief is! String || picture is! String) return null;
+    if (words is! List || words.isEmpty) return null;
+    return TalkMission(
+      title: title,
+      role: role,
+      goal: goal,
+      brief: brief,
+      words: [for (final w in words) if (w is String) w],
+      picture: picture,
+    );
+  }
+}
+
 /// The Worker's answer to a turn: the AI's [reply] and the word it now steers
-/// toward ([target]; it moves on once the learner's last line used it).
+/// toward ([target]; it moves on once the learner's last line used it). A
+/// start also brings the [mission].
 class TalkTurn {
-  const TalkTurn({required this.reply, required this.target});
+  const TalkTurn({required this.reply, required this.target, this.mission});
 
   final String reply;
   final String target;
+  final TalkMission? mission;
 }
 
 /// The app's side of the Worker's talk route `POST /learn/talk` (ADR-0007),
@@ -81,7 +123,9 @@ class TalkApiService {
     }
     if (response.statusCode == 200 && json != null) {
       final (reply, target) = (json['reply'], json['target']);
-      if (reply is String && target is String) return TalkTurn(reply: reply, target: target);
+      if (reply is String && target is String) {
+        return TalkTurn(reply: reply, target: target, mission: TalkMission.fromJson(json['mission']));
+      }
       throw TalkApiException(TalkApiError.failed, 'unexpected answer');
     }
     final code = json?['code'];
@@ -96,6 +140,7 @@ class TalkApiService {
 
   /// Opens a talk: takes one of the day's talks on the Worker (20 a day
   /// app-wide), so this is the only call that can end in [TalkApiError.dayLimit].
+  /// [scene] is only the topic the Worker plans the mission from.
   Future<TalkTurn> start({required String scene, required List<TalkWord> words, required String target}) => _post({
         'kind': 'start',
         'scene': scene,

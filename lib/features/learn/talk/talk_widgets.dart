@@ -1,8 +1,10 @@
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' show PathMetric;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 
 import '../../../core/models/word_pair.dart';
 import '../../../core/theme/app_theme.dart';
@@ -19,6 +21,14 @@ const talkStripKey = ValueKey('talk-strip');
 
 /// The chat log's list.
 const talkLogKey = ValueKey('talk-log');
+
+/// The voice loading bar on the line about to be spoken, the player's
+/// buttons and the mission card (talk-mission).
+const talkVoiceLoadingKey = ValueKey('talk-voice-loading');
+const talkPlayKey = ValueKey('talk-play');
+const talkReplayKey = ValueKey('talk-replay');
+const talkMissionKey = ValueKey('talk-mission');
+const talkMissionPictureKey = ValueKey('talk-mission-picture');
 
 /// The bubble of message [index].
 ValueKey<String> talkBubbleKey(int index) => ValueKey('talk-bubble-$index');
@@ -42,9 +52,8 @@ class TalkTutorHeader extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final decor = AppDecor.of(context);
-    final subtitle = collectionName.trim().isEmpty
-        ? 'Your English partner'
-        : 'Your English partner · ${collectionName.trim()}';
+    final subtitle =
+        collectionName.trim().isEmpty ? 'Your English partner' : 'Your English partner · ${collectionName.trim()}';
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 6, 8, 10),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: scheme.outlineVariant))),
@@ -75,8 +84,7 @@ class TalkTutorHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Emma',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, height: 1.2)),
+                Text('Emma', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800, height: 1.2)),
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -109,6 +117,7 @@ class TalkBubble extends StatefulWidget {
     this.words = const [],
     this.usedRows = const {},
     this.spokenEnd,
+    this.voiceLoading = false,
     this.onWord,
   });
 
@@ -119,7 +128,15 @@ class TalkBubble extends StatefulWidget {
   final List<WordPair> words;
   final Set<String> usedRows;
   final int? spokenEnd;
-  final void Function(WordPair word, Offset globalPosition)? onWord;
+
+  /// Whether this line's voice is being fetched: a thin running bar along the
+  /// bubble's top edge, the text left as it is (talk-mission, owner
+  /// 2026-10-24).
+  final bool voiceLoading;
+
+  /// A tap on a practice word, with the tapped word's place on screen, so
+  /// the popup points at the word itself.
+  final void Function(WordPair word, Rect globalRect)? onWord;
 
   @override
   State<TalkBubble> createState() => _TalkBubbleState();
@@ -129,15 +146,41 @@ class _TalkBubbleState extends State<TalkBubble> {
   /// One recognizer per practice word, made on first use, freed with the
   /// bubble.
   final _taps = <String, TapGestureRecognizer>{};
+  final _textKey = GlobalKey();
+
+  /// Where each practice word sits in the text, from the last build.
+  var _ranges = <(int, int, String)>[];
 
   TapGestureRecognizer _tapFor(WordPair w) => _taps.putIfAbsent(
         w.rowId,
         () => TapGestureRecognizer()
           ..onTapUp = (d) {
             final word = widget.words.where((x) => x.rowId == w.rowId).firstOrNull;
-            if (word != null) widget.onWord?.call(word, d.globalPosition);
+            if (word != null) widget.onWord?.call(word, _wordRect(w.rowId, d.globalPosition));
           },
       );
+
+  /// The tapped word's box on screen: of the word's places in the text, the
+  /// one under (or nearest) the tap; the tap's spot when the text is not
+  /// laid out.
+  Rect _wordRect(String rowId, Offset tap) {
+    final fallback = Rect.fromCenter(center: tap, width: 24, height: 22);
+    final paragraph = _textKey.currentContext?.findRenderObject();
+    if (paragraph is! RenderParagraph || !paragraph.attached) return fallback;
+    final local = paragraph.globalToLocal(tap);
+    Rect? best;
+    var bestDistance = double.infinity;
+    for (final (start, end, id) in _ranges) {
+      if (id != rowId) continue;
+      for (final box in paragraph.getBoxesForSelection(TextSelection(baseOffset: start, extentOffset: end))) {
+        final r = box.toRect();
+        final distance = r.inflate(4).contains(local) ? 0.0 : (r.center - local).distance;
+        if (distance < bestDistance) (best, bestDistance) = (r, distance);
+      }
+    }
+    if (best == null) return fallback;
+    return paragraph.localToGlobal(best.topLeft) & best.size;
+  }
 
   @override
   void dispose() {
@@ -178,34 +221,233 @@ class _TalkBubbleState extends State<TalkBubble> {
 
     final r = talkRound(decor, 18);
     final small = talkRound(decor, 6);
+    final spans = talkSpans(widget.text, widget.words, spokenEnd: widget.spokenEnd);
+    final ranges = <(int, int, String)>[];
+    var at = 0;
+    for (final s in spans) {
+      if (s.word != null) ranges.add((at, at + s.text.length, s.word!.rowId));
+      at += s.text.length;
+    }
+    _ranges = ranges;
+    final shape = BorderRadius.only(
+      topLeft: Radius.circular(r),
+      topRight: Radius.circular(r),
+      bottomLeft: Radius.circular(mine ? r : small),
+      bottomRight: Radius.circular(mine ? small : r),
+    );
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         key: talkBubbleKey(widget.index),
         margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         constraints: BoxConstraints(maxWidth: widget.maxWidth),
         decoration: BoxDecoration(
           color: mine ? scheme.primary : scheme.surfaceContainerHighest,
           border: speaking ? Border.all(color: scheme.primary.withValues(alpha: 0.55), width: 1.5) : null,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(r),
-            topRight: Radius.circular(r),
-            bottomLeft: Radius.circular(mine ? r : small),
-            bottomRight: Radius.circular(mine ? small : r),
-          ),
+          borderRadius: shape,
         ),
-        child: Text.rich(
-          TextSpan(children: [
-            for (final s in talkSpans(widget.text, widget.words, spokenEnd: widget.spokenEnd))
-              TextSpan(
-                text: s.text,
-                style: styleOf(s),
-                recognizer: s.word != null && widget.onWord != null ? _tapFor(s.word!) : null,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Text.rich(
+                key: _textKey,
+                TextSpan(children: [
+                  for (final s in spans)
+                    TextSpan(
+                      text: s.text,
+                      style: styleOf(s),
+                      recognizer: s.word != null && widget.onWord != null ? _tapFor(s.word!) : null,
+                    ),
+                ]),
+                style: base,
               ),
-          ]),
-          style: base,
+            ),
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(r), topRight: Radius.circular(r)),
+                child: AnimatedOpacity(
+                  opacity: widget.voiceLoading ? 1 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: widget.voiceLoading
+                      ? LinearProgressIndicator(
+                          key: talkVoiceLoadingKey,
+                          minHeight: 2,
+                          backgroundColor: Colors.transparent,
+                          color: scheme.primary.withValues(alpha: 0.7),
+                          value: MediaQuery.of(context).disableAnimations ? 0.3 : null,
+                        )
+                      : const SizedBox(height: 2),
+                ),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// Play/Stop and Replay under the latest AI line, like a player's controls
+/// (talk-mission, owner 2026-10-24). While the voice is fetched the play
+/// button turns into a small spinner (which still stops it).
+class TalkVoiceControls extends StatelessWidget {
+  const TalkVoiceControls({
+    super.key,
+    required this.speaking,
+    required this.loading,
+    required this.onPlay,
+    required this.onStop,
+    required this.onReplay,
+  });
+
+  final bool speaking;
+  final bool loading;
+
+  /// Null while the line cannot be played (the learner is speaking).
+  final VoidCallback? onPlay;
+  final VoidCallback onStop;
+  final VoidCallback? onReplay;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final decor = AppDecor.of(context);
+    final ink = speaking ? scheme.primary : decor.muted;
+    const size = BoxConstraints.tightFor(width: 40, height: 40);
+    return Padding(
+      padding: const EdgeInsets.only(left: 2, bottom: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            key: talkPlayKey,
+            tooltip: speaking ? 'Stop' : 'Play',
+            constraints: size,
+            padding: EdgeInsets.zero,
+            iconSize: 24,
+            color: ink,
+            onPressed: speaking ? onStop : onPlay,
+            icon: speaking && loading
+                ? SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
+                  )
+                : Icon(speaking ? Icons.stop_rounded : Icons.play_arrow_rounded),
+          ),
+          IconButton(
+            key: talkReplayKey,
+            tooltip: 'Replay',
+            constraints: size,
+            padding: EdgeInsets.zero,
+            iconSize: 22,
+            color: decor.muted,
+            onPressed: onReplay,
+            icon: const Icon(Icons.replay_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The mission at the top of the talk (talk-mission, owner 2026-10-24): its
+/// 16:9 opening picture — a thin running bar while it is drawn, faded in once
+/// it comes, left out when it never does — then the title, the learner's
+/// role and the goal.
+class TalkMissionCard extends StatelessWidget {
+  const TalkMissionCard({
+    super.key,
+    required this.title,
+    required this.role,
+    required this.goal,
+    required this.picture,
+    required this.pictureLoading,
+  });
+
+  final String title;
+  final String role;
+  final String goal;
+  final Uint8List? picture;
+  final bool pictureLoading;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final decor = AppDecor.of(context);
+    final r = talkRound(decor, 16);
+    final bytes = picture;
+    final line = theme.textTheme.bodyMedium?.copyWith(height: 1.35);
+    Widget row(IconData icon, String text) => Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(icon, size: 18, color: scheme.primary),
+            ),
+            const SizedBox(width: 8),
+            Expanded(child: Text(text, style: line)),
+          ]),
+        );
+    return Container(
+      key: talkMissionKey,
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(r),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (bytes != null || pictureLoading)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Stack(fit: StackFit.expand, children: [
+                ColoredBox(color: scheme.surfaceContainerHighest),
+                if (bytes != null)
+                  Image.memory(
+                    bytes,
+                    key: talkMissionPictureKey,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                    frameBuilder: (_, child, frame, sync) => AnimatedOpacity(
+                      opacity: sync || frame != null ? 1 : 0,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOut,
+                      child: child,
+                    ),
+                  ),
+                if (bytes == null)
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: LinearProgressIndicator(
+                      minHeight: 2,
+                      backgroundColor: Colors.transparent,
+                      color: scheme.primary.withValues(alpha: 0.7),
+                      value: MediaQuery.of(context).disableAnimations ? 0.3 : null,
+                    ),
+                  ),
+              ]),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                row(Icons.person_outline_rounded, role),
+                row(Icons.flag_outlined, goal),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -279,6 +521,11 @@ class _DashedBubble extends CustomPainter {
   bool shouldRepaint(_DashedBubble old) => old.color != color || old.shape != shape;
 }
 
+/// The mic and the ring around it, twice their first size (owner,
+/// 2026-10-24).
+const double talkMicSize = 104;
+const double talkRingSize = 132;
+
 /// The ring around the mic: its track while listening, filling as the
 /// learner's pause runs down to sending ([progress] 0–1).
 class TalkRing extends StatelessWidget {
@@ -292,8 +539,8 @@ class TalkRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SizedBox(
-      width: 68,
-      height: 68,
+      width: talkRingSize,
+      height: talkRingSize,
       child: CustomPaint(
         painter: _RingPainter(
           track: active ? scheme.outlineVariant : Colors.transparent,
@@ -315,15 +562,23 @@ class _RingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    const stroke = 4.0;
+    const stroke = 6.0;
     final rect = (Offset.zero & size).deflate(stroke / 2);
-    canvas.drawArc(rect, 0, 2 * math.pi, false,
+    canvas.drawArc(
+        rect,
+        0,
+        2 * math.pi,
+        false,
         Paint()
           ..color = track
           ..style = PaintingStyle.stroke
           ..strokeWidth = stroke);
     if (progress <= 0) return;
-    canvas.drawArc(rect, -math.pi / 2, 2 * math.pi * progress.clamp(0, 1), false,
+    canvas.drawArc(
+        rect,
+        -math.pi / 2,
+        2 * math.pi * progress.clamp(0, 1),
+        false,
         Paint()
           ..color = fill
           ..style = PaintingStyle.stroke
@@ -401,9 +656,7 @@ class TalkStripChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: used ? decor.learnRight : null,
           borderRadius: BorderRadius.circular(talkRound(decor, 999)),
-          border: used
-              ? null
-              : Border.all(color: target ? scheme.primary : scheme.outlineVariant, width: 1.5),
+          border: used ? null : Border.all(color: target ? scheme.primary : scheme.outlineVariant, width: 1.5),
         ),
         child: Text(
           used ? '$word ✓' : word,

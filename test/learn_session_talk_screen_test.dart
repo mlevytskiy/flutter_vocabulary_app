@@ -113,7 +113,7 @@ void main() {
     expect(find.text('Tell me more.'), findsOneWidget);
     expect(find.text('crowded'), findsOneWidget);
     expect(find.text('Type a reply…'), findsOneWidget);
-    expect(find.text('Setting the scene…'), findsNothing);
+    expect(find.text('Planning your mission…'), findsNothing);
   });
 
   testWidgets('a reply adds a learner bubble and ticks the used word', (t) async {

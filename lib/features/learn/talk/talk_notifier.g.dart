@@ -10,8 +10,12 @@ part of 'talk_notifier.dart';
 // ignore_for_file: type=lint, type=warning
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a
-/// learning session would ([pickSessionWords]), sets the scene from stored
-/// text ([scenePick]), ticks words from the learner's own replies only
+/// learning session would ([pickSessionWords]) and sends the collection's
+/// name and description as the topic ([scenePick]); the Worker plans a
+/// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+/// never the mnemonic story), the talk keeps only those, sends the mission's
+/// hidden brief as the scene of every reply and draws its opening picture
+/// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
 
@@ -20,15 +24,23 @@ final talkProvider = TalkFamily._();
 
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a
-/// learning session would ([pickSessionWords]), sets the scene from stored
-/// text ([scenePick]), ticks words from the learner's own replies only
+/// learning session would ([pickSessionWords]) and sends the collection's
+/// name and description as the topic ([scenePick]); the Worker plans a
+/// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+/// never the mnemonic story), the talk keeps only those, sends the mission's
+/// hidden brief as the scene of every reply and draws its opening picture
+/// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
 final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
   /// [collectionId] is the current collection. The talk takes the words a
-  /// learning session would ([pickSessionWords]), sets the scene from stored
-  /// text ([scenePick]), ticks words from the learner's own replies only
+  /// learning session would ([pickSessionWords]) and sends the collection's
+  /// name and description as the topic ([scenePick]); the Worker plans a
+  /// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+  /// never the mnemonic story), the talk keeps only those, sends the mission's
+  /// hidden brief as the scene of every reply and draws its opening picture
+  /// meanwhile. It ticks words from the learner's own replies only
   /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
   /// Leaving without [finish] writes nothing (AC-22).
   TalkProvider._(
@@ -74,12 +86,16 @@ final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   }
 }
 
-String _$talkHash() => r'81e4f60833194fb5937e665c4c051638faffa816';
+String _$talkHash() => r'414d54abe2baa12fc958dde2f3b95c41b9dce292';
 
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a
-/// learning session would ([pickSessionWords]), sets the scene from stored
-/// text ([scenePick]), ticks words from the learner's own replies only
+/// learning session would ([pickSessionWords]) and sends the collection's
+/// name and description as the topic ([scenePick]); the Worker plans a
+/// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+/// never the mnemonic story), the talk keeps only those, sends the mission's
+/// hidden brief as the scene of every reply and draws its opening picture
+/// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
 
@@ -96,8 +112,12 @@ final class TalkFamily extends $Family
 
   /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
   /// [collectionId] is the current collection. The talk takes the words a
-  /// learning session would ([pickSessionWords]), sets the scene from stored
-  /// text ([scenePick]), ticks words from the learner's own replies only
+  /// learning session would ([pickSessionWords]) and sends the collection's
+  /// name and description as the topic ([scenePick]); the Worker plans a
+  /// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+  /// never the mnemonic story), the talk keeps only those, sends the mission's
+  /// hidden brief as the scene of every reply and draws its opening picture
+  /// meanwhile. It ticks words from the learner's own replies only
   /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
   /// Leaving without [finish] writes nothing (AC-22).
 
@@ -112,8 +132,12 @@ final class TalkFamily extends $Family
 
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a
-/// learning session would ([pickSessionWords]), sets the scene from stored
-/// text ([scenePick]), ticks words from the learner's own replies only
+/// learning session would ([pickSessionWords]) and sends the collection's
+/// name and description as the topic ([scenePick]); the Worker plans a
+/// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+/// never the mnemonic story), the talk keeps only those, sends the mission's
+/// hidden brief as the scene of every reply and draws its opening picture
+/// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
 

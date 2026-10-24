@@ -1,7 +1,8 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/models/story_run.dart';
-import '../../../core/models/word_collection.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/talk_api_service.dart';
@@ -58,6 +59,9 @@ class TalkState {
     this.errorText,
     this.keepDraft,
     this.name = '',
+    this.mission,
+    this.picture,
+    this.pictureLoading = false,
   });
 
   final TalkStatus status;
@@ -86,6 +90,15 @@ class TalkState {
   /// The collection's name, under the tutor's in the header (talk-screen-b).
   final String name;
 
+  /// The mission the talk plays out, from the opening (talk-mission); null
+  /// before it, or when the Worker sent none.
+  final TalkMission? mission;
+
+  /// The mission's opening picture once drawn, and whether it is still
+  /// being drawn.
+  final Uint8List? picture;
+  final bool pictureLoading;
+
   int get usedCount => words.where((w) => w.used).length;
 
   /// Whether Hint is enabled (AC-21): two replies without an unused target.
@@ -105,6 +118,9 @@ class TalkState {
     int? repliesWithoutTarget,
     String? Function()? errorText,
     String? Function()? keepDraft,
+    TalkMission? mission,
+    Uint8List? picture,
+    bool? pictureLoading,
   }) =>
       TalkState(
         status: status ?? this.status,
@@ -118,13 +134,20 @@ class TalkState {
         errorText: errorText == null ? this.errorText : errorText(),
         keepDraft: keepDraft == null ? this.keepDraft : keepDraft(),
         name: name,
+        mission: mission ?? this.mission,
+        picture: picture ?? this.picture,
+        pictureLoading: pictureLoading ?? this.pictureLoading,
       );
 }
 
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a
-/// learning session would ([pickSessionWords]), sets the scene from stored
-/// text ([scenePick]), ticks words from the learner's own replies only
+/// learning session would ([pickSessionWords]) and sends the collection's
+/// name and description as the topic ([scenePick]); the Worker plans a
+/// mission on 4–6 of them (talk-mission, owner 2026-10-24: something new,
+/// never the mnemonic story), the talk keeps only those, sends the mission's
+/// hidden brief as the scene of every reply and draws its opening picture
+/// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
 @riverpod
@@ -180,12 +203,7 @@ class Talk extends _$Talk {
       _set(const TalkState(status: TalkStatus.error, errorText: talkNoWordsMessage));
       return;
     }
-    _scene = scenePick(
-      storyText: await _storyText(c, words),
-      dialogueText: c.dialogues.where((d) => !d.hidden && d.lines.isNotEmpty).firstOrNull?.lines.join('\n'),
-      name: c.name ?? '',
-      description: c.description ?? '',
-    );
+    _scene = scenePick(name: c.name ?? '', description: c.description ?? '');
     _set(TalkState(words: [for (final w in words) TalkStripWord(w)], target: words.first.word, name: c.name ?? ''));
     await _open();
   }
@@ -194,11 +212,22 @@ class Talk extends _$Talk {
     _set(state.copyWith(status: TalkStatus.starting, errorText: () => null));
     try {
       final turn = await ref.read(talkApiServiceProvider).start(scene: _scene, words: _wire, target: state.target!);
+      final mission = turn.mission;
+      if (mission != null) {
+        // Only the mission's words are talked about; the rest keep their boxes.
+        final keep = {for (final w in mission.words) w.trim().toLowerCase()};
+        final words = [for (final w in state.words) if (keep.contains(w.word.word.trim().toLowerCase())) w];
+        if (words.isNotEmpty) _set(state.copyWith(words: words));
+        _scene = mission.brief;
+      }
       _set(state.copyWith(
         status: TalkStatus.talking,
         messages: [TalkMessage(TalkRole.ai, turn.reply)],
         target: () => _targetOf(turn.target) ?? state.target,
+        mission: mission,
+        pictureLoading: mission != null,
       ));
+      if (mission != null) unawaited(_drawPicture(mission.picture));
     } on TalkApiException catch (e) {
       _set(e.error == TalkApiError.dayLimit
           ? state.copyWith(status: TalkStatus.limit, errorText: () => talkDayLimitMessage)
@@ -208,20 +237,11 @@ class Talk extends _$Talk {
     }
   }
 
-  /// The story text of the story group holding most of [words], if any.
-  Future<String?> _storyText(WordCollection c, List<WordPair> words) async {
-    final ids = {for (final w in words) w.rowId};
-    var best = 0;
-    String? runId;
-    for (final g in c.groups) {
-      if (g.storyRunId == null) continue;
-      final n = g.rowIds.where(ids.contains).length;
-      if (n > best) (best, runId) = (n, g.storyRunId);
-    }
-    if (runId == null) return null;
-    final run = await (await ref.read(storyRunStoreProvider.future)).byId(runId);
-    if (run == null || run.kind != StoryRunKind.story) return null;
-    return run.steps.where((s) => s.role == 'story' && s.outcome == 'done' && s.text != null).lastOrNull?.text;
+  /// Draws the mission's opening picture; the talk never waits for it.
+  Future<void> _drawPicture(String prompt) async {
+    final bytes = await ref.read(talkPictureServiceProvider).draw(prompt);
+    if (_disposed) return;
+    _set(state.copyWith(picture: bytes, pictureLoading: false));
   }
 
   /// [target] as one of the talk's words; null when it is none of them.

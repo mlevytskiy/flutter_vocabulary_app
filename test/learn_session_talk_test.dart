@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
+import 'package:flutter_vocabulary_app/core/services/talk_picture_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_result.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_notifier.dart';
@@ -48,6 +50,19 @@ class FakeTalkApi implements TalkApiService {
     required List<TalkLine> history,
   }) =>
       _next((kind: 'reply', scene: scene, words: words, target: target, history: history));
+}
+
+/// A talk picture service that answers [bytes] (null: no picture) and
+/// remembers the prompts (talk-mission).
+class FakeTalkPicture extends TalkPictureService {
+  Uint8List? bytes;
+  final prompts = <String>[];
+
+  @override
+  Future<Uint8List?> draw(String prompt) async {
+    prompts.add(prompt);
+    return bytes;
+  }
 }
 
 /// learn-redesign T17 (AC-20, AC-21, AC-22, AC-24; ADR-0007, ADR-0008, sad
@@ -91,19 +106,21 @@ void main() {
     return c.collectionId;
   }
 
-  ProviderContainer container(FakeTalkApi api) {
+  ProviderContainer container(FakeTalkApi api, {FakeTalkPicture? pictures}) {
     final c = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
       storyRunStoreProvider.overrideWith((ref) async => runs),
       talkApiServiceProvider.overrideWithValue(api),
+      talkPictureServiceProvider.overrideWithValue(pictures ?? FakeTalkPicture()),
     ]);
     addTearDown(c.dispose);
     return c;
   }
 
   /// Starts a talk on [id] and keeps the provider alive for the test.
-  Future<(ProviderContainer, Talk)> started(String id, FakeTalkApi api, {bool split = false}) async {
-    final c = container(api);
+  Future<(ProviderContainer, Talk)> started(String id, FakeTalkApi api,
+      {bool split = false, FakeTalkPicture? pictures}) async {
+    final c = container(api, pictures: pictures);
     c.listen(talkProvider(id), (_, __) {}, fireImmediately: true);
     final talk = c.read(talkProvider(id).notifier);
     await talk.start(split: split, now: now);
@@ -174,8 +191,8 @@ void main() {
       expect(api.calls.single.words.length, 12);
     });
 
-    test('scene: the story text of the group holding the words, else a film dialogue', () async {
-      final id = await newCollection(['crowded', 'ticket', 'gate']);
+    test('talk-mission: the scene is only the topic, never the mnemonic story or a film dialogue', () async {
+      final id = await newCollection(['crowded', 'ticket', 'gate'], name: 'Trip');
       final run = StoryRun()
         ..runId = 'run-1'
         ..collectionId = id
@@ -206,24 +223,53 @@ void main() {
       });
       final api = FakeTalkApi();
       await started(id, api);
-      expect(api.calls.single.scene, 'Once at a crowded gate…');
+      expect(api.calls.single.scene, 'Trip');
+    });
 
-      // Without the story: the first shown film dialogue's lines.
-      await store.update(id, (col) {
-        col.groups = [];
-        col.dialogues = [
-          FilmDialogue()
-            ..id = 'd0'
-            ..hidden = true
-            ..lines = ['hidden'],
-          FilmDialogue()
-            ..id = 'd1'
-            ..lines = ['A: Hello', 'B: Hi'],
-        ];
-      });
-      final api2 = FakeTalkApi();
-      await started(id, api2);
-      expect(api2.calls.single.scene, 'A: Hello\nB: Hi');
+    test('talk-mission: the talk keeps the mission\'s words, sends its brief as the scene and draws its picture',
+        () async {
+      final id = await newCollection(['crowded', 'ticket', 'gate', 'luggage', 'delay'], name: 'Airport');
+      const mission = TalkMission(
+        title: 'The Lost Bag',
+        role: 'You are a passenger.',
+        goal: 'Get your bag back.',
+        brief: 'A sleepy clerk knows the bag went to Rome.',
+        words: ['Ticket', 'luggage', 'unknown'],
+        picture: 'A sleepy clerk at a counter.',
+      );
+      final api = FakeTalkApi()
+        ..answers.addAll([
+          const TalkTurn(reply: 'Next! What is the problem?', target: 'ticket', mission: mission),
+          const TalkTurn(reply: 'Hm. Do you have proof?', target: 'ticket'),
+        ]);
+      final pictures = FakeTalkPicture()..bytes = Uint8List.fromList([1, 2, 3]);
+      final (c, talk) = await started(id, api, pictures: pictures);
+      var s = c.read(talkProvider(id));
+      expect([for (final w in s.words) w.word.word], ['ticket', 'luggage']);
+      expect(s.mission?.title, 'The Lost Bag');
+      expect(s.target, 'ticket');
+      await pumpEventQueue();
+      s = c.read(talkProvider(id));
+      expect(pictures.prompts, ['A sleepy clerk at a counter.']);
+      expect(s.picture, [1, 2, 3]);
+      expect(s.pictureLoading, isFalse);
+
+      await talk.send('I lost my bag');
+      expect(api.calls.last.kind, 'reply');
+      expect(api.calls.last.scene, 'A sleepy clerk knows the bag went to Rome.');
+      expect([for (final w in api.calls.last.words) w.word], ['ticket', 'luggage']);
+    });
+
+    test('talk-mission: a picture that fails leaves the talk without one', () async {
+      final id = await newCollection(['crowded', 'ticket']);
+      const mission = TalkMission(
+          title: 'T', role: 'You are a cook.', goal: 'G', brief: 'B', words: ['ticket'], picture: 'P');
+      final api = FakeTalkApi()..answers.add(const TalkTurn(reply: 'Hi?', target: 'ticket', mission: mission));
+      final (c, _) = await started(id, api, pictures: FakeTalkPicture());
+      expect(c.read(talkProvider(id)).pictureLoading, isTrue);
+      await pumpEventQueue();
+      expect(c.read(talkProvider(id)).picture, isNull);
+      expect(c.read(talkProvider(id)).pictureLoading, isFalse);
     });
 
     test('only the learner text ticks words; an AI reply with a word ticks nothing (AC-21)', () async {

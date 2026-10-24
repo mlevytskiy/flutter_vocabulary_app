@@ -6,6 +6,7 @@ import { loadSession } from "../session/store";
 import { learnCheckRoute } from "./check.ts";
 import { learnDataRoute } from "./data.ts";
 import { learnSpeechRoute } from "./speech.ts";
+import { learnTalkPictureRoute } from "./talk-picture.ts";
 import { learnTalkRoute } from "./talk.ts";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
 import { renderComingSoonPage, renderLearnPage, renderNoWordsPage } from "./page";
@@ -54,6 +55,8 @@ export const learnRoutes: RouteDefinition[] = [
   learnCheckRoute,
   // Talk with AI turns (learn-redesign ADR-0007): app-only too, starts counted 20 a day (AC-23, AC-24).
   learnTalkRoute,
+  // The mission's opening picture (talk-mission): app-only, 20 a day.
+  learnTalkPictureRoute,
   // The AI's voice in Talk (openai-voice): app-only, 400 lines a day (AC-31).
   learnSpeechRoute,
 ];

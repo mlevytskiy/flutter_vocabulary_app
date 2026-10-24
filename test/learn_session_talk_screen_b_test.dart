@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,9 +16,10 @@ import 'package:flutter_vocabulary_app/core/theme/themes/themes.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_text.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_widgets.dart';
+import 'package:flutter_vocabulary_app/features/learn/talk/talk_word_popup.dart';
 
 import 'learn_session_talk_handsfree_test.dart' show EngineSpeech, HoldTts;
-import 'learn_session_talk_test.dart' show FakeTalkApi;
+import 'learn_session_talk_test.dart' show FakeTalkApi, FakeTalkPicture;
 
 /// talk-screen-b (owner, 2026-10-24): Talk with AI as Direction B — long
 /// bubbles, the practice words highlighted and tappable (the Words screen's
@@ -96,12 +98,14 @@ void main() {
     ThemeData? theme,
     double textScale = 1,
     List<String> words = const ['crowded', 'ticket', 'wander'],
+    TalkMission? mission,
+    FakeTalkPicture? pictures,
   }) async {
     SharedPreferences.setMockInitialValues({});
     t.view.physicalSize = const Size(393 * 3, 852 * 3);
     t.view.devicePixelRatio = 3;
     addTearDown(t.view.reset);
-    api = FakeTalkApi()..answers.add(TalkTurn(reply: opening, target: words.first));
+    api = FakeTalkApi()..answers.add(TalkTurn(reply: opening, target: words.first, mission: mission));
     final log = <String>[];
     speech = EngineSpeech(log);
     tts = HoldTts(log);
@@ -120,6 +124,7 @@ void main() {
       talkApiServiceProvider.overrideWithValue(api),
       speechInputProvider.overrideWithValue(speech),
       pronunciationServiceProvider.overrideWithValue(tts),
+      talkPictureServiceProvider.overrideWithValue(pictures ?? FakeTalkPicture()),
     ]);
     addTearDown(container.dispose);
     await t.pumpWidget(UncontrolledProviderScope(
@@ -246,5 +251,85 @@ void main() {
     await t.pump();
     spans = spansOf(t, 0);
     expect(spans.map(colour).toSet(), hasLength(1));
+  });
+
+  // ---- talk-mission (owner, 2026-10-24) ----
+
+  testWidgets('the mic is twice its old size, inside a ring to match', (t) async {
+    await open(t);
+    expect(t.getSize(find.byType(TalkRing)), const Size(talkRingSize, talkRingSize));
+    expect(talkMicSize, greaterThanOrEqualTo(104));
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('while the voice is fetched a thin bar runs on the bubble, the text stays; the voice starting ends it',
+      (t) async {
+    const line = 'Was the market crowded today?';
+    await open(t, opening: line);
+    expect(find.byKey(talkVoiceLoadingKey), findsNothing, reason: 'not at once: a quick voice never flashes it');
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(talkVoiceLoadingKey), findsOneWidget);
+    expect(find.descendant(of: find.byKey(talkBubbleKey(0)), matching: find.byKey(talkVoiceLoadingKey)), findsOneWidget);
+    expect(find.text(line), findsOneWidget);
+    expect(find.byTooltip('Stop'), findsOneWidget);
+    tts.progress!(0.1);
+    await t.pump();
+    await t.pump(const Duration(milliseconds: 200));
+    expect(find.byKey(talkVoiceLoadingKey), findsNothing);
+  });
+
+  testWidgets('Play, Stop and Replay sit under the latest AI line', (t) async {
+    await open(t, opening: 'Did you buy a ticket?');
+    expect(find.byKey(talkPlayKey), findsOneWidget);
+    expect(find.byKey(talkReplayKey), findsOneWidget);
+    await t.tap(find.byTooltip('Stop'));
+    await t.pump();
+    await settle(t);
+    expect(tts.stops, greaterThan(0));
+    expect(find.byTooltip('Play'), findsOneWidget);
+    final before = tts.spoken.length;
+    await t.tap(find.byKey(talkReplayKey));
+    await t.pump();
+    await settle(t);
+    expect(tts.spoken.length, before + 1);
+    expect(tts.spoken.last, 'Did you buy a ticket?');
+    expect(find.byTooltip('Stop'), findsOneWidget);
+  });
+
+  testWidgets('the mission card shows its picture, title, role and goal above the talk', (t) async {
+    final png = base64Decode(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==');
+    await open(
+      t,
+      opening: 'Next! What is the problem?',
+      mission: const TalkMission(
+        title: 'The Lost Bag',
+        role: 'You are a passenger.',
+        goal: 'Get your bag back.',
+        brief: 'Hidden facts.',
+        words: ['crowded', 'ticket'],
+        picture: 'A clerk.',
+      ),
+      pictures: FakeTalkPicture()..bytes = png,
+    );
+    expect(find.byKey(talkMissionKey), findsOneWidget);
+    expect(find.text('The Lost Bag'), findsOneWidget);
+    expect(find.text('You are a passenger.'), findsOneWidget);
+    expect(find.text('Get your bag back.'), findsOneWidget);
+    expect(find.text('Hidden facts.'), findsNothing, reason: 'the brief is never shown');
+    expect(find.byKey(talkMissionPictureKey), findsOneWidget);
+    expect(t.getTopLeft(find.byKey(talkMissionKey)).dy, lessThan(t.getTopLeft(find.byKey(talkBubbleKey(0))).dy));
+    expect(find.descendant(of: find.byKey(talkStripKey), matching: find.text('wander')), findsNothing);
+  });
+
+  testWidgets('the word popup keeps a margin from the screen edges and points at the word', (t) async {
+    await open(t, opening: 'Was it crowded?');
+    await t.tapOnText(find.textRange.ofSubstring('crowded', descendentOf: find.byKey(talkBubbleKey(0))));
+    await t.pump();
+    await t.pump();
+    final popup = t.getRect(find.byType(TalkWordPopup));
+    expect(popup.left, greaterThanOrEqualTo(12));
+    expect(popup.right, lessThanOrEqualTo(393 - 12));
+    expect(popup.bottom, lessThanOrEqualTo(852));
   });
 }

@@ -830,6 +830,55 @@ final class TalkApiServiceProvider
 
 String _$talkApiServiceHash() => r'210b666c417cfb782e871aedfb4eeb8ee1dbbaed';
 
+/// The Worker's opening picture of a Talk mission (talk-mission).
+
+@ProviderFor(talkPictureService)
+final talkPictureServiceProvider = TalkPictureServiceProvider._();
+
+/// The Worker's opening picture of a Talk mission (talk-mission).
+
+final class TalkPictureServiceProvider extends $FunctionalProvider<
+    TalkPictureService,
+    TalkPictureService,
+    TalkPictureService> with $Provider<TalkPictureService> {
+  /// The Worker's opening picture of a Talk mission (talk-mission).
+  TalkPictureServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'talkPictureServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$talkPictureServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<TalkPictureService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TalkPictureService create(Ref ref) {
+    return talkPictureService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TalkPictureService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TalkPictureService>(value),
+    );
+  }
+}
+
+String _$talkPictureServiceHash() =>
+    r'6d3f43c46b7a1387016d4138e21a683e716d632c';
+
 /// Where Step 3 exams record each word's known / repeat result (learn-kit
 /// S-23), on the session in the session store.
 
