@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mixedInteraction, mixedPrompt, readMixedTurn } from "../src/learn/talk-mixed.ts";
+import { freshWords, mixedInteraction, mixedPrompt, mixedTarget, readMixedTurn } from "../src/learn/talk-mixed.ts";
 import { parseTalkRequest, nextTarget } from "../src/learn/talk.ts";
 import { appHeaders, baseUrl } from "./helpers.mjs";
 
@@ -59,11 +59,24 @@ test("owner 2026-10-24: the mixed prompt makes the AI use the practice words and
   const words = [{ word: "shore", translation: "берег" }, { word: "tide", translation: "приплив" }];
   const turn = (n) => Array.from({ length: n * 2 }, (_, i) => ({ role: i % 2 ? "learner" : "ai", text: `line ${i}` }));
   const choice = mixedPrompt({ kind: "reply", scene: "S", words, target: "tide", history: turn(1), mode: "mixed" }, { system: "", user: "" });
-  assert.match(choice.system, /uses 1-2 of the practice words/);
-  assert.match(choice.system, /at least one of the choices contains a practice word/);
+  assert.match(choice.system, /uses 2 practice words/);
+  assert.match(choice.system, /at least two of the choices contain a practice word/);
   const speak = mixedPrompt({ kind: "reply", scene: "S", words, target: "tide", history: turn(2), mode: "mixed" }, { system: "", user: "" });
   assert.match(speak.system, /natural answer needs the target word/);
   const start = mixedPrompt({ kind: "start", scene: "S", words, target: "tide", history: [], mode: "mixed" }, { system: "pick 4-6 x, without any of the picked words", user: "" });
   assert.match(start.system, /using one of the picked words naturally/);
   assert.doesNotMatch(start.system, /without any of the picked words/);
+});
+
+test("owner 2026-10-24: a mixed target moves every turn to a word the learner has not said; fresh words are the ones no line used", () => {
+  const words = ["shore", "tide", "fog", "gale"].map((word) => ({ word, translation: "t" }));
+  const base = { kind: "reply", scene: "S", words, target: "shore", mode: "mixed" };
+  const h = (...lines) => lines.map(([role, text, source]) => ({ role, text, ...(source ? { source } : {}) }));
+  assert.equal(mixedTarget({ ...base, history: h(["ai", "Hi"], ["learner", "Hello"]) }), "tide", "moves on even without the word");
+  assert.equal(mixedTarget({ ...base, history: h(["ai", "Hi"], ["learner", "The tide is high"]) }), "fog", "skips a word the learner said");
+  assert.equal(mixedTarget({ ...base, history: h(["ai", "Hi"], ["learner", "Watch the tide", "choice"]) }), "tide", "a picked choice is not said");
+  assert.equal(mixedTarget({ ...base, kind: "start", history: [] }), "shore");
+  assert.deepEqual(freshWords({ ...base, history: h(["ai", "The fog came"], ["learner", "Near the shore"]) }), ["tide", "gale"]);
+  const { user } = mixedPrompt({ ...base, history: h(["ai", "The fog came"], ["learner", "ok"]) }, { system: "", user: "" });
+  assert.deepEqual(JSON.parse(user).fresh, ["shore", "tide", "gale"]);
 });

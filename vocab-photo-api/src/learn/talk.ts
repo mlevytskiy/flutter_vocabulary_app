@@ -15,7 +15,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { GROUPING_MODEL } from "../story/models.ts";
 import { writeText } from "../story/providers/text.ts";
 import { matchPlaces } from "../story/word-check.ts";
-import { mixedPrompt, readMixedTurn } from "./talk-mixed.ts";
+import { mixedPrompt, mixedTarget, readMixedTurn } from "./talk-mixed.ts";
 import { takeLearnTalk } from "./allowance.ts";
 
 const MAX_SCENE_LENGTH = 4000;
@@ -251,7 +251,9 @@ async function handleLearnTalk({ request, env }: RouteContext): Promise<Response
   const basePrompt = start
     ? missionPrompt(parsed, MISSION_KINDS[Math.floor(Math.random() * MISSION_KINDS.length)])
     : talkPrompt(parsed);
-  const { system, user } = parsed.mode === "mixed" ? mixedPrompt({ ...parsed, target: nextTarget(parsed) }, basePrompt) : basePrompt;
+  // A mixed talk moves its target every turn, so more of the words come up (owner, 2026-10-24).
+  const target = parsed.mode === "mixed" ? mixedTarget(parsed) : nextTarget(parsed);
+  const { system, user } = parsed.mode === "mixed" ? mixedPrompt({ ...parsed, target }, basePrompt) : basePrompt;
   const result = await writeText(env, {
     model: GROUPING_MODEL,
     system,
@@ -279,7 +281,7 @@ async function handleLearnTalk({ request, env }: RouteContext): Promise<Response
     return jsonResponse({ reply: planned.opening, target: planned.mission.words[0], mission: planned.mission, ...mixed });
   }
   log("ok");
-  return jsonResponse({ reply: answer, target: nextTarget(parsed), ...mixed });
+  return jsonResponse({ reply: answer, target, ...mixed });
 }
 
 export const learnTalkRoute: RouteDefinition = { method: "POST", pattern: /^\/learn\/talk$/, public: false, handler: handleLearnTalk };
