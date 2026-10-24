@@ -15,6 +15,7 @@ import type { RouteContext, RouteDefinition } from "../routing";
 import { GROUPING_MODEL } from "../story/models.ts";
 import { writeText } from "../story/providers/text.ts";
 import { matchPlaces } from "../story/word-check.ts";
+import { mixedPrompt, readMixedTurn } from "./talk-mixed.ts";
 import { takeLearnTalk } from "./allowance.ts";
 
 const MAX_SCENE_LENGTH = 4000;
@@ -40,6 +41,7 @@ export interface TalkWord {
 export interface TalkMessage {
   role: "ai" | "learner";
   text: string;
+  source?: "choice";
 }
 
 export interface TalkRequest {
@@ -48,6 +50,7 @@ export interface TalkRequest {
   words: TalkWord[];
   target: string;
   history: TalkMessage[];
+  mode?: "mixed";
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -73,7 +76,8 @@ function parseHistory(value: unknown): TalkMessage[] | string {
     if (typeof item.text !== "string" || item.text.trim() === "" || item.text.length > MAX_TEXT_LENGTH) {
       return `A message is 1 to ${MAX_TEXT_LENGTH} characters`;
     }
-    history.push({ role: item.role, text: item.text });
+    if (item.source !== undefined && (item.source !== "choice" || item.role !== "learner")) return "Invalid message source";
+    history.push({ role: item.role, text: item.text, ...(item.source === "choice" ? { source: "choice" as const } : {}) });
   }
   return history;
 }
@@ -97,7 +101,8 @@ export function parseTalkRequest(body: unknown): (TalkRequest & { error?: undefi
     if (history.length < 1 || history.length > MAX_HISTORY) return { error: `A reply has 1 to ${MAX_HISTORY} messages` };
     if (history[history.length - 1].role !== "learner") return { error: "A reply ends with the learner's message" };
   }
-  return { kind, scene, words, target, history };
+  if (body.mode !== undefined && body.mode !== "mixed") return { error: "Invalid talk mode" };
+  return { kind, scene, words, target, history, ...(body.mode === "mixed" ? { mode: "mixed" as const } : {}) };
 }
 
 /**
@@ -106,7 +111,7 @@ export function parseTalkRequest(body: unknown): (TalkRequest & { error?: undefi
  */
 export function nextTarget(req: TalkRequest): string {
   const last = req.history[req.history.length - 1];
-  if (req.kind !== "reply" || last?.role !== "learner" || matchPlaces(last.text, req.target).length === 0) return req.target;
+  if (req.kind !== "reply" || last?.role !== "learner" || last.source === "choice" || matchPlaces(last.text, req.target).length === 0) return req.target;
   const at = req.words.findIndex((w) => w.word === req.target);
   return req.words[(at + 1) % req.words.length].word;
 }
@@ -243,19 +248,25 @@ async function handleLearnTalk({ request, env }: RouteContext): Promise<Response
     return jsonResponse({ error: "Today's talk limit is reached. Try again tomorrow.", code: "day_limit" }, 429);
   }
   const start = parsed.kind === "start";
-  const { system, user } = start
+  const basePrompt = start
     ? missionPrompt(parsed, MISSION_KINDS[Math.floor(Math.random() * MISSION_KINDS.length)])
     : talkPrompt(parsed);
+  const { system, user } = parsed.mode === "mixed" ? mixedPrompt({ ...parsed, target: nextTarget(parsed) }, basePrompt) : basePrompt;
   const result = await writeText(env, {
     model: GROUPING_MODEL,
     system,
     user,
-    maxOutputTokens: start ? MISSION_MAX_OUTPUT_TOKENS : TALK_MAX_OUTPUT_TOKENS,
+    maxOutputTokens: start ? MISSION_MAX_OUTPUT_TOKENS + (parsed.mode === "mixed" ? 200 : 0) : parsed.mode === "mixed" ? 400 : TALK_MAX_OUTPUT_TOKENS,
     timeoutMs: Number(env.LEARN_AI_TIMEOUT_MS) || TALK_TIMEOUT_MS,
   });
   const answer = result.failed === undefined ? result.text.trim() : "";
   if (answer === "") {
     log(result.failed ?? "empty");
+    return jsonResponse({ error: "Could not get a reply", code: "talk_failed" }, 502);
+  }
+  const mixed = parsed.mode === "mixed" ? readMixedTurn(answer, parsed) : undefined;
+  if (mixed === null) {
+    log("invalid_mixed_turn");
     return jsonResponse({ error: "Could not get a reply", code: "talk_failed" }, 502);
   }
   if (start) {
@@ -265,10 +276,10 @@ async function handleLearnTalk({ request, env }: RouteContext): Promise<Response
       return jsonResponse({ error: "Could not get a reply", code: "talk_failed" }, 502);
     }
     log("ok");
-    return jsonResponse({ reply: planned.opening, target: planned.mission.words[0], mission: planned.mission });
+    return jsonResponse({ reply: planned.opening, target: planned.mission.words[0], mission: planned.mission, ...mixed });
   }
   log("ok");
-  return jsonResponse({ reply: answer, target: nextTarget(parsed) });
+  return jsonResponse({ reply: answer, target: nextTarget(parsed), ...mixed });
 }
 
 export const learnTalkRoute: RouteDefinition = { method: "POST", pattern: /^\/learn\/talk$/, public: false, handler: handleLearnTalk };

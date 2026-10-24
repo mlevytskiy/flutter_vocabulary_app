@@ -607,6 +607,16 @@ uploads each scene picture, retrying with growing pauses and on every app start;
 is on each `FilmDialogue`, so closing the app loses nothing. Words typed by hand still reach the link
 only by a republish. The design is in `docs/features/get-words-from-subtitles-improvment/sad.md`.
 
+### Mixed conversation missions (talk-mixed, owner 2026-10-24)
+
+Talk now requests `mode: mixed` from `/learn/talk`. Two turns of short action choices
+alternate with one speaking task for three rounds. `talk-mixed.ts` controls the cadence
+and validates structured AI answers; `Talk` keeps selection attribution so a tapped
+choice never counts as vocabulary recall, including on Retry. Mixed mode reads replies
+aloud when enabled but only records after an explicit mic gesture. The final outcome
+stays visible until See results. Old Worker responses retain the legacy Talk UI.
+Details and tests: `docs/features/talk-mixed/spec.md`.
+
 ## 4. Checklist for any change
 
 - [ ] `flutter analyze` clean; `dart run build_runner build --delete-conflicting-outputs` run, `.g.dart` committed

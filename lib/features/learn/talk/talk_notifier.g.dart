@@ -86,7 +86,7 @@ final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   }
 }
 
-String _$talkHash() => r'414d54abe2baa12fc958dde2f3b95c41b9dce292';
+String _$talkHash() => r'376e5e348a20500e10b7d4f51738392720f15f56';
 
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a

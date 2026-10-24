@@ -25,12 +25,14 @@ typedef TalkWord = ({String word, String translation});
 /// One line of the talk so far, as the Worker reads it: [role] is "ai" or
 /// "learner".
 class TalkLine {
-  const TalkLine({required this.role, required this.text});
+  const TalkLine({required this.role, required this.text, this.isChoice = false});
 
   final String role;
   final String text;
 
-  Map<String, String> toJson() => {'role': role, 'text': text};
+  final bool isChoice;
+
+  Map<String, String> toJson() => {'role': role, 'text': text, if (isChoice) 'source': 'choice'};
 }
 
 /// The mission a talk plays out (talk-mission, owner 2026-10-24), planned by
@@ -67,7 +69,10 @@ class TalkMission {
       role: role,
       goal: goal,
       brief: brief,
-      words: [for (final w in words) if (w is String) w],
+      words: [
+        for (final w in words)
+          if (w is String) w
+      ],
       picture: picture,
     );
   }
@@ -77,11 +82,22 @@ class TalkMission {
 /// toward ([target]; it moves on once the learner's last line used it). A
 /// start also brings the [mission].
 class TalkTurn {
-  const TalkTurn({required this.reply, required this.target, this.mission});
+  const TalkTurn(
+      {required this.reply,
+      required this.target,
+      this.mission,
+      this.interaction,
+      this.choices = const [],
+      this.speakingPrompt = ''});
 
   final String reply;
   final String target;
   final TalkMission? mission;
+
+  /// Null for older Workers; otherwise choice, speak or complete.
+  final String? interaction;
+  final List<String> choices;
+  final String speakingPrompt;
 }
 
 /// The app's side of the Worker's talk route `POST /learn/talk` (ADR-0007),
@@ -124,7 +140,26 @@ class TalkApiService {
     if (response.statusCode == 200 && json != null) {
       final (reply, target) = (json['reply'], json['target']);
       if (reply is String && target is String) {
-        return TalkTurn(reply: reply, target: target, mission: TalkMission.fromJson(json['mission']));
+        final interaction = json['interaction'];
+        final rawChoices = json['choices'];
+        final prompt = json['speakingPrompt'];
+        if (interaction != null &&
+            (interaction != 'choice' && interaction != 'speak' && interaction != 'complete' ||
+                interaction == 'choice' &&
+                    (rawChoices is! List ||
+                        rawChoices.length < 2 ||
+                        rawChoices.length > 3 ||
+                        rawChoices.any((c) => c is! String || c.trim().isEmpty || c.length > 80)) ||
+                interaction == 'speak' && (prompt is! String || prompt.trim().isEmpty))) {
+          throw TalkApiException(TalkApiError.failed, 'invalid interaction');
+        }
+        return TalkTurn(
+            reply: reply,
+            target: target,
+            mission: TalkMission.fromJson(json['mission']),
+            interaction: interaction as String?,
+            choices: interaction == 'choice' ? (rawChoices as List).cast<String>() : const [],
+            speakingPrompt: prompt is String ? prompt : '');
       }
       throw TalkApiException(TalkApiError.failed, 'unexpected answer');
     }
@@ -143,6 +178,7 @@ class TalkApiService {
   /// [scene] is only the topic the Worker plans the mission from.
   Future<TalkTurn> start({required String scene, required List<TalkWord> words, required String target}) => _post({
         'kind': 'start',
+        'mode': 'mixed',
         'scene': scene,
         'words': _words(words),
         'target': target,
@@ -159,6 +195,7 @@ class TalkApiService {
   }) =>
       _post({
         'kind': 'reply',
+        'mode': 'mixed',
         'scene': scene,
         'words': _words(words),
         'target': target,

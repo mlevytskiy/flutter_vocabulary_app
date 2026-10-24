@@ -127,6 +127,52 @@ void main() {
     return (c, talk);
   }
 
+  test('mixed choices never tick words, including after a failed choice is retried', () async {
+    final id = await newCollection(['ticket', 'crowded']);
+    final api = FakeTalkApi()
+      ..answers.add(const TalkTurn(
+          reply: 'What will you do?', target: 'ticket', interaction: 'choice', choices: ['Buy a ticket', 'Walk away']));
+    final (c, talk) = await started(id, api);
+    api.answers.add(TalkApiException(TalkApiError.network, 'offline'));
+    await talk.send('Buy a ticket', isChoice: true);
+    expect(c.read(talkProvider(id)).repliesCount, 0);
+    expect(c.read(talkProvider(id)).keepChoice, isTrue);
+    api.answers
+        .add(const TalkTurn(reply: 'Where next?', target: 'ticket', interaction: 'choice', choices: ['Stay', 'Leave']));
+    await talk.retry();
+    expect(c.read(talkProvider(id)).usedCount, 0);
+    expect(c.read(talkProvider(id)).repliesCount, 1);
+    expect(api.calls.last.history.last.toJson()['source'], 'choice');
+    await talk.finish(now: now);
+    expect((await store.byId(id))!.boxes, isEmpty);
+  });
+
+  test('mixed speech counts independently; hints count as assisted; final outcome remains readable', () async {
+    final id = await newCollection(['ticket', 'crowded']);
+    final api = FakeTalkApi()
+      ..answers.add(const TalkTurn(
+          reply: 'Explain the problem.',
+          target: 'ticket',
+          interaction: 'speak',
+          speakingPrompt: 'Ask for what you need.'));
+    final (c, talk) = await started(id, api);
+    expect(c.read(talkProvider(id)).hintAvailable, isTrue);
+    talk.showHint();
+    api.answers.add(const TalkTurn(reply: 'You made it home!', target: 'ticket', interaction: 'complete'));
+    await talk.send('I need a ticket for the crowded bus');
+    final s = c.read(talkProvider(id));
+    expect(s.complete, isTrue);
+    expect(s.status, TalkStatus.talking);
+    expect(s.usedCount, 2);
+    expect(s.messages.last.text, 'You made it home!');
+    expect(api.calls.last.history.last.isChoice, isFalse);
+    await talk.send('another reply');
+    expect(api.calls.length, 2);
+    final outcomes = scoreTalk(s.words.map((w) => w.word).toList(),
+        used: s.words.map((w) => w.word.rowId).toSet(), hinted: s.hinted);
+    expect(outcomes.values, containsAll([WordOutcome.missed, WordOutcome.clean]));
+  });
+
   group('talk rules', () {
     final words = [pair('crowded', 'a'), pair('take off', 'b'), pair('ticket', 'c')];
 
@@ -256,14 +302,16 @@ void main() {
 
       await talk.send('I lost my bag');
       expect(api.calls.last.kind, 'reply');
-      expect(api.calls.last.scene, 'A sleepy clerk knows the bag went to Rome.');
+      expect(api.calls.last.scene, contains('A sleepy clerk knows the bag went to Rome.'));
+      expect(api.calls.last.scene, contains(mission.goal));
+      expect(api.calls.last.scene, contains(mission.picture));
       expect([for (final w in api.calls.last.words) w.word], ['ticket', 'luggage']);
     });
 
     test('talk-mission: a picture that fails leaves the talk without one', () async {
       final id = await newCollection(['crowded', 'ticket']);
-      const mission = TalkMission(
-          title: 'T', role: 'You are a cook.', goal: 'G', brief: 'B', words: ['ticket'], picture: 'P');
+      const mission =
+          TalkMission(title: 'T', role: 'You are a cook.', goal: 'G', brief: 'B', words: ['ticket'], picture: 'P');
       final api = FakeTalkApi()..answers.add(const TalkTurn(reply: 'Hi?', target: 'ticket', mission: mission));
       final (c, _) = await started(id, api, pictures: FakeTalkPicture());
       expect(c.read(talkProvider(id)).pictureLoading, isTrue);
@@ -284,7 +332,12 @@ void main() {
 
       await talk.send('It was so crowded');
       final s = c.read(talkProvider(id));
-      expect({for (final w in s.words) if (w.used) w.word.word}, {'crowded'});
+      expect({
+        for (final w in s.words)
+          if (w.used) w.word.word
+      }, {
+        'crowded'
+      });
       expect(s.repliesCount, 1);
       expect(s.target, 'ticket');
       expect(api.calls.last.kind, 'reply');

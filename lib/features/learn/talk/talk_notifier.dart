@@ -32,8 +32,9 @@ enum TalkStatus { starting, talking, waiting, limit, error, over }
 enum TalkRole { ai, learner }
 
 class TalkMessage {
-  const TalkMessage(this.role, this.text);
+  const TalkMessage(this.role, this.text, {this.isChoice = false});
 
+  final bool isChoice;
   final TalkRole role;
   final String text;
 }
@@ -62,7 +63,18 @@ class TalkState {
     this.mission,
     this.picture,
     this.pictureLoading = false,
+    this.interaction,
+    this.choices = const [],
+    this.speakingPrompt = '',
+    this.keepChoice = false,
   });
+
+  final String? interaction;
+  final List<String> choices;
+  final String speakingPrompt;
+  final bool keepChoice;
+  bool get mixed => interaction != null;
+  bool get complete => interaction == 'complete';
 
   final TalkStatus status;
   final List<TalkMessage> messages;
@@ -105,7 +117,7 @@ class TalkState {
   bool get hintAvailable =>
       target != null &&
       words.any((w) => w.word.word == target && !w.used) &&
-      hintDue(repliesWithoutTarget);
+      (interaction == 'speak' || hintDue(repliesWithoutTarget));
 
   TalkState copyWith({
     TalkStatus? status,
@@ -121,6 +133,10 @@ class TalkState {
     TalkMission? mission,
     Uint8List? picture,
     bool? pictureLoading,
+    String? interaction,
+    List<String>? choices,
+    String? speakingPrompt,
+    bool? keepChoice,
   }) =>
       TalkState(
         status: status ?? this.status,
@@ -137,6 +153,10 @@ class TalkState {
         mission: mission ?? this.mission,
         picture: picture ?? this.picture,
         pictureLoading: pictureLoading ?? this.pictureLoading,
+        interaction: interaction ?? this.interaction,
+        choices: choices ?? this.choices,
+        speakingPrompt: speakingPrompt ?? this.speakingPrompt,
+        keepChoice: keepChoice ?? this.keepChoice,
       );
 }
 
@@ -216,15 +236,21 @@ class Talk extends _$Talk {
       if (mission != null) {
         // Only the mission's words are talked about; the rest keep their boxes.
         final keep = {for (final w in mission.words) w.trim().toLowerCase()};
-        final words = [for (final w in state.words) if (keep.contains(w.word.word.trim().toLowerCase())) w];
+        final words = [
+          for (final w in state.words)
+            if (keep.contains(w.word.word.trim().toLowerCase())) w
+        ];
         if (words.isNotEmpty) _set(state.copyWith(words: words));
-        _scene = mission.brief;
+        _scene = '${mission.role}\nGoal: ${mission.goal}\n${mission.brief}\nVisible scene: ${mission.picture}';
       }
       _set(state.copyWith(
         status: TalkStatus.talking,
         messages: [TalkMessage(TalkRole.ai, turn.reply)],
         target: () => _targetOf(turn.target) ?? state.target,
         mission: mission,
+        interaction: turn.interaction,
+        choices: turn.choices,
+        speakingPrompt: turn.speakingPrompt,
         pictureLoading: mission != null,
       ));
       if (mission != null) unawaited(_drawPicture(mission.picture));
@@ -253,24 +279,26 @@ class Talk extends _$Talk {
   /// Sends the learner's reply: ticks the words it uses, counts it, ends the
   /// talk after 12 replies or once every word is used, else asks the AI. A
   /// failed turn undoes the reply and keeps its text in [TalkState.keepDraft].
-  Future<void> send(String text) async {
+  Future<void> send(String text, {bool isChoice = false}) async {
     final reply = text.trim();
-    if (reply.isEmpty || _finished) return;
+    if (reply.isEmpty || _finished || state.complete) return;
+    if (isChoice && !state.choices.contains(reply)) return;
     if (state.status != TalkStatus.talking && state.status != TalkStatus.error) return;
     final before = state;
-    final used = usedWords(reply, _words);
+    final used = isChoice ? <String>{} : usedWords(reply, _words);
     final targetRow = state.words.where((w) => w.word.word == state.target).firstOrNull?.word.rowId;
     final next = state.copyWith(
       status: TalkStatus.waiting,
-      messages: [...state.messages, TalkMessage(TalkRole.learner, reply)],
+      messages: [...state.messages, TalkMessage(TalkRole.learner, reply, isChoice: isChoice)],
       words: [for (final w in state.words) TalkStripWord(w.word, used: w.used || used.contains(w.word.rowId))],
       repliesCount: state.repliesCount + 1,
       repliesWithoutTarget: targetRow != null && used.contains(targetRow) ? 0 : state.repliesWithoutTarget + 1,
       errorText: () => null,
       keepDraft: () => null,
+      keepChoice: false,
     );
     _set(next);
-    if (talkOver(next.repliesCount, next.usedCount, next.words.length)) {
+    if (!next.mixed && talkOver(next.repliesCount, next.usedCount, next.words.length)) {
       await finish();
       return;
     }
@@ -280,20 +308,27 @@ class Talk extends _$Talk {
             words: _wire,
             target: next.target ?? next.words.firstWhere((w) => !w.used, orElse: () => next.words.first).word.word,
             history: capHistory([
-              for (final m in next.messages) TalkLine(role: m.role == TalkRole.ai ? 'ai' : 'learner', text: m.text),
+              for (final m in next.messages)
+                TalkLine(role: m.role == TalkRole.ai ? 'ai' : 'learner', text: m.text, isChoice: m.isChoice),
             ]),
           );
+      if (_finished || _disposed) return;
       final target = _targetOf(turn.target);
       final moved = target != next.target;
       _set(state.copyWith(
         status: TalkStatus.talking,
         messages: [...state.messages, TalkMessage(TalkRole.ai, turn.reply)],
         target: () => target,
+        interaction: turn.interaction,
+        choices: turn.choices,
+        speakingPrompt: turn.speakingPrompt,
         hintWord: moved ? () => null : null,
         repliesWithoutTarget: moved ? 0 : null,
       ));
     } catch (_) {
-      _set(before.copyWith(status: TalkStatus.error, errorText: () => talkFailedMessage, keepDraft: () => reply));
+      if (_finished || _disposed) return;
+      _set(before.copyWith(
+          status: TalkStatus.error, errorText: () => talkFailedMessage, keepDraft: () => reply, keepChoice: isChoice));
     }
   }
 
@@ -305,7 +340,7 @@ class Talk extends _$Talk {
       return _open();
     }
     final draft = state.keepDraft;
-    if (draft != null) await send(draft);
+    if (draft != null) await send(draft, isChoice: state.keepChoice);
   }
 
   /// Shows the Hint: the current target, which now counts as a miss if used.
@@ -325,7 +360,12 @@ class Talk extends _$Talk {
     final result = await finishSession(
       store: store,
       collectionId: _id,
-      outcomes: scoreTalk(_words, used: {for (final w in state.words) if (w.used) w.word.rowId}, hinted: state.hinted),
+      outcomes: scoreTalk(_words,
+          used: {
+            for (final w in state.words)
+              if (w.used) w.word.rowId
+          },
+          hinted: state.hinted),
       kind: SessionKind.talk,
       now: now,
       groupIndex: pick?.groupIndex,

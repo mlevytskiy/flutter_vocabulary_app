@@ -180,7 +180,8 @@ function learnCheckAnswer(model, content) {
   return { status: 200, body: message(model, JSON.stringify(reply)) };
 }
 
-function learnTalkAnswer(model, content) {
+function learnTalkAnswer(model, content, system = "") {
+  const mixed = system.includes("mixed-mode");
   const { scene = "", topic, words = [], history = [] } = JSON.parse(content);
   if (topic !== undefined) {
     // A mission plan (talk-mission): the first three words, or a reply that breaks the shape.
@@ -191,11 +192,20 @@ function learnTalkAnswer(model, content) {
       brief: "The character is a grumpy harbour keeper who saw everything but wants a coffee first.",
       words: words.slice(0, 3).map((w) => w.word), opening: "Morning. You look worried. What brings you here so early?",
       picture: "A grumpy harbour keeper on a misty pier at dawn.",
+      ...(mixed ? { choices: ["Offer a coffee", "Ask about the boat"], speakingPrompt: "" } : {}),
     };
     return { status: 200, body: message(model, "```json\n" + JSON.stringify(plan) + "\n```") };
   }
   const last = history.length ? history[history.length - 1].text : scene;
   if (last.includes("STUB:error")) return answer(model, "STUB:error");
+  if (mixed) {
+    const n = history.filter((m) => m.role === "learner").length;
+    return { status: 200, body: message(model, JSON.stringify({
+      reply: n >= 9 ? "You found your boat. Thanks for helping!" : "Let us find the boat together.",
+      choices: n < 9 && n % 3 !== 2 ? ["Look along the shore", "Ask for a map"] : [],
+      speakingPrompt: n % 3 === 2 ? "Describe where you last saw the boat." : "",
+    })) };
+  }
   return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };
 }
 
@@ -279,7 +289,7 @@ export function startAnthropicStub() {
         : body.system.includes("check a learner's") ? learnCheckAnswer
         : body.system.includes("English conversation partner") ? learnTalkAnswer : undefined;
       if (learn) {
-        const { status, body: reply } = learn(body.model, content);
+        const { status, body: reply } = learn(body.model, content, body.system);
         const send = () => {
           if (res.destroyed) return;
           res.writeHead(status, { "content-type": "application/json" });

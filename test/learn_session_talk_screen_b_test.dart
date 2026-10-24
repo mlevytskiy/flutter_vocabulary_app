@@ -99,13 +99,14 @@ void main() {
     double textScale = 1,
     List<String> words = const ['crowded', 'ticket', 'wander'],
     TalkMission? mission,
+    TalkTurn? turn,
     FakeTalkPicture? pictures,
   }) async {
     SharedPreferences.setMockInitialValues({});
     t.view.physicalSize = const Size(393 * 3, 852 * 3);
     t.view.devicePixelRatio = 3;
     addTearDown(t.view.reset);
-    api = FakeTalkApi()..answers.add(TalkTurn(reply: opening, target: words.first, mission: mission));
+    api = FakeTalkApi()..answers.add(turn ?? TalkTurn(reply: opening, target: words.first, mission: mission));
     final log = <String>[];
     speech = EngineSpeech(log);
     tts = HoldTts(log);
@@ -150,7 +151,8 @@ void main() {
 
   /// The highlighted spans of the bubble [index] (TextSpans with a word style).
   List<TextSpan> spansOf(WidgetTester t, int index) {
-    final text = t.widget<Text>(find.descendant(of: find.byKey(talkBubbleKey(index)), matching: find.byType(Text)).first);
+    final text =
+        t.widget<Text>(find.descendant(of: find.byKey(talkBubbleKey(index)), matching: find.byType(Text)).first);
     final out = <TextSpan>[];
     text.textSpan!.visitChildren((s) {
       if (s is TextSpan && s.text != null) out.add(s);
@@ -253,6 +255,59 @@ void main() {
     expect(spans.map(colour).toSet(), hasLength(1));
   });
 
+  testWidgets('mixed choices lead to an explicit speaking task without automatic recording', (t) async {
+    await open(t,
+        turn: const TalkTurn(
+            reply: 'What will you do?', target: 'crowded', interaction: 'choice', choices: ['Stay here', 'Leave now']));
+    tts.finishSpeaking();
+    await t.pump();
+    expect(speech.inits, 0);
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('Stay here'), findsOneWidget);
+    api.answers.add(const TalkTurn(
+        reply: 'Where next?', target: 'crowded', interaction: 'choice', choices: ['Find a bus', 'Walk home']));
+    await t.tap(find.text('Stay here'));
+    await t.pump();
+    await settle(t);
+    expect(api.calls.last.history.last.isChoice, isTrue);
+    api.answers.add(const TalkTurn(
+        reply: 'What is wrong?',
+        target: 'crowded',
+        interaction: 'speak',
+        speakingPrompt: 'Explain why you cannot get on the bus.'));
+    await t.tap(find.text('Find a bus'));
+    await t.pump();
+    await settle(t);
+    tts.finishSpeaking();
+    await t.pump();
+    expect(find.text('Your turn to speak'), findsOneWidget);
+    expect(find.text('Explain why you cannot get on the bus.'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(speech.inits, 0);
+    expect(speech.untilPauseCalls, 0);
+    expect(find.text('2 / 9'), findsOneWidget);
+    await t.tap(find.bySemanticsLabel('Tap to talk'));
+    await t.pump();
+    expect(speech.inits, 1, reason: 'Recording starts only on an explicit mic tap');
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('mixed choices allow a custom answer and completed missions hide the mic', (t) async {
+    await open(t,
+        turn: const TalkTurn(
+            reply: 'Choose a plan.', target: 'crowded', interaction: 'choice', choices: ['Stay here', 'Leave now']));
+    await t.tap(find.text('Say something else'));
+    await t.pump();
+    expect(find.byType(TextField), findsOneWidget);
+    api.answers.add(const TalkTurn(reply: 'You found a way home.', target: 'crowded', interaction: 'complete'));
+    await reply(t, 'Take a taxi');
+    expect(api.calls.last.history.last.isChoice, isFalse);
+    expect(find.text('See results'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+    expect(speech.inits, 0);
+    expect(t.takeException(), isNull);
+  });
+
   // ---- talk-mission (owner, 2026-10-24) ----
 
   testWidgets('the mic is twice its old size, inside a ring to match', (t) async {
@@ -269,7 +324,8 @@ void main() {
     expect(find.byKey(talkVoiceLoadingKey), findsNothing, reason: 'not at once: a quick voice never flashes it');
     await t.pump(const Duration(milliseconds: 300));
     expect(find.byKey(talkVoiceLoadingKey), findsOneWidget);
-    expect(find.descendant(of: find.byKey(talkBubbleKey(0)), matching: find.byKey(talkVoiceLoadingKey)), findsOneWidget);
+    expect(
+        find.descendant(of: find.byKey(talkBubbleKey(0)), matching: find.byKey(talkVoiceLoadingKey)), findsOneWidget);
     expect(find.text(line), findsOneWidget);
     expect(find.byTooltip('Stop'), findsOneWidget);
     tts.progress!(0.1);

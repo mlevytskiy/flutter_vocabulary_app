@@ -96,6 +96,14 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
 
   /// Set once the mic was used in this talk: new AI replies are read aloud.
   bool _voiceUsed = false;
+  bool _customReply = false;
+  bool _showWords = false;
+
+  void _choose(String choice) {
+    setState(_hfStop);
+    _field.clear();
+    ref.read(talkProvider(widget.collectionId).notifier).send(choice, isChoice: true);
+  }
 
   /// The hands-free loop (AC-29): its step, whether the learner paused it
   /// with the mic (or nothing was heard), and a run number that drops the
@@ -242,7 +250,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       return;
     }
     if (_hfPaused) return;
-    await _speakLine(index, thenListen: true);
+    await _speakLine(index, thenListen: !ref.read(talkProvider(widget.collectionId)).mixed);
   }
 
   /// Speaks AI line [index] with the karaoke and, while its voice is fetched,
@@ -308,13 +316,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _hfPaused = false;
       _hfNothingHeard = false;
     }
-    _speakLine(index, thenListen: handsFree);
+    _speakLine(index, thenListen: handsFree && !ref.read(talkProvider(widget.collectionId)).mixed);
   }
 
   /// Stop under the line being spoken: the voice stops; in hands-free the
   /// learner's turn starts as if it had ended.
   void _stopVoice() {
-    final listen = ref.read(handsFreeProvider) && !_hfPaused;
+    final listen = ref.read(handsFreeProvider) && !_hfPaused && !ref.read(talkProvider(widget.collectionId)).mixed;
     setState(_hfStop);
     if (listen) _hfListen();
   }
@@ -323,7 +331,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// nothing heard it stops the loop until the mic is tapped.
   Future<void> _hfListen() async {
     if (!mounted || !ref.read(handsFreeProvider) || _hfPaused) return;
-    if (ref.read(talkProvider(widget.collectionId)).status != TalkStatus.talking) return;
+    final talk = ref.read(talkProvider(widget.collectionId));
+    if (talk.status != TalkStatus.talking || talk.mixed) return;
     final run = ++_hfRun;
     final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
     if (_availability != SpeechAvailability.ready) {
@@ -472,12 +481,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final provider = talkProvider(widget.collectionId);
     ref.listen(provider, (prev, next) {
       if (next.messages.length != prev?.messages.length || next.status != prev?.status) _scrollToEnd();
+      if (next.messages.length > (prev?.messages.length ?? 0)) _customReply = false;
       if (next.messages.length > (prev?.messages.length ?? 0) && next.messages.last.role == TalkRole.ai) {
         _onAiLine(next.messages.last.text);
       }
       if (next.status != TalkStatus.talking && _hf != _HandsFree.idle) setState(_hfStop);
       final draft = next.keepDraft;
-      if (draft != null && draft != prev?.keepDraft) _field.text = draft;
+      if (draft != null && draft != prev?.keepDraft && !next.keepChoice) _field.text = draft;
       if (draft == null && prev?.keepDraft != null) _field.clear();
       if (next.status == TalkStatus.over && prev?.status != TalkStatus.over) {
         openSessionResults(context, widget.collectionId);
@@ -490,9 +500,12 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final busy = s.status == TalkStatus.starting || s.status == TalkStatus.waiting;
     final inProgress = s.messages.isNotEmpty && s.status != TalkStatus.over;
     final micShown = _availability == null || _availability == SpeechAvailability.ready;
-    final voiceRefused = _availability == SpeechAvailability.permissionDenied ||
-        _availability == SpeechAvailability.unavailable;
-    final handsFree = ref.watch(handsFreeProvider);
+    final voiceRefused =
+        _availability == SpeechAvailability.permissionDenied || _availability == SpeechAvailability.unavailable;
+    final autoVoice = ref.watch(handsFreeProvider);
+    // Mixed missions may read the character aloud, but never start recording automatically.
+    final handsFree = autoVoice && !s.mixed;
+    final composer = !s.complete && (!s.mixed || s.interaction == 'speak' || _customReply);
     final pauseSeconds = ref.watch(talkPauseProvider);
     final micOn = _listening || _hf == _HandsFree.listening;
     final String? line;
@@ -529,7 +542,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     } else {
       final theme = Theme.of(context);
       final words = [for (final w in s.words) w.word];
-      final usedRows = {for (final w in s.words) if (w.used) w.word.rowId};
+      final usedRows = {
+        for (final w in s.words)
+          if (w.used) w.word.rowId
+      };
       final micActive = micOn && _availability == SpeechAvailability.ready;
       final mission = s.mission;
       final lastAi = s.messages.lastIndexWhere((m) => m.role == TalkRole.ai);
@@ -571,8 +587,43 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                         ),
                       ),
                   ],
-                  if (s.status == TalkStatus.waiting)
-                    TalkBubble(index: -1, text: '…', mine: false, maxWidth: maxWidth),
+                  if (s.mixed && s.status == TalkStatus.talking && !s.complete) ...[
+                    if (s.interaction == 'choice') ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text('What do you want to do?'),
+                      ),
+                      for (final choice in s.choices)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: OutlinedButton(
+                            onPressed: _listening ? null : () => _choose(choice),
+                            child: Text(choice, textAlign: TextAlign.center),
+                          ),
+                        ),
+                      if (!_customReply)
+                        TextButton(
+                          onPressed: () => setState(() => _customReply = true),
+                          child: const Text('Say something else'),
+                        ),
+                    ],
+                    if (s.interaction == 'speak')
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('Your turn to speak', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 4),
+                          Text(s.speakingPrompt),
+                          const Text('Tap the mic when you are ready, or type your answer.'),
+                        ]),
+                      ),
+                  ],
+                  if (s.complete)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: FilledButton(onPressed: notifier.finish, child: const Text('See results')),
+                    ),
+                  if (s.status == TalkStatus.waiting) TalkBubble(index: -1, text: '…', mine: false, maxWidth: maxWidth),
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: _field,
                     builder: (_, v, __) => micOn && v.text.trim().isNotEmpty
@@ -594,145 +645,151 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                 TextButton(onPressed: notifier.retry, child: const Text('Retry')),
               ]),
             ),
-          DecoratedBox(
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: scheme.outlineVariant))),
-            child: Column(
-              children: [
-                if (s.hintWord != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Try using: ${s.hintWord}',
-                          style: theme.textTheme.bodyMedium
-                              ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                SizedBox(
-                  height: 44,
-                  child: ListView(
-                    key: talkStripKey,
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-                    children: [
-                      for (final w in s.words)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: TalkStripChip(
-                            word: w.word.word,
-                            used: w.used,
-                            target: !w.used && w.word.word == s.target,
-                            onTap: (rect) => _openWord(w.word, rect),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 2, 16, 0),
-                  child: Row(children: [
-                    Expanded(
+          if (composer)
+            DecoratedBox(
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: scheme.outlineVariant))),
+              child: Column(
+                children: [
+                  if (s.hintWord != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: OutlinedButton(
-                          onPressed: s.hintAvailable && s.status == TalkStatus.talking ? notifier.showHint : null,
-                          // Narrower padding: the big mic leaves less room beside it.
-                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
-                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.lightbulb_outline, size: 18),
-                            SizedBox(width: 6),
-                            Flexible(child: Text('Hint', overflow: TextOverflow.fade, softWrap: false)),
-                          ]),
-                        ),
+                        child: Text('Try using: ${s.hintWord}',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600)),
                       ),
                     ),
-                    if (micShown)
-                      Semantics(
-                        label: 'Tap to talk',
-                        button: true,
-                        child: Listener(
-                          onPointerDown: handsFree || (busy && !_listening) ? null : (_) => _micDown(),
-                          onPointerUp: handsFree
-                              ? (busy && _hf == _HandsFree.idle ? null : (_) => _hfMicTap())
-                              : (_) => _micUp(),
-                          onPointerCancel: handsFree ? null : (_) => _micUp(),
-                          child: AnimatedBuilder(
-                            animation: _ring,
-                            builder: (_, child) => TalkRing(
-                              progress: _hf == _HandsFree.listening ? _ring.value : 0,
-                              active: micActive,
-                              child: child!,
-                            ),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: talkMicSize,
-                              height: talkMicSize,
-                              decoration: BoxDecoration(
-                                color: micOn
-                                    ? scheme.primary
-                                    : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
-                                // Round in every theme (owner, 2026-10-24).
-                                shape: BoxShape.circle,
+                  if (s.mixed)
+                    TextButton(
+                      onPressed: () => setState(() => _showWords = !_showWords),
+                      child: Text(_showWords ? 'Hide practice words' : 'Show practice words'),
+                    ),
+                  if (!s.mixed || _showWords)
+                    SizedBox(
+                      height: 44,
+                      child: ListView(
+                        key: talkStripKey,
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                        children: [
+                          for (final w in s.words)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3),
+                              child: TalkStripChip(
+                                word: w.word.word,
+                                used: w.used,
+                                target: !w.used && w.word.word == s.target,
+                                onTap: (rect) => _openWord(w.word, rect),
                               ),
-                              child: Icon(
-                                micOn ? Icons.mic : Icons.mic_none,
-                                size: 46,
-                                color: micOn
-                                    ? scheme.onPrimary
-                                    : scheme.onPrimaryContainer.withValues(alpha: busy ? 0.38 : 1),
+                            ),
+                        ],
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 16, 0),
+                    child: Row(children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: OutlinedButton(
+                            onPressed: s.hintAvailable && s.status == TalkStatus.talking ? notifier.showHint : null,
+                            // Narrower padding: the big mic leaves less room beside it.
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+                            child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                              Icon(Icons.lightbulb_outline, size: 18),
+                              SizedBox(width: 6),
+                              Flexible(child: Text('Hint', overflow: TextOverflow.fade, softWrap: false)),
+                            ]),
+                          ),
+                        ),
+                      ),
+                      if (micShown)
+                        Semantics(
+                          label: 'Tap to talk',
+                          button: true,
+                          child: Listener(
+                            onPointerDown: handsFree || (busy && !_listening) ? null : (_) => _micDown(),
+                            onPointerUp: handsFree
+                                ? (busy && _hf == _HandsFree.idle ? null : (_) => _hfMicTap())
+                                : (_) => _micUp(),
+                            onPointerCancel: handsFree ? null : (_) => _micUp(),
+                            child: AnimatedBuilder(
+                              animation: _ring,
+                              builder: (_, child) => TalkRing(
+                                progress: _hf == _HandsFree.listening ? _ring.value : 0,
+                                active: micActive,
+                                child: child!,
+                              ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: talkMicSize,
+                                height: talkMicSize,
+                                decoration: BoxDecoration(
+                                  color: micOn
+                                      ? scheme.primary
+                                      : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
+                                  // Round in every theme (owner, 2026-10-24).
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  micOn ? Icons.mic : Icons.mic_none,
+                                  size: 46,
+                                  color: micOn
+                                      ? scheme.onPrimary
+                                      : scheme.onPrimaryContainer.withValues(alpha: busy ? 0.38 : 1),
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    Expanded(
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _field,
-                          builder: (_, v, __) => TalkWave(active: micActive, seed: micActive ? v.text.length : 0),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _field,
+                            builder: (_, v, __) => TalkWave(active: micActive, seed: micActive ? v.text.length : 0),
+                          ),
                         ),
                       ),
-                    ),
-                  ]),
-                ),
-                if (line != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
-                    child: AnimatedBuilder(
-                      animation: _ring,
-                      builder: (_, __) {
-                        final left = (1 - _ring.value) * pauseSeconds;
-                        final sending = _hf == _HandsFree.listening &&
-                            _ring.isAnimating &&
-                            _ring.value * pauseSeconds >= 1;
-                        return Text(
-                          sending ? talkSendingInText(left.ceil()) : line!,
-                          textAlign: TextAlign.center,
-                          style: theme.textTheme.bodySmall?.copyWith(color: decor.muted, fontWeight: FontWeight.w600),
-                        );
-                      },
-                    ),
+                    ]),
                   ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 2, 4, 8),
-                  child: Row(children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _field,
-                        focusNode: _focus,
-                        enabled: !busy,
-                        textInputAction: TextInputAction.send,
-                        onSubmitted: (_) => _send(),
-                        decoration: const InputDecoration(hintText: 'Type a reply…', isDense: true),
+                  if (line != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+                      child: AnimatedBuilder(
+                        animation: _ring,
+                        builder: (_, __) {
+                          final left = (1 - _ring.value) * pauseSeconds;
+                          final sending =
+                              _hf == _HandsFree.listening && _ring.isAnimating && _ring.value * pauseSeconds >= 1;
+                          return Text(
+                            sending ? talkSendingInText(left.ceil()) : line!,
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(color: decor.muted, fontWeight: FontWeight.w600),
+                          );
+                        },
                       ),
                     ),
-                    IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
-                  ]),
-                ),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 4, 8),
+                    child: Row(children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _field,
+                          focusNode: _focus,
+                          enabled: !busy,
+                          textInputAction: TextInputAction.send,
+                          onSubmitted: (_) => _send(),
+                          decoration: const InputDecoration(hintText: 'Type a reply…', isDense: true),
+                        ),
+                      ),
+                      IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
+                    ]),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       );
     }
@@ -753,13 +810,15 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
           title: const Text('Talk with AI'),
           actions: [
             IconButton(
-              tooltip: handsFree ? talkHandsFreeOnTip : talkHandsFreeOffTip,
-              icon: Icon(handsFree ? Icons.headset_mic : Icons.headset_off),
+              tooltip: s.mixed
+                  ? (autoVoice ? 'Read replies aloud: on' : 'Read replies aloud: off')
+                  : (handsFree ? talkHandsFreeOnTip : talkHandsFreeOffTip),
+              icon: Icon(autoVoice ? Icons.headset_mic : Icons.headset_off),
               onPressed: _toggleHandsFree,
             ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Center(child: Text('${s.repliesCount} / $maxReplies')),
+              child: Center(child: Text('${s.repliesCount} / ${s.mixed ? 9 : maxReplies}')),
             ),
           ],
         ),
