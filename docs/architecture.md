@@ -144,6 +144,11 @@ lib/
                                 LearnApiException)
                                 talk_api_service.dart (learn-redesign: POST /learn/talk start/reply, 15 s;
                                 throws TalkApiException dayLimit/failed/network)
+                                openai_voice_service.dart (openai-voice: POST /learn/speech → mp3 bytes,
+                                20 s; throws OpenAiVoiceException dayLimit/unavailable/failed/network;
+                                splitForSpeech; VoiceSource) and voice_player.dart (VoicePlayer,
+                                AudioplayersVoicePlayer on audioplayers); PronunciationService speaks
+                                Talk's lines with them per learn.voiceSource, the phone voice on failure
                                 speech_input.dart (learn-redesign ADR-0009: SpeechInput over
                                 speech_to_text or speech_to_text_pro, picked by the persisted
                                 SpeechEngine in Learn settings; speechInputProvider)

@@ -141,6 +141,7 @@ C4Container
 |---|---|---|
 | Talk route | `vocab-photo-api/src/learn/talk.ts`, registered in `learn/routes.ts` | Validates turn body; start → takes a talk unit; builds prompt (scene, words, target, history ≤ 24 messages); returns `{reply, target}`. |
 | Talk counter | `learn/allowance.ts` `takeLearnTalk`, migration `0008_talk_allowance.sql` | 20 talks per UTC day app-wide. |
+| Speech route (AC-31, openai-voice) | `vocab-photo-api/src/learn/speech.ts`, registered in `learn/routes.ts`; counter `takeLearnSpeech`, migration `0009_speech_allowance.sql` | `POST /learn/speech` `{text 1..1200, voice ∈ 11 OpenAI voices, default coral}` → OpenAI `gpt-4o-mini-tts` (mp3, teacher instructions, 15 s), streams `audio/mpeg` back; 400 bad_request, 503 speech_unavailable (no `OPENAI_API_KEY`), 429 day_limit (400 lines per UTC day app-wide, unit taken before the call), 502 speech_failed. Never logs the text. |
 
 ## 6. Runtime view
 

@@ -493,13 +493,21 @@ final class GoogleTranslateServiceProvider extends $FunctionalProvider<
 String _$googleTranslateServiceHash() =>
     r'6afdf9f3d52ebdc231e65e17d05446c50f457432';
 
+/// Text to speech. Talk with AI's lines go to OpenAI's voice or the phone's
+/// as Learn settings say (openai-voice, AC-31), read when each line starts.
+
 @ProviderFor(pronunciationService)
 final pronunciationServiceProvider = PronunciationServiceProvider._();
+
+/// Text to speech. Talk with AI's lines go to OpenAI's voice or the phone's
+/// as Learn settings say (openai-voice, AC-31), read when each line starts.
 
 final class PronunciationServiceProvider extends $FunctionalProvider<
     PronunciationService,
     PronunciationService,
     PronunciationService> with $Provider<PronunciationService> {
+  /// Text to speech. Talk with AI's lines go to OpenAI's voice or the phone's
+  /// as Learn settings say (openai-voice, AC-31), read when each line starts.
   PronunciationServiceProvider._()
       : super(
           from: null,
@@ -535,7 +543,59 @@ final class PronunciationServiceProvider extends $FunctionalProvider<
 }
 
 String _$pronunciationServiceHash() =>
-    r'a04b5b4ea06bd7d29a7b0874172549524472bb26';
+    r'211acea92b814bc5ce76f39902597439d6aac7ff';
+
+/// The Worker's speech route for Talk with AI's OpenAI voice (openai-voice,
+/// AC-31).
+
+@ProviderFor(openAiVoiceService)
+final openAiVoiceServiceProvider = OpenAiVoiceServiceProvider._();
+
+/// The Worker's speech route for Talk with AI's OpenAI voice (openai-voice,
+/// AC-31).
+
+final class OpenAiVoiceServiceProvider extends $FunctionalProvider<
+    OpenAiVoiceService,
+    OpenAiVoiceService,
+    OpenAiVoiceService> with $Provider<OpenAiVoiceService> {
+  /// The Worker's speech route for Talk with AI's OpenAI voice (openai-voice,
+  /// AC-31).
+  OpenAiVoiceServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'openAiVoiceServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$openAiVoiceServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<OpenAiVoiceService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  OpenAiVoiceService create(Ref ref) {
+    return openAiVoiceService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(OpenAiVoiceService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<OpenAiVoiceService>(value),
+    );
+  }
+}
+
+String _$openAiVoiceServiceHash() =>
+    r'a250e5a16ea4f5f4901b845f6b43a18eccecf037';
 
 /// Dictionary senses for the definition field, via the Worker (ADR-0002).
 
@@ -2387,6 +2447,120 @@ abstract class _$TtsVoiceNotifier extends $Notifier<VoiceId?> {
     final ref = this.ref as $Ref<VoiceId?, VoiceId?>;
     final element = ref.element as $ClassProviderElement<
         AnyNotifier<VoiceId?, VoiceId?>, VoiceId?, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// Who speaks Talk with AI's lines, picked in Learn settings (openai-voice,
+/// owner 2026-10-24; AC-31): OpenAI's natural voice by default.
+
+@ProviderFor(VoiceSourceNotifier)
+final voiceSourceProvider = VoiceSourceNotifierProvider._();
+
+/// Who speaks Talk with AI's lines, picked in Learn settings (openai-voice,
+/// owner 2026-10-24; AC-31): OpenAI's natural voice by default.
+final class VoiceSourceNotifierProvider
+    extends $NotifierProvider<VoiceSourceNotifier, VoiceSource> {
+  /// Who speaks Talk with AI's lines, picked in Learn settings (openai-voice,
+  /// owner 2026-10-24; AC-31): OpenAI's natural voice by default.
+  VoiceSourceNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'voiceSourceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$voiceSourceNotifierHash();
+
+  @$internal
+  @override
+  VoiceSourceNotifier create() => VoiceSourceNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(VoiceSource value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<VoiceSource>(value),
+    );
+  }
+}
+
+String _$voiceSourceNotifierHash() =>
+    r'8150f284af34427fbd5997c4c037239d4966da7a';
+
+/// Who speaks Talk with AI's lines, picked in Learn settings (openai-voice,
+/// owner 2026-10-24; AC-31): OpenAI's natural voice by default.
+
+abstract class _$VoiceSourceNotifier extends $Notifier<VoiceSource> {
+  VoiceSource build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<VoiceSource, VoiceSource>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<VoiceSource, VoiceSource>, VoiceSource, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// The OpenAI voice Talk with AI speaks with, one of [openAiVoices]; coral
+/// by default (AC-31).
+
+@ProviderFor(OpenAiVoiceNotifier)
+final openAiVoiceProvider = OpenAiVoiceNotifierProvider._();
+
+/// The OpenAI voice Talk with AI speaks with, one of [openAiVoices]; coral
+/// by default (AC-31).
+final class OpenAiVoiceNotifierProvider
+    extends $NotifierProvider<OpenAiVoiceNotifier, String> {
+  /// The OpenAI voice Talk with AI speaks with, one of [openAiVoices]; coral
+  /// by default (AC-31).
+  OpenAiVoiceNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'openAiVoiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$openAiVoiceNotifierHash();
+
+  @$internal
+  @override
+  OpenAiVoiceNotifier create() => OpenAiVoiceNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(String value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<String>(value),
+    );
+  }
+}
+
+String _$openAiVoiceNotifierHash() =>
+    r'ae0fce8cd4ec1a066baa0f7867a128da6ea573d8';
+
+/// The OpenAI voice Talk with AI speaks with, one of [openAiVoices]; coral
+/// by default (AC-31).
+
+abstract class _$OpenAiVoiceNotifier extends $Notifier<String> {
+  String build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<String, String>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<String, String>, String, Object?, Object?>;
     return element.handleCreate(ref, build);
   }
 }

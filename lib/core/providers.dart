@@ -21,7 +21,9 @@ import 'services/learn_api_service.dart';
 import 'services/new_user_trial.dart';
 import 'services/photo_scaler.dart';
 import 'services/photo_upload_service.dart';
+import 'services/openai_voice_service.dart';
 import 'services/pronunciation_service.dart';
+import 'services/voice_player.dart';
 import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
 import 'services/collection_naming_service.dart';
@@ -92,8 +94,23 @@ StoryPictureStore storyPictureStore(Ref ref) => StoryPictureStore();
 GoogleTranslateService googleTranslateService(Ref ref) =>
     GoogleTranslateService();
 
+/// Text to speech. Talk with AI's lines go to OpenAI's voice or the phone's
+/// as Learn settings say (openai-voice, AC-31), read when each line starts.
 @Riverpod(keepAlive: true)
-PronunciationService pronunciationService(Ref ref) => PronunciationService();
+PronunciationService pronunciationService(Ref ref) => PronunciationService(
+      openAi: ref.read(openAiVoiceServiceProvider),
+      player: AudioplayersVoicePlayer(),
+      voiceChoice: () async {
+        await ref.read(voiceSourceProvider.notifier).loaded;
+        await ref.read(openAiVoiceProvider.notifier).loaded;
+        return (source: ref.read(voiceSourceProvider), openAiVoice: ref.read(openAiVoiceProvider));
+      },
+    );
+
+/// The Worker's speech route for Talk with AI's OpenAI voice (openai-voice,
+/// AC-31).
+@Riverpod(keepAlive: true)
+OpenAiVoiceService openAiVoiceService(Ref ref) => OpenAiVoiceService();
 
 /// Dictionary senses for the definition field, via the Worker (ADR-0002).
 @Riverpod(keepAlive: true)
@@ -624,6 +641,67 @@ class TtsVoiceNotifier extends _$TtsVoiceNotifier {
     state = voice;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(key, jsonEncode({'name': voice.name, 'locale': voice.locale}));
+  }
+}
+
+/// Who speaks Talk with AI's lines, picked in Learn settings (openai-voice,
+/// owner 2026-10-24; AC-31): OpenAI's natural voice by default.
+@Riverpod(keepAlive: true)
+class VoiceSourceNotifier extends _$VoiceSourceNotifier {
+  static const key = 'learn.voiceSource';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  VoiceSource build() {
+    loaded;
+    return VoiceSource.openAi;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    final stored = prefs.getString(key);
+    state = VoiceSource.values.firstWhere((s) => s.name == stored, orElse: () => VoiceSource.openAi);
+  }
+
+  Future<void> set(VoiceSource source) async {
+    _setByLearner = true;
+    state = source;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, source.name);
+  }
+}
+
+/// The OpenAI voice Talk with AI speaks with, one of [openAiVoices]; coral
+/// by default (AC-31).
+@Riverpod(keepAlive: true)
+class OpenAiVoiceNotifier extends _$OpenAiVoiceNotifier {
+  static const key = 'learn.openAiVoice';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  String build() {
+    loaded;
+    return defaultOpenAiVoice;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    final stored = prefs.getString(key);
+    if (stored != null && openAiVoices.contains(stored)) state = stored;
+  }
+
+  Future<void> set(String voice) async {
+    if (!openAiVoices.contains(voice)) return;
+    _setByLearner = true;
+    state = voice;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, voice);
   }
 }
 

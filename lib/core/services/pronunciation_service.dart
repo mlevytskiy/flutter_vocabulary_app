@@ -1,7 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+
+import 'openai_voice_service.dart';
+import 'voice_player.dart';
 
 enum Accent { uk, us }
 
@@ -90,6 +94,10 @@ List<TtsVoice> rankEnglishVoices(List<dynamic> raw) {
 TtsVoice? bestVoiceFor(List<TtsVoice> ranked, String locale) =>
     ranked.where((v) => v.locale == locale).firstOrNull;
 
+/// Learn settings' voice for Talk with AI (openai-voice, AC-31): the
+/// source and, for [VoiceSource.openAi], which OpenAI voice.
+typedef TalkVoiceChoice = ({VoiceSource source, String openAiVoice});
+
 class PronunciationException implements Exception {
   final String message;
   PronunciationException(this.message);
@@ -102,8 +110,29 @@ class PronunciationException implements Exception {
 /// offline, no key, and UK/US is a property of the request (locale) rather
 /// than of what some remote dictionary happens to hold. Wrapped behind this
 /// service so the rest of the app never depends on the source choice.
+///
+/// Talk with AI's lines ([speakAndWait]) can instead be spoken by OpenAI's
+/// natural voice through the Worker (openai-voice, owner 2026-10-24; AC-31),
+/// when [voiceChoice] says so; the phone voice speaks any line OpenAI fails.
 class PronunciationService {
-  final FlutterTts _tts = FlutterTts();
+  PronunciationService({
+    FlutterTts? tts,
+    OpenAiVoiceService? openAi,
+    VoicePlayer? player,
+    Future<TalkVoiceChoice> Function()? voiceChoice,
+  })  : _tts = tts ?? FlutterTts(),
+        _openAi = openAi,
+        _player = player,
+        _voiceChoice = voiceChoice;
+
+  final FlutterTts _tts;
+  final OpenAiVoiceService? _openAi;
+  final VoicePlayer? _player;
+  final Future<TalkVoiceChoice> Function()? _voiceChoice;
+
+  /// Moves on with every [speakAndWait] and [stop]: a line whose turn has
+  /// passed is not played (nor spoken by the phone) once its audio arrives.
+  int _line = 0;
   bool _iosSessionConfigured = false;
   Map<Accent, Map<String, String>>? _iosVoiceByAccent;
   List<TtsVoice>? _english;
@@ -191,9 +220,72 @@ class PronunciationService {
   }
 
   /// Speaks [text] and completes once it was spoken, stopped or failed
-  /// (Talk's hands-free loop, AC-29: it listens only after this). Uses
-  /// [voice] when given, else the best installed voice of [accent] (AC-30).
-  Future<void> speakAndWait(String text, {required Accent accent, VoiceId? voice}) async {
+  /// (Talk's hands-free loop, AC-29: it listens only after this).
+  ///
+  /// OpenAI's voice speaks it when Learn settings say so, or with
+  /// [openAiVoice] when given (Play sample): a text over 1200 characters in
+  /// sentence chunks one after another, and from the first chunk OpenAI
+  /// fails on (no key, offline, day limit, playback) the phone voice speaks
+  /// the rest (AC-31). The phone voice is [voice] when given, else the best
+  /// installed voice of [accent] (AC-30). [onProgress] gets how much of
+  /// [text] was spoken, 0 to 1, from either voice.
+  Future<void> speakAndWait(
+    String text, {
+    required Accent accent,
+    VoiceId? voice,
+    String? openAiVoice,
+    void Function(double progress)? onProgress,
+  }) async {
+    final line = ++_line;
+    await _player?.stop();
+    final openAiVoiceToUse = openAiVoice ?? await _openAiVoiceFromSettings();
+    if (line != _line) return;
+    var rest = text;
+    var report = onProgress;
+    final (openAi, player) = (_openAi, _player);
+    if (openAiVoiceToUse != null && openAi != null && player != null) {
+      final chunks = splitForSpeech(text);
+      final total = chunks.fold<int>(0, (n, c) => n + c.length);
+      var before = 0;
+      var i = 0;
+      try {
+        for (; i < chunks.length; i++) {
+          final chunk = chunks[i];
+          final mp3 = await openAi.synthesize(chunk, openAiVoiceToUse);
+          if (line != _line) return;
+          final at = before;
+          final outer = onProgress;
+          await player.play(mp3, onProgress: outer == null ? null : (p) => outer((at + p * chunk.length) / total));
+          if (line != _line) return;
+          before += chunk.length;
+        }
+        return;
+      } catch (e) {
+        if (line != _line) return;
+        debugPrint('openai voice: falling back to the phone voice ($e)');
+        rest = chunks.sublist(i).join(' ');
+        final spoken = before / total;
+        final outer = onProgress;
+        if (outer != null && spoken > 0) report = (p) => outer(spoken + p * (1 - spoken));
+      }
+    }
+    await _speakWithPhone(rest, accent: accent, voice: voice, onProgress: report);
+  }
+
+  /// The OpenAI voice Learn settings picked, or null for the phone voice.
+  Future<String?> _openAiVoiceFromSettings() async {
+    final choice = _voiceChoice;
+    if (choice == null) return null;
+    try {
+      final c = await choice();
+      return c.source == VoiceSource.openAi ? c.openAiVoice : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _speakWithPhone(String text,
+      {required Accent accent, VoiceId? voice, void Function(double progress)? onProgress}) async {
     try {
       if (Platform.isIOS) {
         await _applyIosPlayback();
@@ -206,22 +298,35 @@ class PronunciationService {
         await _tts.setLanguage(_localeFor[accent]!);
       }
       final done = Completer<void>();
+      var ended = false;
       void finish() {
         if (!done.isCompleted) done.complete();
       }
 
-      _tts.setCompletionHandler(finish);
+      _tts.setCompletionHandler(() {
+        ended = true;
+        finish();
+      });
       _tts.setCancelHandler(finish);
       _tts.setErrorHandler((_) => finish());
+      _tts.setProgressHandler((spoken, start, end, word) {
+        if (onProgress != null && spoken.isNotEmpty) onProgress((end / spoken.length).clamp(0.0, 1.0));
+      });
       final started = await _tts.speak(text);
       if (started != 1) finish();
       // A missed completion never leaves Talk waiting for good.
       await done.future.timeout(
           Duration(seconds: 10 + text.length ~/ 8), onTimeout: () {});
+      if (ended) onProgress?.call(1.0);
     } catch (e) {
       throw PronunciationException('Could not speak: $e');
     }
   }
 
-  Future<void> stop() => _tts.stop();
+  /// Stops whatever is speaking, the phone voice or OpenAI's.
+  Future<void> stop() async {
+    _line++;
+    await _player?.stop();
+    await _tts.stop();
+  }
 }
