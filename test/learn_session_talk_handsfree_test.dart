@@ -91,7 +91,8 @@ class HoldTts implements PronunciationService {
   void finishSpeaking() => _pending?.complete();
 
   @override
-  Future<void> speakAndWait(String text, {required Accent accent, VoiceId? voice}) {
+  Future<void> speakAndWait(String text,
+      {required Accent accent, VoiceId? voice, String? openAiVoice, void Function(double progress)? onProgress}) {
     spoken.add(text);
     voices.add(voice);
     log.add('speak');

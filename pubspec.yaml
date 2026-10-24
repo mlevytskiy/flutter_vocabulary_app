@@ -48,6 +48,8 @@ dependencies:
   speech_to_text: 7.5.0
   # Second speech engine for Talk with AI, picked in Learn settings (learn-redesign, owner 2026-10-23/24). Pinned.
   speech_to_text_pro: 0.0.1
+  # Plays the OpenAI voice's mp3 in Talk with AI (learn-redesign openai-voice, owner 2026-10-24). Pinned.
+  audioplayers: 6.8.1
 
 dev_dependencies:
   flutter_test:

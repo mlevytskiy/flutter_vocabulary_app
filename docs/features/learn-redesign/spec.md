@@ -237,6 +237,11 @@ Committed approach: the Learn button keeps its look and place; a small button be
 **When** the learner looks at "AI voice"
 **Then** the phone's installed English voices are listed best first with "Premium", "Enhanced" or "Standard", the best one is picked until the learner picks another, the pick is remembered and used for the AI's spoken lines in Talk with AI, "Play sample" says "Hello! Let's practise your words." in the picked voice, and on iOS a line says where to download an Enhanced or Premium voice (owner, 2026-10-24)
 
+### AC-31 (US-09) — happy path and fallback
+**Given** Learn settings show "AI voice" with "OpenAI (natural)" (the default) and "Phone voice", and under OpenAI the voices Coral (default), Nova, Sage, Ash, Alloy, Ballad, Echo, Fable, Onyx, Shimmer and Verse, each with "Play sample", and the line "Natural voice from OpenAI; needs internet. Falls back to the phone voice when offline."
+**When** the AI's line in Talk with AI is spoken with OpenAI chosen
+**Then** it is spoken by OpenAI gpt-4o-mini-tts in the picked voice through the Worker (`POST /learn/speech`, 400 lines per UTC day app-wide), a line over 1200 characters in sentence chunks one after another; when OpenAI cannot speak it (no key, offline, the day limit, a playback error) the phone voice of AC-30 speaks that line (or its remaining chunks) without any message; the talk listens only after the line was spoken (AC-29); with "Phone voice" chosen the phone voice list of AC-30 shows and speaks; the choice and the voice are remembered (owner, 2026-10-24)
+
 ## 6. Non-functional requirements
 
 | Aspect | Target | Measurement |

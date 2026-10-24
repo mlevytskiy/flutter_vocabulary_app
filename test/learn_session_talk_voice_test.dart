@@ -69,7 +69,8 @@ class FakePronunciation implements PronunciationService {
   Future<void> speak(String word, {required Accent accent}) async => spoken.add(word);
 
   @override
-  Future<void> speakAndWait(String text, {required Accent accent, VoiceId? voice}) async => spoken.add(text);
+  Future<void> speakAndWait(String text,
+      {required Accent accent, VoiceId? voice, String? openAiVoice, void Function(double progress)? onProgress}) async => spoken.add(text);
 
   @override
   Future<List<TtsVoice>> englishVoices() async => const [];
