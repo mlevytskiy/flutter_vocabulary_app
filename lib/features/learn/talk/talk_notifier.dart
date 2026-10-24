@@ -57,6 +57,7 @@ class TalkState {
     this.repliesWithoutTarget = 0,
     this.errorText,
     this.keepDraft,
+    this.name = '',
   });
 
   final TalkStatus status;
@@ -81,6 +82,9 @@ class TalkState {
 
   /// The typed text of a reply that failed, kept for Retry.
   final String? keepDraft;
+
+  /// The collection's name, under the tutor's in the header (talk-screen-b).
+  final String name;
 
   int get usedCount => words.where((w) => w.used).length;
 
@@ -113,6 +117,7 @@ class TalkState {
         repliesWithoutTarget: repliesWithoutTarget ?? this.repliesWithoutTarget,
         errorText: errorText == null ? this.errorText : errorText(),
         keepDraft: keepDraft == null ? this.keepDraft : keepDraft(),
+        name: name,
       );
 }
 
@@ -181,7 +186,7 @@ class Talk extends _$Talk {
       name: c.name ?? '',
       description: c.description ?? '',
     );
-    _set(TalkState(words: [for (final w in words) TalkStripWord(w)], target: words.first.word));
+    _set(TalkState(words: [for (final w in words) TalkStripWord(w)], target: words.first.word, name: c.name ?? ''));
     await _open();
   }
 

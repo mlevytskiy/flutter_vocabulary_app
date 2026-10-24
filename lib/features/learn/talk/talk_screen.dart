@@ -2,13 +2,22 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:popup_menu_2/popup_menu_2.dart';
 
+import '../../../core/models/definition_result.dart';
+import '../../../core/models/translation_result.dart';
+import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/pronunciation_service.dart';
 import '../../../core/services/speech_input.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../words/widgets/MyCustomPopupMenuController.dart';
+import '../../words/widgets/open_dots_menu.dart';
 import 'talk_navigation.dart';
 import 'talk_notifier.dart';
+import 'talk_text.dart';
+import 'talk_widgets.dart';
+import 'talk_word_popup.dart';
 
 /// Said when the speech permission is refused or no recognizer is there
 /// (learn-redesign AC-26, AC-28); typing keeps working.
@@ -28,6 +37,10 @@ const talkNothingHeardText = "Didn't hear anything — tap the mic to talk";
 String talkListeningPauseText(int seconds) => 'Listening… pause $seconds s to send';
 String talkHandsFreeHintText(int seconds) => 'Hands-free: just talk; a pause of $seconds s sends';
 
+/// The status line once the learner has paused for a second while the ring
+/// runs down (talk-screen-b).
+String talkSendingInText(int seconds) => 'Sending in $seconds…';
+
 /// Where the hands-free loop stands: between turns, reading the AI's line
 /// aloud, or listening for the learner.
 enum _HandsFree { idle, speaking, listening }
@@ -36,7 +49,12 @@ enum _HandsFree { idle, speaking, listening }
 /// word strip, Hint, the reply field and End talk; hold-to-talk beside Send,
 /// whose use has the AI's replies read aloud (AC-25, AC-26, ADR-0009).
 /// Hands-free (AC-29, on by default, the bar's headset): each AI line is
-/// spoken, then it listens until a pause and sends. Opened by `TalkRoute`.
+/// spoken, then it listens until a pause and sends. Laid out as Direction B
+/// (talk-screen-b, owner 2026-10-24): a tutor header, long bubbles with the
+/// practice words highlighted and tappable (the Words screen's popup,
+/// read-only), the spoken line filling like karaoke, a ring around the mic
+/// counting down the pause, and one line of all the words. Opened by
+/// `TalkRoute`.
 class TalkScreen extends ConsumerStatefulWidget {
   const TalkScreen({super.key, this.collectionId, this.split = true});
 
@@ -50,7 +68,7 @@ class TalkScreen extends ConsumerStatefulWidget {
   ConsumerState<TalkScreen> createState() => _TalkScreenState();
 }
 
-class _TalkScreenState extends ConsumerState<TalkScreen> {
+class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStateMixin {
   static const leaveText = 'Leave the talk? Words used so far are not saved.';
   static const maxReplies = 12;
 
@@ -88,9 +106,25 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
   int _hfRun = 0;
   PronunciationService? _tts;
 
+  /// The karaoke of the AI line being spoken (its index in the messages, null
+  /// when none) and the pause ring, which restarts with every piece heard.
+  late final _karaoke = AnimationController(vsync: this);
+  late final _ring = AnimationController(vsync: this);
+  int? _spokenIndex;
+
+  /// The word popup (the Words screen's dots popup, talk-screen-b): one menu,
+  /// moved to the tapped word before it opens.
+  final _popup = MyCustomPopupMenuController();
+  final _stackKey = GlobalKey();
+  Rect _anchor = Rect.zero;
+  WordPair? _popupWord;
+
   @override
   void initState() {
     super.initState();
+    _field.addListener(() {
+      if (_listening || _hf == _HandsFree.listening) _scrollToEnd();
+    });
     // After the first build has subscribed, so the auto-dispose talk lives.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -103,6 +137,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     _pressTimer?.cancel();
     _hfStop();
     if (_listening) _speech?.cancel();
+    _karaoke.dispose();
+    _ring.dispose();
     _field.dispose();
     _focus.dispose();
     _scroll.dispose();
@@ -207,13 +243,23 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     final run = _hfRun;
     final tts = ref.read(pronunciationServiceProvider);
     _tts = tts;
-    setState(() => _hf = _HandsFree.speaking);
+    setState(() {
+      _hf = _HandsFree.speaking;
+      _spokenIndex = ref.read(talkProvider(widget.collectionId)).messages.length - 1;
+    });
+    _karaoke
+      ..duration = karaokeDuration(text)
+      ..forward(from: 0);
     try {
       // Never listening while speaking: no echo.
       await tts.speakAndWait(text, accent: Accent.us, voice: ref.read(ttsVoiceProvider));
     } catch (_) {}
     if (!mounted || run != _hfRun) return;
-    setState(() => _hf = _HandsFree.idle);
+    _karaoke.stop();
+    setState(() {
+      _hf = _HandsFree.idle;
+      _spokenIndex = null;
+    });
     await _hfListen();
   }
 
@@ -234,17 +280,25 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     await ref.read(talkPauseProvider.notifier).loaded;
     if (!mounted || run != _hfRun) return;
     _field.clear();
+    final pause = Duration(seconds: ref.read(talkPauseProvider));
+    _ring
+      ..duration = pause
+      ..reset();
     setState(() {
       _hf = _HandsFree.listening;
       _hfNothingHeard = false;
     });
     await speech.listenUntilPause(
-      pause: Duration(seconds: ref.read(talkPauseProvider)),
+      pause: pause,
       onPartial: (text) {
-        if (mounted && run == _hfRun) _field.text = text;
+        if (!mounted || run != _hfRun) return;
+        _field.text = text;
+        // The ring runs down the pause from the last words heard.
+        if (text.trim().isNotEmpty) _ring.forward(from: 0);
       },
       onDone: (text) {
         if (!mounted || run != _hfRun) return;
+        _ring.reset();
         setState(() => _hf = _HandsFree.idle);
         if (text.trim().isEmpty) {
           setState(() {
@@ -265,6 +319,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     if (_hf == _HandsFree.listening) _speech?.stopListening();
     if (_hf == _HandsFree.speaking) _tts?.stop().catchError((Object _) {});
     _hf = _HandsFree.idle;
+    _spokenIndex = null;
+    _karaoke.stop();
+    _ring.reset();
   }
 
   /// The mic in hands-free: pauses the loop, or listens again.
@@ -300,6 +357,41 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     }
     await ref.read(handsFreeProvider.notifier).set(on);
     if (on && mounted) await _hfListen();
+  }
+
+  /// Opens the word popup on [word], its arrow at [global] (talk-screen-b).
+  void _openWord(WordPair word, Rect global) {
+    final box = _stackKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    if (_popup.menuIsShowing) _popup.hideMenu();
+    setState(() {
+      _popupWord = word;
+      _anchor = box.globalToLocal(global.topLeft) & global.size;
+    });
+    // Once the anchor has moved there.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) openDotsMenu(context, _popup, _focus.unfocus);
+    });
+  }
+
+  /// The Words screen's loaders, read-only: what they bring is shown, never
+  /// stored.
+  Future<TranslationResult?> _loadTranslations(WordPair word) async {
+    try {
+      return (await ref.read(googleTranslateServiceProvider).translateWord(word.word.trim(), from: 'en', to: 'uk'))
+          .result;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<String>?> _loadSenses(WordPair word) async {
+    final result = await ref.read(dictionaryServiceProvider).define(word.word.trim());
+    return switch (result.kind) {
+      DefinitionKind.senses => result.senses,
+      DefinitionKind.notFound => const [],
+      DefinitionKind.unavailable => null,
+    };
   }
 
   Future<void> _confirmLeave() async {
@@ -376,17 +468,40 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
     } else if (s.status == TalkStatus.error && s.messages.isEmpty) {
       body = _Message(text: s.errorText ?? talkFailedMessage, button: 'Retry', onPressed: notifier.retry);
     } else {
+      final theme = Theme.of(context);
+      final words = [for (final w in s.words) w.word];
+      final usedRows = {for (final w in s.words) if (w.used) w.word.rowId};
+      final micActive = micOn && _availability == SpeechAvailability.ready;
       body = Column(
         children: [
+          TalkTutorHeader(collectionName: s.name, onEnd: s.messages.isEmpty ? null : notifier.finish),
           Expanded(
-            child: ListView(
-              controller: _scroll,
-              padding: const EdgeInsets.all(16),
-              children: [
-                for (final m in s.messages) _Bubble(text: m.text, mine: m.role == TalkRole.learner),
-                if (s.status == TalkStatus.waiting) const _Bubble(text: '…', mine: false),
-              ],
-            ),
+            child: LayoutBuilder(builder: (context, box) {
+              final maxWidth = box.maxWidth * 0.84;
+              return ListView(
+                key: talkLogKey,
+                controller: _scroll,
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+                children: [
+                  for (final (i, m) in s.messages.indexed)
+                    i == _spokenIndex
+                        ? AnimatedBuilder(
+                            animation: _karaoke,
+                            builder: (_, __) => _bubble(i, m, maxWidth, words, usedRows,
+                                spokenEnd: karaokeSplit(m.text, _karaoke.value)),
+                          )
+                        : _bubble(i, m, maxWidth, words, usedRows),
+                  if (s.status == TalkStatus.waiting)
+                    TalkBubble(index: -1, text: '…', mine: false, maxWidth: maxWidth),
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: _field,
+                    builder: (_, v, __) => micOn && v.text.trim().isNotEmpty
+                        ? TalkLiveBubble(text: v.text, maxWidth: maxWidth)
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              );
+            }),
           ),
           if (s.status == TalkStatus.error)
             Padding(
@@ -394,103 +509,160 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
               child: Row(children: [
                 Expanded(
                   child: Text(s.errorText ?? talkFailedMessage,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.error)),
+                      style: theme.textTheme.bodyMedium?.copyWith(color: scheme.error)),
                 ),
                 TextButton(onPressed: notifier.retry, child: const Text('Retry')),
               ]),
             ),
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+          DecoratedBox(
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: scheme.outlineVariant))),
+            child: Column(
               children: [
-                for (final w in s.words)
+                if (s.hintWord != null)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: w.used
-                        ? Chip(
-                            label: Text('${w.word.word} ✓', style: TextStyle(color: decor.onLearnRight)),
-                            backgroundColor: decor.learnRight,
-                            side: BorderSide.none,
-                          )
-                        : Chip(label: Text(w.word.word), backgroundColor: Colors.transparent),
-                  ),
-              ],
-            ),
-          ),
-          if (s.hintWord != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Try using: ${s.hintWord}', style: TextStyle(color: decor.muted)),
-              ),
-            ),
-          if (line != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(line, style: TextStyle(color: decor.muted)),
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-            child: Row(children: [
-              OutlinedButton(
-                onPressed: s.hintAvailable && s.status == TalkStatus.talking ? notifier.showHint : null,
-                child: const Text('Hint'),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _field,
-                  focusNode: _focus,
-                  enabled: !busy,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _send(),
-                  decoration: const InputDecoration(hintText: 'Type a reply…', isDense: true),
-                ),
-              ),
-              IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
-              if (micShown)
-                Semantics(
-                  label: 'Tap to talk',
-                  button: true,
-                  child: Listener(
-                    onPointerDown: handsFree || (busy && !_listening) ? null : (_) => _micDown(),
-                    onPointerUp: handsFree
-                        ? (busy && _hf == _HandsFree.idle ? null : (_) => _hfMicTap())
-                        : (_) => _micUp(),
-                    onPointerCancel: handsFree ? null : (_) => _micUp(),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Icon(micOn ? Icons.mic : Icons.mic_none,
-                          color: micOn ? scheme.primary : (busy ? scheme.onSurface.withValues(alpha: 0.38) : null)),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Try using: ${s.hintWord}',
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600)),
                     ),
                   ),
+                SizedBox(
+                  height: 44,
+                  child: ListView(
+                    key: talkStripKey,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                    children: [
+                      for (final w in s.words)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: TalkStripChip(
+                            word: w.word.word,
+                            used: w.used,
+                            target: !w.used && w.word.word == s.target,
+                            onTap: (rect) => _openWord(w.word, rect),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-            ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: s.messages.isEmpty ? null : notifier.finish,
-                child: const Text('End talk'),
-              ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 2, 16, 0),
+                  child: Row(children: [
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton(
+                          onPressed: s.hintAvailable && s.status == TalkStatus.talking ? notifier.showHint : null,
+                          child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.lightbulb_outline, size: 18),
+                            SizedBox(width: 6),
+                            Text('Hint'),
+                          ]),
+                        ),
+                      ),
+                    ),
+                    if (micShown)
+                      Semantics(
+                        label: 'Tap to talk',
+                        button: true,
+                        child: Listener(
+                          onPointerDown: handsFree || (busy && !_listening) ? null : (_) => _micDown(),
+                          onPointerUp: handsFree
+                              ? (busy && _hf == _HandsFree.idle ? null : (_) => _hfMicTap())
+                              : (_) => _micUp(),
+                          onPointerCancel: handsFree ? null : (_) => _micUp(),
+                          child: AnimatedBuilder(
+                            animation: _ring,
+                            builder: (_, child) => TalkRing(
+                              progress: _hf == _HandsFree.listening ? _ring.value : 0,
+                              active: micActive,
+                              child: child!,
+                            ),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: micOn
+                                    ? scheme.primary
+                                    : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
+                                borderRadius: BorderRadius.circular(talkRound(decor, 26)),
+                              ),
+                              child: Icon(
+                                micOn ? Icons.mic : Icons.mic_none,
+                                color: micOn
+                                    ? scheme.onPrimary
+                                    : scheme.onPrimaryContainer.withValues(alpha: busy ? 0.38 : 1),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _field,
+                          builder: (_, v, __) => TalkWave(active: micActive, seed: micActive ? v.text.length : 0),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ),
+                if (line != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 2, 16, 0),
+                    child: AnimatedBuilder(
+                      animation: _ring,
+                      builder: (_, __) {
+                        final left = (1 - _ring.value) * pauseSeconds;
+                        final sending = _hf == _HandsFree.listening &&
+                            _ring.isAnimating &&
+                            _ring.value * pauseSeconds >= 1;
+                        return Text(
+                          sending ? talkSendingInText(left.ceil()) : line!,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodySmall?.copyWith(color: decor.muted, fontWeight: FontWeight.w600),
+                        );
+                      },
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 2, 4, 8),
+                  child: Row(children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _field,
+                        focusNode: _focus,
+                        enabled: !busy,
+                        textInputAction: TextInputAction.send,
+                        onSubmitted: (_) => _send(),
+                        decoration: const InputDecoration(hintText: 'Type a reply…', isDense: true),
+                      ),
+                    ),
+                    IconButton(tooltip: 'Send', icon: const Icon(Icons.send), onPressed: busy ? null : _send),
+                  ]),
+                ),
+              ],
             ),
           ),
         ],
       );
     }
 
+    final word = _popupWord;
     return PopScope(
       canPop: !inProgress,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _confirmLeave();
+        if (didPop) return;
+        if (_popup.menuIsShowing) {
+          _popup.hideMenu();
+          return;
+        }
+        _confirmLeave();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -507,35 +679,58 @@ class _TalkScreenState extends ConsumerState<TalkScreen> {
             ),
           ],
         ),
-        body: SafeArea(child: body),
-      ),
-    );
-  }
-}
-
-class _Bubble extends StatelessWidget {
-  const _Bubble({required this.text, required this.mine});
-
-  final String text;
-  final bool mine;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Align(
-      alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.8),
-        decoration: BoxDecoration(
-          color: mine ? scheme.primary : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(16),
+        body: SafeArea(
+          child: Stack(
+            key: _stackKey,
+            children: [
+              Positioned.fill(child: body),
+              // The popup's anchor, moved onto the tapped word.
+              Positioned.fromRect(
+                rect: _anchor,
+                child: IgnorePointer(
+                  child: CustomPopupMenu(
+                    controller: _popup,
+                    pressType: PressType.singleClick,
+                    showArrow: true,
+                    arrowColor: decor.popup,
+                    arrowSize: 10,
+                    barrierColor: Colors.transparent,
+                    verticalMargin: 6,
+                    menuBuilder: () => word == null
+                        ? const SizedBox.shrink()
+                        : dotsMenuPanel(
+                            context,
+                            TalkWordPopup(
+                              word: _popupWord ?? word,
+                              mode: ref.read(wordDetailModeProvider),
+                              onLoadTranslations: () => _loadTranslations(_popupWord ?? word),
+                              onLoadSenses: () => _loadSenses(_popupWord ?? word),
+                              onClose: _popup.hideMenu,
+                            ),
+                          ),
+                    child: const SizedBox.expand(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        child: Text(text, style: TextStyle(color: mine ? scheme.onPrimary : scheme.onSurface)),
       ),
     );
   }
+
+  Widget _bubble(int i, TalkMessage m, double maxWidth, List<WordPair> words, Set<String> usedRows,
+          {int? spokenEnd}) =>
+      TalkBubble(
+        index: i,
+        text: m.text,
+        mine: m.role == TalkRole.learner,
+        maxWidth: maxWidth,
+        words: words,
+        usedRows: usedRows,
+        spokenEnd: spokenEnd,
+        onWord: (w, at) => _openWord(w, Rect.fromCenter(center: at, width: 24, height: 22)),
+      );
 }
 
 class _Message extends StatelessWidget {
