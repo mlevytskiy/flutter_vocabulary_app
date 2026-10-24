@@ -17,6 +17,7 @@ import 'talk_navigation.dart';
 import 'talk_notifier.dart';
 import 'talk_text.dart';
 import 'talk_quiz_card.dart';
+import 'talk_recognition_panel.dart';
 import 'talk_widgets.dart';
 import 'talk_word_popup.dart';
 
@@ -469,6 +470,25 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     }
     await ref.read(handsFreeProvider.notifier).set(on);
     if (on && mounted) await _hfListen();
+  }
+
+  /// Switches the engine or the recognition mode: listening stops, and the
+  /// next listen starts with the new recognizer.
+  Future<void> _changeRecognition(Future<void> Function() change) async {
+    if (_listening) await _speech?.cancel();
+    setState(() {
+      _hfStop();
+      _hfPaused = true;
+      _listening = false;
+      _holding = false;
+      _tapMode = false;
+    });
+    await change();
+    if (!mounted) return;
+    setState(() {
+      _speech = null;
+      _availability = null;
+    });
   }
 
   /// Opens the word popup on [word], its arrow at [global] (talk-screen-b).
@@ -929,6 +949,18 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
             key: _stackKey,
             children: [
               Positioned.fill(child: body),
+              // How speech is recognised, at the right edge below the tutor header.
+              if (s.messages.isNotEmpty)
+                Positioned(
+                  top: 64,
+                  right: 0,
+                  child: TalkRecognitionTab(
+                    engine: ref.watch(speechEngineProvider),
+                    onDevice: ref.watch(speechOnDeviceProvider),
+                    onEngine: (e) => _changeRecognition(() => ref.read(speechEngineProvider.notifier).set(e)),
+                    onOnDevice: (v) => _changeRecognition(() => ref.read(speechOnDeviceProvider.notifier).set(v)),
+                  ),
+                ),
               // The popup's anchor, moved onto the tapped word.
               Positioned.fromRect(
                 rect: _anchor,

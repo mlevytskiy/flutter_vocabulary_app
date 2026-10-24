@@ -2326,7 +2326,72 @@ final class SpeechInputProvider
   }
 }
 
-String _$speechInputHash() => r'fe768665d4122671a2a0ab8a9717fbd1d2eb4e87';
+String _$speechInputHash() => r'4cca923548b7ccac3556259cc0bdfa3a9c498377';
+
+/// Whether speech_to_text must recognise on the phone only (owner,
+/// 2026-10-24: show and pick the recognition mode on the Talk screen). Off
+/// by default: the phone's recognizer may use Apple's or Google's servers
+/// when online, usually more accurate. speech_to_text_pro has no such mode.
+
+@ProviderFor(SpeechOnDeviceNotifier)
+final speechOnDeviceProvider = SpeechOnDeviceNotifierProvider._();
+
+/// Whether speech_to_text must recognise on the phone only (owner,
+/// 2026-10-24: show and pick the recognition mode on the Talk screen). Off
+/// by default: the phone's recognizer may use Apple's or Google's servers
+/// when online, usually more accurate. speech_to_text_pro has no such mode.
+final class SpeechOnDeviceNotifierProvider
+    extends $NotifierProvider<SpeechOnDeviceNotifier, bool> {
+  /// Whether speech_to_text must recognise on the phone only (owner,
+  /// 2026-10-24: show and pick the recognition mode on the Talk screen). Off
+  /// by default: the phone's recognizer may use Apple's or Google's servers
+  /// when online, usually more accurate. speech_to_text_pro has no such mode.
+  SpeechOnDeviceNotifierProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'speechOnDeviceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$speechOnDeviceNotifierHash();
+
+  @$internal
+  @override
+  SpeechOnDeviceNotifier create() => SpeechOnDeviceNotifier();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$speechOnDeviceNotifierHash() =>
+    r'091051f2937519890dcacebe86858e9505232f39';
+
+/// Whether speech_to_text must recognise on the phone only (owner,
+/// 2026-10-24: show and pick the recognition mode on the Talk screen). Off
+/// by default: the phone's recognizer may use Apple's or Google's servers
+/// when online, usually more accurate. speech_to_text_pro has no such mode.
+
+abstract class _$SpeechOnDeviceNotifier extends $Notifier<bool> {
+  bool build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<bool, bool>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<bool, bool>, bool, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
+}
 
 /// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
 /// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken

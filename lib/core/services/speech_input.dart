@@ -149,6 +149,12 @@ class UntilPause {
 
 /// [SpeechInput] over the `speech_to_text` package (the default engine).
 class SpeechToTextInput implements SpeechInput {
+  SpeechToTextInput({this.onDevice = false});
+
+  /// Recognise on the phone only, never on Apple's or Google's servers
+  /// (owner, 2026-10-24). Off: the system may use its servers when online.
+  final bool onDevice;
+
   /// How long [stop] waits for the recognizer's final result before it
   /// settles on the last words heard.
   static const finalWait = Duration(milliseconds: 1200);
@@ -166,9 +172,7 @@ class SpeechToTextInput implements SpeechInput {
       if (speech.isAvailable) return SpeechAvailability.ready;
       final ok = await speech.initialize(onError: (_) {}, onStatus: (_) {});
       if (ok) return SpeechAvailability.ready;
-      return await speech.hasPermission
-          ? SpeechAvailability.unavailable
-          : SpeechAvailability.permissionDenied;
+      return await speech.hasPermission ? SpeechAvailability.unavailable : SpeechAvailability.permissionDenied;
     } catch (_) {
       return SpeechAvailability.unavailable;
     }
@@ -197,6 +201,7 @@ class SpeechToTextInput implements SpeechInput {
           partialResults: true,
           listenMode: ListenMode.dictation,
           localeId: 'en_US',
+          onDevice: onDevice,
         ),
       );
     } catch (_) {
@@ -261,6 +266,7 @@ class SpeechToTextInput implements SpeechInput {
             partialResults: true,
             listenMode: ListenMode.dictation,
             localeId: 'en_US',
+            onDevice: onDevice,
             pauseFor: pause + const Duration(seconds: 1),
             listenFor: const Duration(seconds: 60),
           ),
@@ -325,9 +331,7 @@ class SpeechToTextProInput implements SpeechInput {
         _initialized = true;
         return SpeechAvailability.ready;
       }
-      return await speech.hasPermission()
-          ? SpeechAvailability.unavailable
-          : SpeechAvailability.permissionDenied;
+      return await speech.hasPermission() ? SpeechAvailability.unavailable : SpeechAvailability.permissionDenied;
     } catch (_) {
       return SpeechAvailability.unavailable;
     }

@@ -545,9 +545,40 @@ class SpeechEngineNotifier extends _$SpeechEngineNotifier {
 @Riverpod(keepAlive: true)
 SpeechInput speechInput(Ref ref) =>
     switch (ref.watch(speechEngineProvider)) {
-      SpeechEngine.speechToText => SpeechToTextInput(),
+      SpeechEngine.speechToText => SpeechToTextInput(onDevice: ref.watch(speechOnDeviceProvider)),
       SpeechEngine.speechToTextPro => SpeechToTextProInput(),
     };
+
+/// Whether speech_to_text must recognise on the phone only (owner,
+/// 2026-10-24: show and pick the recognition mode on the Talk screen). Off
+/// by default: the phone's recognizer may use Apple's or Google's servers
+/// when online, usually more accurate. speech_to_text_pro has no such mode.
+@Riverpod(keepAlive: true)
+class SpeechOnDeviceNotifier extends _$SpeechOnDeviceNotifier {
+  static const key = 'learn.speechOnDevice';
+
+  late final Future<void> loaded = _load();
+  bool _setByLearner = false;
+
+  @override
+  bool build() {
+    loaded;
+    return false;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_setByLearner) return;
+    state = prefs.getBool(key) ?? false;
+  }
+
+  Future<void> set(bool onDevice) async {
+    _setByLearner = true;
+    state = onDevice;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, onDevice);
+  }
+}
 
 /// Whether Talk with AI is hands-free (learn-redesign AC-29, owner
 /// 2026-10-24): it listens at once, a pause sends, the AI's reply is spoken

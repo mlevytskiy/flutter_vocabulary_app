@@ -19,6 +19,7 @@ import 'package:flutter_vocabulary_app/core/theme/themes/themes.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_text.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_quiz_card.dart';
+import 'package:flutter_vocabulary_app/features/learn/talk/talk_recognition_panel.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_widgets.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_word_popup.dart';
 
@@ -505,6 +506,24 @@ void main() {
     expect(find.byKey(talkSelectionKey), findsNothing);
     expect(translate.asked, ['market crowded today']);
     expect(find.text('т-market crowded today'), findsOneWidget);
+  });
+  testWidgets('a glass tab shows the recognition mode; its panel switches it (owner, 2026-10-24)', (t) async {
+    await open(t);
+    expect(find.byKey(talkRecognitionTabKey), findsOneWidget);
+    expect(find.text('Online'), findsOneWidget);
+    await t.tap(find.byKey(talkRecognitionTabKey));
+    await t.pumpAndSettle(const Duration(milliseconds: 50));
+    expect(find.byKey(talkRecognitionPanelKey), findsOneWidget);
+    expect(find.text('Speech recognition'), findsOneWidget);
+    await t.tap(find.text('On the phone only'));
+    await t.pump();
+    await settle(t);
+    final container = ProviderScope.containerOf(t.element(find.byType(TalkScreen)));
+    expect(container.read(speechOnDeviceProvider), isTrue);
+    await t.tap(find.byTooltip('Close'));
+    await t.pumpAndSettle(const Duration(milliseconds: 50));
+    expect(find.text('Phone'), findsOneWidget);
+    expect(t.takeException(), isNull);
   });
 }
 
