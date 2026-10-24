@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  audioplayers_linux
   file_selector_linux
   isar_community_flutter_libs
   speech_to_text_pro

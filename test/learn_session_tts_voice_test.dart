@@ -19,7 +19,8 @@ class VoicesTts implements PronunciationService {
   Future<List<TtsVoice>> englishVoices() async => voices;
 
   @override
-  Future<void> speakAndWait(String text, {required Accent accent, VoiceId? voice}) async => said.add((text, voice));
+  Future<void> speakAndWait(String text,
+      {required Accent accent, VoiceId? voice, String? openAiVoice, void Function(double progress)? onProgress}) async => said.add((text, voice));
 
   @override
   Future<void> speak(String word, {required Accent accent}) async {}
@@ -121,7 +122,8 @@ void main() {
     ];
 
     Future<(ProviderContainer, VoicesTts)> pump(WidgetTester t, {Map<String, Object> prefs = const {}}) async {
-      SharedPreferences.setMockInitialValues(prefs);
+      // The phone voices show with the Phone voice source (openai-voice, AC-31).
+      SharedPreferences.setMockInitialValues({'learn.voiceSource': 'phone', ...prefs});
       t.view.physicalSize = const Size(800, 5000);
       t.view.devicePixelRatio = 1.0;
       addTearDown(t.view.reset);
