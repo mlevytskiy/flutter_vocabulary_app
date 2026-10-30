@@ -8,6 +8,7 @@ import { learnDataRoute } from "./data.ts";
 import { learnSpeechRoute } from "./speech.ts";
 import { learnTalkPictureRoute } from "./talk-picture.ts";
 import { learnTalkRoute } from "./talk.ts";
+import { learnTopicsRoute } from "./topics.ts";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
 import { renderComingSoonPage, renderLearnPage, renderNoWordsPage } from "./page";
 
@@ -59,4 +60,6 @@ export const learnRoutes: RouteDefinition[] = [
   learnTalkPictureRoute,
   // The AI's voice in Talk (openai-voice): app-only, 400 lines a day (AC-31).
   learnSpeechRoute,
+  // The warm-up's 3 topics (learn-welcome AC-03, ADR-0003): app-only, never counted as a talk.
+  learnTopicsRoute,
 ];

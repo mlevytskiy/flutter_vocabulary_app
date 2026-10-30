@@ -48,6 +48,10 @@
 // An autofill request (system names "several of a learner's word lists", user = JSON {collections}) answers a name
 // and a description for every collection plus one for an id nobody asked about; a collection with the id
 // "STUB:skip" gets none, a first collection "STUB:error" -> 500, "STUB:malformed" -> prose.
+// A topics request (learn-welcome T6; system names "conversation topics", user = JSON {words, topics}) answers
+// {"ids": [...]} with the last three topic ids, in a fenced block. Markers, as the first word:
+//   "STUB:partial" -> one unknown id and the sixth topic's id twice (the route fills the rest)
+//   "STUB:error" -> 500, "STUB:malformed" -> prose, "STUB:slow" -> the reply after 2 s
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
 // the last request body and its x-api-key -- so a test can tell whether the AI
 // was reached.
@@ -210,6 +214,15 @@ function learnTalkAnswer(model, content, system = "") {
   return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };
 }
 
+function learnTopicsAnswer(model, content) {
+  const { words = [], topics = [] } = JSON.parse(content);
+  const first = words[0] ?? "";
+  if (first === "STUB:error") return answer(model, "STUB:error");
+  if (first === "STUB:malformed") return { status: 200, body: message(model, "Travel sounds like a nice topic.") };
+  const ids = first === "STUB:partial" ? ["no-such-topic", topics[5].id, topics[5].id] : topics.slice(-3).map((t) => t.id);
+  return { status: 200, body: message(model, "```json\n" + JSON.stringify({ ids }) + "\n```") };
+}
+
 function namingAnswer(model, content) {
   let first = "";
   try {
@@ -288,7 +301,8 @@ export function startAnthropicStub() {
       const learn = typeof body.system !== "string" ? undefined
         : body.system.includes("data for vocabulary exercises") ? learnDataAnswer
         : body.system.includes("check a learner's") ? learnCheckAnswer
-        : body.system.includes("English conversation partner") ? learnTalkAnswer : undefined;
+        : body.system.includes("English conversation partner") ? learnTalkAnswer
+        : body.system.includes("conversation topics") ? learnTopicsAnswer : undefined;
       if (learn) {
         const { status, body: reply } = learn(body.model, content, body.system);
         const send = () => {
