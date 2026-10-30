@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/models/word_box.dart';
 import '../../../core/models/word_collection.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
@@ -18,6 +19,7 @@ import 'ladder_queue.dart';
 import 'leitner.dart';
 import 'page_input.dart';
 import 'page_registry.dart';
+import 'self_check.dart';
 import 'session_result.dart';
 import 'session_words.dart';
 
@@ -59,6 +61,9 @@ class LearningSessionState {
     this.outcomes = const {},
     this.checks,
     this.checkCard,
+    this.checkBox,
+    this.checkSide = 'uk',
+    this.checkAfterMistake = false,
   });
 
   final SessionStatus status;
@@ -102,11 +107,17 @@ class LearningSessionState {
   /// The self-check cards (self-check-cards AC-02): null unless the session
   /// was started with `checkCards: true`. Its `ratings` hold each rated
   /// word's last rating and `ratedReasons` why that card was due.
-  final CheckQueue<Object>? checks;
+  final CheckQueue<SelfRating>? checks;
 
   /// The word whose self-check card is due now; [page] is then null and the
   /// session waits for [LearningSession.rateCheck].
   final String? checkCard;
+
+  /// The due card word's Leitner box (null: new), the side its card shows
+  /// first ([nextSide]) and whether it was flagged by a mistake.
+  final WordBox? checkBox;
+  final String checkSide;
+  final bool checkAfterMistake;
 }
 
 /// One learning session of a collection (learn-redesign ADR-0004; AC-02,
@@ -138,8 +149,12 @@ class LearningSession extends _$LearningSession {
   late Map<String, WordPair> _byRow;
   SessionPick? _pick;
   LadderQueue? _queue;
-  CheckQueue<Object>? _checks;
+  CheckQueue<SelfRating>? _checks;
   String? _checkCard;
+  WordBox? _checkBox;
+  String _checkSide = 'uk';
+  bool _checkAfterMistake = false;
+  final _sides = <String, String>{};
   bool _split = false;
   bool _disposed = false;
 
@@ -223,7 +238,7 @@ class LearningSession extends _$LearningSession {
       _drawn[step] = on.take(min(typesPerStep, on.length)).toList();
     }
     _queue = LadderQueue([for (final w in pick.words) w.rowId], due: pick.dueRowIds, random: _random);
-    _checks = checkCards ? CheckQueue<Object>() : null;
+    _checks = checkCards ? CheckQueue<SelfRating>() : null;
 
     // Step 1 up front; steps 2 and 3 start now and are awaited when the
     // first word reaches them.
@@ -300,7 +315,7 @@ class LearningSession extends _$LearningSession {
   /// The due self-check card ([LearningSessionState.checkCard]) was rated:
   /// [rating] is kept as the word's last rating for the session end (no box
   /// moves here), then the session goes on.
-  Future<void> rateCheck(Object rating) async {
+  Future<void> rateCheck(SelfRating rating) async {
     final id = _checkCard;
     final checks = _checks;
     if (id == null || checks == null) return;
@@ -378,7 +393,7 @@ class LearningSession extends _$LearningSession {
         next: next?.rowId,
         othersPending: (id) => queue.pendingCount > (queue.passed(id) ? 0 : 1),
       );
-      if (card != null) return _showCard(card.rowId);
+      if (card != null) return _showCard(card);
       if (next == null) return await _finish();
       final step = next.rung.step;
       if (!_loadedSteps.contains(step)) {
@@ -449,13 +464,19 @@ class LearningSession extends _$LearningSession {
 
   /// Shows [rowId]'s self-check card as the next page (self-check-cards
   /// AC-02); the card page itself is drawn by the session screen.
-  void _showCard(String rowId) {
+  void _showCard(CheckCard card) {
+    final rowId = card.rowId;
     final queue = _queue!;
     _pageIndex++;
     _page = null;
     _answer = null;
     _verdict = null;
     _checkCard = rowId;
+    final row = _byRow[rowId];
+    _checkBox = row == null ? null : boxOf(_collection.boxes, row);
+    _checkSide = nextSide(_checkBox);
+    _checkAfterMistake = card.reason == CheckReason.mistake;
+    _sides[rowId] = _checkSide;
     _pageNumber = queue.answered - _skipped + _checks!.rated + 1;
     _pageTotal = queue.estimatedTotal - _skipped + _cardsTotal;
     _publish(SessionStatus.playing);
@@ -486,6 +507,10 @@ class LearningSession extends _$LearningSession {
       store: store,
       collectionId: _collection.collectionId,
       outcomes: _outcomes,
+      ratings: {
+        for (final w in pick.words)
+          if (_checks?.ratings[w.rowId] case final r?) w: (rating: r, side: _sides[w.rowId] ?? 'uk'),
+      },
       kind: SessionKind.exercises,
       groupIndex: _split ? index : null,
       groupCount: _split ? pick.groupCount : 0,
@@ -514,6 +539,9 @@ class LearningSession extends _$LearningSession {
       outcomes: _outcomes,
       checks: _checks,
       checkCard: status == SessionStatus.playing ? _checkCard : null,
+      checkBox: _checkBox,
+      checkSide: _checkSide,
+      checkAfterMistake: _checkAfterMistake,
     );
   }
 }

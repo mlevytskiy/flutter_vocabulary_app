@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../router/routes.dart';
+import '../../../core/models/word_origin.dart';
+import '../../../core/models/word_pair.dart';
+import 'exercise_page.dart';
 import 'learn_page_frame.dart';
 import 'learning_session_notifier.dart';
+import 'self_check_card.dart';
 
 /// The learning session (learn-redesign SCR-03; AC-02, AC-08, AC-11, AC-16):
 /// the pages of [LearningSession] in the [LearnPageFrame], the error line with
@@ -36,8 +40,49 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
     // After the first build has subscribed, so the auto-dispose session lives.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(learningSessionProvider(widget.collectionId).notifier).start(split: widget.split, rowIds: widget.rowIds, skipGroup: widget.skipGroup);
+      ref.read(learningSessionProvider(widget.collectionId).notifier).start(split: widget.split, rowIds: widget.rowIds, skipGroup: widget.skipGroup, checkCards: true);
     });
+  }
+
+  final _cardAnswer = PageAnswer();
+
+  @override
+  void dispose() {
+    _cardAnswer.dispose();
+    super.dispose();
+  }
+
+  /// A due self-check card as a page: the frame's step bar and page counter
+  /// and the card, no Check button and no verdict bar (self-check-cards AC-03).
+  Widget _checkFrame(LearningSessionState s, LearningSession notifier) {
+    final id = s.checkCard!;
+    final WordPair? row = (s.pick?.words ?? const <WordPair>[]).where((w) => w.rowId == id).firstOrNull;
+    if (row == null) return const SizedBox.shrink();
+    return LearnPageFrame(
+      step: s.step,
+      stepProgress: s.stepProgress,
+      page: s.pageNumber,
+      total: s.pageTotal,
+      chip: 'Self-check',
+      isCard: true,
+      body: KeyedSubtree(
+        key: ValueKey('check-$id-${s.pageIndex}'),
+        child: SelfCheckCard(
+          row: row,
+          box: s.checkBox,
+          side: s.checkSide,
+          now: DateTime.now(),
+          afterMistake: s.checkAfterMistake,
+          wordContext: row.context,
+          contextByAi: row.contextKind == ContextKind.ai,
+          onRated: notifier.rateCheck,
+        ),
+      ),
+      answer: _cardAnswer,
+      onContinue: () {},
+      onClose: _confirmLeave,
+      onResult: (_) {},
+    );
   }
 
   /// Asks before leaving a session in progress; Leave pops and writes
@@ -92,7 +137,9 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
                 children: [
                   if (s.loadFailed) _ErrorLine(onRetry: notifier.retry),
                   Expanded(
-                    child: LearnPageFrame(
+                    child: s.checkCard != null
+                        ? _checkFrame(s, notifier)
+                        : LearnPageFrame(
                       step: s.step,
                       stepProgress: s.stepProgress,
                       page: s.pageNumber,

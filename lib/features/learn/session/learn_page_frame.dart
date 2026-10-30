@@ -18,6 +18,7 @@ class LearnPageFrame extends StatefulWidget {
     required this.body,
     required this.answer,
     this.verdict,
+    this.isCard = false,
     required this.onContinue,
     required this.onClose,
     required this.onResult,
@@ -31,6 +32,9 @@ class LearnPageFrame extends StatefulWidget {
   final Widget body;
   final PageAnswer answer;
   final PageVerdict? verdict;
+
+  /// A self-check card page: no Check button, no verdict bar.
+  final bool isCard;
   final VoidCallback onContinue;
   final VoidCallback onClose;
   final void Function(Map<String, bool>) onResult;
@@ -94,7 +98,7 @@ class _LearnPageFrameState extends State<LearnPageFrame> {
     final decor = AppDecor.of(context);
     final text = Theme.of(context).textTheme;
     final verdict = widget.verdict;
-    final showCheck = !widget.answer.selfChecking && verdict == null;
+    final showCheck = !widget.isCard && !widget.answer.selfChecking && verdict == null;
     return Column(
       children: [
         Padding(

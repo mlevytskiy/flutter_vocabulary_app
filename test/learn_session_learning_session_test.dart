@@ -22,6 +22,7 @@ import 'package:flutter_vocabulary_app/features/learn/session/learning_session_s
 import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/page_input.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/page_registry.dart';
+import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/router/routes.dart';
 
@@ -360,7 +361,7 @@ void main() {
           expect(s.checkCard, missed);
           expect(s.pageNumber, shown.length + 2);
           cardAt = shown.length;
-          await _session(c).rateCheck('easy');
+          await _session(c).rateCheck(SelfRating.easy);
           continue;
         }
         shown.add(s.page!.rowIds.single);
@@ -372,7 +373,7 @@ void main() {
       expect(before.last, isNot(missed));
       if (cardAt < shown.length) expect(shown[cardAt], isNot(missed));
       final checks = _state(c).checks!;
-      expect(checks.ratings, {missed: 'easy'});
+      expect(checks.ratings, {missed: SelfRating.easy});
       expect(checks.ratedReasons, {missed: CheckReason.mistake});
       expect(_state(c).status, SessionStatus.finished);
     });
@@ -388,13 +389,13 @@ void main() {
       await _session(c).next();
       while (_state(c).status == SessionStatus.playing) {
         if (_state(c).checkCard != null) {
-          await _session(c).rateCheck('hard');
+          await _session(c).rateCheck(SelfRating.hard);
           continue;
         }
         await _answer(c, right: true);
       }
       expect(_state(c).checks!.ratedReasons, {hinted: CheckReason.hint});
-      expect(_state(c).checks!.ratings, {hinted: 'hard'});
+      expect(_state(c).checks!.ratings, {hinted: SelfRating.hard});
     });
 
     test("the page answer's own detailed results flag the word", () async {
