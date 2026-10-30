@@ -14,7 +14,9 @@ import '../models/word_collection.dart';
 import '../models/session_source.dart';
 import '../models/story_run.dart';
 import '../models/tag_kind.dart';
+import '../models/word_origin.dart';
 import '../models/word_result.dart';
+import '../words/word_origin_rules.dart';
 import 'collection_level.dart';
 import 'collection_search.dart' show CollectionSummary;
 import 'filing.dart'
@@ -38,6 +40,7 @@ import 'tag_rules.dart'
 /// launch because of a bad write is worse than one that loses a session.
 class CollectionStore {
   static const _currentCollectionKey = 'current_session_id';
+
   /// Keys of the pick and seen records the old launch rule kept; removed once
   /// at startup, never written (collections-screen ADR-0007).
   static const _legacyKeys = [
@@ -105,6 +108,7 @@ class CollectionStore {
     await store._fillRowIdsEverywhere();
     await store._backfillFiling();
     await store._backfillTypedTags();
+    await store._backfillOrigins();
     await store._sortNameKinds();
     return store;
   }
@@ -339,6 +343,44 @@ class CollectionStore {
   static int wordCount(WordCollection c) =>
       c.words.where((w) => w.word.trim().isNotEmpty).length;
 
+  // ---- One-time origin backfill (word-context T4, AC-03) ----
+
+  /// Gives the rows stored before word-context the origin their source says
+  /// ([originForRow]), in one transaction. A row reads back with the default
+  /// origin, so only a row with a `sourceId`, the default type and no film
+  /// name is derived; a row that derives to the default again is left alone,
+  /// and so is every row a second pass meets. Only changed collections are
+  /// written. A failure is logged and the next open retries; nothing throws.
+  Future<void> _backfillOrigins() async {
+    try {
+      await _isar.writeTxn(() async {
+        final changed = <WordCollection>[];
+        for (final c in await _isar.wordCollections.where().findAll()) {
+          var touched = false;
+          for (final w in c.words) {
+            final id = w.sourceId;
+            if (id == null ||
+                id.isEmpty ||
+                w.origin.typeOfSource != SourceType.manuallyEntered ||
+                w.origin.movieName.isNotEmpty) {
+              continue;
+            }
+            final derived = originForRow(w, c.sources);
+            if (derived.typeOfSource == SourceType.manuallyEntered) continue;
+            w.origin = derived
+              ..wasTranslationEditByUser = w.origin.wasTranslationEditByUser
+              ..wasDescriptionEditByUser = w.origin.wasDescriptionEditByUser;
+            touched = true;
+          }
+          if (touched) changed.add(c);
+        }
+        if (changed.isNotEmpty) await _isar.wordCollections.putAll(changed);
+      });
+    } catch (e) {
+      debugPrint('VOCAB: origin backfill failed, retried on the next open: $e');
+    }
+  }
+
   // ---- One-time typed-tag migration (collection-tags T6, ADR-0003) ----
 
   /// Sorts the untyped tags from before collection-tags into origin and
@@ -524,7 +566,11 @@ class CollectionStore {
   /// collection is not here was erased (collections-screen T20).
   Future<Set<String>> allIds() async {
     try {
-      return (await _isar.wordCollections.where().collectionIdProperty().findAll()).toSet();
+      return (await _isar.wordCollections
+              .where()
+              .collectionIdProperty()
+              .findAll())
+          .toSet();
     } catch (_) {
       return const {};
     }
@@ -695,7 +741,8 @@ class CollectionStore {
         return true;
       });
       if (!written) {
-        debugPrint('VOCAB: update for $collectionId dropped, collection erased');
+        debugPrint(
+            'VOCAB: update for $collectionId dropped, collection erased');
       }
       return written;
     } catch (_) {
@@ -788,11 +835,15 @@ class CollectionStore {
       text == null || text.trim().isEmpty ? null : text;
 
   /// [tags] without blank entries and with case duplicates merged.
-  static List<String> _cleanTags(List<String> tags) =>
-      mergeCaseDuplicates([for (final t in tags) if (t.trim().isNotEmpty) t]);
+  static List<String> _cleanTags(List<String> tags) => mergeCaseDuplicates([
+        for (final t in tags)
+          if (t.trim().isNotEmpty) t
+      ]);
 
   static bool _hasDetails(WordCollection c) =>
-      c.description != null || c.originTags.isNotEmpty || c.topicTags.isNotEmpty;
+      c.description != null ||
+      c.originTags.isNotEmpty ||
+      c.topicTags.isNotEmpty;
 
   static List<String> _tagsOf(WordCollection c, TagKind kind) =>
       kind == TagKind.origin ? c.originTags : c.topicTags;
@@ -1073,7 +1124,8 @@ class CollectionStore {
 
   /// Runs [action] in one write transaction; a throw becomes `failed` and
   /// rolls the transaction back.
-  Future<FilingResult> _filingTxn(Future<FilingResult> Function() action) async {
+  Future<FilingResult> _filingTxn(
+      Future<FilingResult> Function() action) async {
     try {
       return await _isar.writeTxn(action);
     } catch (_) {
@@ -1279,8 +1331,7 @@ class CollectionStore {
   /// Moves a collection or a folder to [newIndex] within its own level,
   /// where folders and collections share one order (AC-14). Raises `keep`
   /// for a collection.
-  Future<FilingResult> reorder(String id, int newIndex) =>
-      _filingTxn(() async {
+  Future<FilingResult> reorder(String id, int newIndex) => _filingTxn(() async {
         final collection = await _collectionById(id);
         final folder = collection == null ? await _folderById(id) : null;
         if (collection == null && folder == null) return FilingResult.notFound;
@@ -1664,8 +1715,10 @@ class CollectionStore {
     // transaction is taken.
     try {
       final binned = [
-        for (final c
-            in await _isar.wordCollections.filter().binnedAtIsNotNull().findAll())
+        for (final c in await _isar.wordCollections
+            .filter()
+            .binnedAtIsNotNull()
+            .findAll())
           c.binnedAt!,
         for (final f in await _isar.collectionFolders
             .filter()
