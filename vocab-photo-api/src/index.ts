@@ -6,6 +6,13 @@ import { editRoutes } from "./session/edit";
 import { changesRoutes } from "./session/changes";
 import { autofillRoutes } from "./autofill/routes";
 import { logEvent } from "./log";
+import {
+  buildSystemPrompt,
+  parseAnalyzeAnswer,
+  parseOptions,
+  type AnalyzeAnswer,
+  type Options,
+} from "./analyze.ts";
 import { defineRoutes } from "./define";
 import { deleteExpiredSessions } from "./session/cleanup";
 import { assetRoutes } from "./session/assets";
@@ -19,116 +26,6 @@ import { deleteOldPictures } from "./story/store.ts";
 export type { Env } from "./env";
 export { StoryRunWorkflow } from "./story/workflow.ts";
 
-interface Options {
-  context: boolean;
-  translation: boolean;
-  withDesc: boolean;
-  shortifyDefinition: boolean;
-  limit?: number;
-}
-
-interface VocabularyWord {
-  word: string;
-  context?: string;
-  translation?: string;
-  description?: string;
-}
-
-function parseOptions(url: URL): Options {
-  const limitParam = url.searchParams.get("limit");
-  const limitNum = limitParam !== null ? Number(limitParam) : undefined;
-  const limit = limitNum !== undefined && Number.isInteger(limitNum) && limitNum > 0 ? limitNum : undefined;
-
-  return {
-    context: url.searchParams.get("context") === "true",
-    translation: url.searchParams.get("translation") === "true",
-    withDesc: url.searchParams.get("with_desc") === "true",
-    shortifyDefinition: url.searchParams.get("shortify_definishion") === "true",
-    limit,
-  };
-}
-
-function buildSystemPrompt(options: Options): string {
-  const fields = ['"word": "<original English word or phrase>"'];
-  const instructions: string[] = [];
-
-  if (options.context) {
-    fields.push('"context": "<the exact sentence or phrase from the photo where this word appears>"');
-    instructions.push("- context: quote the exact sentence or phrase the word appears in within the photo.");
-  }
-  const shortifyLine = options.shortifyDefinition
-    ? " If it is long, shorten it as much as possible without losing its meaning."
-    : "";
-
-  if (options.translation) {
-    fields.push('"translation": "<Ukrainian translation of the word, fitting its meaning in this context>"');
-    instructions.push(
-      "- translation: if the photo itself already shows a Ukrainian translation for this word (e.g. a glossary, " +
-        "subtitle, or bilingual label), use that exact translation instead of producing your own. Otherwise, " +
-        `translate the word to Ukrainian yourself, choosing the sense that fits how it is used in the photo.${shortifyLine}`
-    );
-  }
-  if (options.withDesc) {
-    fields.push('"description": "<short English definition of the word, fitting its meaning in this context>"');
-    instructions.push(
-      "- description: if the photo itself already shows a definition for this word (e.g. a glossary or dictionary " +
-        "entry), use that definition, condensed to one sentence if it is longer. Otherwise, write a short (one " +
-        `sentence) English definition yourself, matching the meaning the word has in this context.${shortifyLine}`
-    );
-  }
-
-  const limitLine = options.limit
-    ? `Return at most ${options.limit} words or phrases in total. If you find fewer than ${options.limit}, ` +
-      `return only the ones you actually found — never pad or invent extra entries to reach the limit. ` +
-      `If you find more than ${options.limit} candidates, keep only the ${options.limit} most useful/valuable ones for a learner.`
-    : "Return every useful word or phrase you find.";
-
-  return `You are a vocabulary-extraction assistant for a language learner \
-whose native language is Ukrainian and who is learning English.
-
-You will be given a photo. Find the useful English words or short phrases visible in it \
-(for example on packaging, signs, book pages, or screens). Ignore noise: numbers, single \
-letters, barcodes, UI chrome, and words that are not meaningful vocabulary.
-
-${limitLine}
-
-Prefer information that is already visible in the photo (existing translations, definitions, or glossary \
-entries) over inventing your own — only generate a translation or definition yourself when the photo doesn't \
-already provide one.
-
-For each selected word or phrase, include:
-${instructions.join("\n")}
-
-Respond with ONLY a strict JSON array, no prose, no markdown code fences, in this exact shape:
-[{${fields.join(", ")}}]
-
-Izf no useful vocabulary is visible, respond with an empty array: []`;
-}
-
-function extractJsonArray(text: string): unknown {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced ? fenced[1] : trimmed;
-  return JSON.parse(candidate);
-
-
-}
-
-function isVocabularyWordArray(value: unknown, options: Options): value is VocabularyWord[] {
-  return (
-    Array.isArray(value) &&
-    value.every((item) => {
-      if (typeof item !== "object" || item === null) return false;
-      const record = item as Record<string, unknown>;
-      if (typeof record.word !== "string") return false;
-      if (options.context && typeof record.context !== "string") return false;
-      if (options.translation && typeof record.translation !== "string") return false;
-      if (options.withDesc && typeof record.description !== "string") return false;
-      return true;
-    })
-  );
-}
-
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -139,8 +36,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-interface ClaudeResult {
-  words: VocabularyWord[];
+interface ClaudeResult extends AnalyzeAnswer {
   aiMs: number;
 }
 
@@ -160,7 +56,8 @@ async function callClaude(
     },
     body: JSON.stringify({
       model: "claude-sonnet-5",
-      max_tokens: 1536,
+      // With `context=true` the answer also carries the photo's full text (word-context AC-10).
+      max_tokens: options.context ? 4096 : 1536,
       // The system prompt only depends on `options`, which the app always sends the
       // same way, so it's identical across requests. Caching it shaves the fixed
       // system-prompt tokens off both latency and cost on every call after the first
@@ -205,18 +102,18 @@ async function callClaude(
     throw new Error("Anthropic response contained no text content");
   }
 
-  let parsed: unknown;
+  let answer: AnalyzeAnswer | null;
   try {
-    parsed = extractJsonArray(textBlock.text);
+    answer = parseAnalyzeAnswer(textBlock.text, options);
   } catch {
     throw new Error("Failed to parse JSON from Anthropic response");
   }
 
-  if (!isVocabularyWordArray(parsed, options)) {
+  if (!answer) {
     throw new Error("Anthropic response JSON did not match the expected shape");
   }
 
-  return { words: parsed, aiMs };
+  return { ...answer, aiMs };
 }
 
 async function handleAnalyze({ request, env, url }: RouteContext): Promise<Response> {
@@ -244,12 +141,13 @@ async function handleAnalyze({ request, env, url }: RouteContext): Promise<Respo
 
   try {
     const imageBase64 = arrayBufferToBase64(imageBytes);
-    const { words, aiMs } = await callClaude(env, imageBase64, mediaType, options);
+    const { words, full_text, aiMs } = await callClaude(env, imageBase64, mediaType, options);
     // Cheap backstop against a runaway response, not the mechanism: the prompt is
     // what keeps the list to the marked words, and this keeps the first N in the
     // order the model returned them (reading order, per D2).
     const limited = options.limit !== undefined ? words.slice(0, options.limit) : words;
-    return jsonResponse({ words: limited, timings: { aiMs } });
+    // `full_text` only with `context=true` (word-context AC-10); without it the answer is as before.
+    return jsonResponse({ words: limited, ...(full_text !== undefined ? { full_text } : {}), timings: { aiMs } });
   } catch (err) {
     console.error("analyze failed", err);
     return jsonResponse({ error: "Failed to analyze photo, please try again" }, 502);
