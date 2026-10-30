@@ -7,7 +7,7 @@ acs: ["AC-13"]
 files_hint: ["vocab-photo-api/src/learn/talk.ts", "vocab-photo-api/src/learn/talk-mixed.ts", "vocab-photo-api/test/talk-topic.test.ts"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Let the talk mission take a topic, a reply limit and chosen words
