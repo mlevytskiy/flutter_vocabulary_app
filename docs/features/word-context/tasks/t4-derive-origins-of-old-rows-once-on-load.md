@@ -7,7 +7,7 @@ acs: ["AC-03"]
 files_hint: ["lib/core/services/collection_store.dart", "test/word_origin_store_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Derive origins of old rows once on load

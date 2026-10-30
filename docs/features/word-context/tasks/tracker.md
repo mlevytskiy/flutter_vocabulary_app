@@ -8,7 +8,7 @@
 | T1 | [Record word-context approvals in CLAUDE.md rules 3 and 5](./t1-record-word-context-approvals-in-claude-md-rules-3-and-5.md) | docs | implementer agent | S | — | done |
 | T2 | [Add WordOrigin, SourceType, ContextKind and the new row and photo fields](./t2-add-wordorigin-sourcetype-contextkind-and-the-new-row-and-ph.md) | infra | implementer agent | M | T1 | done |
 | T3 | [Add the pure origin rules: derive type, edit flags, word change, episode from a file name, first line time](./t3-add-the-pure-origin-rules-derive-type-edit-flags-word-change.md) | domain | implementer agent | M | T2 | done |
-| T4 | [Derive origins of old rows once on load](./t4-derive-origins-of-old-rows-once-on-load.md) | infra | implementer agent | S | T3 | todo |
+| T4 | [Derive origins of old rows once on load](./t4-derive-origins-of-old-rows-once-on-load.md) | infra | implementer agent | S | T3 | done |
 | T5 | [Set the edit flags on learner edits and clear on a word change](./t5-set-the-edit-flags-on-learner-edits-and-clear-on-a-word-chan.md) | app | implementer agent | M | T3 | todo |
 | T6 | [Return the photo's full text and per-word context with its kind from /analyze](./t6-return-the-photo-s-full-text-and-per-word-context-with-its-k.md) | ports | implementer agent | M | — | done |
 | T7 | [Save photo context, its kind and the full text when a photo is imported](./t7-save-photo-context-its-kind-and-the-full-text-when-a-photo-i.md) | app | implementer agent | M | T2, T6 | done |
