@@ -6,7 +6,7 @@
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
 | T1 | [Record learn-welcome approvals in CLAUDE.md rules 3 and 5](./t1-record-learn-welcome-approvals-in-claude-md-rules-3-and-5.md) | docs | implementer agent | S | — | done |
-| T2 | [Add WordBox.lastCheckSide and keep it through copy, JSON and the store](./t2-add-wordbox-lastcheckside-and-keep-it-through-copy-json-and.md) | infra | implementer agent | S | T1 | todo |
+| T2 | [Add WordBox.lastCheckSide and keep it through copy, JSON and the store](./t2-add-wordbox-lastcheckside-and-keep-it-through-copy-json-and.md) | infra | implementer agent | S | T1 | done |
 | T3 | [Add the pure self-check rules: SelfRating, rateBox, nextSide, box labels](./t3-add-the-pure-self-check-rules-selfrating-ratebox-nextside-bo.md) | domain | implementer agent | S | T2 | todo |
 | T4 | [Add the pure flow word rules: card words, the source-tail split, dialog words](./t4-add-the-pure-flow-word-rules-card-words-the-source-tail-spli.md) | domain | implementer agent | M | T1 | done |
 | T5 | [Add the pure story slot scheduler](./t5-add-the-pure-story-slot-scheduler.md) | domain | implementer agent | S | T1 | done |

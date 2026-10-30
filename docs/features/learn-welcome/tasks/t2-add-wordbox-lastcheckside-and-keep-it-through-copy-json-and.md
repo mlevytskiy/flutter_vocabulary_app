@@ -7,7 +7,7 @@ acs: ["AC-07"]
 files_hint: ["lib/core/models/word_box.dart", "test/word_box_store_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Add WordBox.lastCheckSide and keep it through copy, JSON and the store
