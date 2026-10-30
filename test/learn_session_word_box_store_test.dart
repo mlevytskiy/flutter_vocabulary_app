@@ -128,4 +128,25 @@ void main() {
     expect(read.binnedAt, isNull);
     expect([for (final b in read.boxes) '${b.rowId}:${b.box}'], ['r1:4', 'r2:5']);
   });
+
+  test('lastCheckSide round-trips JSON and copy; old JSON reads as empty (learn-welcome AC-07)', () {
+    final a = box('r1', 'walk', 2)..lastCheckSide = 'uk';
+    expect(a.copy().lastCheckSide, 'uk');
+    final c = WordCollection.create()..boxes = [a];
+    expect(WordCollection.fromJson(c.toJson()).boxes.single.lastCheckSide, 'uk');
+    final json = a.toJson()..remove('lastCheckSide');
+    expect(WordBox.fromJson(json).lastCheckSide, '');
+  });
+
+  test('put() keeps the stored lastCheckSide; update() changes it', () async {
+    final id = await newCollection();
+    await store.update(id, (c) => c.boxes = [box('r1', 'walk', 2)..lastCheckSide = 'uk']);
+    final stale = (await store.byId(id))!;
+    stale.boxes.first.lastCheckSide = 'en';
+    await store.put(stale);
+    expect((await store.byId(id))!.boxes.single.lastCheckSide, 'uk');
+
+    await store.update(id, (c) => c.boxes = [box('r1', 'walk', 2)..lastCheckSide = 'en']);
+    expect((await store.byId(id))!.boxes.single.lastCheckSide, 'en');
+  });
 }

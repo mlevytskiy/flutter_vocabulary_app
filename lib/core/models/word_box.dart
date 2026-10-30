@@ -25,6 +25,10 @@ class WordBox {
   /// The local day (`yyyy-mm-dd`) the word last moved up a box; '' if never.
   String lastUpDay = '';
 
+  /// The side the self-check card showed first the last time it checked this
+  /// word: '' (never checked), 'uk' or 'en' (learn-welcome AC-07, ADR-0006).
+  String lastCheckSide = '';
+
   WordBox();
 
   WordBox copy() => WordBox()
@@ -32,14 +36,16 @@ class WordBox {
     ..word = word
     ..box = box
     ..dueAt = dueAt
-    ..lastUpDay = lastUpDay;
+    ..lastUpDay = lastUpDay
+    ..lastCheckSide = lastCheckSide;
 
   factory WordBox.fromJson(Map<String, dynamic> json) => WordBox()
     ..rowId = json['rowId'] as String? ?? ''
     ..word = json['word'] as String? ?? ''
     ..box = json['box'] as int? ?? 1
     ..dueAt = DateTime.parse(json['dueAt'] as String? ?? '1970-01-01')
-    ..lastUpDay = json['lastUpDay'] as String? ?? '';
+    ..lastUpDay = json['lastUpDay'] as String? ?? ''
+    ..lastCheckSide = json['lastCheckSide'] as String? ?? '';
 
   Map<String, dynamic> toJson() => {
         'rowId': rowId,
@@ -47,5 +53,6 @@ class WordBox {
         'box': box,
         'dueAt': dueAt.toIso8601String(),
         'lastUpDay': lastUpDay,
+        'lastCheckSide': lastCheckSide,
       };
 }

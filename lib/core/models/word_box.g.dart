@@ -23,18 +23,23 @@ const WordBoxSchema = Schema(
       name: r'dueAt',
       type: IsarType.dateTime,
     ),
-    r'lastUpDay': PropertySchema(
+    r'lastCheckSide': PropertySchema(
       id: 2,
+      name: r'lastCheckSide',
+      type: IsarType.string,
+    ),
+    r'lastUpDay': PropertySchema(
+      id: 3,
       name: r'lastUpDay',
       type: IsarType.string,
     ),
     r'rowId': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'rowId',
       type: IsarType.string,
     ),
     r'word': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'word',
       type: IsarType.string,
     )
@@ -51,6 +56,7 @@ int _wordBoxEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  bytesCount += 3 + object.lastCheckSide.length * 3;
   bytesCount += 3 + object.lastUpDay.length * 3;
   bytesCount += 3 + object.rowId.length * 3;
   bytesCount += 3 + object.word.length * 3;
@@ -65,9 +71,10 @@ void _wordBoxSerialize(
 ) {
   writer.writeLong(offsets[0], object.box);
   writer.writeDateTime(offsets[1], object.dueAt);
-  writer.writeString(offsets[2], object.lastUpDay);
-  writer.writeString(offsets[3], object.rowId);
-  writer.writeString(offsets[4], object.word);
+  writer.writeString(offsets[2], object.lastCheckSide);
+  writer.writeString(offsets[3], object.lastUpDay);
+  writer.writeString(offsets[4], object.rowId);
+  writer.writeString(offsets[5], object.word);
 }
 
 WordBox _wordBoxDeserialize(
@@ -79,9 +86,10 @@ WordBox _wordBoxDeserialize(
   final object = WordBox();
   object.box = reader.readLong(offsets[0]);
   object.dueAt = reader.readDateTime(offsets[1]);
-  object.lastUpDay = reader.readString(offsets[2]);
-  object.rowId = reader.readString(offsets[3]);
-  object.word = reader.readString(offsets[4]);
+  object.lastCheckSide = reader.readString(offsets[2]);
+  object.lastUpDay = reader.readString(offsets[3]);
+  object.rowId = reader.readString(offsets[4]);
+  object.word = reader.readString(offsets[5]);
   return object;
 }
 
@@ -101,6 +109,8 @@ P _wordBoxDeserializeProp<P>(
     case 3:
       return (reader.readString(offset)) as P;
     case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
       return (reader.readString(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -210,6 +220,138 @@ extension WordBoxQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastCheckSide',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition>
+      lastCheckSideGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lastCheckSide',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lastCheckSide',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lastCheckSide',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'lastCheckSide',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'lastCheckSide',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideContains(
+      String value,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'lastCheckSide',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideMatches(
+      String pattern,
+      {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'lastCheckSide',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition> lastCheckSideIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastCheckSide',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<WordBox, WordBox, QAfterFilterCondition>
+      lastCheckSideIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'lastCheckSide',
+        value: '',
       ));
     });
   }

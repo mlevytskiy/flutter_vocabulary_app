@@ -112,7 +112,8 @@ class SessionMove {
       ..word = boxKey(row.word)
       ..box = box
       ..dueAt = DateTime(today.year, today.month, today.day + intervalDays(box))
-      ..lastUpDay = lastUpDay;
+      ..lastUpDay = lastUpDay
+      ..lastCheckSide = before?.lastCheckSide ?? '';
 
     // One box per row: a box left by an edited English word is replaced.
     result
