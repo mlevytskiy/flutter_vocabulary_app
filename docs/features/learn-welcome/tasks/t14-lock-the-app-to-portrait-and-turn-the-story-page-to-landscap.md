@@ -7,7 +7,7 @@ acs: ["AC-11"]
 files_hint: ["lib/app.dart", "lib/features/learn/flow/story_page.dart", "ios/Runner/Info.plist", "android/app/src/main/AndroidManifest.xml", "test/learn_orientation_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T14 — Lock the app to portrait and turn the story page to landscape
