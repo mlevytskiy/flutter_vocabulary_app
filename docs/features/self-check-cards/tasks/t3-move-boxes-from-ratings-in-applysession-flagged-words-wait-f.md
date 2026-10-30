@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-08", "AC-09", "AC-10"]
 files_hint: ["lib/features/learn/session/leitner.dart", "lib/features/learn/session/session_result.dart", "test/learn_session_leitner_test.dart", "lib/core/models/word_box.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Move boxes from ratings in applySession: flagged words wait for their card, unrated flagged words keep their box
