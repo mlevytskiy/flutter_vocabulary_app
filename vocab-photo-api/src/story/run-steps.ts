@@ -7,6 +7,7 @@
 // Imports carry the `.ts` extension so the Node tests can load this module directly.
 
 import type { Env } from "../env";
+import type { WordExtra } from "./extras.ts";
 import { estimateOnTimeout, priceOf, type Price, type Usage } from "./models.ts";
 import {
   buildPicturePrompt, buildScenePrompt, parsePictureScenes, picturePromptWriterPrompt, sceneLines, scenePromptWriterPrompt,
@@ -26,6 +27,8 @@ export interface StoryRunParams {
   pictureModel?: string;
   /** The picture attempt this instance makes (1 for the first, then one more per "Draw again"). */
   attempt: number;
+  /** Hints per word for the story writer (learn-welcome AC-12); only a `full` start of a story run carries them. */
+  extras?: WordExtra[];
 }
 
 /** The part of the Workflows `step` the steps use. */
@@ -171,7 +174,7 @@ async function textStep(
 }
 
 async function storyStep(env: RunEnv, params: StoryRunParams, input: RunInput): Promise<StepResult> {
-  const { text, record, startedAt } = await textStep(env, params, "story", input.storyModel, storyWriterPrompt(input.words));
+  const { text, record, startedAt } = await textStep(env, params, "story", input.storyModel, storyWriterPrompt(input.words, params.extras));
   if (text === null) {
     await finish(env, startedAt, record);
     return PRIVATE_FAILURE;

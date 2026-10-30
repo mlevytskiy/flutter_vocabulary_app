@@ -52,6 +52,7 @@ class FakeStoryApi extends StoryApiService {
     required String promptModel,
     required String pictureModel,
     String? sceneText,
+    List<Map<String, String>>? extras,
   }) async {
     worker[runId] = [];
     return const StoryStarted();

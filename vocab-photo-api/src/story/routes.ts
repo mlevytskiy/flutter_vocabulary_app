@@ -8,6 +8,7 @@ import type { Env } from "../env";
 import type { RouteContext, RouteDefinition } from "../routing";
 import { takeDrawAgain, takeStoryRun } from "./allowance.ts";
 import { groupWords, parseGroupingRequest } from "./grouping.ts";
+import { parseExtras } from "./extras.ts";
 import { defaults, isOffered, offeredModels, pricesAsOf } from "./models.ts";
 import type { StoryRunParams } from "./run-steps.ts";
 import { sceneLines } from "./prompts.ts";
@@ -79,7 +80,7 @@ async function startInstance(env: Env, id: string, params: StoryRunParams): Prom
 async function handleStart({ request, env }: RouteContext): Promise<Response> {
   const body = await readJson(request);
   if (!body) return jsonResponse({ error: "Body must be a JSON object" }, 400);
-  const { runId, words, storyModel, promptModel, pictureModel, kind, sceneText } = body;
+  const { runId, words, storyModel, promptModel, pictureModel, kind, sceneText, extras: rawExtras } = body;
   if (typeof runId !== "string" || !RUN_ID.test(runId)) return jsonResponse({ error: "runId must be 1-40 letters, digits, - or _" }, 400);
   if (kind !== undefined && kind !== "story" && kind !== "scene") return jsonResponse({ error: "kind must be story or scene" }, 400);
   const scene = kind === "scene";
@@ -105,6 +106,8 @@ async function handleStart({ request, env }: RouteContext): Promise<Response> {
       return jsonResponse({ error: "storyModel, promptModel and pictureModel are required" }, 400);
     }
   }
+  const parsedExtras = parseExtras(rawExtras);
+  if ("error" in parsedExtras) return jsonResponse({ error: parsedExtras.error }, 400);
   if (!env.SOURCES) return serviceUnavailable();
 
   const checked = scene
@@ -122,7 +125,9 @@ async function handleStart({ request, env }: RouteContext): Promise<Response> {
   );
   if (take.outcome === "refused") return dayLimit();
   // `existing` is a repeat of a counted start: free, and the instance is only created if it is missing.
-  await startInstance(env, runId, { runId, mode: "full", attempt: 1 });
+  await startInstance(env, runId, {
+    runId, mode: "full", attempt: 1, ...(!scene && parsedExtras.extras.length > 0 ? { extras: parsedExtras.extras } : {}),
+  });
   return jsonResponse({ started: true });
 }
 

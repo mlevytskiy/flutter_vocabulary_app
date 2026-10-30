@@ -51,6 +51,7 @@ class FakeStoryApi extends StoryApiService {
     required String promptModel,
     required String pictureModel,
     String? sceneText,
+    List<Map<String, String>>? extras,
   }) async {
     starts.add({
       'runId': runId,

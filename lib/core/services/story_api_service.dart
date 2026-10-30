@@ -241,7 +241,9 @@ class StoryApiService {
 
   /// POST /story/runs. With [sceneText] it starts a scene run of a film
   /// dialogue instead: no words and no story AI (get-words-from-subtitles-
-  /// improvment ADR-0004).
+  /// improvment ADR-0004). [extras] are optional per-word hints for the story
+  /// writer, each {word, context, source, translation} with only the keys that
+  /// have a value (learn-welcome AC-12); empty or null sends nothing.
   Future<StoryActionResult> startRun({
     required String runId,
     required List<String> words,
@@ -249,6 +251,7 @@ class StoryApiService {
     required String promptModel,
     required String pictureModel,
     String? sceneText,
+    List<Map<String, String>>? extras,
   }) async {
     final response = await _send(() => _client.post(
           _uri('/story/runs'),
@@ -267,6 +270,7 @@ class StoryApiService {
                   'storyModel': storyModel,
                   'promptModel': promptModel,
                   'pictureModel': pictureModel,
+                  if (extras != null && extras.isNotEmpty) 'extras': extras,
                 }),
         ));
     return _action(response);

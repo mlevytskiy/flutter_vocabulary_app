@@ -235,6 +235,31 @@ void main() {
       expect(result, isA<StoryStarted>());
     });
 
+    test('sends per-word extras when given and nothing when empty (learn-welcome AC-12)', () async {
+      const extras = [
+        {'word': 'spoon', 'context': 'a silver spoon', 'source': 'Matrix', 'translation': 'ложка'},
+      ];
+      await answering(200, {'started': true}).startRun(
+        runId: 'run-3',
+        words: const ['spoon'],
+        storyModel: 'claude-sonnet-5-5',
+        promptModel: 'claude-sonnet-5-5',
+        pictureModel: 'grok-imagine-image',
+        extras: extras,
+      );
+      expect(jsonDecode(requests.single.body)['extras'], extras);
+
+      await answering(200, {'started': true}).startRun(
+        runId: 'run-4',
+        words: const ['spoon'],
+        storyModel: 'claude-sonnet-5-5',
+        promptModel: 'claude-sonnet-5-5',
+        pictureModel: 'grok-imagine-image',
+        extras: const [],
+      );
+      expect(jsonDecode(requests.single.body), isNot(contains('extras')));
+    });
+
     test('a scene run sends its dialogue and only its two AIs (get-words-from-subtitles-improvment ADR-0004)',
         () async {
       await answering(200, {'started': true}).startRun(
