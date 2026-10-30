@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-06", "AC-13"]
 files_hint: ["lib/features/learn/flow/flow_words.dart", "test/learn_flow_words_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Add the pure flow word rules: card words, the source-tail split, dialog words
