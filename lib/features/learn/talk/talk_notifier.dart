@@ -470,8 +470,7 @@ class Talk extends _$Talk {
           if (w.used) w.word.rowId,
         for (final q in state.quizzes) ...?q.quiz?.rightRows,
         for (final q in state.quizzes) ...?q.quiz?.wrongRows,
-      }, hinted: {
-        ...state.hinted,
+      }, hinted: state.hinted, missed: {
         for (final q in state.quizzes) ...?q.quiz?.wrongRows,
       }),
       kind: SessionKind.talk,

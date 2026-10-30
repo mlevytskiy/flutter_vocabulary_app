@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_vocabulary_app/core/models/word_box.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart';
+import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 
 /// learn-redesign T3: the pure Leitner rules (AC-12, AC-13, AC-15, AC-22).
 void main() {
@@ -102,24 +103,39 @@ void main() {
       expect(second.moves.single.state, WordState.knownWell);
     });
 
-    test('a miss the same day after an up still drops to box 1', () {
+    test('a miss without a rating keeps box and next review (self-check-cards AC-01, AC-09)', () {
       final r = row('r1', 'apple');
+      final due = DateTime(2026, 10, 30);
       final result = applySession(
-          [box('r1', 'apple', 4, lastUpDay: todayKey)],
+          [box('r1', 'apple', 4, dueAt: due, lastUpDay: todayKey)],
           {r: WordOutcome.missed},
           now);
-      expect(result.boxes.single.box, 1);
-      expect(result.boxes.single.dueAt, DateTime(2026, 10, 24));
+      expect(result.boxes.single.box, 4);
+      expect(result.boxes.single.dueAt, due);
+      expect(result.boxes.single.lastUpDay, todayKey);
+      final m = result.moves.single;
+      expect(m.state, WordState.shaky);
+      expect(m.rating, isNull);
+      expect(m.after!.box, 4);
+      expect(m.after!.dueAt, due);
+    });
+
+    test('a hinted word without a rating keeps its box too (AC-09)', () {
+      final r = row('r1', 'apple');
+      final result =
+          applySession([box('r1', 'apple', 3)], {r: WordOutcome.hinted}, now);
+      expect(result.boxes.single.box, 3);
+      expect(result.boxes.single.dueAt, today);
       expect(result.moves.single.state, WordState.shaky);
     });
 
-    test('a miss on a new word gives box 1 and state new', () {
+    test('a miss on a new word without a rating gives no box and state new', () {
       final r = row('r1', 'apple');
       final result = applySession([], {r: WordOutcome.missed}, now);
-      expect(result.boxes.single.box, 1);
-      expect(result.boxes.single.lastUpDay, '');
+      expect(result.boxes, isEmpty);
       expect(result.moves.single.state, WordState.isNew);
       expect(result.moves.single.before, isNull);
+      expect(result.moves.single.after, isNull);
     });
 
     test('an unused word keeps its box and next review (AC-22)', () {
@@ -149,7 +165,8 @@ void main() {
       final result = applySession(
           [box('r1', 'apple', 4, lastUpDay: '2026-10-01')],
           {r: WordOutcome.missed},
-          now);
+          now,
+          ratings: {r: (rating: SelfRating.hard, side: 'uk')});
       expect(result.boxes, hasLength(1));
       expect(result.boxes.single.word, 'pear');
       expect(result.boxes.single.box, 1);
@@ -213,6 +230,84 @@ void main() {
       expect(m.word, 'Apple');
       expect(m.before!.box, 2);
       expect(m.after!.box, 3);
+    });
+  });
+
+  group('applySession with self-check ratings (self-check-cards AC-05 – AC-10)', () {
+    ({List<WordBox> boxes, List<SessionMove> moves}) rate(
+      WordBox? before,
+      WordOutcome outcome,
+      SelfRating rating, {
+      String side = 'en',
+    }) {
+      final r = row('r1', 'apple');
+      return applySession([if (before != null) before], {r: outcome}, now,
+          ratings: {r: (rating: rating, side: side)});
+    }
+
+    test('ratings move a flagged word from its box before the session', () {
+      expect(rate(box('r1', 'apple', 4), WordOutcome.missed, SelfRating.dontRemember).boxes.single.box, 1);
+      expect(rate(box('r1', 'apple', 4), WordOutcome.missed, SelfRating.hard).boxes.single.box, 3);
+      expect(rate(box('r1', 'apple', 1), WordOutcome.missed, SelfRating.hard).boxes.single.box, 1);
+      expect(rate(box('r1', 'apple', 4), WordOutcome.missed, SelfRating.medium).boxes.single.box, 4);
+      expect(rate(null, WordOutcome.missed, SelfRating.medium).boxes.single.box, 1);
+      expect(rate(box('r1', 'apple', 4), WordOutcome.hinted, SelfRating.easy).boxes.single.box, 5);
+      expect(rate(box('r1', 'apple', 5), WordOutcome.hinted, SelfRating.easy).boxes.single.box, 5);
+    });
+
+    test('the next review is start of today plus intervalDays of the new box', () {
+      final b = rate(box('r1', 'apple', 2), WordOutcome.hinted, SelfRating.easy).boxes.single;
+      expect(b.box, 3);
+      expect(b.dueAt, DateTime(2026, 10, 27));
+      expect(b.lastUpDay, todayKey);
+    });
+
+    test('guard: Easy after a mistake counts as Medium; after a hint it stays Easy (AC-06, Q-2)', () {
+      expect(rate(box('r1', 'apple', 3), WordOutcome.missed, SelfRating.easy).boxes.single.box, 3);
+      expect(rate(box('r1', 'apple', 3), WordOutcome.hinted, SelfRating.easy).boxes.single.box, 4);
+    });
+
+    test('Easy moves up at most once a day; down moves always apply (AC-07)', () {
+      final up = box('r1', 'apple', 3, lastUpDay: todayKey);
+      expect(rate(up, WordOutcome.hinted, SelfRating.easy).boxes.single.box, 3);
+      expect(rate(box('r1', 'apple', 3, lastUpDay: todayKey), WordOutcome.missed, SelfRating.hard).boxes.single.box, 2);
+    });
+
+    test('the card side is stored and the move carries the rating (AC-10)', () {
+      final result = rate(box('r1', 'apple', 2), WordOutcome.missed, SelfRating.hard, side: 'uk');
+      expect(result.boxes.single.lastCheckSide, 'uk');
+      final m = result.moves.single;
+      expect(m.rating, SelfRating.hard);
+      expect(m.state, WordState.shaky);
+      expect(m.before!.box, 2);
+      expect(m.after!.box, 1);
+    });
+
+    test('a rated new word gets state new', () {
+      final m = rate(null, WordOutcome.hinted, SelfRating.easy).moves.single;
+      expect(m.state, WordState.isNew);
+      expect(m.after!.box, 1);
+    });
+
+    test('a rating on a clean or unused word is ignored', () {
+      final clean = rate(box('r1', 'apple', 2), WordOutcome.clean, SelfRating.dontRemember);
+      expect(clean.boxes.single.box, 3);
+      expect(clean.moves.single.rating, isNull);
+      expect(clean.moves.single.state, WordState.knownWell);
+      final unused = rate(box('r1', 'apple', 2), WordOutcome.unused, SelfRating.dontRemember);
+      expect(unused.boxes.single.box, 2);
+      expect(unused.moves.single.rating, isNull);
+    });
+
+    test('a clean word moves as before beside rated words (AC-08)', () {
+      final a = row('a', 'apple'), b = row('b', 'pear');
+      final result = applySession(
+          [box('a', 'apple', 2), box('b', 'pear', 2)],
+          {a: WordOutcome.clean, b: WordOutcome.missed},
+          now,
+          ratings: {b: (rating: SelfRating.dontRemember, side: 'uk')});
+      final boxes = {for (final x in result.boxes) x.rowId: x.box};
+      expect(boxes, {'a': 3, 'b': 1});
     });
   });
 

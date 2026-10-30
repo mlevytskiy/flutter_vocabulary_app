@@ -62,11 +62,13 @@ class LastSessionResult extends _$LastSessionResult {
 /// longer in the collection. A null [collectionId] is the current collection.
 /// When the collection is gone the moves are worked out on the boxes read
 /// before and nothing is written ([SessionResult.written] false). [outcomes]
-/// is keyed by the session's own [WordPair] instances.
+/// and [ratings] (the flagged words' self-check ratings, self-check-cards
+/// AC-05 – AC-09) are keyed by the session's own [WordPair] instances.
 Future<SessionResult> finishSession({
   required CollectionStore store,
   required String? collectionId,
   required Map<WordPair, WordOutcome> outcomes,
+  Map<WordPair, WordRating> ratings = const {},
   required SessionKind kind,
   DateTime? now,
   int? groupIndex,
@@ -87,11 +89,11 @@ Future<SessionResult> finishSession({
         pages: pages,
       );
 
-  if (id == null) return result(applySession(const [], outcomes, at).moves, false);
+  if (id == null) return result(applySession(const [], outcomes, at, ratings: ratings).moves, false);
   final before = await store.byId(id);
   List<SessionMove>? moves;
   final written = await store.update(id, (c) {
-    final r = applySession(c.boxes, outcomes, at, liveRowIds: {
+    final r = applySession(c.boxes, outcomes, at, ratings: ratings, liveRowIds: {
       for (final w in c.words)
         if (w.rowId.isNotEmpty) w.rowId
     });
@@ -99,5 +101,5 @@ Future<SessionResult> finishSession({
     moves = r.moves;
   });
   if (written && moves != null) return result(moves!, true);
-  return result(applySession(before?.boxes ?? const [], outcomes, at).moves, false);
+  return result(applySession(before?.boxes ?? const [], outcomes, at, ratings: ratings).moves, false);
 }

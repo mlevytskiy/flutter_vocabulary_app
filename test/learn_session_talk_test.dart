@@ -18,6 +18,7 @@ import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_picture_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart';
+import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_result.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_quiz.dart';
@@ -187,7 +188,7 @@ void main() {
     expect(api.calls.length, 2);
     final outcomes = scoreTalk(s.words.map((w) => w.word).toList(),
         used: s.words.map((w) => w.word.rowId).toSet(), hinted: s.hinted);
-    expect(outcomes.values, containsAll([WordOutcome.missed, WordOutcome.clean]));
+    expect(outcomes.values, containsAll([WordOutcome.hinted, WordOutcome.clean]));
   });
 
   group('talk rules', () {
@@ -213,11 +214,18 @@ void main() {
       expect(scenePick(name: 'Trip'), 'Trip');
     });
 
-    test('scoreTalk: used clean, used after its hint missed, never used unused (AC-22)', () {
+    test('scoreTalk: used clean, used after its hint hinted, never used unused (AC-22)', () {
       final out = scoreTalk(words, used: {'a', 'b'}, hinted: {'b', 'c'});
       expect(out[words[0]], WordOutcome.clean);
-      expect(out[words[1]], WordOutcome.missed);
+      expect(out[words[1]], WordOutcome.hinted);
       expect(out[words[2]], WordOutcome.unused);
+    });
+
+    test('scoreTalk: a wrong answer is a mistake, even after a hint (self-check-cards AC-01)', () {
+      final out = scoreTalk(words, used: {'a', 'b'}, hinted: {'b'}, missed: {'a', 'b', 'c'});
+      expect(out[words[0]], WordOutcome.missed);
+      expect(out[words[1]], WordOutcome.missed);
+      expect(out[words[2]], WordOutcome.unused, reason: 'never used stays unused');
     });
 
     test('talkOver after 12 replies or when every word is used', () {
@@ -440,13 +448,13 @@ void main() {
       final stored = (await store.byId(id))!;
       final boxes = {for (final b in stored.boxes) b.rowId: b};
       expect(boxes['r1']!.box, 1);
-      expect(boxes['r2']!.box, 1);
+      expect(boxes.containsKey('r2'), isFalse, reason: 'hinted, never rated: a new word keeps no box (AC-09)');
       expect(boxes['r3']!.box, 3); // never used: box and next review kept
       expect(boxes['r3']!.dueAt, DateTime(2026, 10, 23));
 
       // A second Done writes nothing more.
       await talk.finish();
-      expect((await store.byId(id))!.boxes.length, 3);
+      expect((await store.byId(id))!.boxes.length, 2);
     });
 
     test('talk quiz: 5 words in the talk open a quick check; its answers score the words', () async {
@@ -560,6 +568,7 @@ void main() {
         store: store,
         collectionId: id,
         outcomes: {c.words[0]: WordOutcome.clean, c.words[1]: WordOutcome.missed},
+        ratings: {c.words[1]: (rating: SelfRating.hard, side: 'uk')},
         kind: SessionKind.exercises,
         now: now,
         groupIndex: 1,
@@ -569,10 +578,29 @@ void main() {
       expect(result.written, isTrue);
       expect(result.collectionId, id);
       expect(result.moves.map((m) => m.state), [WordState.knownWell, WordState.isNew]);
+      expect(result.moves.map((m) => m.rating), [null, SelfRating.hard]);
       expect(result.groupIndex, 1);
       expect(result.groupCount, 3);
       expect(result.pages, 7);
-      expect((await store.byId(id))!.boxes.length, 2);
+      final stored = (await store.byId(id))!.boxes;
+      expect(stored.length, 2);
+      expect(stored.firstWhere((b) => b.rowId == c.words[1].rowId).lastCheckSide, 'uk');
+    });
+
+    test('a flagged word without a rating keeps its box (self-check-cards AC-09)', () async {
+      final id = await newCollection(['walk']);
+      final c = (await store.byId(id))!;
+      final result = await finishSession(
+        store: store,
+        collectionId: id,
+        outcomes: {c.words[0]: WordOutcome.missed},
+        kind: SessionKind.exercises,
+        now: now,
+      );
+      expect(result.written, isTrue);
+      expect(result.moves.single.state, WordState.isNew);
+      expect(result.moves.single.rating, isNull);
+      expect((await store.byId(id))!.boxes, isEmpty);
     });
 
     test('an erased collection gives the moves with written = false', () async {

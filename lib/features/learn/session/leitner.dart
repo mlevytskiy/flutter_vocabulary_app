@@ -1,5 +1,6 @@
 import '../../../core/models/word_box.dart';
 import '../../../core/models/word_pair.dart';
+import 'self_check.dart';
 
 /// The pure Leitner rules of a learning session or a talk (learn-redesign
 /// ADR-0001, ADR-0002; AC-12, AC-13, AC-15, AC-22). Nothing here touches the
@@ -28,12 +29,21 @@ bool isDue(WordBox? box, DateTime now) =>
 /// Days until the next review for Leitner box 1–5: 1, 2, 4, 8, 16 (AC-13).
 int intervalDays(int box) => 1 << (box.clamp(1, 5) - 1);
 
-/// How a word ended a session: no miss, at least one miss, or (in a talk)
-/// never used (AC-13, AC-22).
-enum WordOutcome { clean, missed, unused }
+/// How a word ended a session: no flag, flagged by a mistake ([missed]),
+/// flagged by a hint ([hinted]; right only after a hint), or (in a talk) never
+/// used (AC-13, AC-22; self-check-cards AC-01, Q-3).
+enum WordOutcome { clean, missed, hinted, unused }
 
-/// A word's line on the results screen (AC-12, AC-22): known well (no miss),
-/// shaky (a miss, not new before), new (a miss, new before), unused (a talk's
+/// Whether [outcome] marks its word *to check* (self-check-cards AC-01).
+bool isFlagged(WordOutcome outcome) =>
+    outcome == WordOutcome.missed || outcome == WordOutcome.hinted;
+
+/// A flagged word's self-check rating (self-check-cards AC-05): the [rating]
+/// and the card [side] it showed first (`'uk'` or `'en'`).
+typedef WordRating = ({SelfRating rating, String side});
+
+/// A word's line on the results screen (AC-12, AC-22): known well (no flag),
+/// shaky (flagged, not new before), new (flagged, new before), unused (a talk's
 /// word never used — box unchanged).
 enum WordState { knownWell, shaky, isNew, unused }
 
@@ -48,8 +58,14 @@ class SessionMove {
   /// A copy of the box before the session; null when the word was new.
   final WordBox? before;
 
-  /// The box after the session; null for an unused new word.
+  /// The box after the session; null for a new word that kept no box (unused,
+  /// or flagged and never rated).
   final WordBox? after;
+
+  /// The self-check rating that moved a flagged word (self-check-cards
+  /// AC-10); null for a clean or unused word and for a flagged word never
+  /// rated, which kept its box (AC-09).
+  final SelfRating? rating;
 
   const SessionMove({
     required this.rowId,
@@ -57,23 +73,30 @@ class SessionMove {
     required this.state,
     this.before,
     this.after,
+    this.rating,
   });
 }
 
-/// Moves the boxes of a finished session (AC-13) and returns the new box list
-/// with one [SessionMove] per word in [outcomes]. Never changes its inputs.
+/// Moves the boxes of a finished session (AC-13; self-check-cards AC-01,
+/// AC-05 – AC-10) and returns the new box list with one [SessionMove] per word
+/// in [outcomes]. Never changes its inputs.
 ///
 /// A clean word moves up one box (a new word to box 1, box 5 stays 5) unless
-/// it already moved up today, then it keeps its box; a missed word goes to box
-/// 1, even after an up the same day; the next review is the start of today
-/// plus [intervalDays]. An unused word keeps its box and next review. A row
-/// whose English word changed loses its old box and counts as new (AC-15).
+/// it already moved up today, then it keeps its box; the next review is the
+/// start of today plus [intervalDays] (AC-08). A flagged word (missed or
+/// hinted) does not move by its flag: with a rating in [ratings] it moves by
+/// [rateBox] from its box before the session, Easy counting as Medium when the
+/// flag came from a mistake (AC-05 – AC-07), and stores the card's side;
+/// without a rating it keeps its box and next review (AC-09). An unused word
+/// keeps its box and next review. Ratings of unflagged words are ignored. A
+/// row whose English word changed loses its old box and counts as new (AC-15).
 /// Boxes of words not in [outcomes] stay as they are, except that, when
 /// [liveRowIds] is given, boxes of rows no longer in it are dropped.
 ({List<WordBox> boxes, List<SessionMove> moves}) applySession(
   List<WordBox> boxes,
   Map<WordPair, WordOutcome> outcomes,
   DateTime now, {
+  Map<WordPair, WordRating> ratings = const {},
   Set<String>? liveRowIds,
 }) {
   final today = _day(now);
@@ -97,23 +120,43 @@ class SessionMove {
       return;
     }
 
-    final int box;
-    var lastUpDay = before?.lastUpDay ?? '';
-    if (outcome == WordOutcome.missed) {
-      box = 1;
-    } else if (before != null && before.lastUpDay == todayKey) {
-      box = before.box;
-    } else {
-      box = before == null ? 1 : (before.box + 1).clamp(1, 5);
-      lastUpDay = todayKey;
+    final flagged = isFlagged(outcome);
+    final flagState = before == null ? WordState.isNew : WordState.shaky;
+    final rated = flagged ? ratings[row] : null;
+    if (flagged && rated == null) {
+      // Flagged, never rated: box and next review kept (AC-09).
+      moves.add(SessionMove(
+        rowId: row.rowId,
+        word: row.word,
+        state: flagState,
+        before: before,
+        after: before?.copy(),
+      ));
+      return;
     }
-    final after = WordBox()
-      ..rowId = row.rowId
-      ..word = boxKey(row.word)
-      ..box = box
-      ..dueAt = DateTime(today.year, today.month, today.day + intervalDays(box))
-      ..lastUpDay = lastUpDay
-      ..lastCheckSide = before?.lastCheckSide ?? '';
+
+    final WordBox after;
+    if (rated != null) {
+      after = rateBox(row, before, rated.rating, now,
+          side: rated.side, afterMistake: outcome == WordOutcome.missed);
+    } else {
+      final int box;
+      var lastUpDay = before?.lastUpDay ?? '';
+      if (before != null && before.lastUpDay == todayKey) {
+        box = before.box;
+      } else {
+        box = before == null ? 1 : (before.box + 1).clamp(1, 5);
+        lastUpDay = todayKey;
+      }
+      after = WordBox()
+        ..rowId = row.rowId
+        ..word = boxKey(row.word)
+        ..box = box
+        ..dueAt =
+            DateTime(today.year, today.month, today.day + intervalDays(box))
+        ..lastUpDay = lastUpDay
+        ..lastCheckSide = before?.lastCheckSide ?? '';
+    }
 
     // One box per row: a box left by an edited English word is replaced.
     result
@@ -122,11 +165,10 @@ class SessionMove {
     moves.add(SessionMove(
       rowId: row.rowId,
       word: row.word,
-      state: outcome == WordOutcome.clean
-          ? WordState.knownWell
-          : (before == null ? WordState.isNew : WordState.shaky),
+      state: flagged ? flagState : WordState.knownWell,
       before: before,
       after: after.copy(),
+      rating: rated?.rating,
     ));
   });
 

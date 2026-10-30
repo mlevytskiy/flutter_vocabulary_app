@@ -37,17 +37,23 @@ String scenePick({String? storyText, String? dialogueText, required String name,
   return d.isEmpty ? name.trim() : '${name.trim()}\n$d';
 }
 
-/// How each talk word ends (AC-22): used without its hint → clean, used after
-/// its hint → missed, never used → unused (box and next review kept). Keyed
-/// by the [words] instances, as [applySession] wants.
-Map<WordPair, WordOutcome> scoreTalk(List<WordPair> words, {required Set<String> used, required Set<String> hinted}) =>
+/// How each talk word ends (AC-22; self-check-cards AC-01, AC-11): used
+/// without a flag → clean, used but answered wrong ([missed], e.g. in the
+/// quick check) → missed, used after its hint → hinted, never used → unused
+/// (box and next review kept). A flagged word keeps its box until its
+/// self-check rating moves it (AC-09). Keyed by the [words] instances, as
+/// [applySession] wants.
+Map<WordPair, WordOutcome> scoreTalk(List<WordPair> words,
+        {required Set<String> used, required Set<String> hinted, Set<String> missed = const {}}) =>
     {
       for (final w in words)
         w: !used.contains(w.rowId)
             ? WordOutcome.unused
-            : hinted.contains(w.rowId)
+            : missed.contains(w.rowId)
                 ? WordOutcome.missed
-                : WordOutcome.clean,
+                : hinted.contains(w.rowId)
+                    ? WordOutcome.hinted
+                    : WordOutcome.clean,
     };
 
 /// Whether the talk ends by itself (AC-20): [talkMaxReplies] learner replies,
