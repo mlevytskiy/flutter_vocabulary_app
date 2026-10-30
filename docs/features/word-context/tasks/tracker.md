@@ -13,7 +13,7 @@
 | T6 | [Return the photo's full text and per-word context with its kind from /analyze](./t6-return-the-photo-s-full-text-and-per-word-context-with-its-k.md) | ports | implementer agent | M | — | done |
 | T7 | [Save photo context, its kind and the full text when a photo is imported](./t7-save-photo-context-its-kind-and-the-full-text-when-a-photo-i.md) | app | implementer agent | M | T2, T6 | done |
 | T8 | [Keep subtitle cue times and save the movie origin and context on film rows](./t8-keep-subtitle-cue-times-and-save-the-movie-origin-and-contex.md) | app | implementer agent | M | T3 | done |
-| T9 | [Set the dictionary example as context when a definition is filled or picked](./t9-set-the-dictionary-example-as-context-when-a-definition-is-f.md) | app | implementer agent | S | T2, T5 | todo |
+| T9 | [Set the dictionary example as context when a definition is filled or picked](./t9-set-the-dictionary-example-as-context-when-a-definition-is-f.md) | app | implementer agent | S | T2, T5 | done |
 | T10 | [Backfill empty contexts at launch from the dictionary and stored text](./t10-backfill-empty-contexts-at-launch-from-the-dictionary-and-st.md) | app | implementer agent | M | T4, T9 | todo |
 | T11 | [Show the context in the Words screen word popup](./t11-show-the-context-in-the-words-screen-word-popup.md) | ui | implementer agent | S | T1, T2 | done |
 | T12 | [Finish word-context: generated code, analyze, changed tests, grep check, deploy note](./t12-finish-word-context-generated-code-analyze-changed-tests-gre.md) | docs | implementer agent | S | T5, T7, T8, T10, T11 | todo |

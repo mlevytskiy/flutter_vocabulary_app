@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-11"]
 files_hint: ["lib/core/models/definition_result.dart", "lib/core/services/dictionary_service.dart", "lib/features/words/words_notifier.dart", "test/definition_context_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Set the dictionary example as context when a definition is filled or picked
