@@ -27,13 +27,13 @@ class LearningSessionScreen extends ConsumerStatefulWidget {
   /// "Next group": the group just played, skipped by the picker.
   final int? skipGroup;
 
+  static const leaveText = 'Leave the session? Progress in this session is lost.';
+
   @override
   ConsumerState<LearningSessionScreen> createState() => _LearningSessionScreenState();
 }
 
 class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
-  static const leaveText = 'Leave the session? Progress in this session is lost.';
-
   @override
   void initState() {
     super.initState();
@@ -88,17 +88,8 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
   /// Asks before leaving a session in progress; Leave pops and writes
   /// nothing (AC-16).
   Future<void> _confirmLeave() async {
-    final leave = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        content: const Text(leaveText),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Stay')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Leave')),
-        ],
-      ),
-    );
-    if (leave == true && mounted) Navigator.of(context).pop();
+    final leave = await confirmLeaveSession(context);
+    if (leave && mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -164,6 +155,22 @@ class _LearningSessionScreenState extends ConsumerState<LearningSessionScreen> {
       ),
     );
   }
+}
+
+/// The leave dialog of a learning session (learn-redesign AC-16), shared
+/// with the Learn flow (learn-welcome AC-16): true when Leave was tapped.
+Future<bool> confirmLeaveSession(BuildContext context) async {
+  final leave = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      content: const Text(LearningSessionScreen.leaveText),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Stay')),
+        TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Leave')),
+      ],
+    ),
+  );
+  return leave == true;
 }
 
 /// The one plain error line with Retry while other pages play (AC-11).
