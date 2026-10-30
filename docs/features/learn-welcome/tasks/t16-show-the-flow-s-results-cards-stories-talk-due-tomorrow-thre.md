@@ -7,7 +7,7 @@ acs: ["AC-15"]
 files_hint: ["lib/features/learn/session/session_results_screen.dart", "lib/features/learn/flow/flow_result.dart", "test/learn_flow_results_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T16 — Show the flow's results: cards, stories, talk, due tomorrow, three buttons
