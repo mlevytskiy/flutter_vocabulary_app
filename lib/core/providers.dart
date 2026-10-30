@@ -28,6 +28,7 @@ import 'services/voice_player.dart';
 import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
 import 'services/collection_naming_service.dart';
+import 'services/learn_topics_service.dart';
 import 'services/collection_search.dart' show CollectionSummary;
 import 'services/collection_search_scope.dart' show QuickTag;
 import 'services/tag_rules.dart' show tagKey;
@@ -125,6 +126,10 @@ StoryApiService storyApiService(Ref ref) => StoryApiService();
 @Riverpod(keepAlive: true)
 CollectionNamingService collectionNamingService(Ref ref) =>
     CollectionNamingService();
+
+/// The Worker's Talk topics (learn-welcome AC-03), bundled three on failure.
+@Riverpod(keepAlive: true)
+LearnTopicsService learnTopicsService(Ref ref) => LearnTopicsService();
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 @Riverpod(keepAlive: true)

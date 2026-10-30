@@ -739,6 +739,55 @@ final class CollectionNamingServiceProvider extends $FunctionalProvider<
 String _$collectionNamingServiceHash() =>
     r'ea710e876937b0fa9333378880697a6e9fce73db';
 
+/// The Worker's Talk topics (learn-welcome AC-03), bundled three on failure.
+
+@ProviderFor(learnTopicsService)
+final learnTopicsServiceProvider = LearnTopicsServiceProvider._();
+
+/// The Worker's Talk topics (learn-welcome AC-03), bundled three on failure.
+
+final class LearnTopicsServiceProvider extends $FunctionalProvider<
+    LearnTopicsService,
+    LearnTopicsService,
+    LearnTopicsService> with $Provider<LearnTopicsService> {
+  /// The Worker's Talk topics (learn-welcome AC-03), bundled three on failure.
+  LearnTopicsServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'learnTopicsServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$learnTopicsServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<LearnTopicsService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LearnTopicsService create(Ref ref) {
+    return learnTopicsService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LearnTopicsService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LearnTopicsService>(value),
+    );
+  }
+}
+
+String _$learnTopicsServiceHash() =>
+    r'26a99ff87cc08e8d6c7785c4917d8b583b3391a2';
+
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 
 @ProviderFor(learnApiService)
