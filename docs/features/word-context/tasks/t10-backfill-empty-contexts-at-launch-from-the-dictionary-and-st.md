@@ -7,7 +7,7 @@ acs: ["AC-12"]
 files_hint: ["lib/core/words/context_backfill.dart", "lib/core/providers.dart", "lib/app.dart", "test/context_backfill_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Backfill empty contexts at launch from the dictionary and stored text
