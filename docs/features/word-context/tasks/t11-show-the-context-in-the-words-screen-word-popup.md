@@ -7,7 +7,7 @@ acs: ["AC-13"]
 files_hint: ["lib/features/words/widgets/translation_options_content.dart", "test/word_popup_context_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T11 — Show the context in the Words screen word popup

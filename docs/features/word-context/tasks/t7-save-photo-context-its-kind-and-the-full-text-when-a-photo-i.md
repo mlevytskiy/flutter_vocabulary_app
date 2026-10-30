@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-10"]
 files_hint: ["lib/core/services/vocab_photo_service.dart", "lib/core/models/vocab_word.dart", "lib/features/words/words_notifier.dart", "test/photo_context_import_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Save photo context, its kind and the full text when a photo is imported
