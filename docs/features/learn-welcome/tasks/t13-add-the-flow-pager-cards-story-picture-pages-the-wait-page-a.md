@@ -7,7 +7,7 @@ acs: ["AC-07", "AC-10", "AC-11"]
 files_hint: ["lib/features/learn/flow/learn_flow_screen.dart", "lib/features/learn/flow/story_page.dart", "test/learn_flow_screen_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T13 — Add the flow pager: cards, story picture pages, the wait page and the card counter
