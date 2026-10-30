@@ -7,7 +7,7 @@ acs: ["AC-03", "AC-04"]
 files_hint: ["lib/features/learn/session/learning_session_screen.dart", "lib/features/learn/session/page_registry.dart", "test/learn_self_check_page_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Show the shared self-check card as an exercise-session page
