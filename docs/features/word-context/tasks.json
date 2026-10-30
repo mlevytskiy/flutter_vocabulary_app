@@ -1,0 +1,225 @@
+{
+  "slug": "word-context",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record word-context approvals in CLAUDE.md rules 3 and 5",
+      "layer": "docs",
+      "deps": [],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "rule 3 lists the popup's context line; rule 5 lists WordOrigin, SourceType, ContextKind, the new WordPair fields and SessionSource.fullText",
+      "files_hint": [
+        "CLAUDE.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add WordOrigin, SourceType, ContextKind and the new row and photo fields",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-14"
+      ],
+      "dod": "build_runner regenerates; copy/JSON round-trip and store put keep every new field",
+      "files_hint": [
+        "lib/core/models/word_origin.dart",
+        "lib/core/models/word_pair.dart",
+        "lib/core/models/session_source.dart",
+        "lib/core/services/collection_store.dart",
+        "test/word_origin_model_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the pure origin rules: derive type, edit flags, word change, episode from a file name, first line time",
+      "layer": "domain",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "unit tests for every rule incl. S02E05 / s2e5 / 2x05 / none, whole-word first-line match, word change clearing",
+      "files_hint": [
+        "lib/core/words/word_origin_rules.dart",
+        "test/word_origin_rules_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Derive origins of old rows once on load",
+      "layer": "infra",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-03"
+      ],
+      "dod": "store test: an old collection gets typed/image/movie/set types and film details once; a second load changes nothing",
+      "files_hint": [
+        "lib/core/services/collection_store.dart",
+        "test/word_origin_store_test.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Set the edit flags on learner edits and clear on a word change",
+      "layer": "app",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-04",
+        "AC-05"
+      ],
+      "dod": "notifier tests: typing or picking an option sets the flag, lightning/import does not; a word change clears context and flags",
+      "files_hint": [
+        "lib/features/words/words_notifier.dart",
+        "lib/features/words/widgets/translation_dots_button.dart",
+        "lib/features/words/widgets/definition_dots_button.dart",
+        "test/word_edit_flags_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Return the photo's full text and per-word context with its kind from /analyze",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-10"
+      ],
+      "dod": "vitest: prompt asks full_text and context_source; parser accepts answers with and without them; exercise-sheet answers carry ai",
+      "files_hint": [
+        "vocab-photo-api/src/index.ts",
+        "vocab-photo-api/test/analyze-context.test.ts"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Save photo context, its kind and the full text when a photo is imported",
+      "layer": "app",
+      "deps": [
+        "T2",
+        "T6"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-10"
+      ],
+      "dod": "service test parses the new fields; import test: rows get origin image, context and kind; the source gets fullText",
+      "files_hint": [
+        "lib/core/services/vocab_photo_service.dart",
+        "lib/core/models/vocab_word.dart",
+        "lib/features/words/words_notifier.dart",
+        "test/photo_context_import_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Keep subtitle cue times and save the movie origin and context on film rows",
+      "layer": "app",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-09"
+      ],
+      "dod": "parser test: timed lines keep cue starts, parse() output unchanged; import test: search-picked and file-picked films give name/season/episode/time/context",
+      "files_hint": [
+        "lib/core/services/subtitle_parser.dart",
+        "lib/core/services/subtitle_words_service.dart",
+        "lib/features/words/subtitle_import_flow.dart",
+        "test/subtitle_parser_test.dart",
+        "test/subtitle_origin_import_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Set the dictionary example as context when a definition is filled or picked",
+      "layer": "app",
+      "deps": [
+        "T2",
+        "T5"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-11"
+      ],
+      "dod": "tests: lightning or option pick of a sense with an example sets context (source); no example → empty; translation-only row stays empty",
+      "files_hint": [
+        "lib/core/models/definition_result.dart",
+        "lib/core/services/dictionary_service.dart",
+        "lib/features/words/words_notifier.dart",
+        "test/definition_context_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Backfill empty contexts at launch from the dictionary and stored text",
+      "layer": "app",
+      "deps": [
+        "T4",
+        "T9"
+      ],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "fake-clock tests: ≤ 20 words a minute, typed/set via define, film via stored dialogue lines, photo via stored full text, tried rows skipped",
+      "files_hint": [
+        "lib/core/words/context_backfill.dart",
+        "lib/core/providers.dart",
+        "lib/app.dart",
+        "test/context_backfill_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Show the context in the Words screen word popup",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T2"
+      ],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "widget test: italic context with \"from the source\" or \"written by AI\" + sparkle in AppDecor.aiAccent; nothing when empty",
+      "files_hint": [
+        "lib/features/words/widgets/translation_options_content.dart",
+        "test/word_popup_context_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Finish word-context: generated code, analyze, changed tests, grep check, deploy note",
+      "layer": "docs",
+      "deps": [
+        "T5",
+        "T7",
+        "T8",
+        "T10",
+        "T11"
+      ],
+      "acs": [
+        "AC-14"
+      ],
+      "dod": "CLAUDE.md before-finishing commands pass; a device check list and the Worker deploy step are written for the owner",
+      "files_hint": [
+        "docs/features/word-context/device-check.md"
+      ]
+    }
+  ]
+}

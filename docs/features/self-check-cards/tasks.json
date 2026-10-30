@@ -1,0 +1,140 @@
+{
+  "slug": "self-check-cards",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record the self-check-cards approvals in CLAUDE.md rule 3",
+      "layer": "docs",
+      "deps": [],
+      "acs": [],
+      "dod": "rule 3 lists self-check cards in exercise sessions, the rating on the results screen and the self-check step in the talk quick check (owner, 2026-10-27); lastCheckSide is recorded by learn-welcome T1",
+      "files_hint": [
+        "CLAUDE.md"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Move boxes from ratings in applySession: flagged words wait for their card, unrated flagged words keep their box",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-08",
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "applySession takes each word's outcome plus an optional rating; a mistake alone no longer sends a word to box 1; clean words as before; flagged + no rating → box and dueAt unchanged; SessionMove carries the rating; existing leitner tests updated to the new rules, talk 'unused' unchanged; uses rateBox from learn-welcome's self_check.dart with afterMistake for the guard",
+      "files_hint": [
+        "lib/features/learn/session/leitner.dart",
+        "lib/features/learn/session/session_result.dart",
+        "test/learn_session_leitner_test.dart",
+        "lib/core/models/word_box.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Let exercise pages report a hint: right after a hint is its own result, not a clean right",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-01"
+      ],
+      "dod": "inventory of exercises with a hint written in this task file; PageAnswer results carry right / wrong / hinted per row id (old bool callers still compile); the typed answer field's second-try right after the 'Starts with' line reports hinted; tests for the typed field and one board page; 'Show answer' reports wrong",
+      "files_hint": [
+        "lib/features/learn/session/exercise_page.dart",
+        "lib/features/learn/kit/typed_answer_field.dart",
+        "test/learn_kit_typed_answer_field_test.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Schedule self-check cards in the session queue: 3 pages after a flag, no limit, re-flag gets a new card",
+      "layer": "domain",
+      "deps": [
+        "T4"
+      ],
+      "acs": [
+        "AC-02"
+      ],
+      "dod": "pure queue tests with a seeded Random: card 3 pages after the flag; fewer pages left → right after the last exercise page; never next to the same word's page while another page is pending; every flag gets one card; a word flagged after its card gets another; the last rating wins; page counter totals include cards",
+      "files_hint": [
+        "lib/features/learn/session/ladder_queue.dart",
+        "lib/features/learn/session/learning_session_notifier.dart",
+        "test/learn_session_ladder_queue_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Show the shared self-check card as an exercise-session page",
+      "layer": "ui",
+      "deps": [
+        "T5"
+      ],
+      "acs": [
+        "AC-03",
+        "AC-04"
+      ],
+      "dod": "the session plays a due check card as a page in the learn page frame (no Check, no verdict bar) using learn-welcome's SelfCheckCard; its rating reaches the session notifier; widget test",
+      "files_hint": [
+        "lib/features/learn/session/learning_session_screen.dart",
+        "lib/features/learn/session/page_registry.dart",
+        "test/learn_self_check_page_test.dart"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Show the rating on the session results screen",
+      "layer": "ui",
+      "deps": [
+        "T3",
+        "T6"
+      ],
+      "acs": [
+        "AC-10"
+      ],
+      "dod": "each rated word's row shows its rating beside the box move ('Hard · box 3 → 2'); unrated flagged word says 'not checked, box kept'; widget test",
+      "files_hint": [
+        "lib/features/learn/session/session_results_screen.dart",
+        "test/learn_session_results_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Talk with AI: a self-check step in the quick check for missed and hinted words; talk scoring through the ratings",
+      "layer": "ui",
+      "deps": [
+        "T3",
+        "T6"
+      ],
+      "acs": [
+        "AC-11"
+      ],
+      "dod": "scoreTalk returns flags (mistake / hint / clean / unused) instead of missed; the quick check adds a self-check card per flagged word (same widget as T6, chat-card size); ratings go to applySession; talk ended before the check → flagged words keep their box; tests in talk_quiz_test and learn_session_talk tests",
+      "files_hint": [
+        "lib/features/learn/talk/talk_rules.dart",
+        "lib/features/learn/talk/talk_quiz.dart",
+        "lib/features/learn/talk/talk_quiz_card.dart",
+        "lib/features/learn/talk/talk_notifier.dart",
+        "test/talk_quiz_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Finish: build_runner, analyze, changed tests, grep check, device check list for the owner",
+      "layer": "docs",
+      "deps": [
+        "T7",
+        "T8"
+      ],
+      "acs": [],
+      "dod": "the Before-finishing commands of CLAUDE.md pass; a short owner check list (miss 'saline', see its card 3 pages later, rate Hard, results show box move) added to this feature's folder",
+      "files_hint": [
+        "docs/features/self-check-cards/device-check.md"
+      ]
+    }
+  ]
+}

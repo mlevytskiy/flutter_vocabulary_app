@@ -1,0 +1,325 @@
+{
+  "slug": "learn-welcome",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record learn-welcome approvals in CLAUDE.md rules 3 and 5",
+      "layer": "docs",
+      "deps": [],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "rule 3 lists the flow's visible changes and removals and the portrait lock; rule 5 lists WordBox.lastCheckSide",
+      "files_hint": [
+        "CLAUDE.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Add WordBox.lastCheckSide and keep it through copy, JSON and the store",
+      "layer": "infra",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-07"
+      ],
+      "dod": "build_runner regenerates; '' default for old data; copy/JSON keep it; put() of a stale copy keeps the stored side",
+      "files_hint": [
+        "lib/core/models/word_box.dart",
+        "test/word_box_store_test.dart"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Add the pure self-check rules: SelfRating, rateBox, nextSide, box labels",
+      "layer": "domain",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "unit tests: each rating from new/1/3/5, once-a-day up, due dates, side switch, labels",
+      "files_hint": [
+        "lib/features/learn/session/self_check.dart",
+        "test/learn_self_check_rules_test.dart"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the pure flow word rules: card words, the source-tail split, dialog words",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-06",
+        "AC-13"
+      ],
+      "dod": "unit tests: first due-or-new start, 36 cap, nothing-due fallback, 10 film + 2 typed → 10 | 2+, 6 + 6 kept, 4–7 words one group, 3-story cap, Easy/Hard counts and order",
+      "files_hint": [
+        "lib/features/learn/flow/flow_words.dart",
+        "test/learn_flow_words_test.dart"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Add the pure story slot scheduler",
+      "layer": "domain",
+      "deps": [
+        "T1"
+      ],
+      "acs": [
+        "AC-10"
+      ],
+      "dod": "unit tests: ready on time → after its last card; ready late → as soon as ready within 5 cards; not ready → wait page; skip → next slot, else before the dialog, else Story runs; last group → wait page",
+      "files_hint": [
+        "lib/features/learn/flow/story_slots.dart",
+        "test/learn_story_slots_test.dart"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Add the 50 topics and POST /learn/topics to the Worker",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-03"
+      ],
+      "dod": "vitest: 3 valid ids for a word list; invalid AI ids filled by keyword overlap; not counted toward talks; auth as the other learn routes",
+      "files_hint": [
+        "vocab-photo-api/src/learn/topics.ts",
+        "vocab-photo-api/src/learn/routes.ts",
+        "vocab-photo-api/test/learn-topics.test.ts"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add the topics service with a 4 s timeout and the bundled fallback",
+      "layer": "app",
+      "deps": [
+        "T6"
+      ],
+      "acs": [
+        "AC-03"
+      ],
+      "dod": "service tests: answer → 3 topics; error or > 4 s → Daily routine, Food and cooking, Travel",
+      "files_hint": [
+        "lib/core/services/learn_topics_service.dart",
+        "lib/core/providers.dart",
+        "test/learn_topics_service_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Let the talk mission take a topic, a reply limit and chosen words",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-13"
+      ],
+      "dod": "vitest: the mission prompt uses the topic (id title or own text ≤ 80 chars) and the given words; the talk ends after maxReplies 6 or 12; counted as one talk",
+      "files_hint": [
+        "vocab-photo-api/src/learn/talk.ts",
+        "vocab-photo-api/src/learn/talk-mixed.ts",
+        "vocab-photo-api/test/talk-topic.test.ts"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Let story runs send each word's context, source and edited translation to the story writer",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-12"
+      ],
+      "dod": "vitest: story start accepts per-word extras and the writer prompt lists them; old requests unchanged",
+      "files_hint": [
+        "vocab-photo-api/src/story/routes.ts",
+        "vocab-photo-api/src/story/prompts.ts",
+        "lib/core/services/story_api_service.dart",
+        "vocab-photo-api/test/story-extras.test.ts"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Add the LearnFlowNotifier: phases, per-card save, story start and reuse, leave",
+      "layer": "app",
+      "deps": [
+        "T3",
+        "T4",
+        "T5",
+        "T7"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-08",
+        "AC-09",
+        "AC-13",
+        "AC-16"
+      ],
+      "dod": "notifier tests with fakes: < 4 words refused, warm-up answers, each rating saved at once, story reuse by row-id set, slots followed, dialog setup built, leave keeps ratings",
+      "files_hint": [
+        "lib/features/learn/flow/learn_flow_notifier.dart",
+        "lib/core/providers.dart",
+        "test/learn_flow_notifier_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Add the self-check card widget with flip, four ratings, box captions and the context line",
+      "layer": "ui",
+      "deps": [
+        "T3"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-18"
+      ],
+      "dod": "widget tests: buttons disabled before flip, rating callback, side by nextSide, captions, context with source / AI mark, nothing when empty",
+      "files_hint": [
+        "lib/features/learn/session/self_check_card.dart",
+        "lib/core/theme/app_decor.dart",
+        "lib/core/theme/themes/",
+        "test/learn_self_check_card_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Add the warm-up view on the Talk screen: 2-step bar, topic and mode choices, own topic",
+      "layer": "ui",
+      "deps": [
+        "T10"
+      ],
+      "acs": [
+        "AC-02",
+        "AC-04"
+      ],
+      "dod": "widget tests: 2-step bar, 3 topics + My own topic…, Send disabled while empty, ≤ 80 chars, Hard/Easy, no Skip, gear opens Learn settings",
+      "files_hint": [
+        "lib/features/learn/flow/warm_up_view.dart",
+        "lib/features/learn/talk/talk_widgets.dart",
+        "test/learn_warm_up_view_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Add the flow pager: cards, story picture pages, the wait page and the card counter",
+      "layer": "ui",
+      "deps": [
+        "T10",
+        "T11"
+      ],
+      "acs": [
+        "AC-07",
+        "AC-10",
+        "AC-11"
+      ],
+      "dod": "widget tests: card counter, story page after its card when ready, wait page with progress and Skip, story opens itself when ready",
+      "files_hint": [
+        "lib/features/learn/flow/learn_flow_screen.dart",
+        "lib/features/learn/flow/story_page.dart",
+        "test/learn_flow_screen_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Lock the app to portrait and turn the story page to landscape",
+      "layer": "wiring",
+      "deps": [
+        "T13"
+      ],
+      "acs": [
+        "AC-11"
+      ],
+      "dod": "the app starts portrait-only on phones and tablets; the story page sets landscape on show and portrait on leave without losing the pager index (widget test with a fake orientation channel; device check)",
+      "files_hint": [
+        "lib/app.dart",
+        "lib/features/learn/flow/story_page.dart",
+        "ios/Runner/Info.plist",
+        "android/app/src/main/AndroidManifest.xml",
+        "test/learn_orientation_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Run the main dialog in learn-flow mode and record its results without moving boxes",
+      "layer": "ui",
+      "deps": [
+        "T8",
+        "T10"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-14"
+      ],
+      "dod": "tests: the Talk screen opens with the flow's topic, maxReplies and words; results go to WordResult only; limit reached → skipped with the note",
+      "files_hint": [
+        "lib/features/learn/talk/talk_notifier.dart",
+        "lib/features/learn/talk/talk_screen.dart",
+        "lib/router/routes.dart",
+        "test/learn_flow_talk_test.dart"
+      ]
+    },
+    {
+      "id": "T16",
+      "title": "Show the flow's results: cards, stories, talk, due tomorrow, three buttons",
+      "layer": "ui",
+      "deps": [
+        "T10"
+      ],
+      "acs": [
+        "AC-15"
+      ],
+      "dod": "widget test: counts per rating, moved words, story thumbnails, talk counts, \"N words due tomorrow\", Exercises · Talk with AI · Done; notes for a skipped story or talk",
+      "files_hint": [
+        "lib/features/learn/session/session_results_screen.dart",
+        "lib/features/learn/flow/flow_result.dart",
+        "test/learn_flow_results_test.dart"
+      ]
+    },
+    {
+      "id": "T17",
+      "title": "Open the flow from Learn and remove the Learn sheet, the split checkbox and the group line",
+      "layer": "ui",
+      "deps": [
+        "T12",
+        "T13"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-17"
+      ],
+      "dod": "widget tests: Learn opens the flow route, < 4 words shows the snackbar, no sheet or checkbox remains; routes typed; grep check clean",
+      "files_hint": [
+        "lib/router/routes.dart",
+        "lib/features/words_table/widgets/learn_share_bar.dart",
+        "lib/features/learn/entry/learn_sheet.dart",
+        "lib/features/learn/widgets/group_pager.dart",
+        "test/learn_entry_test.dart"
+      ]
+    },
+    {
+      "id": "T18",
+      "title": "Finish learn-welcome: generated code, analyze, changed tests, grep check, device check list, self-check tasks updated",
+      "layer": "docs",
+      "deps": [
+        "T9",
+        "T14",
+        "T15",
+        "T16",
+        "T17"
+      ],
+      "acs": [
+        "AC-16"
+      ],
+      "dod": "CLAUDE.md before-finishing commands pass; a device check list; self-check-cards tasks point at T2, T3, T11",
+      "files_hint": [
+        "docs/features/learn-welcome/device-check.md"
+      ]
+    }
+  ]
+}
