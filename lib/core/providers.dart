@@ -45,6 +45,7 @@ import 'services/subtitle_search_service.dart';
 import 'services/subtitle_words_service.dart';
 import 'services/system_gesture_exclusion.dart';
 import 'services/vocab_photo_service.dart';
+import 'words/context_backfill.dart';
 
 part 'providers.g.dart';
 
@@ -117,6 +118,18 @@ OpenAiVoiceService openAiVoiceService(Ref ref) => OpenAiVoiceService();
 /// Dictionary senses for the definition field, via the Worker (ADR-0002).
 @Riverpod(keepAlive: true)
 DictionaryService dictionaryService(Ref ref) => DictionaryService();
+
+/// The launch backfill of empty contexts (word-context AC-12, ADR-0004),
+/// started once by the words notifier after the collection autofill.
+@Riverpod(keepAlive: true)
+ContextBackfill contextBackfill(Ref ref) {
+  final backfill = ContextBackfill(
+    store: () => ref.read(collectionStoreProvider.future),
+    dictionary: ref.read(dictionaryServiceProvider),
+  );
+  ref.onDispose(backfill.cancel);
+  return backfill;
+}
 
 /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
 @Riverpod(keepAlive: true)

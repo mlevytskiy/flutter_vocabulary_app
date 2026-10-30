@@ -17,6 +17,7 @@ import '../../core/providers.dart';
 import '../../core/services/collection_store.dart';
 import '../../core/services/filing.dart';
 import '../../core/services/source_photo_store.dart' show uuidV4;
+import '../../core/words/context_backfill.dart';
 import '../../core/words/word_origin_rules.dart';
 
 part 'words_notifier.g.dart';
@@ -115,9 +116,23 @@ class WordsNotifier extends _$WordsNotifier {
         if (ref.mounted) {
           _maybeAutoName();
           _maybeAutoDescribe();
+          // Then, in the background, the empty contexts (word-context AC-12,
+          // ADR-0004); once per app start.
+          unawaited(ref
+              .read(contextBackfillProvider)
+              .start(onWritten: _takeBackfilledContexts));
         }
       }
     }
+  }
+
+  /// The contexts the backfill just stored, put on the screen's copy of the
+  /// same collection too, so its next save keeps them (word-context AC-12).
+  void _takeBackfilledContexts(String collectionId, List<ContextFill> fills) {
+    if (!ref.mounted || state.isLoading) return;
+    final c = state.value;
+    if (c == null || c.collectionId != collectionId) return;
+    applyContextFills(c.words, fills);
   }
 
   /// The launch and resume rule (collections-screen ADR-0007): the pointer's

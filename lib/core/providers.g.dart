@@ -645,6 +645,54 @@ final class DictionaryServiceProvider extends $FunctionalProvider<
 
 String _$dictionaryServiceHash() => r'55c5a3e42d3dab60fb9f17e0724c51e347330b20';
 
+/// The launch backfill of empty contexts (word-context AC-12, ADR-0004),
+/// started once by the words notifier after the collection autofill.
+
+@ProviderFor(contextBackfill)
+final contextBackfillProvider = ContextBackfillProvider._();
+
+/// The launch backfill of empty contexts (word-context AC-12, ADR-0004),
+/// started once by the words notifier after the collection autofill.
+
+final class ContextBackfillProvider extends $FunctionalProvider<ContextBackfill,
+    ContextBackfill, ContextBackfill> with $Provider<ContextBackfill> {
+  /// The launch backfill of empty contexts (word-context AC-12, ADR-0004),
+  /// started once by the words notifier after the collection autofill.
+  ContextBackfillProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'contextBackfillProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$contextBackfillHash();
+
+  @$internal
+  @override
+  $ProviderElement<ContextBackfill> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ContextBackfill create(Ref ref) {
+    return contextBackfill(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ContextBackfill value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ContextBackfill>(value),
+    );
+  }
+}
+
+String _$contextBackfillHash() => r'85850987f5ac83c2a803d4a24ce9089986da9b9b';
+
 /// The Worker's story routes: offered AIs, grouping, runs (mnemonic-story T12).
 
 @ProviderFor(storyApiService)
