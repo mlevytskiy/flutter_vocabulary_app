@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../session/self_check.dart';
+import '../session/self_check_card.dart';
 import 'talk_quiz.dart';
 import 'talk_widgets.dart' show talkRound;
 
@@ -12,6 +14,9 @@ const talkQuizCardKey = ValueKey('talk-quiz');
 /// Match definitions — one step at a time. A spoken step is answered with
 /// the talk's mic or field ([TalkQuizItem.spoken]); the others by tapping
 /// here. A null [quiz] is still loading. A closed quiz shows its score only.
+/// After the exercises, a word missed or used only after its hint gets a
+/// self-check step (self-check-cards AC-11): the self-check card at chat-card
+/// size, rated through [onRate].
 class TalkQuizCard extends StatefulWidget {
   const TalkQuizCard({
     super.key,
@@ -19,12 +24,14 @@ class TalkQuizCard extends StatefulWidget {
     required this.onPick,
     required this.onMatch,
     required this.onNext,
+    this.onRate,
   });
 
   final TalkQuiz? quiz;
   final ValueChanged<String> onPick;
   final void Function(String rowId, String definitionRowId) onMatch;
   final VoidCallback onNext;
+  final ValueChanged<SelfRating>? onRate;
 
   @override
   State<TalkQuizCard> createState() => _TalkQuizCardState();
@@ -95,12 +102,14 @@ class _TalkQuizCardState extends State<TalkQuizCard> {
     final scheme = theme.colorScheme;
     final decor = AppDecor.of(context);
     final item = quiz.current;
+    if (item.kind == TalkQuizKind.selfCheck) return _selfCheck(context, item);
     final children = <Widget>[];
     final title = switch (item.kind) {
       TalkQuizKind.translate => 'Say the English word for',
       TalkQuizKind.fillGap => 'Say the missing word',
       TalkQuizKind.pickAnswer => 'Pick the missing word',
       TalkQuizKind.matchDefinitions => 'Match each word to its meaning',
+      TalkQuizKind.selfCheck => '',
     };
     children.add(Padding(
       padding: const EdgeInsets.only(top: 8, bottom: 6),
@@ -140,6 +149,8 @@ class _TalkQuizCardState extends State<TalkQuizCard> {
               ),
           ]),
         ));
+      case TalkQuizKind.selfCheck:
+        break;
       case TalkQuizKind.matchDefinitions:
         children.add(Wrap(spacing: 8, runSpacing: 8, children: [
           for (final w in item.words)
@@ -211,6 +222,27 @@ class _TalkQuizCardState extends State<TalkQuizCard> {
       ));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: children);
+  }
+
+  /// A self-check step: flip the card, then rate how well the word is known.
+  Widget _selfCheck(BuildContext context, TalkQuizItem item) {
+    final theme = Theme.of(context);
+    final decor = AppDecor.of(context);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 6),
+        child: Text('How well do you know it?', style: theme.textTheme.bodyMedium?.copyWith(color: decor.muted)),
+      ),
+      SelfCheckCard(
+        key: ValueKey('talk-self-check-${item.word.rowId}'),
+        row: item.word,
+        box: item.box,
+        side: item.side,
+        now: DateTime.now(),
+        afterMistake: item.afterMistake,
+        onRated: (r) => widget.onRate?.call(r),
+      ),
+    ]);
   }
 }
 

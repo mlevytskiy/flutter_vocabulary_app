@@ -765,6 +765,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                           onPick: notifier.answerQuiz,
                           onMatch: notifier.matchQuiz,
                           onNext: notifier.nextQuiz,
+                          onRate: notifier.rateQuiz,
                         ),
                   ],
                   if (s.mixed && s.status == TalkStatus.talking && !s.complete && s.openQuiz == null) ...[

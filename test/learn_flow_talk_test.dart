@@ -17,9 +17,11 @@ import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/flow_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.dart';
-import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart' show WordOutcome;
+import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart' show WordOutcome, intervalDays;
+import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_result.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_notifier.dart';
+import 'package:flutter_vocabulary_app/features/learn/talk/talk_quiz.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_screen.dart';
 
 import 'learn_session_talk_test.dart' show FakeQuizData, FakeTalkApi, FakeTalkPicture;
@@ -99,10 +101,7 @@ void main() {
 
   /// The dialog setup over [order] (indexes into [words]).
   LearnDialogSetup setupOf(String id,
-          {List<int> order = const [1, 0, 2, 3],
-          int maxReplies = 6,
-          Uint8List? bytes,
-          bool loading = false}) =>
+          {List<int> order = const [1, 0, 2, 3], int maxReplies = 6, Uint8List? bytes, bool loading = false}) =>
       LearnDialogSetup(
         collectionId: id,
         topic: const FlowTopic(id: 'travel', text: 'Travel', description: 'Trips and tickets'),
@@ -184,8 +183,8 @@ void main() {
     final id = await newCollection();
     final api = FakeTalkApi();
     for (var i = 0; i < 7; i++) {
-      api.answers.add(const TalkTurn(
-          reply: 'Pick one', target: 'crowded', interaction: 'choice', choices: ['Yes', 'No']));
+      api.answers
+          .add(const TalkTurn(reply: 'Pick one', target: 'crowded', interaction: 'choice', choices: ['Yes', 'No']));
     }
     final (:c, :talk, flow: _, pictures: _) = container(id, api, setupOf(id));
     await talk.startFlow();
@@ -226,6 +225,80 @@ void main() {
     expect(results['r3']!.exerciseId, talkExerciseId);
     expect(c.read(lastSessionResultProvider), isNull);
     expect(c.read(talkProvider(id, learnFlow: true)).status, TalkStatus.over);
+  });
+
+  test('a missed word\'s self-check rating moves its box at once; the dialog result is still recorded', () async {
+    // self-check-cards AC-11, learn-welcome AC-14 / ADR-0004.
+    final quizWords = ['shore', 'tide', 'fog', 'gale', 'harbour'];
+    WordPair q(int i) => WordPair(word: quizWords[i], translation: 't-${quizWords[i]}', rowId: 'q${i + 1}');
+    final col = await store.create(keep: true, name: 'Sea');
+    col.words = [for (var i = 0; i < quizWords.length; i++) q(i)];
+    await store.put(col);
+    final id = col.collectionId;
+    await store.update(id, (c) {
+      c.boxes = [
+        WordBox()
+          ..rowId = 'q1'
+          ..word = 'shore'
+          ..box = 3
+          ..dueAt = DateTime(2026, 10, 30)
+          ..lastUpDay = '2026-10-25',
+      ];
+    });
+    final setup = LearnDialogSetup(
+      collectionId: id,
+      topic: const FlowTopic(id: 'sea', text: 'Sea', description: ''),
+      mode: FlowMode.easy,
+      maxReplies: 6,
+      words: [for (var i = 0; i < quizWords.length; i++) q(i)],
+    );
+    final flow = _FakeFlow(setup);
+    final api = FakeTalkApi()
+      ..answers
+          .add(const TalkTurn(reply: 'The fog hides the shore, the tide, a gale and the harbour.', target: 'shore'));
+    final c = ProviderContainer(overrides: [
+      collectionStoreProvider.overrideWith((ref) async => store),
+      storyRunStoreProvider.overrideWith((ref) async => runs),
+      talkApiServiceProvider.overrideWithValue(api),
+      talkPictureServiceProvider.overrideWithValue(FakeTalkPicture()),
+      learnApiServiceProvider.overrideWithValue(FakeQuizData()),
+      learnFlowProvider(id).overrideWith(() => flow),
+      learnFlowClockProvider.overrideWithValue(() => DateTime(2026, 10, 30, 10)),
+    ]);
+    addTearDown(c.dispose);
+    c.listen(learnFlowProvider(id), (_, __) {}, fireImmediately: true);
+    c.listen(talkProvider(id, learnFlow: true), (_, __) {}, fireImmediately: true);
+    final talk = c.read(talkProvider(id, learnFlow: true).notifier);
+    await talk.startFlow();
+    await pumpEventQueue();
+    TalkQuizItem current() => c.read(talkProvider(id, learnFlow: true)).openQuiz!.quiz!.current;
+    talk.answerQuiz('wave'); // wrong: shore
+    talk.nextQuiz();
+    talk.answerQuiz('tide');
+    talk.nextQuiz();
+    talk.answerQuiz('fog');
+    talk.nextQuiz();
+    for (final w in current().words) {
+      talk.matchQuiz(w.rowId, w.rowId);
+    }
+    talk.nextQuiz();
+    final step = current();
+    expect(step.kind, TalkQuizKind.selfCheck);
+    expect(step.word.word, 'shore');
+    expect(step.afterMistake, isTrue);
+    expect(step.side, 'uk');
+
+    await talk.rateQuiz(SelfRating.hard);
+    final shore = (await store.byId(id))!.boxes.singleWhere((b) => b.rowId == 'q1');
+    expect(shore.box, 2, reason: 'Hard: one box down, saved before the talk ends');
+    expect(shore.lastCheckSide, 'uk');
+    expect(shore.dueAt, DateTime(2026, 10, 30 + intervalDays(2)));
+    expect(c.read(talkProvider(id, learnFlow: true)).openQuiz, isNull);
+
+    await talk.finish();
+    expect(flow.recorded!['q1'], DialogWordResult.missed);
+    final after = (await store.byId(id))!.boxes;
+    expect([for (final b in after) (b.rowId, b.box)], [('q1', 2)], reason: 'the end moves no box');
   });
 
   test('a wrong quick-check answer counts as missed', () {
@@ -299,8 +372,7 @@ void main() {
     });
 
     testWidgets('the counter shows the reply limit; the end goes back to the flow', (t) async {
-      final api = FakeTalkApi()
-        ..answers.add(const TalkTurn(reply: 'Hi!', target: 'crowded', interaction: 'complete'));
+      final api = FakeTalkApi()..answers.add(const TalkTurn(reply: 'Hi!', target: 'crowded', interaction: 'complete'));
       final (flow, _) = await open(t, api);
       expect(find.text('0 / 6'), findsOneWidget);
       await t.tap(find.text('See results'));

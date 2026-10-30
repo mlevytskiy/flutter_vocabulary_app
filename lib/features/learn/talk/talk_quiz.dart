@@ -1,5 +1,7 @@
 import '../../../core/dialogues/dialogue_match.dart';
+import '../../../core/models/word_box.dart';
 import '../../../core/models/word_pair.dart';
+import '../session/self_check.dart';
 
 /// The quick check inside a talk (owner, 2026-10-24): once [talkQuizBatch]
 /// practice words have come up in the talk, a quiz card on those words opens
@@ -22,6 +24,10 @@ enum TalkQuizKind {
 
   /// Definitions of 3–4 words; the learner matches word to definition.
   matchDefinitions,
+
+  /// The self-check card of a word missed or used only after its hint
+  /// (self-check-cards AC-11): flip, then rate; the rating moves its box.
+  selfCheck,
 }
 
 /// The blank put in place of the word.
@@ -40,6 +46,10 @@ class TalkQuizItem {
     this.correct,
     this.matched = const {},
     this.wrongRows = const {},
+    this.box,
+    this.side = 'uk',
+    this.afterMistake = false,
+    this.rating,
   });
 
   final TalkQuizKind kind;
@@ -62,14 +72,28 @@ class TalkQuizItem {
   final Set<String> matched;
   final Set<String> wrongRows;
 
+  /// selfCheck: the word's box when the step was made (null: new), the side
+  /// the card shows first ([nextSide]), whether the word was missed (Easy
+  /// then counts as Medium), and the learner's rating once given.
+  final WordBox? box;
+  final String side;
+  final bool afterMistake;
+  final SelfRating? rating;
+
   WordPair get word => words.first;
 
   /// Whether the learner answers by voice or typing (the talk's composer).
   bool get spoken => kind == TalkQuizKind.translate || kind == TalkQuizKind.fillGap;
 
-  bool get done => kind == TalkQuizKind.matchDefinitions ? matched.length == words.length : correct != null;
+  bool get done => switch (kind) {
+        TalkQuizKind.matchDefinitions => matched.length == words.length,
+        TalkQuizKind.selfCheck => rating != null,
+        _ => correct != null,
+      };
 
-  TalkQuizItem copyWith({String? answer, bool? correct, Set<String>? matched, Set<String>? wrongRows}) => TalkQuizItem(
+  TalkQuizItem copyWith(
+          {String? answer, bool? correct, Set<String>? matched, Set<String>? wrongRows, SelfRating? rating}) =>
+      TalkQuizItem(
         kind: kind,
         words: words,
         prompt: prompt,
@@ -79,6 +103,10 @@ class TalkQuizItem {
         correct: correct ?? this.correct,
         matched: matched ?? this.matched,
         wrongRows: wrongRows ?? this.wrongRows,
+        box: box,
+        side: side,
+        afterMistake: afterMistake,
+        rating: rating ?? this.rating,
       );
 }
 
@@ -96,23 +124,36 @@ class TalkQuiz {
   bool get finished => items.every((i) => i.done);
   bool get isLast => index >= items.length - 1;
 
+  /// Whether every exercise step (all but the self-check steps) is answered.
+  bool get exercisesDone => items.every((i) => i.kind == TalkQuizKind.selfCheck || i.done);
+
+  /// Row ids that already have a self-check step here.
+  Set<String> get checkedRows => {
+        for (final i in items)
+          if (i.kind == TalkQuizKind.selfCheck) i.word.rowId,
+      };
+
   /// Row ids answered right without a wrong try, and those with one.
   Set<String> get rightRows => {
         for (final i in items)
           if (i.kind == TalkQuizKind.matchDefinitions)
             ...i.matched.difference(i.wrongRows)
-          else if (i.correct == true)
+          else if (i.kind != TalkQuizKind.selfCheck && i.correct == true)
             i.word.rowId,
       };
   Set<String> get wrongRows => {
         for (final i in items)
-          if (i.kind == TalkQuizKind.matchDefinitions) ...i.wrongRows else if (i.correct == false) i.word.rowId,
+          if (i.kind == TalkQuizKind.matchDefinitions)
+            ...i.wrongRows
+          else if (i.kind != TalkQuizKind.selfCheck && i.correct == false)
+            i.word.rowId,
       };
 
   int get rightCount => rightRows.length;
   int get wordCount => {
         for (final i in items)
-          for (final w in i.words) w.rowId
+          if (i.kind != TalkQuizKind.selfCheck)
+            for (final w in i.words) w.rowId
       }.length;
 
   TalkQuiz copyWith({List<TalkQuizItem>? items, int? index, bool? closed}) =>
@@ -215,3 +256,20 @@ List<TalkQuizItem> buildTalkQuiz(
 /// Whether a said or typed [answer] is [word]: the word or a form of it
 /// (the talk's whole-word rule), alone or in a short phrase.
 bool quizAnswerRight(String answer, String word) => matchPlaces(answer.trim(), word).isNotEmpty;
+
+/// The self-check steps for [flagged] words (self-check-cards AC-11): one
+/// card per word, in [flagged] order, showing first the side [nextSide]
+/// picks from its box in [boxes] (by rowId; missing: a new word). A word in
+/// [missedRows] was answered wrong, so Easy counts as Medium.
+List<TalkQuizItem> selfCheckSteps(List<WordPair> flagged,
+        {required Map<String, WordBox> boxes, Set<String> missedRows = const {}}) =>
+    [
+      for (final w in flagged)
+        TalkQuizItem(
+          kind: TalkQuizKind.selfCheck,
+          words: [w],
+          box: boxes[w.rowId],
+          side: nextSide(boxes[w.rowId]),
+          afterMistake: missedRows.contains(w.rowId),
+        ),
+    ];

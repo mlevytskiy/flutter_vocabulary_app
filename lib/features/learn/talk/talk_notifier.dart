@@ -3,13 +3,15 @@ import 'dart:typed_data';
 
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/models/word_box.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/models/word_result.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/learn_api_service.dart' show LearnDataKind;
 import '../../../core/services/talk_api_service.dart';
 import '../flow/learn_flow_notifier.dart';
-import '../session/leitner.dart' show WordOutcome;
+import '../session/leitner.dart' show WordOutcome, WordRating, boxOf, isFlagged;
+import '../session/self_check.dart';
 import '../session/session_result.dart';
 import '../session/session_words.dart';
 import 'talk_quiz.dart';
@@ -237,6 +239,23 @@ class Talk extends _$Talk {
   TalkTopic? _topic;
   int? _maxReplies;
 
+  /// The talk words' boxes when the talk started (by rowId), kept up to date
+  /// by the main dialog's self-check ratings; a new word has none.
+  Map<String, WordBox> _boxes = const {};
+
+  /// The self-check ratings of a plain talk (by rowId), handed to
+  /// [finishSession] (self-check-cards AC-11).
+  final Map<String, WordRating> _ratings = {};
+
+  /// Keeps the boxes of [words] from [stored] and forgets earlier ratings.
+  void _keepBoxes(List<WordPair> words, List<WordBox> stored) {
+    _ratings.clear();
+    _boxes = {
+      for (final w in words)
+        if (boxOf(stored, w) case final b?) w.rowId: b,
+    };
+  }
+
   @override
   TalkState build(String? collectionId, {bool learnFlow = false}) {
     ref.onDispose(() => _disposed = true);
@@ -279,6 +298,7 @@ class Talk extends _$Talk {
     _topic = (id: setup.topic.id, text: setup.topic.text);
     _maxReplies = setup.maxReplies;
     _scene = scenePick(name: c?.name ?? '', description: c?.description ?? '');
+    _keepBoxes(words, c?.boxes ?? const []);
     _set(TalkState(
       words: [for (final w in words) TalkStripWord(w)],
       target: words.first.word,
@@ -321,6 +341,7 @@ class Talk extends _$Talk {
       return;
     }
     _scene = scenePick(name: c.name ?? '', description: c.description ?? '');
+    _keepBoxes(words, c.boxes);
     _set(TalkState(words: [for (final w in words) TalkStripWord(w)], target: words.first.word, name: c.name ?? ''));
     await _open();
   }
@@ -496,7 +517,7 @@ class Talk extends _$Talk {
     final right = item.kind == TalkQuizKind.pickAnswer
         ? answer.trim().toLowerCase() == item.word.word.trim().toLowerCase()
         : quizAnswerRight(answer, item.word.word);
-    _setQuiz(quiz.withCurrent(item.copyWith(answer: answer.trim(), correct: right)));
+    _setQuiz(_withSelfChecks(quiz.withCurrent(item.copyWith(answer: answer.trim(), correct: right))));
   }
 
   /// Match definitions: [rowId]'s word put on the definition of [definitionRowId].
@@ -505,9 +526,66 @@ class Talk extends _$Talk {
     if (quiz == null) return;
     final item = quiz.current;
     if (item.kind != TalkQuizKind.matchDefinitions || item.matched.contains(rowId)) return;
-    _setQuiz(quiz.withCurrent(rowId == definitionRowId
+    _setQuiz(_withSelfChecks(quiz.withCurrent(rowId == definitionRowId
         ? item.copyWith(matched: {...item.matched, rowId})
-        : item.copyWith(wrongRows: {...item.wrongRows, rowId})));
+        : item.copyWith(wrongRows: {...item.wrongRows, rowId}))));
+  }
+
+  /// Once [quiz]'s exercise steps are all answered, a self-check step for
+  /// each talk word flagged so far — missed (a wrong answer) or used only
+  /// after its hint — that no quick check has given one yet
+  /// (self-check-cards AC-11). A word flagged later waits for the next quick
+  /// check; a talk ending before it leaves the word unrated (AC-09).
+  TalkQuiz _withSelfChecks(TalkQuiz quiz) {
+    if (!quiz.exercisesDone) return quiz;
+    final checked = {
+      for (final q in state.quizzes) ...?q.quiz?.checkedRows,
+      ...quiz.checkedRows,
+    };
+    final outcomes = _outcomesWith(quiz);
+    final flagged = [
+      for (final e in outcomes.entries)
+        if (isFlagged(e.value) && !checked.contains(e.key.rowId)) e.key
+    ];
+    if (flagged.isEmpty) return quiz;
+    final missed = {
+      for (final e in outcomes.entries)
+        if (e.value == WordOutcome.missed) e.key.rowId
+    };
+    return quiz.copyWith(items: [...quiz.items, ...selfCheckSteps(flagged, boxes: _boxes, missedRows: missed)]);
+  }
+
+  /// The open quiz's self-check step rated (self-check-cards AC-11): in a
+  /// plain talk the rating waits for [finish] to move the box; in the main
+  /// dialog it moves the box at once in one store write (learn-welcome
+  /// ADR-0004), like the flow's cards. Then on to the next step, or back to
+  /// the talk after the last.
+  Future<void> rateQuiz(SelfRating rating) async {
+    final quiz = state.openQuiz?.quiz;
+    if (quiz == null || _finished) return;
+    final item = quiz.current;
+    if (item.kind != TalkQuizKind.selfCheck || item.done) return;
+    final rated = quiz.withCurrent(item.copyWith(rating: rating));
+    _setQuiz(rated.isLast ? rated.copyWith(closed: true) : rated.copyWith(index: rated.index + 1));
+    final row = item.word;
+    if (!learnFlow) {
+      _ratings[row.rowId] = (rating: rating, side: item.side);
+      return;
+    }
+    final now = ref.read(learnFlowClockProvider)();
+    _boxes = {
+      ..._boxes,
+      row.rowId: rateBox(row, _boxes[row.rowId], rating, now, side: item.side, afterMistake: item.afterMistake),
+    };
+    final store = await ref.read(collectionStoreProvider.future);
+    await store.update(_id!, (c) {
+      final box = rateBox(row, boxOf(c.boxes, row), rating, now, side: item.side, afterMistake: item.afterMistake);
+      c.boxes = [
+        for (final b in c.boxes)
+          if (b.rowId != row.rowId) b,
+        box,
+      ];
+    });
   }
 
   /// The next step of the open quiz, or back to the talk after the last.
@@ -540,14 +618,27 @@ class Talk extends _$Talk {
 
   /// Each talk word's outcome (AC-22): a quiz answer counts too, right is a
   /// use, wrong a miss (owner, 2026-10-24).
-  Map<WordPair, WordOutcome> get _outcomes => scoreTalk(_words, used: {
-        for (final w in state.words)
-          if (w.used) w.word.rowId,
-        for (final q in state.quizzes) ...?q.quiz?.rightRows,
-        for (final q in state.quizzes) ...?q.quiz?.wrongRows,
-      }, hinted: state.hinted, missed: {
-        for (final q in state.quizzes) ...?q.quiz?.wrongRows,
-      });
+  Map<WordPair, WordOutcome> get _outcomes => _outcomesWith(null);
+
+  /// [_outcomes] with [extra], a quiz not in the state yet, counted too.
+  Map<WordPair, WordOutcome> _outcomesWith(TalkQuiz? extra) {
+    final quizzes = <TalkQuiz>[
+      for (final q in state.quizzes)
+        if (q.quiz case final quiz?) quiz,
+      if (extra != null) extra,
+    ];
+    return scoreTalk(_words,
+        used: {
+          for (final w in state.words)
+            if (w.used) w.word.rowId,
+          for (final q in quizzes) ...q.rightRows,
+          for (final q in quizzes) ...q.wrongRows,
+        },
+        hinted: state.hinted,
+        missed: {
+          for (final q in quizzes) ...q.wrongRows,
+        });
+  }
 
   /// Done, or the talk's own end: scores the words (AC-22), moves the boxes in
   /// one store write and hands the result to the results screen. Runs once.
@@ -564,6 +655,10 @@ class Talk extends _$Talk {
       store: store,
       collectionId: _id,
       outcomes: _outcomes,
+      ratings: {
+        for (final w in _words)
+          if (_ratings[w.rowId] case final r?) w: r,
+      },
       kind: SessionKind.talk,
       now: now,
       groupIndex: pick?.groupIndex,

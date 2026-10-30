@@ -79,8 +79,9 @@ class FakeQuizData implements LearnApiService {
   @override
   Future<Map<String, T?>> fetchData<T>(LearnDataKind<T> kind, List<LearnWord> words) async => {
         for (final w in words)
-          w.rowId: (kind.wire == 'definition' ? (definition: 'Meaning of ${w.word}.') : (sentence: 'We saw the ${w.word} today.'))
-              as T,
+          w.rowId: (kind.wire == 'definition'
+              ? (definition: 'Meaning of ${w.word}.')
+              : (sentence: 'We saw the ${w.word} today.')) as T,
       };
 
   @override
@@ -473,8 +474,23 @@ void main() {
       expect((await store.byId(id))!.boxes.length, 2);
     });
 
-    test('talk quiz: 5 words in the talk open a quick check; its answers score the words', () async {
+    /// A talk on shore, tide, fog, gale, harbour whose quick check is
+    /// answered right but for tide (wrong); tide sits in box 3 when [tideBox].
+    Future<(ProviderContainer, Talk, String)> quizzed({bool tideBox = false}) async {
       final id = await newCollection(['shore', 'tide', 'fog', 'gale', 'harbour']);
+      if (tideBox) {
+        await store.update(id, (c) {
+          c.boxes = [
+            WordBox()
+              ..rowId = 'r2'
+              ..word = 'tide'
+              ..box = 3
+              ..dueAt = DateTime(2026, 10, 23)
+              ..lastUpDay = '2026-10-20'
+              ..lastCheckSide = 'uk',
+          ];
+        });
+      }
       final api = FakeTalkApi()
         ..answers.addAll([
           const TalkTurn(reply: 'The fog hides the shore and the tide.', target: 'shore'),
@@ -485,10 +501,12 @@ void main() {
       expect(c.read(talkProvider(id)).openQuiz, isNull, reason: 'only 3 words so far');
       await talk.send('What now?');
       await pumpEventQueue();
-      var s = c.read(talkProvider(id));
+      final s = c.read(talkProvider(id));
       final quiz = s.openQuiz!.quiz!;
       expect(s.openQuiz!.at, 3, reason: 'after the AI line that brought the 5th word');
-      expect([for (final i in quiz.items) i.kind], [
+      expect([
+        for (final i in quiz.items) i.kind
+      ], [
         TalkQuizKind.translate,
         TalkQuizKind.fillGap,
         TalkQuizKind.pickAnswer,
@@ -506,16 +524,81 @@ void main() {
       for (final w in match.words) {
         talk.matchQuiz(w.rowId, w.rowId);
       }
+      expect(c.read(talkProvider(id)).openQuiz!.quiz!.isLast, isFalse, reason: 'a self-check step follows');
       talk.nextQuiz();
-      s = c.read(talkProvider(id));
-      expect(s.openQuiz, isNull, reason: 'back to the talk');
-      expect(s.quizzes.single.quiz!.closed, isTrue);
+      return (c, talk, id);
+    }
+
+    test('talk quiz: 5 words in the talk open a quick check; its answers score the words', () async {
+      final (c, talk, id) = await quizzed();
+      var s = c.read(talkProvider(id));
+      // The missed word gets a self-check step (self-check-cards AC-11).
+      final step = s.openQuiz!.quiz!.current;
+      expect(step.kind, TalkQuizKind.selfCheck);
+      expect(step.word.word, 'tide');
+      expect(step.afterMistake, isTrue);
+      expect(step.side, 'uk');
+      expect(s.spokenQuizItem, isNull);
       expect(s.quizzes.single.quiz!.wrongRows, {'r2'});
 
+      // Ended before rating: unrated, the box is kept (AC-09).
       await talk.finish();
       final states = {for (final m in c.read(lastSessionResultProvider)!.moves) m.word: m.state};
       expect(states['shore'], WordState.knownWell, reason: 'right in the quiz counts as a use');
       expect(states['tide'], WordState.isNew, reason: 'wrong in the quiz counts as a miss');
+      expect((await store.byId(id))!.boxes.where((b) => b.rowId == 'r2'), isEmpty);
+    });
+
+    test('a self-check rating in the quick check moves the box at Done by the card rules (AC-11)', () async {
+      final (c, talk, id) = await quizzed(tideBox: true);
+      final step = c.read(talkProvider(id)).openQuiz!.quiz!.current;
+      expect(step.side, 'en', reason: 'last checked on Ukrainian');
+      await talk.rateQuiz(SelfRating.easy);
+      final s = c.read(talkProvider(id));
+      expect(s.openQuiz, isNull, reason: 'back to the talk after the last step');
+      expect(s.quizzes.single.quiz!.closed, isTrue);
+      expect((await store.byId(id))!.boxes.single.box, 3, reason: 'a plain talk moves boxes only at Done');
+
+      await talk.finish(now: now);
+      final move = c.read(lastSessionResultProvider)!.moves.firstWhere((m) => m.word == 'tide');
+      expect(move.rating, SelfRating.easy);
+      final tide = (await store.byId(id))!.boxes.firstWhere((b) => b.rowId == 'r2');
+      expect(tide.box, 3, reason: 'Easy after a mistake counts as Medium');
+      expect(tide.lastCheckSide, 'en');
+      expect(tide.dueAt, DateTime(2026, 10, 23 + intervalDays(3)));
+    });
+
+    test('a word used only after its hint gets a self-check step too', () async {
+      final id = await newCollection(['shore', 'tide', 'fog', 'gale', 'harbour']);
+      final api = FakeTalkApi()
+        ..answers.addAll([
+          const TalkTurn(reply: 'The fog hides the shore.', target: 'tide'),
+          const TalkTurn(reply: 'A gale is coming to the harbour!', target: 'tide'),
+        ]);
+      final (c, talk) = await started(id, api);
+      talk.showHint();
+      await talk.send('The tide is high');
+      await pumpEventQueue();
+      talk.answerQuiz('shore');
+      talk.nextQuiz();
+      talk.answerQuiz('tide');
+      talk.nextQuiz();
+      talk.answerQuiz('fog');
+      talk.nextQuiz();
+      final match = c.read(talkProvider(id)).openQuiz!.quiz!.current;
+      for (final w in match.words) {
+        talk.matchQuiz(w.rowId, w.rowId);
+      }
+      talk.nextQuiz();
+      final step = c.read(talkProvider(id)).openQuiz!.quiz!.current;
+      expect(step.kind, TalkQuizKind.selfCheck);
+      expect(step.word.word, 'tide');
+      expect(step.afterMistake, isFalse);
+      await talk.rateQuiz(SelfRating.hard);
+      await talk.finish(now: now);
+      final tide = (await store.byId(id))!.boxes.firstWhere((b) => b.rowId == 'r2');
+      expect(tide.box, 1, reason: 'Hard on a new word: box 1');
+      expect(tide.lastCheckSide, 'uk');
     });
 
     test('leaving without Done writes nothing', () async {
