@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/models/story_run.dart';
 import '../../../core/models/word_collection.dart';
 import '../../../core/models/word_group.dart';
+import '../../../core/models/word_origin.dart';
 import '../../../core/models/word_pair.dart';
 
 /// The story side of the Learn flow (learn-welcome AC-09, AC-10; proxy Q9):
@@ -100,6 +101,43 @@ WordGroup flowWordGroup(List<WordPair> rows) {
     ..id = flowGroupId(rows)
     ..name = words.length > 3 ? 'Learn: $shown…' : 'Learn: $shown'
     ..rowIds = [for (final r in rows) r.rowId];
+}
+
+/// The per-word hints a flow story run sends to the story writer (learn-welcome
+/// AC-12): the word; its context sentence when it has one; where it came from
+/// (a film with its season and episode, a photo, a Quizlet set; nothing for a
+/// typed word); and the translation only when the learner edited it.
+List<Map<String, String>> storyExtras(List<WordPair> rows) {
+  final extras = <Map<String, String>>[];
+  for (final r in rows) {
+    final word = r.word.trim();
+    if (word.isEmpty) continue;
+    final o = r.origin;
+    final context = r.context.trim();
+    final source = switch (o.typeOfSource) {
+      SourceType.movie => _filmSource(o),
+      SourceType.image => 'a photo',
+      SourceType.set => 'a Quizlet set',
+      SourceType.manuallyEntered => '',
+    };
+    final translation = r.translation.trim();
+    extras.add({
+      'word': word,
+      if (context.isNotEmpty) 'context': context,
+      if (source.isNotEmpty) 'source': source,
+      if (o.wasTranslationEditByUser && translation.isNotEmpty) 'translation': translation,
+    });
+  }
+  return extras;
+}
+
+String _filmSource(WordOrigin o) {
+  final name = o.movieName.trim();
+  if (name.isEmpty) return 'a film';
+  final s = o.season, e = o.episode;
+  String two(int n) => n.toString().padLeft(2, '0');
+  final tag = s != null && e != null ? ' S${two(s)}E${two(e)}' : '';
+  return 'film $name$tag';
 }
 
 /// The picture of a finished, collected story run; null otherwise.

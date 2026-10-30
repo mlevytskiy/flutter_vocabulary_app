@@ -46,7 +46,7 @@ class FakeTracker extends StoryRunTracker {
 
   @override
   Future<String?> startFor(String collectionId, WordGroup group,
-          {bool replacing = false}) async =>
+          {bool replacing = false, List<Map<String, String>>? extras}) async =>
       null;
 }
 

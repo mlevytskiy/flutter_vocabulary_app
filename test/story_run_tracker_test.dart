@@ -60,6 +60,7 @@ class FakeStoryApi extends StoryApiService {
       'prompt': promptModel,
       'picture': pictureModel,
       if (sceneText != null) 'sceneText': sceneText,
+      if (extras != null) 'extras': extras,
     });
     if (startThrows != null) throw startThrows!;
     if (startResult is StoryStarted) worker[runId] = [];
@@ -215,6 +216,17 @@ void main() {
     expect(api.starts.single['runId'], run.runId);
     expect(api.starts.single['story'], 'claude-sonnet-5-5');
     expect(api.starts.single['picture'], 'grok-imagine-image-2.0');
+  });
+
+  test('startFor passes the extras to the Worker as they are (learn-welcome AC-12)', () async {
+    await boot();
+    final extras = [
+      {'word': 'w1', 'context': 'I saw w1.', 'source': 'a photo'},
+    ];
+
+    await tracker().startFor(collection.collectionId, group, extras: extras);
+
+    expect(api.starts.single['extras'], extras);
   });
 
   test('a run goes started, then each step, then collected, and becomes the group\'s story (AC-06, AC-16)',

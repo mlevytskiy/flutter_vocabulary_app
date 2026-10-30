@@ -81,6 +81,7 @@ class _Runs implements StoryRunStore {
 class _Tracker extends StoryRunTracker {
   final started = <WordGroup>[];
   final replacing = <bool>[];
+  final extras = <List<Map<String, String>>?>[];
   int follows = 0;
   int released = 0;
   bool refuse = false;
@@ -95,8 +96,10 @@ class _Tracker extends StoryRunTracker {
   }
 
   @override
-  Future<String?> startFor(String collectionId, WordGroup group, {bool replacing = false}) async {
+  Future<String?> startFor(String collectionId, WordGroup group,
+      {bool replacing = false, List<Map<String, String>>? extras}) async {
     started.add(group);
+    this.extras.add(extras);
     this.replacing.add(replacing);
     return refuse ? null : 'run-${started.length}';
   }
@@ -240,6 +243,9 @@ void main() {
     expect(f.state.slot, isA<CardSlot>());
     expect(f.state.card!.rowId, 'r0');
     expect(f.tracker.started.map((g) => g.rowIds.length), [12, 4]);
+    expect(f.tracker.extras.first, storyExtras(f.state.groups.first),
+        reason: 'AC-12: the run gets the group rows\' hints');
+    expect(f.tracker.extras.first!.length, 12);
     expect(f.tracker.started.first.id, flowGroupId(f.state.groups.first));
     expect(f.tracker.replacing, [true, true]);
     expect(f.tracker.follows, 1);

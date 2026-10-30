@@ -57,7 +57,7 @@ class _Tracker extends StoryRunTracker {
 
   @override
   Future<String?> startFor(String collectionId, WordGroup group,
-      {bool replacing = false}) async {
+      {bool replacing = false, List<Map<String, String>>? extras}) async {
     starts.add((collectionId: collectionId, groupId: group.id, replacing: replacing));
     return 'new-run';
   }

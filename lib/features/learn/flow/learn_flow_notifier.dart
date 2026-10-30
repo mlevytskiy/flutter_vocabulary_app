@@ -472,7 +472,8 @@ class LearnFlow extends _$LearnFlow {
       final runId = runningStory(collectionId, groups[i], runs)?.runId ??
           // A fresh start each Learn: a failed earlier run of these words
           // waits for no "Try again" here.
-          await tracker.startFor(collectionId, flowWordGroup(groups[i]), replacing: true);
+          await tracker.startFor(collectionId, flowWordGroup(groups[i]),
+              replacing: true, extras: storyExtras(groups[i]));
       if (_gone) return;
       if (runId == null) {
         _setStory(i, state.stories[i].copyWith(status: FlowStoryStatus.failed));

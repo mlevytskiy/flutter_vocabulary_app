@@ -106,16 +106,21 @@ class StoryRunTracker extends _$StoryRunTracker {
   /// going, or a failed run waiting for the learner's "Try again" (AC-07, AC-08).
   /// [replacing] is "Try again" and "Make a new story" (AC-16): it starts
   /// unless a run for the group is going.
-  Future<String?> startFor(String collectionId, WordGroup group, {bool replacing = false}) async {
+  ///
+  /// [extras] are optional per-word hints for the story writer (learn-welcome
+  /// AC-12), passed on to the Worker as they are.
+  Future<String?> startFor(String collectionId, WordGroup group,
+      {bool replacing = false, List<Map<String, String>>? extras}) async {
     try {
-      return await _startFor(collectionId, group, replacing);
+      return await _startFor(collectionId, group, replacing, extras);
     } catch (e) {
       debugPrint('VOCAB: starting a story run failed: $e');
       return null;
     }
   }
 
-  Future<String?> _startFor(String collectionId, WordGroup group, bool replacing) async {
+  Future<String?> _startFor(
+      String collectionId, WordGroup group, bool replacing, List<Map<String, String>>? extras) async {
     final runStore = await ref.read(storyRunStoreProvider.future);
     final ofGroup = [
       for (final r in await runStore.newestFirst())
@@ -157,6 +162,7 @@ class StoryRunTracker extends _$StoryRunTracker {
             storyModel: choice.story,
             promptModel: choice.prompt,
             pictureModel: choice.picture,
+            extras: extras,
           );
     } catch (_) {
       await _notStarted(run, const StoryStartRefusal(StoryRefusal.unavailable));
