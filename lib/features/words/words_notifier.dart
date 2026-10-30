@@ -30,7 +30,8 @@ part 'words_notifier.g.dart';
 class WordsNotifier extends _$WordsNotifier {
   // Riverpod 2's rule: every new state notifies (toolchain-upgrade).
   @override
-  bool updateShouldNotify(AsyncValue<WordCollection> previous, AsyncValue<WordCollection> next) =>
+  bool updateShouldNotify(AsyncValue<WordCollection> previous,
+          AsyncValue<WordCollection> next) =>
       asyncNotifyAsBefore(previous, next);
 
   Timer? _saveTimer;
@@ -61,8 +62,7 @@ class WordsNotifier extends _$WordsNotifier {
     ref.onDispose(() => _saveTimer?.cancel());
     // A collection opened with enough words but no name yet is named now.
     listenSelf((previous, next) {
-      if (previous?.value?.collectionId !=
-          next.value?.collectionId) {
+      if (previous?.value?.collectionId != next.value?.collectionId) {
         _maybeAutoName();
         _maybeAutoDescribe();
       }
@@ -234,8 +234,7 @@ class WordsNotifier extends _$WordsNotifier {
     await _leaveAndShow(store, made);
   }
 
-  Future<void> _leaveAndShow(
-      CollectionStore store, WordCollection next) async {
+  Future<void> _leaveAndShow(CollectionStore store, WordCollection next) async {
     await flush();
     final current = state.value;
     if (current != null && current.collectionId != next.collectionId) {
@@ -340,7 +339,9 @@ class WordsNotifier extends _$WordsNotifier {
       // A row filled from an import takes the import's (word-context AC-06).
       context: context ?? current.context,
       contextKind: contextKind ?? current.contextKind,
-      contextTried: current.contextTried,
+      // A changed definition lets the backfill try again (AC-12).
+      contextTried: current.contextTried &&
+          (definition ?? current.definition) == current.definition,
     )..origin = (origin ?? current.origin).copy();
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
@@ -394,7 +395,10 @@ class WordsNotifier extends _$WordsNotifier {
   void addImportDialogues(List<ImportedDialogue> dialogues, int keptCount) {
     if (!state.hasValue || keptCount <= 0) return;
     final collection = state.value!;
-    final filled = [for (final w in collection.words) if (!w.isEmpty) w];
+    final filled = [
+      for (final w in collection.words)
+        if (!w.isEmpty) w
+    ];
     final rows = filled.sublist(max(0, filled.length - keptCount));
     for (final w in rows) {
       if (w.rowId.isEmpty) w.rowId = uuidV4();
@@ -422,7 +426,8 @@ class WordsNotifier extends _$WordsNotifier {
   Future<void> setScenePicture(String dialogueId, String runId) async {
     final collection = state.value;
     if (collection == null) return;
-    final dialogue = collection.dialogues.where((d) => d.id == dialogueId).firstOrNull;
+    final dialogue =
+        collection.dialogues.where((d) => d.id == dialogueId).firstOrNull;
     if (dialogue == null || dialogue.scenePictureRunId == runId) return;
     dialogue.scenePictureRunId = runId;
     // A shared session's page gets the picture too (ADR-0005).
@@ -503,10 +508,10 @@ class WordsNotifier extends _$WordsNotifier {
     return id;
   }
 
-  static SessionSource? _subtitlesSource(WordCollection c, String title) => c
-      .sources
-      .where((s) => s.kind == SourceKind.subtitles && s.name == title)
-      .firstOrNull;
+  static SessionSource? _subtitlesSource(WordCollection c, String title) =>
+      c.sources
+          .where((s) => s.kind == SourceKind.subtitles && s.name == title)
+          .firstOrNull;
 
   static String _putSubtitlesSource(
       WordCollection collection, String title, String? poster) {
@@ -693,9 +698,8 @@ class WordsNotifier extends _$WordsNotifier {
       ..descriptionKind = stored.descriptionKind
       ..originTags = [...stored.originTags]
       ..topicTags = [...stored.topicTags]
-      ..updatedAt = stored.updatedAt.isAfter(c.updatedAt)
-          ? stored.updatedAt
-          : c.updatedAt
+      ..updatedAt =
+          stored.updatedAt.isAfter(c.updatedAt) ? stored.updatedAt : c.updatedAt
       ..lastLocalModifiedAt =
           stored.lastLocalModifiedAt.isAfter(c.lastLocalModifiedAt)
               ? stored.lastLocalModifiedAt
@@ -803,7 +807,8 @@ class WordsNotifier extends _$WordsNotifier {
     if (collection == null) return;
     // Dialogues follow their words in the same save (get-words-from-
     // subtitles-improvment AC-11, AC-26); links only shrink.
-    if (collection.dialogues.isNotEmpty) collection.dialogues = afterEdit(collection);
+    if (collection.dialogues.isNotEmpty)
+      collection.dialogues = afterEdit(collection);
     final now = DateTime.now();
     collection.updatedAt = now;
     collection.lastLocalModifiedAt = now;

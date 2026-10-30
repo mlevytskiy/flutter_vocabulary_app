@@ -146,6 +146,21 @@ void main() {
       expect(row.origin.episode, 5);
       expect(row.origin.time, '00:01:02');
     });
+
+    test('a changed definition clears contextTried; the same one keeps it',
+        () async {
+      final notifier = await seeded([
+        withContext(
+            WordPair(word: 'cat', translation: 'кіт', definition: 'a pet')),
+      ]);
+
+      notifier.updateAt(0, definition: 'a pet');
+      expect(words()[0].contextTried, isTrue);
+
+      notifier.updateAt(0, definition: 'a small animal');
+      expect(words()[0].contextTried, isFalse);
+      expect(words()[0].context, 'A cat sat on the mat.');
+    });
   });
 
   testWidgets(

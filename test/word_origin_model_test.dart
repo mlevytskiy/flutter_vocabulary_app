@@ -13,7 +13,8 @@ import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_origin.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
-import 'package:flutter_vocabulary_app/core/services/collection_level.dart' show BinResult;
+import 'package:flutter_vocabulary_app/core/services/collection_level.dart'
+    show BinResult;
 import 'package:flutter_vocabulary_app/core/services/collection_publish_service.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/new_user_trial.dart';
@@ -124,7 +125,8 @@ void main() {
   });
 
   test('JSON round-trips the fields; old JSON reads the defaults', () {
-    final json = jsonDecode(jsonEncode(row('r1').toJson())) as Map<String, dynamic>;
+    final json =
+        jsonDecode(jsonEncode(row('r1').toJson())) as Map<String, dynamic>;
     expectCarried(WordPair.fromJson(json));
     expect(json['origin']['typeOfSource'], 'movie');
     expect(json['contextKind'], 'source');
@@ -142,7 +144,11 @@ void main() {
   test('a collection JSON copy carries the row fields and the full text', () {
     final c = WordCollection.create()
       ..words = [row('r1')]
-      ..sources = [SessionSource()..id = 'p1'..fullText = 'EXIT\nNo smoking'];
+      ..sources = [
+        SessionSource()
+          ..id = 'p1'
+          ..fullText = 'EXIT\nNo smoking'
+      ];
     final back = WordCollection.fromJson(
         jsonDecode(jsonEncode(c.toJson())) as Map<String, dynamic>);
     expectCarried(back.words.single);
@@ -150,7 +156,9 @@ void main() {
   });
 
   test('SessionSource.fullText: copy, JSON, and null for old data', () {
-    final s = SessionSource()..id = 'p1'..fullText = 'EXIT';
+    final s = SessionSource()
+      ..id = 'p1'
+      ..fullText = 'EXIT';
     expect(s.copy().fullText, 'EXIT');
     expect(SessionSource.fromJson(s.toJson()).fullText, 'EXIT');
     expect(SessionSource().toJson().containsKey('fullText'), isFalse);
@@ -193,14 +201,15 @@ void main() {
     final notifier = container.read(wordsProvider.notifier);
     notifier.setPairs([WordPair(word: 'cup', rowId: 'r0'), row('r1')]);
 
-    notifier.updateAt(1, translation: 'небажаючий', definition: 'unwilling');
+    notifier.updateAt(1, translation: 'небажаючий');
     notifier.reorder(1, 0);
     final words = container.read(wordsProvider).value!.words;
     expect(words[0].translation, 'небажаючий');
     expectCarried(words[0]);
   });
 
-  test('an import filling the blank row sets its origin and context (T8)', () async {
+  test('an import filling the blank row sets its origin and context (T8)',
+      () async {
     final container = ProviderContainer(overrides: [
       collectionStoreProvider.overrideWith((ref) async => store),
     ]);
@@ -213,7 +222,11 @@ void main() {
       ..typeOfSource = SourceType.movie
       ..movieName = 'Film'
       ..time = '00:01:02';
-    notifier.updateAt(0, word: 'tide', origin: film, context: 'The tide.', contextKind: ContextKind.source);
+    notifier.updateAt(0,
+        word: 'tide',
+        origin: film,
+        context: 'The tide.',
+        contextKind: ContextKind.source);
     film.movieName = 'changed after';
     final r = container.read(wordsProvider).value!.words.single;
     expect(r.origin.typeOfSource, SourceType.movie);
