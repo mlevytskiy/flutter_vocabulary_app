@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:isar_community/isar.dart';
 
 import 'translation_result.dart';
+import 'word_origin.dart';
 
 part 'word_pair.g.dart';
 
@@ -48,6 +49,22 @@ class WordPair {
   /// mnemonic-story; `CollectionStore` fills it in once.
   String rowId;
 
+  /// Where the word came from (word-context AC-01, ADR-0001). Not a
+  /// constructor argument: every new row starts with the defaults, and a copy
+  /// carries a copy of it.
+  WordOrigin origin = WordOrigin();
+
+  /// A sentence showing the word in use; '' when there is none yet.
+  String context;
+
+  /// What [context] holds. Stored by name.
+  @Enumerated(EnumType.name)
+  ContextKind contextKind;
+
+  /// True once the context backfill has tried this row, found or not, so it
+  /// is not asked again (word-context ADR-0001).
+  bool contextTried;
+
   WordPair({
     this.word = '',
     this.translation = '',
@@ -60,6 +77,9 @@ class WordPair {
     this.definitionMarkedFilled = false,
     this.sourceId,
     this.rowId = '',
+    this.context = '',
+    this.contextKind = ContextKind.none,
+    this.contextTried = false,
   });
 
   @ignore
@@ -93,7 +113,13 @@ class WordPair {
         definitionMarkedFilled: json['definitionMarkedFilled'] as bool? ?? false,
         sourceId: json['sourceId'] as String?,
         rowId: json['rowId'] as String? ?? '',
-      );
+        context: json['context'] as String? ?? '',
+        contextKind: ContextKind.values.asNameMap()[json['contextKind']] ??
+            ContextKind.none,
+        contextTried: json['contextTried'] as bool? ?? false,
+      )..origin = json['origin'] is Map<String, dynamic>
+          ? WordOrigin.fromJson(json['origin'] as Map<String, dynamic>)
+          : WordOrigin();
 
   Map<String, dynamic> toJson() => {
         'word': word,
@@ -107,6 +133,10 @@ class WordPair {
         'definitionMarkedFilled': definitionMarkedFilled,
         'sourceId': sourceId,
         'rowId': rowId,
+        'origin': origin.toJson(),
+        'context': context,
+        'contextKind': contextKind.name,
+        'contextTried': contextTried,
       };
 
   /// A verbatim copy — used when writing to / reading from the store so the
@@ -123,7 +153,10 @@ class WordPair {
         definitionMarkedFilled: definitionMarkedFilled,
         sourceId: sourceId,
         rowId: rowId,
-      );
+        context: context,
+        contextKind: contextKind,
+        contextTried: contextTried,
+      )..origin = origin.copy();
 
   @ignore
   bool get isEmpty =>

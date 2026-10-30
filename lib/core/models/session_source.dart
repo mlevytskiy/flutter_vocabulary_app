@@ -57,6 +57,10 @@ class SessionSource {
   List<String> originTags = [];
   List<String> topicTags = [];
 
+  /// All the text the photo analysis read on a photo, kept so a row's
+  /// context can be found in it (word-context ADR-0001); null when not read.
+  String? fullText;
+
   SessionSource();
 
   factory SessionSource.fromJson(Map<String, dynamic> json) => SessionSource()
@@ -71,7 +75,8 @@ class SessionSource {
     ..links = [...?(json['links'] as List<dynamic>?)?.cast<String>()]
     ..tags = [...?(json['tags'] as List<dynamic>?)?.cast<String>()]
     ..originTags = [...?(json['originTags'] as List<dynamic>?)?.cast<String>()]
-    ..topicTags = [...?(json['topicTags'] as List<dynamic>?)?.cast<String>()];
+    ..topicTags = [...?(json['topicTags'] as List<dynamic>?)?.cast<String>()]
+    ..fullText = json['fullText'] as String?;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -86,6 +91,7 @@ class SessionSource {
         if (tags.isNotEmpty) 'tags': tags,
         if (originTags.isNotEmpty) 'originTags': originTags,
         if (topicTags.isNotEmpty) 'topicTags': topicTags,
+        if (fullText != null) 'fullText': fullText,
       };
 
   SessionSource copy() => SessionSource()
@@ -100,5 +106,6 @@ class SessionSource {
     ..links = [...links]
     ..tags = [...tags]
     ..originTags = [...originTags]
-    ..topicTags = [...topicTags];
+    ..topicTags = [...topicTags]
+    ..fullText = fullText;
 }

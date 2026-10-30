@@ -7,6 +7,7 @@ import 'name_kind.dart';
 import 'session_source.dart';
 import 'word_box.dart';
 import 'word_group.dart';
+import 'word_origin.dart';
 import 'word_pair.dart';
 import 'word_result.dart';
 

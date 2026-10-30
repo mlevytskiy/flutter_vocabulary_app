@@ -205,6 +205,7 @@ const WordCollectionSchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'WordPair': WordPairSchema,
+    r'WordOrigin': WordOriginSchema,
     r'SourcePhoto': SessionSourceSchema,
     r'WordGroup': WordGroupSchema,
     r'FilmDialogue': FilmDialogueSchema,

@@ -305,7 +305,11 @@ class WordsNotifier extends _$WordsNotifier {
       sourceId: clearSourceId ? null : sourceId ?? current.sourceId,
       // An edited row is the same row: its groups and dialogues follow it.
       rowId: current.rowId,
-    );
+      // So do its origin and context (word-context AC-14).
+      context: current.context,
+      contextKind: current.contextKind,
+      contextTried: current.contextTried,
+    )..origin = current.origin.copy();
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
     }

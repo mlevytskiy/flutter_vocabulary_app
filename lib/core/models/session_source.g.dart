@@ -23,54 +23,59 @@ const SessionSourceSchema = Schema(
       name: r'fileName',
       type: IsarType.string,
     ),
-    r'id': PropertySchema(
+    r'fullText': PropertySchema(
       id: 2,
+      name: r'fullText',
+      type: IsarType.string,
+    ),
+    r'id': PropertySchema(
+      id: 3,
       name: r'id',
       type: IsarType.string,
     ),
     r'kind': PropertySchema(
-      id: 3,
+      id: 4,
       name: r'kind',
       type: IsarType.byte,
       enumMap: _SessionSourcekindEnumValueMap,
     ),
     r'links': PropertySchema(
-      id: 4,
+      id: 5,
       name: r'links',
       type: IsarType.stringList,
     ),
     r'name': PropertySchema(
-      id: 5,
+      id: 6,
       name: r'name',
       type: IsarType.string,
     ),
     r'originTags': PropertySchema(
-      id: 6,
+      id: 7,
       name: r'originTags',
       type: IsarType.stringList,
     ),
     r'tags': PropertySchema(
-      id: 7,
+      id: 8,
       name: r'tags',
       type: IsarType.stringList,
     ),
     r'takenAt': PropertySchema(
-      id: 8,
+      id: 9,
       name: r'takenAt',
       type: IsarType.dateTime,
     ),
     r'title': PropertySchema(
-      id: 9,
+      id: 10,
       name: r'title',
       type: IsarType.string,
     ),
     r'topicTags': PropertySchema(
-      id: 10,
+      id: 11,
       name: r'topicTags',
       type: IsarType.stringList,
     ),
     r'url': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'url',
       type: IsarType.string,
     )
@@ -94,6 +99,12 @@ int _sessionSourceEstimateSize(
     }
   }
   bytesCount += 3 + object.fileName.length * 3;
+  {
+    final value = object.fullText;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   bytesCount += 3 + object.id.length * 3;
   bytesCount += 3 + object.links.length * 3;
   {
@@ -152,16 +163,17 @@ void _sessionSourceSerialize(
 ) {
   writer.writeString(offsets[0], object.description);
   writer.writeString(offsets[1], object.fileName);
-  writer.writeString(offsets[2], object.id);
-  writer.writeByte(offsets[3], object.kind.index);
-  writer.writeStringList(offsets[4], object.links);
-  writer.writeString(offsets[5], object.name);
-  writer.writeStringList(offsets[6], object.originTags);
-  writer.writeStringList(offsets[7], object.tags);
-  writer.writeDateTime(offsets[8], object.takenAt);
-  writer.writeString(offsets[9], object.title);
-  writer.writeStringList(offsets[10], object.topicTags);
-  writer.writeString(offsets[11], object.url);
+  writer.writeString(offsets[2], object.fullText);
+  writer.writeString(offsets[3], object.id);
+  writer.writeByte(offsets[4], object.kind.index);
+  writer.writeStringList(offsets[5], object.links);
+  writer.writeString(offsets[6], object.name);
+  writer.writeStringList(offsets[7], object.originTags);
+  writer.writeStringList(offsets[8], object.tags);
+  writer.writeDateTime(offsets[9], object.takenAt);
+  writer.writeString(offsets[10], object.title);
+  writer.writeStringList(offsets[11], object.topicTags);
+  writer.writeString(offsets[12], object.url);
 }
 
 SessionSource _sessionSourceDeserialize(
@@ -173,18 +185,19 @@ SessionSource _sessionSourceDeserialize(
   final object = SessionSource();
   object.description = reader.readStringOrNull(offsets[0]);
   object.fileName = reader.readString(offsets[1]);
-  object.id = reader.readString(offsets[2]);
+  object.fullText = reader.readStringOrNull(offsets[2]);
+  object.id = reader.readString(offsets[3]);
   object.kind =
-      _SessionSourcekindValueEnumMap[reader.readByteOrNull(offsets[3])] ??
+      _SessionSourcekindValueEnumMap[reader.readByteOrNull(offsets[4])] ??
           SourceKind.photo;
-  object.links = reader.readStringList(offsets[4]) ?? [];
-  object.name = reader.readStringOrNull(offsets[5]);
-  object.originTags = reader.readStringList(offsets[6]) ?? [];
-  object.tags = reader.readStringList(offsets[7]) ?? [];
-  object.takenAt = reader.readDateTime(offsets[8]);
-  object.title = reader.readStringOrNull(offsets[9]);
-  object.topicTags = reader.readStringList(offsets[10]) ?? [];
-  object.url = reader.readStringOrNull(offsets[11]);
+  object.links = reader.readStringList(offsets[5]) ?? [];
+  object.name = reader.readStringOrNull(offsets[6]);
+  object.originTags = reader.readStringList(offsets[7]) ?? [];
+  object.tags = reader.readStringList(offsets[8]) ?? [];
+  object.takenAt = reader.readDateTime(offsets[9]);
+  object.title = reader.readStringOrNull(offsets[10]);
+  object.topicTags = reader.readStringList(offsets[11]) ?? [];
+  object.url = reader.readStringOrNull(offsets[12]);
   return object;
 }
 
@@ -200,25 +213,27 @@ P _sessionSourceDeserializeProp<P>(
     case 1:
       return (reader.readString(offset)) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 3:
+      return (reader.readString(offset)) as P;
+    case 4:
       return (_SessionSourcekindValueEnumMap[reader.readByteOrNull(offset)] ??
           SourceKind.photo) as P;
-    case 4:
-      return (reader.readStringList(offset) ?? []) as P;
     case 5:
-      return (reader.readStringOrNull(offset)) as P;
-    case 6:
       return (reader.readStringList(offset) ?? []) as P;
+    case 6:
+      return (reader.readStringOrNull(offset)) as P;
     case 7:
       return (reader.readStringList(offset) ?? []) as P;
     case 8:
-      return (reader.readDateTime(offset)) as P;
-    case 9:
-      return (reader.readStringOrNull(offset)) as P;
-    case 10:
       return (reader.readStringList(offset) ?? []) as P;
+    case 9:
+      return (reader.readDateTime(offset)) as P;
+    case 10:
+      return (reader.readStringOrNull(offset)) as P;
     case 11:
+      return (reader.readStringList(offset) ?? []) as P;
+    case 12:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -523,6 +538,160 @@ extension SessionSourceQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'fileName',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'fullText',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'fullText',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fullText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'fullText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'fullText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'fullText',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'fullText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'fullText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'fullText',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'fullText',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'fullText',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<SessionSource, SessionSource, QAfterFilterCondition>
+      fullTextIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'fullText',
         value: '',
       ));
     });
