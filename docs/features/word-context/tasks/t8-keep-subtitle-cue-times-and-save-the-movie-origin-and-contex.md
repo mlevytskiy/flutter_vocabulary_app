@@ -7,7 +7,7 @@ acs: ["AC-06", "AC-07", "AC-08", "AC-09"]
 files_hint: ["lib/core/services/subtitle_parser.dart", "lib/core/services/subtitle_words_service.dart", "lib/features/words/subtitle_import_flow.dart", "test/subtitle_parser_test.dart", "test/subtitle_origin_import_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Keep subtitle cue times and save the movie origin and context on film rows
