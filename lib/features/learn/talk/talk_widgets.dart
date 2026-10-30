@@ -700,6 +700,93 @@ class _DashedBubble extends CustomPainter {
 const double talkMicSize = 104;
 const double talkRingSize = 132;
 
+/// One tap answer of a mixed mission's choice turn (talk-mixed), its
+/// practice words bold with a dotted underline. [detail], when given, is a
+/// small line under the choice (learn-welcome's warm-up topics).
+class TalkChoiceButton extends StatelessWidget {
+  const TalkChoiceButton({super.key, required this.choice, this.words = const [], required this.onPressed, this.detail});
+
+  final String choice;
+  final List<WordPair> words;
+  final VoidCallback? onPressed;
+  final String? detail;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Text.rich(
+      TextSpan(children: [
+        for (final part in talkSpans(choice, words))
+          TextSpan(
+            text: part.text,
+            style: part.word == null
+                ? null
+                : const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    decoration: TextDecoration.underline,
+                    decorationStyle: TextDecorationStyle.dotted,
+                  ),
+          ),
+      ]),
+      textAlign: TextAlign.center,
+    );
+    final more = detail;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: OutlinedButton(
+        onPressed: onPressed,
+        child: more == null
+            ? label
+            : Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  label,
+                  const SizedBox(height: 2),
+                  Text(
+                    more,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppDecor.of(context).muted),
+                  ),
+                ]),
+              ),
+      ),
+    );
+  }
+}
+
+/// The round mic itself, inside [TalkRing]: filled in the accent while
+/// listening ([on]), faded while the talk is [busy].
+class TalkMicCircle extends StatelessWidget {
+  const TalkMicCircle({super.key, required this.on, this.busy = false});
+
+  final bool on;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final micOn = on;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: talkMicSize,
+      height: talkMicSize,
+      decoration: BoxDecoration(
+        color: micOn
+            ? scheme.primary
+            : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
+        // Round in every theme (owner, 2026-10-24).
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        micOn ? Icons.mic : Icons.mic_none,
+        size: 46,
+        color: micOn
+            ? scheme.onPrimary
+            : scheme.onPrimaryContainer.withValues(alpha: busy ? 0.38 : 1),
+      ),
+    );
+  }
+}
+
 /// The ring around the mic: its track while listening, filling as the
 /// learner's pause runs down to sending ([progress] 0–1).
 class TalkRing extends StatelessWidget {

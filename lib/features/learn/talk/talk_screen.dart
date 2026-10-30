@@ -762,27 +762,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                         child: Text('What do you want to do?'),
                       ),
                       for (final choice in s.choices)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 6),
-                          child: OutlinedButton(
-                            onPressed: _listening ? null : () => _choose(choice),
-                            child: Text.rich(
-                              TextSpan(children: [
-                                for (final part in talkSpans(choice, words))
-                                  TextSpan(
-                                    text: part.text,
-                                    style: part.word == null
-                                        ? null
-                                        : const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            decoration: TextDecoration.underline,
-                                            decorationStyle: TextDecorationStyle.dotted,
-                                          ),
-                                  ),
-                              ]),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
+                        TalkChoiceButton(
+                          choice: choice,
+                          words: words,
+                          onPressed: _listening ? null : () => _choose(choice),
                         ),
                       if (!_customReply)
                         TextButton(
@@ -903,25 +886,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                                 active: micActive,
                                 child: child!,
                               ),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: talkMicSize,
-                                height: talkMicSize,
-                                decoration: BoxDecoration(
-                                  color: micOn
-                                      ? scheme.primary
-                                      : scheme.primaryContainer.withValues(alpha: busy ? 0.38 : 1),
-                                  // Round in every theme (owner, 2026-10-24).
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  micOn ? Icons.mic : Icons.mic_none,
-                                  size: 46,
-                                  color: micOn
-                                      ? scheme.onPrimary
-                                      : scheme.onPrimaryContainer.withValues(alpha: busy ? 0.38 : 1),
-                                ),
-                              ),
+                              child: TalkMicCircle(on: micOn, busy: busy),
                             ),
                           ),
                         ),
