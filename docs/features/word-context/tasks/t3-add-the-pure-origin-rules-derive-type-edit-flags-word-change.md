@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-03", "AC-04", "AC-05", "AC-07", "AC-08"]
 files_hint: ["lib/core/words/word_origin_rules.dart", "test/word_origin_rules_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Add the pure origin rules: derive type, edit flags, word change, episode from a file name, first line time
