@@ -1,6 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+/// The app is portrait only; the story page alone turns (AC-11, ADR-0005).
+const appOrientations = [DeviceOrientation.portraitUp];
+const storyOrientations = [DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight];
 
 /// A story page of the Learn flow (learn-welcome AC-10, AC-11): the story
 /// picture alone, full screen (its captions are in the picture). A tap or a
@@ -34,11 +39,14 @@ class _StoryPageState extends State<StoryPage> {
   @override
   void initState() {
     super.initState();
+    // The one place the app turns to landscape (ADR-0005); dispose turns back.
+    SystemChrome.setPreferredOrientations(storyOrientations);
     widget.onEnter?.call();
   }
 
   @override
   void dispose() {
+    SystemChrome.setPreferredOrientations(appOrientations);
     widget.onExit?.call();
     super.dispose();
   }

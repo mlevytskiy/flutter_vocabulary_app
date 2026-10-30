@@ -133,6 +133,22 @@ void main() {
     expect(fake.calls, ['storyDone']);
   });
 
+  testWidgets('the pager keeps its page when the screen turns (T14)', (tester) async {
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 2;
+    await open(tester, cards());
+    fake.push(cards(done: 1, slot: const StorySlot(0)));
+    await tester.pumpAndSettle();
+    expect(find.byType(StoryPage), findsOneWidget);
+    final before = tester.widget<PageView>(find.byType(PageView)).controller!.page;
+    tester.view.physicalSize = const Size(1600, 800);
+    await tester.pumpAndSettle();
+    expect(find.byType(StoryPage), findsOneWidget);
+    expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, before);
+    expect(before, 1);
+  });
+
   testWidgets('a swipe on the story page moves on too', (tester) async {
     await open(tester, cards(slot: const StorySlot(0)));
     await tester.drag(find.byKey(const ValueKey('flow-story-page')), const Offset(-300, 0));

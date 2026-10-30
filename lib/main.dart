@@ -10,9 +10,11 @@ import 'app_restarter.dart';
 import 'core/services/photo_scaler.dart';
 import 'router/routes.dart';
 import 'router/start_location.dart';
+import 'features/learn/flow/story_page.dart' show appOrientations;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  unawaited(SystemChrome.setPreferredOrientations(appOrientations));
   // Spawn the long-lived background isolate used to downscale photos before
   // sending them to the vocabulary API, so it's ready by the time the user
   // takes their first photo.
