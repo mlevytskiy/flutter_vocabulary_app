@@ -19,7 +19,7 @@
 | T12 | [Add the warm-up view on the Talk screen: 2-step bar, topic and mode choices, own topic](./t12-add-the-warm-up-view-on-the-talk-screen-2-step-bar-topic-and.md) | ui | implementer agent | M | T10 | done |
 | T13 | [Add the flow pager: cards, story picture pages, the wait page and the card counter](./t13-add-the-flow-pager-cards-story-picture-pages-the-wait-page-a.md) | ui | implementer agent | M | T10, T11 | done |
 | T14 | [Lock the app to portrait and turn the story page to landscape](./t14-lock-the-app-to-portrait-and-turn-the-story-page-to-landscap.md) | wiring | implementer agent | S | T13 | todo |
-| T15 | [Run the main dialog in learn-flow mode and record its results without moving boxes](./t15-run-the-main-dialog-in-learn-flow-mode-and-record-its-result.md) | ui | implementer agent | M | T8, T10 | todo |
+| T15 | [Run the main dialog in learn-flow mode and record its results without moving boxes](./t15-run-the-main-dialog-in-learn-flow-mode-and-record-its-result.md) | ui | implementer agent | M | T8, T10 | done |
 | T16 | [Show the flow's results: cards, stories, talk, due tomorrow, three buttons](./t16-show-the-flow-s-results-cards-stories-talk-due-tomorrow-thre.md) | ui | implementer agent | M | T10 | done |
 | T17 | [Open the flow from Learn and remove the Learn sheet, the split checkbox and the group line](./t17-open-the-flow-from-learn-and-remove-the-learn-sheet-the-spli.md) | ui | implementer agent | M | T12, T13 | todo |
 | T18 | [Finish learn-welcome: generated code, analyze, changed tests, grep check, device check list, self-check tasks updated](./t18-finish-learn-welcome-generated-code-analyze-changed-tests-gr.md) | docs | implementer agent | S | T9, T14, T15, T16, T17 | todo |

@@ -7,7 +7,7 @@ acs: ["AC-13", "AC-14"]
 files_hint: ["lib/features/learn/talk/talk_notifier.dart", "lib/features/learn/talk/talk_screen.dart", "lib/router/routes.dart", "test/learn_flow_talk_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T15 — Run the main dialog in learn-flow mode and record its results without moving boxes
