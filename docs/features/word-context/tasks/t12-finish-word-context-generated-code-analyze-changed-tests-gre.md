@@ -7,7 +7,7 @@ acs: ["AC-14"]
 files_hint: ["docs/features/word-context/device-check.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T12 — Finish word-context: generated code, analyze, changed tests, grep check, deploy note
