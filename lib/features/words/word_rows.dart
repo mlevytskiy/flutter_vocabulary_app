@@ -206,6 +206,8 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       String? definition,
       String? sourceId,
       bool clearSourceId = false,
+      String? context,
+      ContextKind? contextKind,
       bool wordChanged = false,
       bool translationEditedByLearner = false,
       bool definitionEditedByLearner = false}) {
@@ -233,6 +235,8 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
           definitionMarkedFilled: _definitionMarkedFilled[index],
           sourceId: sourceId,
           clearSourceId: clearSourceId,
+          context: context,
+          contextKind: contextKind,
           wordChanged: wordChanged,
           translationEditedByLearner: translationEditedByLearner,
           definitionEditedByLearner: definitionEditedByLearner,
@@ -679,7 +683,11 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         // The controller listener persists the text; this push carries the
         // senses and the mark along with it.
         _fillText(_definitionControllers[index], result.firstSense!);
-        _pushRow(index, definition: result.firstSense!);
+        final example = _senseContext(index, result.firstSense!);
+        _pushRow(index,
+            definition: result.firstSense!,
+            context: example,
+            contextKind: example == null ? null : ContextKind.source);
       case DefinitionKind.notFound:
         final hint = result.suggestions.isEmpty ? '' : ' — did you mean: ${result.suggestions.join(', ')}';
         // A newer lookup's message replaces the previous one instead of
@@ -727,7 +735,25 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     if (index < 0 || index >= _definitionControllers.length) return;
     setState(() => _definitionMarkedFilled[index] = true);
     _definitionControllers[index].text = sense;
-    _pushRow(index, definition: sense);
+    final example = _senseContext(index, sense);
+    _pushRow(index,
+        definition: sense,
+        context: example,
+        contextKind: example == null ? null : ContextKind.source);
+  }
+
+  /// The example a filled or picked dictionary sense gives the row as its
+  /// context (word-context AC-02, AC-11): only on a typed or set row, only
+  /// when the sense has an example -- a photo or film row keeps its own line.
+  String? _senseContext(int index, String sense) {
+    final words = ref.read(wordsProvider).value?.words;
+    final i = _storeIndex(index);
+    if (words == null || i < 0 || i >= words.length) return null;
+    final type = words[i].origin.typeOfSource;
+    if (type != SourceType.manuallyEntered && type != SourceType.set) {
+      return null;
+    }
+    return DefinitionResult.exampleOfSense(sense);
   }
 
   void _closeDefinitionOptions(int index) {

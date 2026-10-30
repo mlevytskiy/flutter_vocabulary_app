@@ -28,6 +28,27 @@ class DefinitionResult {
 
   String? get firstSense => senses.isEmpty ? null : senses.first;
 
+  /// The example of the sense at [index] (null when it has none).
+  String? exampleAt(int index) => index < 0 || index >= senses.length
+      ? null
+      : exampleOfSense(senses[index]);
+
+  /// The example of every sense, null where a sense has none.
+  List<String?> get examples => [for (final s in senses) exampleOfSense(s)];
+
+  /// The "example: …" line of a "definition: …\nexample: …" sense; null when
+  /// there is none or it is empty (word-context AC-02).
+  static String? exampleOfSense(String sense) {
+    for (final line in sense.split('\n')) {
+      final l = line.trim();
+      if (l.toLowerCase().startsWith('example:')) {
+        final example = l.substring('example:'.length).trim();
+        return example.isEmpty ? null : example;
+      }
+    }
+    return null;
+  }
+
   /// The row's `definitionOptionsJson` shape.
   static String encodeSenses(List<String> senses) =>
       jsonEncode({'senses': senses});
