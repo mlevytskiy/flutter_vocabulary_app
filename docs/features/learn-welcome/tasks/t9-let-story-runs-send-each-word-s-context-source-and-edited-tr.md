@@ -7,7 +7,7 @@ acs: ["AC-12"]
 files_hint: ["vocab-photo-api/src/story/routes.ts", "vocab-photo-api/src/story/prompts.ts", "lib/core/services/story_api_service.dart", "vocab-photo-api/test/story-extras.test.ts"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Let story runs send each word's context, source and edited translation to the story writer

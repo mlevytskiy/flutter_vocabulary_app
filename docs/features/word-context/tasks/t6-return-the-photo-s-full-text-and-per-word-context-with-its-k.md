@@ -7,7 +7,7 @@ acs: ["AC-10"]
 files_hint: ["vocab-photo-api/src/index.ts", "vocab-photo-api/test/analyze-context.test.ts"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Return the photo's full text and per-word context with its kind from /analyze

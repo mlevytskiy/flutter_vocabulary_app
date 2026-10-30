@@ -13,7 +13,7 @@
 | T6 | [Add the 50 topics and POST /learn/topics to the Worker](./t6-add-the-50-topics-and-post-learn-topics-to-the-worker.md) | ports | implementer agent | M | — | done |
 | T7 | [Add the topics service with a 4 s timeout and the bundled fallback](./t7-add-the-topics-service-with-a-4-s-timeout-and-the-bundled-fa.md) | app | implementer agent | S | T6 | todo |
 | T8 | [Let the talk mission take a topic, a reply limit and chosen words](./t8-let-the-talk-mission-take-a-topic-a-reply-limit-and-chosen-w.md) | ports | implementer agent | M | — | done |
-| T9 | [Let story runs send each word's context, source and edited translation to the story writer](./t9-let-story-runs-send-each-word-s-context-source-and-edited-tr.md) | ports | implementer agent | S | — | todo |
+| T9 | [Let story runs send each word's context, source and edited translation to the story writer](./t9-let-story-runs-send-each-word-s-context-source-and-edited-tr.md) | ports | implementer agent | S | — | done |
 | T10 | [Add the LearnFlowNotifier: phases, per-card save, story start and reuse, leave](./t10-add-the-learnflownotifier-phases-per-card-save-story-start-a.md) | app | implementer agent | L | T3, T4, T5, T7 | todo |
 | T11 | [Add the self-check card widget with flip, four ratings, box captions and the context line](./t11-add-the-self-check-card-widget-with-flip-four-ratings-box-ca.md) | ui | implementer agent | M | T3 | todo |
 | T12 | [Add the warm-up view on the Talk screen: 2-step bar, topic and mode choices, own topic](./t12-add-the-warm-up-view-on-the-talk-screen-2-step-bar-topic-and.md) | ui | implementer agent | M | T10 | todo |
