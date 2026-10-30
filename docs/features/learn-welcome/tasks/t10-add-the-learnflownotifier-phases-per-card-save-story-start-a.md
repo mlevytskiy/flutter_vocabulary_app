@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-08", "AC-09", "AC-13", "AC-16"]
 files_hint: ["lib/features/learn/flow/learn_flow_notifier.dart", "lib/core/providers.dart", "test/learn_flow_notifier_test.dart"]
 owner: "implementer agent"
 estimate: "L"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Add the LearnFlowNotifier: phases, per-card save, story start and reuse, leave
