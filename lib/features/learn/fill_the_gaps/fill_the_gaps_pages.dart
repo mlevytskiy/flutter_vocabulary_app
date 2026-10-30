@@ -20,7 +20,8 @@ Future<List<GapQuestion>> fillTheGapsQuestions(PageInput input) async {
 
 /// One step-2 page per word with a gap question (ADR-0003, AC-08). Check is
 /// ready once the typed answer is final and counts right only when it was
-/// right on the first try (AC-10).
+/// right on the first try (AC-10); a right second try after the hint reports
+/// [PageResult.hinted] (self-check-cards AC-01), still not right for the ladder.
 Future<List<ExercisePage>> fillTheGapsPages(PageInput input) async => [
       for (final q in await fillTheGapsQuestions(input))
         ExercisePage(
@@ -30,7 +31,7 @@ Future<List<ExercisePage>> fillTheGapsPages(PageInput input) async => [
           rowIds: [q.rowId],
           body: (context, answer) => FillTheGapsPageBody(
             question: q,
-            onAnswered: (r) => answer.ready(() async => {q.rowId: r.firstTry}),
+            onAnswered: (r) => answer.readyResults(() async => {q.rowId: r.pageResult}, hintedCountsRight: false),
           ),
         ),
     ];

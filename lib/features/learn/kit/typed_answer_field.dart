@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../session/exercise_page.dart';
 import 'typed_match.dart';
 
 /// Practice (Step 1–2, D-19) or exam (Step 3, D-41).
@@ -20,6 +21,18 @@ class TypedAnswerResult {
 
   /// Ended by "Show answer" (practice) or Skip (exam): missed / repeat.
   final bool gaveUp;
+
+  /// Right (or almost) on the second try, after the "Starts with …" line
+  /// (self-check-cards Q-3). Only practice has a second try.
+  bool get hinted => match.isRight && !firstTry && !gaveUp;
+
+  /// The page result: right on the first try, hinted on the second, wrong
+  /// otherwise ("Show answer" and Skip are wrong, Q-3).
+  PageResult get pageResult => firstTry
+      ? PageResult.right
+      : hinted
+          ? PageResult.hinted
+          : PageResult.wrong;
 }
 
 /// A typed answer (learn-kit AC-13, AC-14, S-11): the keyboard opens at once

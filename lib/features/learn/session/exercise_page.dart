@@ -1,14 +1,32 @@
 import 'package:flutter/widgets.dart';
 
+/// How one row of a page was answered (self-check-cards AC-01, Q-3): right,
+/// wrong, or right only after a hint (the typed field's second try after the
+/// "Starts with …" line). A hinted row is not a clean right; the next tasks
+/// flag it for a self-check card.
+enum PageResult {
+  right,
+  wrong,
+  hinted;
+
+  /// The old right/wrong view of a bool result.
+  static PageResult of(bool right) => right ? PageResult.right : PageResult.wrong;
+}
+
 /// The channel between an exercise page body and the learn page frame
 /// (learn-redesign, ADR-0011). A body that needs the frame's Check button calls
 /// [ready] with its check function once it has an answer and [notReady] when
 /// the answer is cleared; a self-checking body calls [done] with its results
-/// and the frame shows no Check.
+/// and the frame shows no Check. A body that knows about hints uses
+/// [readyResults] / [doneResults] instead, with a [PageResult] per row id;
+/// the right/wrong view ([results], [runCheck]) counts a hinted row as right
+/// unless the body says otherwise (`hintedCountsRight: false`).
 class PageAnswer extends ChangeNotifier {
-  Future<Map<String, bool>> Function()? _check;
-  Map<String, bool>? _done;
+  Future<Map<String, PageResult>> Function()? _check;
+  Map<String, PageResult>? _done;
+  Map<String, bool>? _doneBools;
   bool _selfChecking = false;
+  bool _hintedCountsRight = true;
 
   /// Whether the body has an answer the frame can check.
   bool get isReady => _check != null;
@@ -17,14 +35,31 @@ class PageAnswer extends ChangeNotifier {
   bool get isDone => _done != null;
 
   /// The results passed to [done], once it was called.
-  Map<String, bool>? get results => _done;
+  Map<String, bool>? get results => _doneBools;
+
+  /// The results passed to [done] or [doneResults], with hints, once given.
+  Map<String, PageResult>? get pageResults => _done;
 
   /// Set once the body has used [done]: the frame shows no Check.
   bool get selfChecking => _selfChecking;
 
+  Map<String, bool> _bools(Map<String, PageResult> results) => {
+        for (final e in results.entries)
+          e.key: e.value == PageResult.right || (e.value == PageResult.hinted && _hintedCountsRight),
+      };
+
+  static Map<String, PageResult> _fromBools(Map<String, bool> results) => {
+        for (final e in results.entries) e.key: PageResult.of(e.value),
+      };
+
   /// The body has an answer; [check] returns right/wrong by row id.
-  void ready(Future<Map<String, bool>> Function() check) {
+  void ready(Future<Map<String, bool>> Function() check) =>
+      readyResults(() async => _fromBools(await check()));
+
+  /// The body has an answer; [check] returns a [PageResult] by row id.
+  void readyResults(Future<Map<String, PageResult>> Function() check, {bool hintedCountsRight = true}) {
     _check = check;
+    _hintedCountsRight = hintedCountsRight;
     notifyListeners();
   }
 
@@ -37,13 +72,28 @@ class PageAnswer extends ChangeNotifier {
 
   /// The body checked itself; the frame passes [results] on at once.
   void done(Map<String, bool> results) {
+    _hintedCountsRight = true;
+    _selfChecking = true;
+    _done = _fromBools(results);
+    _doneBools = results;
+    notifyListeners();
+  }
+
+  /// [done] with a [PageResult] by row id.
+  void doneResults(Map<String, PageResult> results, {bool hintedCountsRight = true}) {
+    _hintedCountsRight = hintedCountsRight;
     _selfChecking = true;
     _done = results;
+    _doneBools = _bools(results);
     notifyListeners();
   }
 
   /// Runs the check function given to [ready]; empty when not ready.
-  Future<Map<String, bool>> runCheck() async {
+  Future<Map<String, bool>> runCheck() async => _bools(await runCheckResults());
+
+  /// Runs the check function given to [ready] or [readyResults], with hints;
+  /// empty when not ready.
+  Future<Map<String, PageResult>> runCheckResults() async {
     final check = _check;
     if (check == null) return const {};
     return check();
@@ -53,7 +103,9 @@ class PageAnswer extends ChangeNotifier {
   void reset() {
     _check = null;
     _done = null;
+    _doneBools = null;
     _selfChecking = false;
+    _hintedCountsRight = true;
     notifyListeners();
   }
 }
