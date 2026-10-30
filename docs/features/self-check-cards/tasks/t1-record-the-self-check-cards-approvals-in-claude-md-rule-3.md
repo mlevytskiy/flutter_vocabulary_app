@@ -7,7 +7,7 @@ acs: []
 files_hint: ["CLAUDE.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Record the self-check-cards approvals in CLAUDE.md rule 3

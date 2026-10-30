@@ -5,7 +5,7 @@
 
 | # | Task | Layer | Owner | Estimate | Blocked by | Status |
 |---|---|---|---|---|---|---|
-| T1 | [Record word-context approvals in CLAUDE.md rules 3 and 5](./t1-record-word-context-approvals-in-claude-md-rules-3-and-5.md) | docs | implementer agent | S | — | todo |
+| T1 | [Record word-context approvals in CLAUDE.md rules 3 and 5](./t1-record-word-context-approvals-in-claude-md-rules-3-and-5.md) | docs | implementer agent | S | — | done |
 | T2 | [Add WordOrigin, SourceType, ContextKind and the new row and photo fields](./t2-add-wordorigin-sourcetype-contextkind-and-the-new-row-and-ph.md) | infra | implementer agent | M | T1 | todo |
 | T3 | [Add the pure origin rules: derive type, edit flags, word change, episode from a file name, first line time](./t3-add-the-pure-origin-rules-derive-type-edit-flags-word-change.md) | domain | implementer agent | M | T2 | todo |
 | T4 | [Derive origins of old rows once on load](./t4-derive-origins-of-old-rows-once-on-load.md) | infra | implementer agent | S | T3 | todo |

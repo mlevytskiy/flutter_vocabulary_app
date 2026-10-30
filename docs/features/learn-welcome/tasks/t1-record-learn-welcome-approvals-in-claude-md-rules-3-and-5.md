@@ -7,7 +7,7 @@ acs: ["AC-17"]
 files_hint: ["CLAUDE.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Record learn-welcome approvals in CLAUDE.md rules 3 and 5

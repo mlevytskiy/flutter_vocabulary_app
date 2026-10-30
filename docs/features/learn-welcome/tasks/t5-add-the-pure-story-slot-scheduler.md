@@ -7,7 +7,7 @@ acs: ["AC-10"]
 files_hint: ["lib/features/learn/flow/story_slots.dart", "test/learn_story_slots_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Add the pure story slot scheduler

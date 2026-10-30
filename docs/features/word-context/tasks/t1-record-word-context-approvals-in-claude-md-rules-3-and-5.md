@@ -7,7 +7,7 @@ acs: ["AC-13"]
 files_hint: ["CLAUDE.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Record word-context approvals in CLAUDE.md rules 3 and 5
