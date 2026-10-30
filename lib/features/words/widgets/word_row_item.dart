@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../../core/models/translation_result.dart';
+import '../../../core/models/word_origin.dart';
 import '../../../core/providers.dart' show WordDetailMode;
 import '../../../core/services/pronunciation_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -60,6 +61,11 @@ class WordRowItem extends StatelessWidget {
   /// derives its solid/outlined state from this same value.
   final TranslationResult? translationOptions;
 
+  /// The row's context and what it is, shown read-only in the dots popup
+  /// (word-context AC-13).
+  final String rowContext;
+  final ContextKind rowContextKind;
+
   /// Whether the Word field holds enough text for a dictionary lookup.
   final bool canLoadTranslationOptions;
 
@@ -113,6 +119,8 @@ class WordRowItem extends StatelessWidget {
     required this.onOpenTranslationOptions,
     required this.onCloseTranslationOptions,
     this.translationOptions,
+    this.rowContext = '',
+    this.rowContextKind = ContextKind.none,
     this.canLoadTranslationOptions = true,
     required this.onRemove,
     required this.onFillWordWithAI,
@@ -314,6 +322,8 @@ class WordRowItem extends StatelessWidget {
                     const SizedBox(width: 4),
                     TranslationDotsButton(
                       options: translationOptions,
+                      rowContext: rowContext,
+                      rowContextKind: rowContextKind,
                       canLoadOptions: canLoadTranslationOptions,
                       onLoadTranslations: onLoadTranslations,
                       controller: popupController,

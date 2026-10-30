@@ -3,6 +3,7 @@ import 'package:popup_menu_2/popup_menu_2.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/translation_result.dart';
+import '../../../core/models/word_origin.dart';
 import 'translation_options_content.dart';
 import 'open_dots_menu.dart';
 
@@ -24,6 +25,10 @@ import 'open_dots_menu.dart';
 class TranslationDotsButton extends StatelessWidget {
   /// Google's dictionary block for this row, if the last translate left one.
   final TranslationResult? options;
+
+  /// The row's context, shown read-only in the popup (word-context AC-13).
+  final String rowContext;
+  final ContextKind rowContextKind;
 
   /// Whether the row's Word field holds enough text to look a block up.
   final bool canLoadOptions;
@@ -55,6 +60,8 @@ class TranslationDotsButton extends StatelessWidget {
     required this.onOpen,
     required this.onClose,
     this.options,
+    this.rowContext = '',
+    this.rowContextKind = ContextKind.none,
     this.canLoadOptions = true,
   });
 
@@ -100,6 +107,8 @@ class TranslationDotsButton extends StatelessWidget {
           context,
           TranslationOptionsContent(
             options: options,
+            contextText: rowContext,
+            contextKind: rowContextKind,
             canLoad: canLoadOptions,
             onLoadTranslations: onLoadTranslations,
             onSelectTranslation: (text) {

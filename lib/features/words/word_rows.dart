@@ -833,6 +833,8 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       shouldShowTranslationIcon: _shouldShowTranslationIcon(index),
       shouldShowPronunciation: _shouldShowPronunciation(index),
       translationOptions: _effectiveOptions(index),
+      rowContext: _wordPairs[index].context,
+      rowContextKind: _wordPairs[index].contextKind,
       canLoadTranslationOptions: _canLoadTranslationOptions(index),
       onLoadTranslations: () => _loadTranslationOptions(index),
       popupController: _popupControllers.putIfAbsent(index, () => MyCustomPopupMenuController()),

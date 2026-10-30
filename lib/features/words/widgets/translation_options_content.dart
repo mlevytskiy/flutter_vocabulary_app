@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/translation_result.dart';
+import '../../../core/models/word_origin.dart';
 
 /// Content of the "more options" popup opened from the Translation dots
 /// button (see docs/lightning_icon_rules.md) -- Google's dictionary block
@@ -28,6 +29,11 @@ class TranslationOptionsContent extends StatefulWidget {
   /// update icon is present but refuses, rather than sending an empty query.
   final bool canLoad;
 
+  /// The row's context and what it is (word-context AC-13): shown in italic,
+  /// read-only, under the options; nothing when empty or [ContextKind.none].
+  final String contextText;
+  final ContextKind contextKind;
+
   /// Loads the dictionary for the row's current Word field and returns it, or
   /// null when the request failed or found nothing. The screen owns the
   /// request; the popup only renders what comes back.
@@ -43,6 +49,8 @@ class TranslationOptionsContent extends StatefulWidget {
     required this.onClose,
     this.options,
     this.canLoad = true,
+    this.contextText = '',
+    this.contextKind = ContextKind.none,
   });
 
   @override
@@ -95,7 +103,11 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
             // The popup panel already owns the primary controller.
             primary: false,
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: _buildBody(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [_buildBody(), _buildContext(context)],
+            ),
           ),
         ),
         Divider(color: _on(context).withAlpha(0x3D), height: 1),
@@ -114,6 +126,51 @@ class _TranslationOptionsContentState extends State<TranslationOptionsContent> {
           ),
         ),
       ],
+    );
+  }
+
+  /// The row's context, read-only (word-context AC-13).
+  Widget _buildContext(BuildContext context) {
+    final text = widget.contextText.trim();
+    if (text.isEmpty || widget.contextKind == ContextKind.none) {
+      return const SizedBox.shrink();
+    }
+    final ai = widget.contextKind == ContextKind.ai;
+    final decor = AppDecor.of(context);
+    final muted = _on(context).withAlpha(0x62);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Column(
+        key: const Key('popup-context'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (ai) ...[
+                Icon(Icons.auto_awesome, size: 12, color: decor.aiAccent),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                ai ? 'written by AI' : 'from the source',
+                style: TextStyle(
+                  color: ai ? decor.aiAccent : muted,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            text,
+            style: TextStyle(
+              color: _on(context),
+              fontSize: 14,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
