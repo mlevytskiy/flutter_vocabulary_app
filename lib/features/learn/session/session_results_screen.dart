@@ -45,6 +45,30 @@ class SessionResultsScreen extends ConsumerWidget {
     return c == null ? notSavedText : binnedText;
   }
 
+  /// A flagged word's line under its name (self-check-cards AC-10): the
+  /// rating and the box move, or "not checked, box kept" when never rated.
+  Widget _ratingLine(SessionMove m, ThemeData theme, AppDecor decor) {
+    final style = theme.textTheme.bodySmall;
+    final rating = m.rating;
+    if (rating == null) {
+      return Text('not checked, box kept', key: ValueKey('rating-${m.rowId}'), style: style);
+    }
+    final (name, color) = switch (rating) {
+      SelfRating.dontRemember => ("I don't remember", decor.rateForgot),
+      SelfRating.hard => ('Hard', decor.rateHard),
+      SelfRating.medium => ('Medium', decor.rateMedium),
+      SelfRating.easy => ('Easy', decor.rateEasy),
+    };
+    return Text.rich(
+      key: ValueKey('rating-${m.rowId}'),
+      TextSpan(children: [
+        TextSpan(text: name, style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+        TextSpan(text: ' · box ${m.before?.box ?? 0} → ${m.after?.box ?? 0}'),
+      ]),
+      style: style,
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final flow = this.flow;
@@ -60,7 +84,8 @@ class SessionResultsScreen extends ConsumerWidget {
     final id = result.collectionId ?? collectionId;
     int count(WordState s) => result.moves.where((m) => m.state == s).length;
     final shaky = [for (final m in result.moves) if (m.state == WordState.shaky) m.rowId];
-    final rows = [for (final m in result.moves) if (m.after != null) m];
+    bool flagged(SessionMove m) => m.state == WordState.shaky || m.state == WordState.isNew;
+    final rows = [for (final m in result.moves) if (m.after != null || flagged(m)) m];
     final now = DateTime.now();
 
     Widget chip(String text, Color bg, Color fg) => Expanded(
@@ -101,8 +126,17 @@ class SessionResultsScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
-                      Expanded(child: Text(m.word, style: theme.textTheme.titleMedium)),
-                      Text(nextReviewText(m.after!.dueAt, now), style: theme.textTheme.bodyMedium),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(m.word, style: theme.textTheme.titleMedium),
+                            if (flagged(m)) _ratingLine(m, theme, decor),
+                          ],
+                        ),
+                      ),
+                      if (m.after != null)
+                        Text(nextReviewText(m.after!.dueAt, now), style: theme.textTheme.bodyMedium),
                     ],
                   ),
                 ),

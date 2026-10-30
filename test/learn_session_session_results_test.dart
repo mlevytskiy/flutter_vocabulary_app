@@ -19,6 +19,7 @@ import 'package:flutter_vocabulary_app/features/learn/session/leitner.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/learning_session_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/page_input.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/page_registry.dart';
+import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_result.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_results_screen.dart';
 import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
@@ -217,6 +218,41 @@ void main() {
           groupCount: groupCount,
           pages: 32,
         );
+
+    testWidgets('rated, unrated flagged and clean rows (self-check-cards AC-10)', (tester) async {
+      WordBox box(String id, int n) => WordBox()
+        ..rowId = id
+        ..word = 'w$id'
+        ..box = n
+        ..dueAt = DateTime.now().add(const Duration(days: 2));
+      await pump(
+        tester,
+        SessionResult(
+          kind: SessionKind.exercises,
+          collectionId: 'c1',
+          moves: [
+            SessionMove(
+                rowId: 'h', word: 'wh', state: WordState.shaky, before: box('h', 3), after: box('h', 2), rating: SelfRating.hard),
+            SessionMove(
+                rowId: 'f',
+                word: 'wf',
+                state: WordState.shaky,
+                before: box('f', 4),
+                after: box('f', 1),
+                rating: SelfRating.dontRemember),
+            SessionMove(rowId: 'u', word: 'wu', state: WordState.shaky, before: box('u', 3), after: box('u', 3)),
+            _move('c', WordState.knownWell, inDays: 4),
+          ],
+          unusedCount: 0,
+          written: true,
+        ),
+      );
+      expect(find.text('Hard · box 3 → 2', findRichText: true), findsOneWidget);
+      expect(find.text("I don't remember · box 4 → 1", findRichText: true), findsOneWidget);
+      expect(find.text('not checked, box kept'), findsOneWidget);
+      expect(find.byKey(const ValueKey('rating-c')), findsNothing);
+      expect(find.text('in 4 days'), findsOneWidget);
+    });
 
     testWidgets('counts, pages and next-review rows', (tester) async {
       await pump(tester, result());
