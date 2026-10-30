@@ -7,7 +7,7 @@ acs: ["AC-07", "AC-18"]
 files_hint: ["lib/features/learn/session/self_check_card.dart", "lib/core/theme/app_decor.dart", "lib/core/theme/themes/", "test/learn_self_check_card_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T11 — Add the self-check card widget with flip, four ratings, box captions and the context line
