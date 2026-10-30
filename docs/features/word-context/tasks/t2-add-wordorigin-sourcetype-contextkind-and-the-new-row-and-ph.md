@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-14"]
 files_hint: ["lib/core/models/word_origin.dart", "lib/core/models/word_pair.dart", "lib/core/models/session_source.dart", "lib/core/services/collection_store.dart", "test/word_origin_model_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Add WordOrigin, SourceType, ContextKind and the new row and photo fields
