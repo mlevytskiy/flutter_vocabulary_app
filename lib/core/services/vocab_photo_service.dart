@@ -22,7 +22,15 @@ class VocabAnalysisResult {
   /// the Cloudflare Worker (excludes our own network round-trip time).
   final Duration? aiDuration;
 
-  VocabAnalysisResult({required this.words, required this.aiDuration});
+  /// All the text the Worker read on the photo (word-context AC-10); null
+  /// when it sent none (an older deploy, or nothing read).
+  final String? fullText;
+
+  VocabAnalysisResult({
+    required this.words,
+    required this.aiDuration,
+    this.fullText,
+  });
 }
 
 class VocabPhotoService {
@@ -92,9 +100,12 @@ class VocabPhotoService {
     final timings = decoded['timings'] as Map<String, dynamic>?;
     final aiMs = timings?['aiMs'] as int?;
 
+    final fullText = decoded['full_text'] as String?;
+
     return VocabAnalysisResult(
       words: words,
       aiDuration: aiMs != null ? Duration(milliseconds: aiMs) : null,
+      fullText: (fullText ?? '').trim().isEmpty ? null : fullText,
     );
   }
 }

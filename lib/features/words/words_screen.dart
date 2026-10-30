@@ -17,6 +17,7 @@ import '../../core/models/name_kind.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/vocab_word.dart';
+import '../../core/models/word_origin.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/pronunciation_service.dart';
@@ -80,6 +81,22 @@ WordPair wordPairFromPhoto(VocabWord w, {String? sourceId}) {
     definitionMarkedFilled: definition.isNotEmpty,
     sourceId: sourceId,
   );
+}
+
+/// One word of a photo analysis as a word row (word-context AC-02, AC-10):
+/// [wordPairFromPhoto] with the image origin and the word's context, a line
+/// of the photo (`source`) or one the AI wrote (`ai`); no context, no kind.
+WordPair wordPairFromPhotoAnalysis(VocabWord w, {String? sourceId}) {
+  final pair = wordPairFromPhoto(w, sourceId: sourceId);
+  final context = (w.context ?? '').trim();
+  pair.origin.typeOfSource = SourceType.image;
+  pair.context = context;
+  pair.contextKind = context.isEmpty
+      ? ContextKind.none
+      : w.contextSource == 'ai'
+          ? ContextKind.ai
+          : ContextKind.source;
+  return pair;
 }
 
 class WordsScreen extends ConsumerStatefulWidget {
@@ -593,6 +610,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
             bytes,
             mediaType: 'image/jpeg',
             translation: true,
+            context: true,
             withDesc: true,
             shortifyDefinition: true,
             limit: _photoWordCap,
@@ -608,15 +626,17 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
           aiDuration: result.aiDuration,
         ).then((selected) async {
           final source = await kept;
+          // The photo keeps all the text read on it (word-context AC-10).
+          source?.fullText = result.fullText;
           if (selected != null && selected.isNotEmpty && collectionId != null && _collectionIdNow != collectionId) {
             // Another collection was opened since the photo was taken: the
             // words go to the one it was taken in (ADR-0006, AC-11).
             final delivered = await notifier.addWordsTo(collectionId,
-                [for (final w in selected) wordPairFromPhoto(w)],
+                [for (final w in selected) wordPairFromPhotoAnalysis(w)],
                 photo: source);
             if (!delivered && source != null) await ref.read(sourcePhotoStoreProvider).delete(source);
           } else if (selected != null && selected.isNotEmpty && mounted) {
-            _addWordsFromPhoto(selected, source: source);
+            _addWordsFromPhoto(selected, source: source, fromPhoto: true);
           } else if (source != null) {
             // No row came from it, so it is not a source photo.
             await ref.read(sourcePhotoStoreProvider).delete(source);
@@ -804,7 +824,10 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
         driverFactory: widget.quizletDriverFactory,
       );
 
-  void _addWordsFromPhoto(List<VocabWord> words, {SessionSource? source, String? sourceId}) {
+  /// [fromPhoto]: the words come from a photo analysis, so the rows get the
+  /// image origin and the words' context (word-context AC-02, AC-10).
+  void _addWordsFromPhoto(List<VocabWord> words,
+      {SessionSource? source, String? sourceId, bool fromPhoto = false}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {
@@ -818,7 +841,9 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
 
     setState(() {
       for (final w in words) {
-        final pair = wordPairFromPhoto(w, sourceId: source?.id ?? sourceId);
+        final pair = fromPhoto
+            ? wordPairFromPhotoAnalysis(w, sourceId: source?.id ?? sourceId)
+            : wordPairFromPhoto(w, sourceId: source?.id ?? sourceId);
         if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
           // The row already holds the texts, so the controller listeners see
           // no change; the single _pushRow below persists everything.

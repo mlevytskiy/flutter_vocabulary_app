@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/session_source.dart';
 import 'package:flutter_vocabulary_app/core/models/vocab_word.dart';
+import 'package:flutter_vocabulary_app/core/models/word_origin.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/photo_scaler.dart';
@@ -78,6 +79,7 @@ class FakeScaler implements PhotoScaler {
 /// The Worker call, held open until the test completes [pending].
 class FakeVocabPhotoService extends VocabPhotoService {
   final limits = <int?>[];
+  final contexts = <bool>[];
   Completer<VocabAnalysisResult>? pending;
 
   @override
@@ -91,6 +93,7 @@ class FakeVocabPhotoService extends VocabPhotoService {
     int? limit,
   }) {
     limits.add(limit);
+    contexts.add(context);
     pending = Completer();
     return pending!.future;
   }
@@ -366,6 +369,59 @@ void main() {
     expect(photos.kept, 1);
     expect(photos.deleted, isEmpty);
     expect(find.byType(SnackBar), findsNothing);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets(
+      'a photo asks for context; its rows are image rows with the context and '
+      'its kind, and the photo keeps the full text (word-context AC-02, AC-10)',
+      (tester) async {
+    await pumpScreen(tester);
+    picker.next = XFile('page.jpg');
+    await tapGetWordsFromPhoto(tester);
+    await choose(tester, 'Photos');
+    expect(worker.contexts, [true]);
+
+    worker.pending!.complete(VocabAnalysisResult(
+      words: [
+        VocabWord(
+            word: 'candid',
+            translation: 'т-candid',
+            context: ' A candid answer. ',
+            contextSource: 'photo'),
+        VocabWord(
+            word: 'fog',
+            translation: 'т-fog',
+            context: 'The fog rolled in.',
+            contextSource: 'ai'),
+        VocabWord(word: 'quay', translation: 'т-quay'),
+      ],
+      aiDuration: const Duration(seconds: 1),
+      fullText: 'A candid answer.\nfog quay',
+    ));
+    await settleDialog(tester);
+    expect(resultsDialog, findsOneWidget);
+    expect(find.text('A candid answer.'), findsNothing,
+        reason: 'the results dialog shows no context');
+    await tester.tap(find.text('Done'));
+    await settleDialog(tester);
+
+    final s = container.read(wordsProvider).value!;
+    WordPair row(String w) => s.words.firstWhere((p) => p.word == w);
+    for (final w in ['candid', 'fog', 'quay']) {
+      expect(row(w).origin.typeOfSource, SourceType.image, reason: w);
+      expect(row(w).sourceId, 'photo-1', reason: w);
+    }
+    expect(row('candid').context, 'A candid answer.');
+    expect(row('candid').contextKind, ContextKind.source);
+    expect(row('fog').context, 'The fog rolled in.');
+    expect(row('fog').contextKind, ContextKind.ai);
+    expect(row('quay').context, '');
+    expect(row('quay').contextKind, ContextKind.none);
+    expect(row('harbour').origin.typeOfSource, SourceType.manuallyEntered,
+        reason: 'an old row is not touched');
+    expect(s.sources.firstWhere((p) => p.id == 'photo-1').fullText,
+        'A candid answer.\nfog quay');
     await unmount(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
