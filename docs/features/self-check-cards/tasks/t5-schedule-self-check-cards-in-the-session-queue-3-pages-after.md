@@ -7,7 +7,7 @@ acs: ["AC-02"]
 files_hint: ["lib/features/learn/session/ladder_queue.dart", "lib/features/learn/session/learning_session_notifier.dart", "test/learn_session_ladder_queue_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Schedule self-check cards in the session queue: 3 pages after a flag, no limit, re-flag gets a new card
