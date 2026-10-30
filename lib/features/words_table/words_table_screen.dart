@@ -15,8 +15,7 @@ import '../../core/models/session_source.dart';
 import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_publish_service.dart';
-import '../../core/story/word_grouping.dart' show wordsToLearn;
-import '../learn/entry/learn_sheet.dart';
+import '../learn/flow/learn_flow_page.dart';
 import '../../core/story/word_groups_notifier.dart';
 import '../../router/routes.dart';
 import '../notes/notes_screen.dart';
@@ -185,25 +184,9 @@ class _WordsTableScreenState extends ConsumerState<WordsTableScreen>
     return box.localToGlobal(Offset.zero) & box.size;
   }
 
-  /// Learn (learn-redesign AC-01, AC-03): the Learn sheet; nothing to learn
-  /// without a word that has a translation.
-  void _learn(List<WordPair> wordPairs) {
-    final collection = _collection();
-    if (collection == null || wordsToLearn(collection).isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Add words with a translation to start learning')),
-      );
-      return;
-    }
-    showLearnSheet(context, ref,
-        collectionId: widget.collectionId,
-        collection: collection,
-        onSettings: () =>
-            LearnSettingsRoute(collectionId: widget.collectionId).push(context),
-        onTalk: (split) =>
-            TalkRoute(collectionId: widget.collectionId, split: split).push(context));
-  }
+  /// Learn (learn-welcome AC-01): the Learn flow, or with fewer than 4
+  /// words to learn the snackbar and nothing opens.
+  void _learn(List<WordPair> wordPairs) => openLearnFlow(context, _collection());
 
   /// The Share button's menu: the file (the guaranteed return path, unchanged)
   /// or a public link to a read-only page (task-05).

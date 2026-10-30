@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import 'package:isar_community/isar.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
@@ -15,20 +14,11 @@ import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_screen.dart';
-import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
-import 'package:flutter_vocabulary_app/features/words_table/words_table_screen.dart';
 
 import 'learn_session_talk_test.dart' show FakeTalkApi;
 
 /// learn-redesign T18 (AC-20, AC-21, AC-24): the Talk with AI screen over a
 /// fake talk service and a temporary store.
-class _Fake extends WordsNotifier {
-  _Fake(this.c);
-  final WordCollection c;
-  @override
-  Future<WordCollection> build() async => c;
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory dir;
@@ -213,37 +203,5 @@ void main() {
     expect(find.text(talkFailedMessage), findsNothing);
     expect(bubbles, findsOneWidget);
     expect(t.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
-  });
-
-  testWidgets('the sheet\'s Talk with AI card opens TalkRoute with split', (t) async {
-    SharedPreferences.setMockInitialValues({});
-    final c = WordCollection.create()
-      ..words = [for (var i = 0; i < 5; i++) WordPair(word: 'word$i', translation: 'слово$i')..rowId = 'r$i'];
-    final container = ProviderContainer(overrides: [wordsProvider.overrideWith(() => _Fake(c))]);
-    addTearDown(container.dispose);
-    await t.runAsync(() async {
-      await container.read(wordDetailModeProvider.notifier).loaded;
-      await container.read(wordsProvider.future);
-    });
-    String? talkUri;
-    final r = GoRouter(initialLocation: '/words/table', routes: [
-      GoRoute(path: '/words/table', builder: (_, __) => const WordsTableScreen(), routes: [
-        GoRoute(
-            path: 'talk',
-            builder: (_, s) {
-              talkUri = s.uri.toString();
-              return const Scaffold(body: Text('talk screen'));
-            }),
-      ]),
-    ]);
-    addTearDown(r.dispose);
-    await t.pumpWidget(UncontrolledProviderScope(container: container, child: MaterialApp.router(routerConfig: r)));
-    await t.pumpAndSettle();
-    await t.tap(find.text('Learn'));
-    await t.pumpAndSettle();
-    await t.tap(find.text('Talk with AI'));
-    await t.pumpAndSettle();
-    expect(find.text('talk screen'), findsOneWidget);
-    expect(talkUri, contains('split=false'));
   });
 }

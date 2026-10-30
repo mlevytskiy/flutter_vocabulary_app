@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/learn_screen.dart';
 import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 import 'package:flutter_vocabulary_app/features/words_table/widgets/learn_share_bar.dart';
@@ -85,7 +86,7 @@ void main() {
     await pump(tester, cur: WordCollection.create());
     await tester.tap(learn);
     await tester.pump();
-    expect(find.text('Add words with a translation to start learning'), findsOneWidget);
+    expect(find.text(flowTooFewWordsMessage), findsOneWidget);
     expect(find.byType(LearnScreen), findsNothing);
     expect(find.byType(LearnShareBar), findsOneWidget);
   });
@@ -98,28 +99,6 @@ void main() {
     expect(find.text('No words to share'), findsOneWidget);
   });
 
-  testWidgets('AC-02: Learn opens the Learn sheet (learn-redesign T14)',
-      (tester) async {
-    await pump(tester);
-    await tester.tap(learn);
-    await tester.pumpAndSettle();
-    expect(find.text('How do you want to learn?'), findsOneWidget);
-    expect(find.text('1 words · 0 due'), findsOneWidget);
-    expect(find.byType(LearnScreen), findsNothing);
-  });
-
-  testWidgets('AC-13: a History session opens the sheet for it, current untouched',
-      (tester) async {
-    await pump(tester, shownId: 'past');
-    final before = container.read(wordsProvider).value!;
-    final beforeId = before.collectionId;
-    final beforeWords = before.words.length;
-    await tester.tap(learn);
-    await tester.pumpAndSettle();
-    // The past collection has two words with a translation, one without.
-    expect(find.text('2 words · 0 due'), findsOneWidget);
-    final after = container.read(wordsProvider).value!;
-    expect(after.collectionId, beforeId);
-    expect(after.words.length, beforeWords);
-  });
+  // Learn opening the flow (and a History collection's own flow) is covered
+  // by learn_entry_test.dart (learn-welcome T17).
 }

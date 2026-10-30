@@ -82,18 +82,6 @@ void main() {
     expect(s.wordsPerSession, WordsPerSession.twenty);
   });
 
-  test('split defaults true per collection and is remembered', () async {
-    final c1 = _container();
-    expect(c1.read(learnSplitProvider('a')), isTrue);
-    await c1.read(learnSplitProvider('a').notifier).set(false);
-    expect(c1.read(learnSplitProvider('b')), isTrue);
-    final c2 = _container();
-    final n = c2.read(learnSplitProvider('a').notifier);
-    await n.loaded;
-    expect(c2.read(learnSplitProvider('a')), isFalse);
-    expect(c2.read(learnSplitProvider('b')), isTrue);
-  });
-
   test('last group is stored per collection', () async {
     final c1 = _container();
     expect(c1.read(learnLastGroupProvider('a')), isNull);

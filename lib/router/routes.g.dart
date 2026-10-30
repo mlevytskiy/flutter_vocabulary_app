@@ -74,6 +74,11 @@ RouteBase get $menuShellRoute => StatefulShellRouteData.$route(
                       ],
                     ),
                     GoRouteData.$route(
+                      path: 'flow',
+                      hasOverriddenOnExit: false,
+                      factory: $LearnFlowRoute._fromState,
+                    ),
+                    GoRouteData.$route(
                       path: 'session',
                       hasOverriddenOnExit: false,
                       factory: $LearningSessionRoute._fromState,
@@ -423,6 +428,35 @@ mixin $DialogueRoute on GoRouteData {
         queryParams: {
           if (_self.collectionId != null) 'collection-id': _self.collectionId,
           'group-id': _self.groupId,
+        },
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin $LearnFlowRoute on GoRouteData {
+  static LearnFlowRoute _fromState(GoRouterState state) => LearnFlowRoute(
+        collectionId: state.uri.queryParameters['collection-id']!,
+      );
+
+  LearnFlowRoute get _self => this as LearnFlowRoute;
+
+  @override
+  String get location => GoRouteData.$location(
+        '/words/table/flow',
+        queryParams: {
+          'collection-id': _self.collectionId,
         },
       );
 

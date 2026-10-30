@@ -456,35 +456,6 @@ class LearnSettingsNotifier extends _$LearnSettingsNotifier {
   }
 }
 
-/// Whether a collection's learn session is split into its word groups
-/// (AC-18); on by default, remembered per collection.
-@Riverpod(keepAlive: true)
-class LearnSplitNotifier extends _$LearnSplitNotifier {
-  late final Future<void> loaded = _load();
-  bool _setByLearner = false;
-
-  String get _key => 'learn.split.$collectionId';
-
-  @override
-  bool build(String collectionId) {
-    loaded;
-    return true;
-  }
-
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (_setByLearner) return;
-    state = prefs.getBool(_key) ?? true;
-  }
-
-  Future<void> set(bool value) async {
-    _setByLearner = true;
-    state = value;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_key, value);
-  }
-}
-
 /// Index of the session group a collection's learner played last, if any.
 @Riverpod(keepAlive: true)
 class LearnLastGroupNotifier extends _$LearnLastGroupNotifier {

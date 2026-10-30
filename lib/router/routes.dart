@@ -10,6 +10,7 @@ import '../features/dialogue/dialogue_screen.dart';
 import '../features/learn/coming_soon_screen.dart';
 import '../features/learn/exercise_screens.dart';
 import '../features/learn/entry/learn_settings_screen.dart';
+import '../features/learn/flow/learn_flow_page.dart';
 import '../features/learn/learn_screen.dart';
 import '../features/learn/session/learning_session_screen.dart';
 import '../features/learn/talk/talk_screen.dart';
@@ -61,6 +62,7 @@ part 'routes.g.dart';
                     TypedGoRoute<DialogueRoute>(path: 'dialogue'),
                   ],
                 ),
+                TypedGoRoute<LearnFlowRoute>(path: 'flow'),
                 TypedGoRoute<LearningSessionRoute>(path: 'session'),
                 TypedGoRoute<TalkRoute>(path: 'talk'),
                 TypedGoRoute<SessionResultsRoute>(path: 'results'),
@@ -164,8 +166,20 @@ class LearnRoute extends GoRouteData with $LearnRoute {
       LearnScreen(collectionId: collectionId, initialExercise: exercise);
 }
 
+/// The Learn flow of one collection (learn-welcome AC-01), opened by Learn
+/// on the Words screen: warm-up, cards and stories, the main dialog, results.
+/// Ids only (rule 1).
+class LearnFlowRoute extends GoRouteData with $LearnFlowRoute {
+  const LearnFlowRoute({required this.collectionId});
+
+  final String collectionId;
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) => LearnFlowPage(collectionId: collectionId);
+}
+
 /// The Learn settings (learn-redesign SCR-05, AC-17..19), opened from the
-/// Learn sheet's gear. [collectionId] as on [LearnRoute], for "Try it".
+/// warm-up's gear. [collectionId] as on [LearnRoute], for "Try it".
 class LearnSettingsRoute extends GoRouteData with $LearnSettingsRoute {
   const LearnSettingsRoute({this.collectionId});
 
