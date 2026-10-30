@@ -7,7 +7,7 @@ acs: []
 files_hint: ["docs/features/self-check-cards/device-check.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T9 — Finish: build_runner, analyze, changed tests, grep check, device check list for the owner

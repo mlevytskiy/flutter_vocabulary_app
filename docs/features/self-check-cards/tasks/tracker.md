@@ -12,6 +12,6 @@
 | T6 | [Show the shared self-check card as an exercise-session page](./t6-show-the-shared-self-check-card-as-an-exercise-session-page.md) | ui | implementer agent | S | T5 | done |
 | T7 | [Show the rating on the session results screen](./t7-show-the-rating-on-the-session-results-screen.md) | ui | implementer agent | S | T3, T6 | done |
 | T8 | [Talk with AI: a self-check step in the quick check for missed and hinted words; talk scoring through the ratings](./t8-talk-with-ai-a-self-check-step-in-the-quick-check-for-missed.md) | ui | implementer agent | M | T3, T6 | done |
-| T9 | [Finish: build_runner, analyze, changed tests, grep check, device check list for the owner](./t9-finish-build-runner-analyze-changed-tests-grep-check-device.md) | docs | implementer agent | S | T7, T8 | todo |
+| T9 | [Finish: build_runner, analyze, changed tests, grep check, device check list for the owner](./t9-finish-build-runner-analyze-changed-tests-grep-check-device.md) | docs | implementer agent | S | T7, T8 | done |
 
 **Total:** 8 tasks, ~6 person-days.
