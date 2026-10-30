@@ -7,7 +7,7 @@ acs: ["AC-10"]
 files_hint: ["lib/features/learn/session/session_results_screen.dart", "test/learn_session_results_screen_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Show the rating on the session results screen
