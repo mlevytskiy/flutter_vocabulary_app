@@ -6,12 +6,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/dialogues/dialogue_rules.dart' show ImportedDialogue;
 import '../../core/models/vocab_word.dart';
+import '../../core/models/word_origin.dart';
+import '../../core/models/word_pair.dart';
 import '../../core/providers.dart';
 import '../../core/models/subtitle_import_options.dart';
 import '../../core/services/subtitle_parser.dart';
 import '../../core/services/subtitle_search_service.dart';
 import '../../core/services/subtitle_word_counter.dart';
 import '../../core/services/subtitle_words_service.dart';
+import '../../core/words/word_origin_rules.dart';
 import 'widgets/subtitle_progress_dialog.dart';
 import 'widgets/subtitle_search_dialog.dart';
 import 'widgets/subtitle_import_dialog.dart';
@@ -45,16 +48,18 @@ abstract final class SubtitleImportMessages {
 /// kept rows under (side-panel-sources, spec AC-22), and its poster's address
 /// for the photo panel's tile (owner, 2026-10-15): the one found by name, or,
 /// for a picked file, one looked up by the file's name while the dialogs are
-/// open ([findSubtitlePoster]); null when none is found in time.
+/// open ([findSubtitlePoster]); null when none is found in time. Both get
+/// the [SubtitleFilmRow] that gives each row built from a kept word its movie
+/// origin, time and context (word-context AC-06 – AC-09).
 Future<void> runSubtitleImport({
   required BuildContext context,
   required WidgetRef ref,
   required String? Function() currentCollectionId,
   required List<String> Function() collectionWords,
-  required void Function(List<VocabWord> words, String film, String? poster) addWords,
+  required void Function(List<VocabWord> words, String film, String? poster, SubtitleFilmRow filmRow) addWords,
   void Function(List<ImportedDialogue> dialogues, int keptCount)? addDialogues,
   Future<void> Function(String collectionId, List<VocabWord> words, String film, String? poster,
-          List<ImportedDialogue> dialogues)?
+          List<ImportedDialogue> dialogues, SubtitleFilmRow filmRow)?
       addWordsTo,
   Future<XFile?> Function()? pickFile,
 }) async {
@@ -83,11 +88,16 @@ Future<void> runSubtitleImport({
   final withAi = prefs.translator != SubtitleTranslator.google;
   final withDialogues = withAi && ref.read(dialoguesSettingProvider);
   final stopwatch = Stopwatch();
+  // The cue starts stay until the rows are built (word-context ADR-0003).
+  var timedLines = const <({Duration start, String text})>[];
+  var sentContexts = const <String, String>{};
 
   // The file (still downloading when found by name) is read and its words are
   // picked inside the progress dialog; the translation follows.
   final picking = request.bytes.then((bytes) {
-    final lines = SubtitleParser.parse(utf8.decode(bytes, allowMalformed: true), extension: request.extension);
+    timedLines =
+        SubtitleParser.parseTimed(utf8.decode(bytes, allowMalformed: true), extension: request.extension);
+    final lines = [for (final line in timedLines) line.text];
     final picked = SubtitleWordCounter.pick(
       lines,
       maximum: request.maximum,
@@ -97,6 +107,7 @@ Future<void> runSubtitleImport({
       removeNames: prefs.removeNames,
     );
     if (picked.isEmpty) throw const _NoWords();
+    sentContexts = picked.contexts;
     return picked;
   });
 
@@ -175,14 +186,17 @@ Future<void> runSubtitleImport({
     final posterUrl = await poster.timeout(_posterWait, onTimeout: () => null);
     if (!context.mounted) return;
     final dialogues = result?.dialogues ?? const <ImportedDialogue>[];
+    final origin = subtitleOrigin(request);
+    WordPair filmRow(WordPair row) =>
+        subtitleFilmRow(row, origin: origin, contexts: sentContexts, lines: timedLines);
     if (startedIn != null && currentCollectionId() != startedIn) {
       // Another collection was opened since Start: the result goes to the one
       // it started in (collections-screen ADR-0006, AC-11).
       await addWordsTo?.call(
-          startedIn, kept, subtitleFilmTitle(request), posterUrl, withDialogues ? dialogues : const []);
+          startedIn, kept, subtitleFilmTitle(request), posterUrl, withDialogues ? dialogues : const [], filmRow);
       return;
     }
-    addWords(kept, subtitleFilmTitle(request), posterUrl);
+    addWords(kept, subtitleFilmTitle(request), posterUrl, filmRow);
     if (withDialogues && dialogues.isNotEmpty) {
       addDialogues?.call(dialogues, kept.length);
     }
@@ -199,6 +213,60 @@ String subtitleFilmTitle(SubtitleImportRequest request) {
   final dot = name.lastIndexOf('.');
   final bare = (dot > 0 ? name.substring(0, dot) : name).trim();
   return bare.isEmpty ? name : bare;
+}
+
+/// Gives a row built from a kept subtitle word its film origin, time and
+/// context (word-context AC-06 – AC-09); returns the same row.
+typedef SubtitleFilmRow = WordPair Function(WordPair row);
+
+/// The movie origin of every row of [request] (word-context AC-06, AC-07): a
+/// file found by name keeps the picked result's series name (else its title),
+/// season and episode; a file opened by the learner is named like its source
+/// ([subtitleFilmTitle]) and takes the season and episode in its file name,
+/// none when it has none. The time is set per row by [subtitleFilmRow].
+WordOrigin subtitleOrigin(SubtitleImportRequest request) {
+  final origin = WordOrigin()..typeOfSource = SourceType.movie;
+  final found = request.found;
+  if (found != null) {
+    final show = found.show?.trim() ?? '';
+    origin
+      ..movieName = show.isNotEmpty ? show : found.title.trim()
+      ..season = found.season
+      ..episode = found.episode;
+  } else {
+    final mark = episodeFromFileName(request.fileName);
+    origin
+      ..movieName = subtitleFilmTitle(request)
+      ..season = mark.season
+      ..episode = mark.episode;
+  }
+  return origin;
+}
+
+/// [row] with a copy of [origin], the start of the first of [lines] that has
+/// its word (word-context AC-08) and, as its `source` context, the passage
+/// sent for that word in [contexts] (AC-09; none when there is none).
+WordPair subtitleFilmRow(
+  WordPair row, {
+  required WordOrigin origin,
+  required Map<String, String> contexts,
+  required List<({Duration start, String text})> lines,
+}) {
+  final word = row.word.trim();
+  var context = contexts[word] ?? contexts[word.toLowerCase()];
+  if (context == null) {
+    for (final entry in contexts.entries) {
+      if (entry.key.toLowerCase() == word.toLowerCase()) {
+        context = entry.value;
+        break;
+      }
+    }
+  }
+  final trimmed = (context ?? '').trim();
+  return row
+    ..origin = (origin.copy()..time = firstLineTime(word, lines))
+    ..context = trimmed
+    ..contextKind = trimmed.isEmpty ? ContextKind.none : ContextKind.source;
 }
 
 /// How long Done waits for a poster still being looked up.

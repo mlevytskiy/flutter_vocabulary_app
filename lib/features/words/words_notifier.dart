@@ -12,6 +12,7 @@ import '../../core/models/word_collection.dart';
 import '../../core/models/session_source.dart';
 import '../../core/models/translation_result.dart';
 import '../../core/models/word_pair.dart';
+import '../../core/models/word_origin.dart';
 import '../../core/providers.dart';
 import '../../core/services/collection_store.dart';
 import '../../core/services/filing.dart';
@@ -281,6 +282,9 @@ class WordsNotifier extends _$WordsNotifier {
     bool? definitionMarkedFilled,
     String? sourceId,
     bool clearSourceId = false,
+    WordOrigin? origin,
+    String? context,
+    ContextKind? contextKind,
   }) {
     if (!state.hasValue) return;
     final collection = state.value!;
@@ -306,10 +310,11 @@ class WordsNotifier extends _$WordsNotifier {
       // An edited row is the same row: its groups and dialogues follow it.
       rowId: current.rowId,
       // So do its origin and context (word-context AC-14).
-      context: current.context,
-      contextKind: current.contextKind,
+      // A row filled from an import takes the import's (word-context AC-06).
+      context: context ?? current.context,
+      contextKind: contextKind ?? current.contextKind,
       contextTried: current.contextTried,
-    )..origin = current.origin.copy();
+    )..origin = (origin ?? current.origin).copy();
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
     }

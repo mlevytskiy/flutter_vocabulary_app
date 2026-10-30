@@ -135,12 +135,12 @@ void main() {
                 ref: ref,
                 currentCollectionId: () => collectionId,
                 collectionWords: () => ['tide'],
-                addWords: (words, film, poster) {
+                addWords: (words, film, poster, _) {
                   added.addAll(words);
                   films.add(film);
                   posters.add(poster);
                 },
-                addWordsTo: (id, words, film, poster, dialogues) async => addedLate.add((id, words)),
+                addWordsTo: (id, words, film, poster, dialogues, _) async => addedLate.add((id, words)),
                 pickFile: () async => pick ?? file(srtText),
               ),
               child: const Text('import'),

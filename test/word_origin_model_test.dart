@@ -200,6 +200,29 @@ void main() {
     expectCarried(words[0]);
   });
 
+  test('an import filling the blank row sets its origin and context (T8)', () async {
+    final container = ProviderContainer(overrides: [
+      collectionStoreProvider.overrideWith((ref) async => store),
+    ]);
+    addTearDown(container.dispose);
+    await container.read(wordsProvider.future);
+    final notifier = container.read(wordsProvider.notifier);
+    notifier.setPairs([WordPair(word: '')]);
+
+    final film = WordOrigin()
+      ..typeOfSource = SourceType.movie
+      ..movieName = 'Film'
+      ..time = '00:01:02';
+    notifier.updateAt(0, word: 'tide', origin: film, context: 'The tide.', contextKind: ContextKind.source);
+    film.movieName = 'changed after';
+    final r = container.read(wordsProvider).value!.words.single;
+    expect(r.origin.typeOfSource, SourceType.movie);
+    expect(r.origin.movieName, 'Film', reason: 'a copy is kept');
+    expect(r.origin.time, '00:01:02');
+    expect(r.context, 'The tide.');
+    expect(r.contextKind, ContextKind.source);
+  });
+
   test('the new-user trial puts them aside and brings them back', () async {
     final id = await stored([row('r1')], fullText: 'EXIT');
     await store.close();

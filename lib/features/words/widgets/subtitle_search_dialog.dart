@@ -154,6 +154,7 @@ class _SubtitleSearchDialogState extends State<_SubtitleSearchDialog> {
         bytes: widget.service.download(result.fileId).then((file) => file.bytes),
         title: result.label,
         imageUrl: result.imageUrl ?? _picked?.imageUrl,
+        found: result,
       ),
     );
   }

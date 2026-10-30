@@ -21,21 +21,43 @@ class SubtitleParser {
   /// Empty when [extension] is not srt or vtt, the file has no timed cue, or
   /// no dialogue is left after stripping — all three mean "no English
   /// subtitles to read in this file" (AC-10).
-  static List<String> parse(String text, {required String extension}) {
+  static List<String> parse(String text, {required String extension}) =>
+      [for (final line in parseTimed(text, extension: extension)) line.text];
+
+  /// [parse]'s lines, each with the start of the cue it was said in
+  /// (word-context ADR-0003, AC-08): the lines of one cue, and the pieces of
+  /// a split long line, share that start.
+  static List<({Duration start, String text})> parseTimed(String text, {required String extension}) {
     final ext = extension.toLowerCase().replaceFirst('.', '');
     if (ext != 'srt' && ext != 'vtt') return const [];
 
-    final normalized = text.replaceFirst('﻿', '').replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-    final lines = <String>[];
+    final normalized = text.replaceFirst('\uFEFF', '').replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final lines = <({Duration start, String text})>[];
     for (final block in normalized.split(RegExp(r'\n\s*\n'))) {
       final rows = block.split('\n');
       final timingAt = rows.indexWhere((row) => _timing.hasMatch(row.trim()));
       if (timingAt < 0) continue; // WEBVTT header, NOTE, STYLE, REGION or stray text
+      final start = _start(rows[timingAt].trim());
       for (final utterance in _utterances(rows.sublist(timingAt + 1))) {
-        lines.addAll(_split(utterance));
+        for (final piece in _split(utterance)) {
+          lines.add((start: start, text: piece));
+        }
       }
     }
     return lines;
+  }
+
+  static final _startTime = RegExp(r'^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})[,.](\d{1,3})');
+
+  /// The start of a cue from its timing row (`00:01:02,500 --> …`).
+  static Duration _start(String timing) {
+    final m = _startTime.firstMatch(timing)!;
+    return Duration(
+      hours: int.parse(m[1] ?? '0'),
+      minutes: int.parse(m[2]!),
+      seconds: int.parse(m[3]!),
+      milliseconds: int.parse(m[4]!.padRight(3, '0')),
+    );
   }
 
   /// One cue's text rows as spoken lines: rows run together into one line

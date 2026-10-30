@@ -97,9 +97,9 @@ void main() {
                   ref: ref,
                   currentCollectionId: () => collectionId,
                   collectionWords: () => const [],
-                  addWords: (words, _, __) => added.addAll(words),
+                  addWords: (words, _, __, ___) => added.addAll(words),
                   addDialogues: (d, n) => dialoguesAdded.add((d, n)),
-                  addWordsTo: (id, words, film, poster, dialogues) async =>
+                  addWordsTo: (id, words, film, poster, dialogues, _) async =>
                       lateAdded.add((id, words, dialogues)),
                   pickFile: () async => file(),
                 ),

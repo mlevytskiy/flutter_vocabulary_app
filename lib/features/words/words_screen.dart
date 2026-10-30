@@ -99,6 +99,8 @@ WordPair wordPairFromPhotoAnalysis(VocabWord w, {String? sourceId}) {
   return pair;
 }
 
+WordPair _sameRow(WordPair row) => row;
+
 class WordsScreen extends ConsumerStatefulWidget {
   const WordsScreen({super.key, this.quizletDriverFactory});
 
@@ -772,22 +774,22 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
           for (final pair in ref.read(wordsProvider).value?.words ?? const <WordPair>[])
             if (pair.word.trim().isNotEmpty && pair.word.trim().length <= 500) pair.word.trim(),
         ].take(500).toList(),
-        addWords: (words, film, poster) {
+        addWords: (words, film, poster, filmRow) {
           if (!mounted) return;
           // side-panel-sources AC-22: the film joins the session's sources
           // (or the one already there is reused), and the rows point at it.
           final sourceId =
               ref.read(wordsProvider.notifier).upsertSubtitlesSource(film, poster: poster);
-          _addWordsFromPhoto(words, sourceId: sourceId);
+          _addWordsFromPhoto(words, sourceId: sourceId, filmRow: filmRow);
         },
         addDialogues: (dialogues, keptCount) {
           if (mounted) ref.read(wordsProvider.notifier).addImportDialogues(dialogues, keptCount);
         },
-        addWordsTo: (collectionId, words, film, poster, dialogues) async {
+        addWordsTo: (collectionId, words, film, poster, dialogues, filmRow) async {
           if (!mounted) return;
           await ref.read(wordsProvider.notifier).addWordsTo(
                 collectionId,
-                [for (final w in words) wordPairFromPhoto(w)],
+                [for (final w in words) filmRow(wordPairFromPhoto(w))],
                 film: film,
                 poster: poster,
                 dialogues: dialogues,
@@ -826,8 +828,10 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
 
   /// [fromPhoto]: the words come from a photo analysis, so the rows get the
   /// image origin and the words' context (word-context AC-02, AC-10).
+  /// [filmRow]: the words come from subtitles, so it gives each row its movie
+  /// origin, time and context (AC-06 – AC-09).
   void _addWordsFromPhoto(List<VocabWord> words,
-      {SessionSource? source, String? sourceId, bool fromPhoto = false}) {
+      {SessionSource? source, String? sourceId, bool fromPhoto = false, SubtitleFilmRow? filmRow}) {
     var reusedFirstRow = false;
     final appendedPairs = <WordPair>[];
     if (source != null) {
@@ -843,7 +847,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
       for (final w in words) {
         final pair = fromPhoto
             ? wordPairFromPhotoAnalysis(w, sourceId: source?.id ?? sourceId)
-            : wordPairFromPhoto(w, sourceId: source?.id ?? sourceId);
+            : (filmRow ?? _sameRow)(wordPairFromPhoto(w, sourceId: source?.id ?? sourceId));
         if (_wordPairs.length == 1 && _wordPairs[0].isEmpty) {
           // The row already holds the texts, so the controller listeners see
           // no change; the single _pushRow below persists everything.
@@ -875,6 +879,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
           translation: _wordPairs[0].translation,
           definition: _wordPairs[0].definition,
           sourceId: _wordPairs[0].sourceId);
+      // The blank row the words went into takes their origin and context too.
+      ref.read(wordsProvider.notifier).updateAt(_storeIndex(0),
+          origin: _wordPairs[0].origin,
+          context: _wordPairs[0].context,
+          contextKind: _wordPairs[0].contextKind);
     }
     if (appendedPairs.isNotEmpty) {
       ref.read(wordsProvider.notifier).addAll(appendedPairs);

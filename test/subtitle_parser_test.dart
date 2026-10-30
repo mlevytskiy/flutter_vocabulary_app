@@ -74,4 +74,48 @@ void main() {
     expect(bytes, lessThanOrEqualTo(1048576));
     expect(lines.every((l) => l.isNotEmpty && l.length <= 200), isTrue);
   });
+
+  group('parseTimed (word-context ADR-0003, AC-08)', () {
+    Duration t(int h, int m, int s, [int ms = 0]) =>
+        Duration(hours: h, minutes: m, seconds: s, milliseconds: ms);
+
+    test('SRT: each line keeps its cue start; two speakers of one cue share it', () {
+      final timed = SubtitleParser.parseTimed(_fixture('sample.srt'), extension: 'srt');
+      expect(timed.map((l) => l.start), [
+        t(0, 0, 1),
+        t(0, 0, 6, 500),
+        t(0, 0, 6, 500),
+        t(0, 0, 9, 500),
+        t(0, 0, 12),
+      ]);
+      expect(timed.map((l) => l.text), SubtitleParser.parse(_fixture('sample.srt'), extension: 'srt'));
+    });
+
+    test('VTT: hours optional, a dot before the milliseconds', () {
+      final timed = SubtitleParser.parseTimed(_fixture('sample.vtt'), extension: 'vtt');
+      expect(timed.map((l) => (l.start, l.text)), [
+        (t(0, 0, 1), 'I was reluctant to leave, but the tide was coming in.'),
+        (t(0, 0, 6, 500), 'Grab the rope & hold on!'),
+      ]);
+      final short = SubtitleParser.parseTimed('WEBVTT\n\n01:02.5 --> 01:04.000\nAt sea.\n', extension: 'vtt');
+      expect(short.single.start, t(0, 1, 2, 500));
+    });
+
+    test('hours past the first: 01:02:03,040', () {
+      final timed = SubtitleParser.parseTimed('7\n01:02:03,040 --> 01:02:05,000\nThe harbour.\n', extension: 'srt');
+      expect(timed.single, (start: t(1, 2, 3, 40), text: 'The harbour.'));
+    });
+
+    test('the pieces of a split long line share the cue start', () {
+      final long = List.filled(60, 'word').join(' '); // 299 characters
+      final timed = SubtitleParser.parseTimed('1\n00:10:00,000 --> 00:10:05,000\n$long\n', extension: 'srt');
+      expect(timed, hasLength(2));
+      expect(timed.map((l) => l.start), [t(0, 10, 0), t(0, 10, 0)]);
+      expect(timed.every((l) => l.text.length <= SubtitleParser.maxLineChars), isTrue);
+    });
+
+    test('not srt or vtt: nothing', () {
+      expect(SubtitleParser.parseTimed('1\n00:00:01,000 --> 00:00:02,000\nHi.\n', extension: 'txt'), isEmpty);
+    });
+  });
 }

@@ -3,13 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/models/subtitle_import_options.dart';
+import '../../../core/services/subtitle_search_service.dart' show SubtitleSearchResult;
 import 'subtitle_poster.dart';
 
 /// A subtitle file for the import: chosen on the phone, or found by name —
 /// then [bytes] may still be downloading, so Start never waits for it, and
 /// [title] and [imageUrl] name the film and show its poster.
 class SubtitleSource {
-  SubtitleSource({required this.fileName, required this.bytes, this.title, this.imageUrl}) {
+  SubtitleSource({required this.fileName, required this.bytes, this.title, this.imageUrl, this.found}) {
     // Marks a failure as seen, so a source dropped before Start never reports
     // an unhandled error; the import still sees it when it awaits [bytes].
     bytes.ignore();
@@ -24,6 +25,10 @@ class SubtitleSource {
   /// "My Brilliant Friend · S01E04 · Dissolving Margins", for a found file.
   final String? title;
   final String? imageUrl;
+
+  /// The search result picked, for a file found by name: its film or series
+  /// name, season and episode go on the rows (word-context AC-06).
+  final SubtitleSearchResult? found;
 }
 
 /// What Start in the import dialog hands to the import flow.
@@ -35,6 +40,7 @@ class SubtitleImportRequest {
     required this.maximum,
     this.title,
     this.imageUrl,
+    this.found,
   });
 
   final String fileName;
@@ -47,6 +53,9 @@ class SubtitleImportRequest {
   /// The film's title and poster, for a file found by name.
   final String? title;
   final String? imageUrl;
+
+  /// The search result picked, for a file found by name (word-context AC-06).
+  final SubtitleSearchResult? found;
 
   /// The file's extension, lower case, without the dot ('' when it has none).
   String get extension {
@@ -137,6 +146,7 @@ class _SubtitleImportDialogState extends State<_SubtitleImportDialog> {
         maximum: _maximum!,
         title: source.title,
         imageUrl: source.imageUrl,
+        found: source.found,
       ),
     );
   }
