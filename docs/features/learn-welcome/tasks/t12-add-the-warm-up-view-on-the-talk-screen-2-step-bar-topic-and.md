@@ -7,7 +7,7 @@ acs: ["AC-02", "AC-04"]
 files_hint: ["lib/features/learn/flow/warm_up_view.dart", "lib/features/learn/talk/talk_widgets.dart", "test/learn_warm_up_view_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T12 — Add the warm-up view on the Talk screen: 2-step bar, topic and mode choices, own topic
