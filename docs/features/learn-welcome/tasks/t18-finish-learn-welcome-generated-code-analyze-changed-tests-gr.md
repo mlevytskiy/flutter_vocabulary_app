@@ -7,7 +7,7 @@ acs: ["AC-16"]
 files_hint: ["docs/features/learn-welcome/device-check.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T18 — Finish learn-welcome: generated code, analyze, changed tests, grep check, device check list, self-check tasks updated

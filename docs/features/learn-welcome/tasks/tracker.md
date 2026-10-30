@@ -22,6 +22,6 @@
 | T15 | [Run the main dialog in learn-flow mode and record its results without moving boxes](./t15-run-the-main-dialog-in-learn-flow-mode-and-record-its-result.md) | ui | implementer agent | M | T8, T10 | done |
 | T16 | [Show the flow's results: cards, stories, talk, due tomorrow, three buttons](./t16-show-the-flow-s-results-cards-stories-talk-due-tomorrow-thre.md) | ui | implementer agent | M | T10 | done |
 | T17 | [Open the flow from Learn and remove the Learn sheet, the split checkbox and the group line](./t17-open-the-flow-from-learn-and-remove-the-learn-sheet-the-spli.md) | ui | implementer agent | M | T12, T13 | done |
-| T18 | [Finish learn-welcome: generated code, analyze, changed tests, grep check, device check list, self-check tasks updated](./t18-finish-learn-welcome-generated-code-analyze-changed-tests-gr.md) | docs | implementer agent | S | T9, T14, T15, T16, T17 | todo |
+| T18 | [Finish learn-welcome: generated code, analyze, changed tests, grep check, device check list, self-check tasks updated](./t18-finish-learn-welcome-generated-code-analyze-changed-tests-gr.md) | docs | implementer agent | S | T9, T14, T15, T16, T17 | done |
 
 **Total:** 18 tasks, ~14 person-days.
