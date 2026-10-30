@@ -72,6 +72,26 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   // _popupControllers (same pruning), for the same package reasons.
   final Map<int, CustomPopupMenuController> _definitionPopupControllers = {};
 
+  /// True while the app itself writes a field (a lightning fill, or clearing
+  /// a removed first row): the field listeners then push the change without
+  /// the learner-edit marks (word-context AC-04). A pick from the ⋯ list is
+  /// the learner's own choice and is not wrapped.
+  bool _appFilling = false;
+
+  /// Runs [write] as an app fill (see [_appFilling]).
+  void _asAppFill(void Function() write) {
+    _appFilling = true;
+    try {
+      write();
+    } finally {
+      _appFilling = false;
+    }
+  }
+
+  /// Sets [controller]'s text as an app fill (see [_appFilling]).
+  void _fillText(TextEditingController controller, String text) =>
+      _asAppFill(() => controller.text = text);
+
   void _addControllersForIndex(int index) {
     final wordController = TextEditingController(text: _wordPairs[index].word);
     final translationController = TextEditingController(text: _wordPairs[index].translation);
@@ -117,7 +137,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       }); // Оновити для показу іконки при >= 2 літерах
       // Same guard for persistence: a no-op push still marks the session
       // dirty.
-      if (wordChanged) _pushRow(index, word: wordController.text);
+      if (wordChanged) _pushRow(index, word: wordController.text, wordChanged: true);
     });
 
     translationController.addListener(() {
@@ -138,7 +158,9 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
           _translationMarkedFilled[index] = false;
         }
       }); // Оновити для показу/приховування lightning-іконок (docs/lightning_icon_rules.md)
-      if (translationChanged) _pushRow(index, translation: translationController.text);
+      if (translationChanged) {
+        _pushRow(index, translation: translationController.text, translationEditedByLearner: !_appFilling);
+      }
     });
 
     definitionController.addListener(() {
@@ -150,7 +172,9 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       setState(() {
         if (isEmptyNow) _definitionMarkedFilled[index] = false;
       });
-      if (definitionChanged) _pushRow(index, definition: definitionController.text);
+      if (definitionChanged) {
+        _pushRow(index, definition: definitionController.text, definitionEditedByLearner: !_appFilling);
+      }
     });
 
     _wordControllers.add(wordController);
@@ -177,7 +201,14 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   /// state, the cached dictionary behind the dots, and the two lightning
   /// "filled" marks (docs/lightning_icon_rules.md).
   void _pushRow(int index,
-      {String? word, String? translation, String? definition, String? sourceId, bool clearSourceId = false}) {
+      {String? word,
+      String? translation,
+      String? definition,
+      String? sourceId,
+      bool clearSourceId = false,
+      bool wordChanged = false,
+      bool translationEditedByLearner = false,
+      bool definitionEditedByLearner = false}) {
     if (index < 0 || index >= _translationOptions.length) return;
     final senses = _effectiveSenses(index);
     // Persist only what the dots actually show: a block whose word no longer
@@ -202,6 +233,9 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
           definitionMarkedFilled: _definitionMarkedFilled[index],
           sourceId: sourceId,
           clearSourceId: clearSourceId,
+          wordChanged: wordChanged,
+          translationEditedByLearner: translationEditedByLearner,
+          definitionEditedByLearner: definitionEditedByLearner,
         );
   }
 
@@ -452,7 +486,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         return;
       }
 
-      _wordControllers[index].text = translation.text;
+      _fillText(_wordControllers[index], translation.text);
 
       setState(() {
         _isLoadingWordTranslation[index] = false;
@@ -533,7 +567,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
           return;
         }
 
-        _translationControllers[index].text = translation.best;
+        _fillText(_translationControllers[index], translation.best);
 
         setState(() {
           _isLoadingTranslation[index] = false;
@@ -571,8 +605,8 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         if (gotRealTranslation) {
           // Swap: what the user typed becomes the Translation, the
           // English result becomes the Word.
-          _translationControllers[index].text = word;
-          _wordControllers[index].text = translation.text;
+          _fillText(_translationControllers[index], word);
+          _fillText(_wordControllers[index], translation.text);
 
           setState(() {
             _isLoadingTranslation[index] = false;
@@ -644,7 +678,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
         });
         // The controller listener persists the text; this push carries the
         // senses and the mark along with it.
-        _definitionControllers[index].text = result.firstSense!;
+        _fillText(_definitionControllers[index], result.firstSense!);
         _pushRow(index, definition: result.firstSense!);
       case DefinitionKind.notFound:
         final hint = result.suggestions.isEmpty ? '' : ' — did you mean: ${result.suggestions.join(', ')}';
@@ -717,9 +751,12 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     setState(() {
       if (index == 0 && _keepsFirstRow) {
         // Для першого айтема тільки очищуємо поля
-        _wordControllers[0].clear();
-        _translationControllers[0].clear();
-        _definitionControllers[0].clear();
+        // Clearing a removed row is no edit of its translation or definition.
+        _asAppFill(() {
+          _wordControllers[0].clear();
+          _translationControllers[0].clear();
+          _definitionControllers[0].clear();
+        });
         _isLoadingDefinition[0] = false;
         _definitionMarkedFilled[0] = false;
         _definitionSenses[0] = null;

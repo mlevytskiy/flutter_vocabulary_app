@@ -45,7 +45,7 @@ final class WordsNotifierProvider
   WordsNotifier create() => WordsNotifier();
 }
 
-String _$wordsNotifierHash() => r'542ca88f9c38557d47cd143c443f2eee1a565776';
+String _$wordsNotifierHash() => r'84736ebb1c96da7e3fac23f7882e6dcc9d46ef09';
 
 /// Owns the current [WordCollection]. `WordsScreen` keeps mirroring the words into
 /// its own `_wordPairs` field (controllers, focus nodes and the rest of its

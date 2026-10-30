@@ -17,6 +17,7 @@ import '../../core/providers.dart';
 import '../../core/services/collection_store.dart';
 import '../../core/services/filing.dart';
 import '../../core/services/source_photo_store.dart' show uuidV4;
+import '../../core/words/word_origin_rules.dart';
 
 part 'words_notifier.g.dart';
 
@@ -267,6 +268,14 @@ class WordsNotifier extends _$WordsNotifier {
   /// row's definition is never dropped by an update that does not name it, and
   /// neither is its photo link: [sourceId] sets it, `clearSourceId: true`
   /// drops it (good-looking-web T17).
+  ///
+  /// word-context AC-04/AC-05: the screen says what the learner did, because
+  /// only it can tell a typed or picked value from one the app filled.
+  /// [translationEditedByLearner] / [definitionEditedByLearner] mark a real
+  /// change the learner made (typing, or a pick from the ⋯ list) and set the
+  /// origin's edit flag; a lightning fill or an import leaves them false.
+  /// [wordChanged] marks a real change of the English word, by anyone: the
+  /// row's context, its kind, both edit flags and `contextTried` go.
   void updateAt(
     int i, {
     String? word,
@@ -285,12 +294,15 @@ class WordsNotifier extends _$WordsNotifier {
     WordOrigin? origin,
     String? context,
     ContextKind? contextKind,
+    bool wordChanged = false,
+    bool translationEditedByLearner = false,
+    bool definitionEditedByLearner = false,
   }) {
     if (!state.hasValue) return;
     final collection = state.value!;
     if (i < 0 || i >= collection.words.length) return;
     final current = collection.words[i];
-    final next = WordPair(
+    var next = WordPair(
       word: word ?? current.word,
       translation: translation ?? current.translation,
       hasTranslationOptions:
@@ -318,6 +330,9 @@ class WordsNotifier extends _$WordsNotifier {
     if (translationOptions != null) {
       next.translationOptions = translationOptions;
     }
+    if (wordChanged) next = withChangedWord(next);
+    if (translationEditedByLearner) next = withEditedTranslation(next);
+    if (definitionEditedByLearner) next = withEditedDefinition(next);
     collection.words[i] = next;
     state = AsyncData(collection);
     _scheduleSave();
