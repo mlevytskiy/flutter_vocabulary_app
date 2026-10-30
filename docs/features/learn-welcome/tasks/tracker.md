@@ -11,7 +11,7 @@
 | T4 | [Add the pure flow word rules: card words, the source-tail split, dialog words](./t4-add-the-pure-flow-word-rules-card-words-the-source-tail-spli.md) | domain | implementer agent | M | T1 | done |
 | T5 | [Add the pure story slot scheduler](./t5-add-the-pure-story-slot-scheduler.md) | domain | implementer agent | S | T1 | done |
 | T6 | [Add the 50 topics and POST /learn/topics to the Worker](./t6-add-the-50-topics-and-post-learn-topics-to-the-worker.md) | ports | implementer agent | M | — | done |
-| T7 | [Add the topics service with a 4 s timeout and the bundled fallback](./t7-add-the-topics-service-with-a-4-s-timeout-and-the-bundled-fa.md) | app | implementer agent | S | T6 | todo |
+| T7 | [Add the topics service with a 4 s timeout and the bundled fallback](./t7-add-the-topics-service-with-a-4-s-timeout-and-the-bundled-fa.md) | app | implementer agent | S | T6 | done |
 | T8 | [Let the talk mission take a topic, a reply limit and chosen words](./t8-let-the-talk-mission-take-a-topic-a-reply-limit-and-chosen-w.md) | ports | implementer agent | M | — | done |
 | T9 | [Let story runs send each word's context, source and edited translation to the story writer](./t9-let-story-runs-send-each-word-s-context-source-and-edited-tr.md) | ports | implementer agent | S | — | done |
 | T10 | [Add the LearnFlowNotifier: phases, per-card save, story start and reuse, leave](./t10-add-the-learnflownotifier-phases-per-card-save-story-start-a.md) | app | implementer agent | L | T3, T4, T5, T7 | todo |
