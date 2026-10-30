@@ -7,7 +7,7 @@
 |---|---|---|---|---|---|---|
 | T1 | [Record learn-welcome approvals in CLAUDE.md rules 3 and 5](./t1-record-learn-welcome-approvals-in-claude-md-rules-3-and-5.md) | docs | implementer agent | S | — | done |
 | T2 | [Add WordBox.lastCheckSide and keep it through copy, JSON and the store](./t2-add-wordbox-lastcheckside-and-keep-it-through-copy-json-and.md) | infra | implementer agent | S | T1 | done |
-| T3 | [Add the pure self-check rules: SelfRating, rateBox, nextSide, box labels](./t3-add-the-pure-self-check-rules-selfrating-ratebox-nextside-bo.md) | domain | implementer agent | S | T2 | todo |
+| T3 | [Add the pure self-check rules: SelfRating, rateBox, nextSide, box labels](./t3-add-the-pure-self-check-rules-selfrating-ratebox-nextside-bo.md) | domain | implementer agent | S | T2 | done |
 | T4 | [Add the pure flow word rules: card words, the source-tail split, dialog words](./t4-add-the-pure-flow-word-rules-card-words-the-source-tail-spli.md) | domain | implementer agent | M | T1 | done |
 | T5 | [Add the pure story slot scheduler](./t5-add-the-pure-story-slot-scheduler.md) | domain | implementer agent | S | T1 | done |
 | T6 | [Add the 50 topics and POST /learn/topics to the Worker](./t6-add-the-50-topics-and-post-learn-topics-to-the-worker.md) | ports | implementer agent | M | — | done |

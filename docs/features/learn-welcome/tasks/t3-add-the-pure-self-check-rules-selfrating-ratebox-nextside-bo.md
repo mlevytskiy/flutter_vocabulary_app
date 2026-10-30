@@ -7,7 +7,7 @@ acs: ["AC-07", "AC-08"]
 files_hint: ["lib/features/learn/session/self_check.dart", "test/learn_self_check_rules_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Add the pure self-check rules: SelfRating, rateBox, nextSide, box labels
