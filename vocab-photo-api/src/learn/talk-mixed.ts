@@ -22,16 +22,21 @@ export function mixedTarget(req: TalkRequest): string {
   return req.target;
 }
 
-/** Two action choices followed by one speaking task, for three short rounds. */
+/** Learner actions in a mixed talk: 9 (three rounds), or the main dialog's 6 or 12 (learn-welcome AC-13). */
+export const mixedLength = (req: TalkRequest): number => req.maxReplies ?? 9;
+
+/** Two action choices followed by one speaking task, round after round until the talk's length. */
 export function mixedInteraction(req: TalkRequest): "choice" | "speak" | "complete" {
   const replies = req.history.filter((m) => m.role === "learner").length;
-  return replies >= 9 ? "complete" : replies % 3 === 2 ? "speak" : "choice";
+  return replies >= mixedLength(req) ? "complete" : replies % 3 === 2 ? "speak" : "choice";
 }
 
 export function mixedPrompt(req: TalkRequest, opening: { system: string; user: string }) {
   const interaction = mixedInteraction(req);
+  const actions = mixedLength(req);
+  const rounds = actions === 9 ? "Three rounds, nine learner actions total." : `${actions / 3} rounds, ${actions} learner actions total.`;
   const instructions = [
-    "You are an English conversation partner. This is a mixed-mode English conversation game: two action choices, then one short speaking task. Three rounds, nine learner actions total.",
+    `You are an English conversation partner. This is a mixed-mode English conversation game: two action choices, then one short speaking task. ${rounds}`,
     "React to the learner's actual action and let it change events. Keep the role, goal and hidden facts consistent. Accept reasonable unexpected solutions and paraphrases; never demand an exact word to progress.",
     "Choices are short intentions (2-6 words), not complete scripted answers or vocabulary quizzes. Offer 2-3 distinct, plausible actions with different consequences. A history message with source=choice is a selected action, not independent vocabulary recall.",
     "For a speaking turn, give one small communicative purpose: explain a problem, ask for something, persuade someone or report a clue. The speakingPrompt is a short instruction to the learner; do not supply the answer or target word. Let the scene make the word useful; never ask a disguised definition question.",

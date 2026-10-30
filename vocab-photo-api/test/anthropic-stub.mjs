@@ -201,11 +201,12 @@ function learnTalkAnswer(model, content, system = "") {
   if (mixed) {
     const n = history.filter((m) => m.role === "learner").length;
     return { status: 200, body: message(model, JSON.stringify({
-      reply: n >= 9 ? "You found your boat. Thanks for helping!" : "Let us find the boat together.",
-      choices: n < 9 && n % 3 !== 2 ? ["Look along the shore", "Ask for a map"] : [],
+      reply: system.includes("MUST be complete") ? "You found your boat. Thanks for helping!" : "Let us find the boat together.",
+      choices: !system.includes("MUST be complete") && n % 3 !== 2 ? ["Look along the shore", "Ask for a map"] : [],
       speakingPrompt: n % 3 === 2 ? "Describe where you last saw the boat." : "",
     })) };
   }
+  if (system.includes("This is the last turn")) return { status: 200, body: message(model, "We did it. The boat is back at the pier.") };
   return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };
 }
 
