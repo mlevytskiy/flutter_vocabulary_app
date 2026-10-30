@@ -56,7 +56,7 @@ final class StoryRunTrackerProvider
   }
 }
 
-String _$storyRunTrackerHash() => r'a8140712b06232a18554a3dfaf7b1e10d48729cb';
+String _$storyRunTrackerHash() => r'9d4d163394fdcd54096adf6141deb776a2901938';
 
 /// Starts story runs, follows them on the Worker and collects their results to
 /// the phone (mnemonic-story ADR-0002, sad §6 S-02, S-04, S-05).

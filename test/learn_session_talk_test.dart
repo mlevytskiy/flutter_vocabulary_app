@@ -33,6 +33,10 @@ class FakeTalkApi implements TalkApiService {
   final calls = <TalkCall>[];
   final answers = <Object>[];
 
+  /// The Learn flow's topic and reply limit each call sent (learn-welcome
+  /// T15), in step with [calls].
+  final flows = <({TalkTopic? topic, int? maxReplies})>[];
+
   Future<TalkTurn> _next(TalkCall call) async {
     calls.add(call);
     if (answers.isEmpty) return TalkTurn(reply: 'Tell me more.', target: call.target);
@@ -42,8 +46,16 @@ class FakeTalkApi implements TalkApiService {
   }
 
   @override
-  Future<TalkTurn> start({required String scene, required List<TalkWord> words, required String target}) =>
-      _next((kind: 'start', scene: scene, words: words, target: target, history: const []));
+  Future<TalkTurn> start({
+    required String scene,
+    required List<TalkWord> words,
+    required String target,
+    TalkTopic? topic,
+    int? maxReplies,
+  }) {
+    flows.add((topic: topic, maxReplies: maxReplies));
+    return _next((kind: 'start', scene: scene, words: words, target: target, history: const []));
+  }
 
   @override
   Future<TalkTurn> reply({
@@ -51,8 +63,12 @@ class FakeTalkApi implements TalkApiService {
     required List<TalkWord> words,
     required String target,
     required List<TalkLine> history,
-  }) =>
-      _next((kind: 'reply', scene: scene, words: words, target: target, history: history));
+    TalkTopic? topic,
+    int? maxReplies,
+  }) {
+    flows.add((topic: topic, maxReplies: maxReplies));
+    return _next((kind: 'reply', scene: scene, words: words, target: target, history: history));
+  }
 }
 
 /// A talk picture service that answers [bytes] (null: no picture) and

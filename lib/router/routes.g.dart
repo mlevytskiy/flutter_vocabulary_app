@@ -486,6 +486,9 @@ mixin $TalkRoute on GoRouteData {
         split: _$convertMapValue(
                 'split', state.uri.queryParameters, _$boolConverter) ??
             true,
+        learnFlow: _$convertMapValue(
+                'learn-flow', state.uri.queryParameters, _$boolConverter) ??
+            false,
       );
 
   TalkRoute get _self => this as TalkRoute;
@@ -496,6 +499,8 @@ mixin $TalkRoute on GoRouteData {
         queryParams: {
           if (_self.collectionId != null) 'collection-id': _self.collectionId,
           if (_self.split != true) 'split': _self.split.toString(),
+          if (_self.learnFlow != false)
+            'learn-flow': _self.learnFlow.toString(),
         },
       );
 

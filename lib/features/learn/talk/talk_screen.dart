@@ -64,14 +64,21 @@ enum _HandsFree { idle, speaking, listening }
 /// read-only), the spoken line filling like karaoke, a ring around the mic
 /// counting down the pause, and one line of all the words. Opened by
 /// `TalkRoute`.
+///
+/// With [learnFlow] it runs the Learn flow's main dialog (learn-welcome
+/// AC-13, AC-14) and, once it ends or is refused for the day, goes back to
+/// the flow, which shows its results.
 class TalkScreen extends ConsumerStatefulWidget {
-  const TalkScreen({super.key, this.collectionId, this.split = true});
+  const TalkScreen({super.key, this.collectionId, this.split = true, this.learnFlow = false});
 
   /// Null for the current collection, as on `LearnRoute`.
   final String? collectionId;
 
   /// Whether the Learn sheet's split was ticked.
   final bool split;
+
+  /// The Learn flow's main dialog of [collectionId].
+  final bool learnFlow;
 
   @override
   ConsumerState<TalkScreen> createState() => _TalkScreenState();
@@ -110,7 +117,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   void _choose(String choice) {
     setState(_hfStop);
     _field.clear();
-    ref.read(talkProvider(widget.collectionId).notifier).send(choice, isChoice: true);
+    ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow).notifier).send(choice, isChoice: true);
   }
 
   /// The hands-free loop (AC-29): its step, whether the learner paused it
@@ -166,7 +173,8 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     // After the first build has subscribed, so the auto-dispose talk lives.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(talkProvider(widget.collectionId).notifier).start(split: widget.split);
+      final talk = ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow).notifier);
+      widget.learnFlow ? talk.startFlow() : talk.start(split: widget.split);
     });
   }
 
@@ -197,9 +205,9 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
     final text = _field.text.trim();
     if (text.isEmpty) return;
     _field.clear();
-    final notifier = ref.read(talkProvider(widget.collectionId).notifier);
+    final notifier = ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow).notifier);
     // A spoken quiz step takes the answer instead of the AI (owner, 2026-10-24).
-    if (ref.read(talkProvider(widget.collectionId)).spokenQuizItem != null) {
+    if (ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow)).spokenQuizItem != null) {
       notifier.answerQuiz(text);
       return;
     }
@@ -271,7 +279,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   Future<void> _onAiLine(String text) async {
     await ref.read(handsFreeProvider.notifier).loaded;
     if (!mounted) return;
-    final talk = ref.read(talkProvider(widget.collectionId));
+    final talk = ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow));
     final index = talk.messages.length - 1;
     if (talk.mixed) {
       // Each turn starts afresh: a speaking turn listens at once (after the
@@ -308,7 +316,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// the loading bar; then hands-free listens when [thenListen]. Play and
   /// Replay call it too (talk-mission).
   Future<void> _speakLine(int index, {required bool thenListen}) async {
-    final messages = ref.read(talkProvider(widget.collectionId)).messages;
+    final messages = ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow)).messages;
     if (index < 0 || index >= messages.length || messages[index].role != TalkRole.ai) return;
     await ref.read(ttsVoiceProvider.notifier).loaded;
     if (!mounted) return;
@@ -345,7 +353,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _voiceLoading = false;
     });
     // A quiz step that opened while the line was read listens now too.
-    if (thenListen || ref.read(talkProvider(widget.collectionId)).spokenQuizItem != null) await _hfListen();
+    if (thenListen || ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow)).spokenQuizItem != null) await _hfListen();
   }
 
   /// The voice has started: the bar fills up and fades, and how long it
@@ -371,13 +379,13 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       _hfPaused = false;
       _hfNothingHeard = false;
     }
-    _speakLine(index, thenListen: _autoListen(ref.read(talkProvider(widget.collectionId))));
+    _speakLine(index, thenListen: _autoListen(ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow))));
   }
 
   /// Stop under the line being spoken: the voice stops; in hands-free the
   /// learner's turn starts as if it had ended.
   void _stopVoice() {
-    final listen = _autoListen(ref.read(talkProvider(widget.collectionId))) && !_hfPaused;
+    final listen = _autoListen(ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow))) && !_hfPaused;
     setState(_hfStop);
     if (listen) _hfListen();
   }
@@ -386,7 +394,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// nothing heard it stops the loop until the mic is tapped.
   Future<void> _hfListen() async {
     if (!mounted || _hfPaused) return;
-    final talk = ref.read(talkProvider(widget.collectionId));
+    final talk = ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow));
     if (talk.status != TalkStatus.talking || !_autoListen(talk)) return;
     final run = ++_hfRun;
     final speech = _speech ??= ref.read<SpeechInput>(speechInputProvider);
@@ -485,7 +493,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
   /// rare ones ("saline") are heard (owner, 2026-10-24).
   void _giveHints(SpeechInput speech) {
     if (speech is SpeechHints) {
-      (speech as SpeechHints).hints = [for (final w in ref.read(talkProvider(widget.collectionId)).words) w.word.word];
+      (speech as SpeechHints).hints = [for (final w in ref.read(talkProvider(widget.collectionId, learnFlow: widget.learnFlow)).words) w.word.word];
     }
   }
 
@@ -616,7 +624,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final provider = talkProvider(widget.collectionId);
+    final provider = talkProvider(widget.collectionId, learnFlow: widget.learnFlow);
     ref.listen(provider, (prev, next) {
       if (next.messages.length != prev?.messages.length || next.status != prev?.status) _scrollToEnd();
       if (next.quizzes != prev?.quizzes) {
@@ -641,7 +649,11 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
       final draft = next.keepDraft;
       if (draft != null && draft != prev?.keepDraft && !next.keepChoice) _field.text = draft;
       if (draft == null && prev?.keepDraft != null) _field.clear();
-      if (next.status == TalkStatus.over && prev?.status != TalkStatus.over) {
+      if (widget.learnFlow) {
+        // Back to the flow, now at its results (learn-welcome AC-13, AC-15).
+        final end = next.status == TalkStatus.over || next.status == TalkStatus.limit;
+        if (end && prev?.status != next.status) Navigator.of(context).pop();
+      } else if (next.status == TalkStatus.over && prev?.status != TalkStatus.over) {
         openSessionResults(context, widget.collectionId);
       }
     });
@@ -967,7 +979,7 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
             ),
             Padding(
               padding: const EdgeInsets.only(right: 16),
-              child: Center(child: Text('${s.repliesCount} / ${s.mixed ? 9 : maxReplies}')),
+              child: Center(child: Text('${s.repliesCount} / ${s.replyLimit ?? (s.mixed ? 9 : maxReplies)}')),
             ),
           ],
         ),

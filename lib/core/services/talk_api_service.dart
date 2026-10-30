@@ -22,6 +22,10 @@ class TalkApiException implements Exception {
 /// A talk word sent to the Worker: its translation fixes the sense.
 typedef TalkWord = ({String word, String translation});
 
+/// The topic chosen in the Learn flow's warm-up (learn-welcome AC-02, AC-13):
+/// a prepared topic's [id], or none for the learner's own [text].
+typedef TalkTopic = ({String? id, String text});
+
 /// One line of the talk so far, as the Worker reads it: [role] is "ai" or
 /// "learner".
 class TalkLine {
@@ -173,16 +177,33 @@ class TalkApiService {
         for (final w in words) {'word': w.word, 'translation': w.translation},
       ];
 
+  /// The Learn flow's main dialog (learn-welcome AC-13): the chosen [topic]
+  /// and the reply limit (6 or 12), sent on every call of that talk.
+  Map<String, Object> _flow(TalkTopic? topic, int? maxReplies) => {
+        if (topic != null) 'topic': {if (topic.id != null) 'id': topic.id!, 'text': topic.text},
+        if (maxReplies != null) 'maxReplies': maxReplies,
+      };
+
   /// Opens a talk: takes one of the day's talks on the Worker (20 a day
   /// app-wide), so this is the only call that can end in [TalkApiError.dayLimit].
-  /// [scene] is only the topic the Worker plans the mission from.
-  Future<TalkTurn> start({required String scene, required List<TalkWord> words, required String target}) => _post({
+  /// [scene] is only the topic the Worker plans the mission from. With
+  /// [maxReplies] (the Learn flow's main dialog) the mission is built on
+  /// exactly [words], in that order, within [topic].
+  Future<TalkTurn> start({
+    required String scene,
+    required List<TalkWord> words,
+    required String target,
+    TalkTopic? topic,
+    int? maxReplies,
+  }) =>
+      _post({
         'kind': 'start',
         'mode': 'mixed',
         'scene': scene,
         'words': _words(words),
         'target': target,
         'history': const <Object>[],
+        ..._flow(topic, maxReplies),
       });
 
   /// The AI's answer to the learner's last line; [history] (1–24 lines) ends
@@ -192,6 +213,8 @@ class TalkApiService {
     required List<TalkWord> words,
     required String target,
     required List<TalkLine> history,
+    TalkTopic? topic,
+    int? maxReplies,
   }) =>
       _post({
         'kind': 'reply',
@@ -200,5 +223,6 @@ class TalkApiService {
         'words': _words(words),
         'target': target,
         'history': [for (final l in history) l.toJson()],
+        ..._flow(topic, maxReplies),
       });
 }

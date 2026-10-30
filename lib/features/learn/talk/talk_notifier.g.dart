@@ -18,6 +18,11 @@ part of 'talk_notifier.dart';
 /// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
+///
+/// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+/// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+/// [learnFlowDialogSetupProvider], and [finish] hands each word's
+/// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
 
 @ProviderFor(Talk)
 final talkProvider = TalkFamily._();
@@ -32,6 +37,11 @@ final talkProvider = TalkFamily._();
 /// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
+///
+/// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+/// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+/// [learnFlowDialogSetupProvider], and [finish] hands each word's
+/// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
 final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
   /// [collectionId] is the current collection. The talk takes the words a
@@ -43,8 +53,18 @@ final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   /// meanwhile. It ticks words from the learner's own replies only
   /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
   /// Leaving without [finish] writes nothing (AC-22).
+  ///
+  /// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+  /// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+  /// [learnFlowDialogSetupProvider], and [finish] hands each word's
+  /// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
   TalkProvider._(
-      {required TalkFamily super.from, required String? super.argument})
+      {required TalkFamily super.from,
+      required (
+        String?, {
+        bool learnFlow,
+      })
+          super.argument})
       : super(
           retry: null,
           name: r'talkProvider',
@@ -60,7 +80,7 @@ final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   String toString() {
     return r'talkProvider'
         ''
-        '($argument)';
+        '$argument';
   }
 
   @$internal
@@ -86,7 +106,7 @@ final class TalkProvider extends $NotifierProvider<Talk, TalkState> {
   }
 }
 
-String _$talkHash() => r'91c12a2ff2e209ea3645b4cbd9910a0356b10cc9';
+String _$talkHash() => r'4e429fc413b7d73a7e1230998b6f752fe3d09fd1';
 
 /// Talk with AI (learn-redesign AC-20 – AC-24, sad §6.4). A null
 /// [collectionId] is the current collection. The talk takes the words a
@@ -98,9 +118,23 @@ String _$talkHash() => r'91c12a2ff2e209ea3645b4cbd9910a0356b10cc9';
 /// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
+///
+/// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+/// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+/// [learnFlowDialogSetupProvider], and [finish] hands each word's
+/// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
 
 final class TalkFamily extends $Family
-    with $ClassFamilyOverride<Talk, TalkState, TalkState, TalkState, String?> {
+    with
+        $ClassFamilyOverride<
+            Talk,
+            TalkState,
+            TalkState,
+            TalkState,
+            (
+              String?, {
+              bool learnFlow,
+            })> {
   TalkFamily._()
       : super(
           retry: null,
@@ -120,11 +154,20 @@ final class TalkFamily extends $Family
   /// meanwhile. It ticks words from the learner's own replies only
   /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
   /// Leaving without [finish] writes nothing (AC-22).
+  ///
+  /// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+  /// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+  /// [learnFlowDialogSetupProvider], and [finish] hands each word's
+  /// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
 
   TalkProvider call(
-    String? collectionId,
-  ) =>
-      TalkProvider._(argument: collectionId, from: this);
+    String? collectionId, {
+    bool learnFlow = false,
+  }) =>
+      TalkProvider._(argument: (
+        collectionId,
+        learnFlow: learnFlow,
+      ), from: this);
 
   @override
   String toString() => r'talkProvider';
@@ -140,14 +183,24 @@ final class TalkFamily extends $Family
 /// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
+///
+/// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+/// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+/// [learnFlowDialogSetupProvider], and [finish] hands each word's
+/// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
 
 abstract class _$Talk extends $Notifier<TalkState> {
-  late final _$args = ref.$arg as String?;
-  String? get collectionId => _$args;
+  late final _$args = ref.$arg as (
+    String?, {
+    bool learnFlow,
+  });
+  String? get collectionId => _$args.$1;
+  bool get learnFlow => _$args.learnFlow;
 
   TalkState build(
-    String? collectionId,
-  );
+    String? collectionId, {
+    bool learnFlow = false,
+  });
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
@@ -157,7 +210,8 @@ abstract class _$Talk extends $Notifier<TalkState> {
     return element.handleCreate(
         ref,
         () => build(
-              _$args,
+              _$args.$1,
+              learnFlow: _$args.learnFlow,
             ));
   }
 }

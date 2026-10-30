@@ -4,9 +4,12 @@ import 'dart:typed_data';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/models/word_pair.dart';
+import '../../../core/models/word_result.dart';
 import '../../../core/providers.dart';
 import '../../../core/services/learn_api_service.dart' show LearnDataKind;
 import '../../../core/services/talk_api_service.dart';
+import '../flow/learn_flow_notifier.dart';
+import '../session/leitner.dart' show WordOutcome;
 import '../session/session_result.dart';
 import '../session/session_words.dart';
 import 'talk_quiz.dart';
@@ -25,6 +28,19 @@ const talkNoWordsMessage = 'Add words with a translation to start learning';
 
 /// The Worker takes 1–19 words a turn (ADR-0007).
 const int talkMaxWords = 19;
+
+/// The `WordResult.exerciseId` of the Learn flow's main dialog
+/// (learn-welcome AC-14).
+const String talkExerciseId = 'talk';
+
+/// How a talk word's outcome reads as a main dialog result (learn-welcome
+/// AC-14): clean → used, hinted → after hint, missed → missed, unused.
+DialogWordResult dialogResultOf(WordOutcome outcome) => switch (outcome) {
+      WordOutcome.clean => DialogWordResult.used,
+      WordOutcome.hinted => DialogWordResult.afterHint,
+      WordOutcome.missed => DialogWordResult.missed,
+      WordOutcome.unused => DialogWordResult.unused,
+    };
 
 /// Where a talk stands (screens.md SCR-06): setting the scene, waiting for
 /// the learner, waiting for the AI, refused for the day, failed (Retry), or
@@ -71,7 +87,12 @@ class TalkState {
     this.keepChoice = false,
     this.quizzes = const [],
     this.quizzedRows = const {},
+    this.replyLimit,
   });
+
+  /// The Learn flow's main dialog's reply limit (6 or 12, learn-welcome
+  /// AC-13) for the counter; null in a plain talk.
+  final int? replyLimit;
 
   /// The quick checks of this talk (owner, 2026-10-24), each after the
   /// message count [at]; a null quiz is still loading.
@@ -184,6 +205,7 @@ class TalkState {
         keepChoice: keepChoice ?? this.keepChoice,
         quizzes: quizzes ?? this.quizzes,
         quizzedRows: quizzedRows ?? this.quizzedRows,
+        replyLimit: replyLimit,
       );
 }
 
@@ -197,6 +219,11 @@ class TalkState {
 /// meanwhile. It ticks words from the learner's own replies only
 /// ([usedWords]) and, at [finish], moves the boxes once ([finishSession]).
 /// Leaving without [finish] writes nothing (AC-22).
+///
+/// With [learnFlow] it is the Learn flow's main dialog (learn-welcome AC-13,
+/// AC-14; [startFlow]): the words, topic, reply limit and picture come from
+/// [learnFlowDialogSetupProvider], and [finish] hands each word's
+/// [DialogWordResult] to the flow and writes `WordResult`s, never a box.
 @riverpod
 class Talk extends _$Talk {
   String? _id;
@@ -206,8 +233,12 @@ class Talk extends _$Talk {
   bool _finished = false;
   bool _disposed = false;
 
+  /// The main dialog's topic and reply limit; null in a plain talk.
+  TalkTopic? _topic;
+  int? _maxReplies;
+
   @override
-  TalkState build(String? collectionId) {
+  TalkState build(String? collectionId, {bool learnFlow = false}) {
     ref.onDispose(() => _disposed = true);
     return const TalkState();
   }
@@ -219,6 +250,45 @@ class Talk extends _$Talk {
   List<WordPair> get _words => [for (final w in state.words) w.word];
 
   List<TalkWord> get _wire => [for (final w in state.words) (word: w.word.word, translation: w.word.translation)];
+
+  /// The Learn flow's main dialog (learn-welcome AC-13): the flow's chosen
+  /// words, in order (the first is the target), its topic and reply limit,
+  /// and the picture drawn during the cards (no second picture request).
+  Future<void> startFlow() async {
+    _finished = false;
+    _set(const TalkState());
+    final store = await ref.read(collectionStoreProvider.future);
+    final id = collectionId ?? await store.currentCollectionId();
+    if (id == null) {
+      _set(const TalkState(status: TalkStatus.error, errorText: talkFailedMessage));
+      return;
+    }
+    // Kept listened while the talk lives: the picture may still be drawing.
+    final sub = ref.listen<LearnDialogSetup?>(learnFlowDialogSetupProvider(id), (_, next) {
+      if (next == null || next.pictureLoading || _disposed) return;
+      if (state.pictureLoading) _set(state.copyWith(picture: next.picture, pictureLoading: false));
+    });
+    final setup = sub.read();
+    final c = await store.byId(id);
+    final words = setup?.words.take(talkMaxWords).toList() ?? const <WordPair>[];
+    if (setup == null || words.isEmpty) {
+      _set(const TalkState(status: TalkStatus.error, errorText: talkFailedMessage));
+      return;
+    }
+    _id = id;
+    _topic = (id: setup.topic.id, text: setup.topic.text);
+    _maxReplies = setup.maxReplies;
+    _scene = scenePick(name: c?.name ?? '', description: c?.description ?? '');
+    _set(TalkState(
+      words: [for (final w in words) TalkStripWord(w)],
+      target: words.first.word,
+      name: c?.name ?? '',
+      picture: setup.picture,
+      pictureLoading: setup.pictureLoading,
+      replyLimit: setup.maxReplies,
+    ));
+    await _open();
+  }
 
   /// Picks the words, builds the scene and asks for the opening.
   Future<void> start({required bool split, DateTime? now}) async {
@@ -258,9 +328,11 @@ class Talk extends _$Talk {
   Future<void> _open() async {
     _set(state.copyWith(status: TalkStatus.starting, errorText: () => null));
     try {
-      final turn = await ref.read(talkApiServiceProvider).start(scene: _scene, words: _wire, target: state.target!);
+      final turn = await ref
+          .read(talkApiServiceProvider)
+          .start(scene: _scene, words: _wire, target: state.target!, topic: _topic, maxReplies: _maxReplies);
       final mission = turn.mission;
-      if (mission != null) {
+      if (mission != null && !learnFlow) {
         // Only the mission's words are talked about; the rest keep their boxes.
         final keep = {for (final w in mission.words) w.trim().toLowerCase()};
         final words = [
@@ -268,6 +340,8 @@ class Talk extends _$Talk {
             if (keep.contains(w.word.word.trim().toLowerCase())) w
         ];
         if (words.isNotEmpty) _set(state.copyWith(words: words));
+      }
+      if (mission != null) {
         _scene = '${mission.role}\nGoal: ${mission.goal}\n${mission.brief}\nVisible scene: ${mission.picture}';
       }
       _set(state.copyWith(
@@ -278,11 +352,14 @@ class Talk extends _$Talk {
         interaction: turn.interaction,
         choices: turn.choices,
         speakingPrompt: turn.speakingPrompt,
-        pictureLoading: mission != null,
+        // The main dialog shows the picture drawn during the cards.
+        pictureLoading: learnFlow ? null : mission != null,
       ));
-      if (mission != null) unawaited(_drawPicture(mission.picture));
+      if (mission != null && !learnFlow) unawaited(_drawPicture(mission.picture));
       unawaited(_maybeQuiz());
     } on TalkApiException catch (e) {
+      // A main dialog refused for the day is skipped (learn-welcome AC-13).
+      if (learnFlow && e.error == TalkApiError.dayLimit) _flow?.dialogRefused();
       _set(e.error == TalkApiError.dayLimit
           ? state.copyWith(status: TalkStatus.limit, errorText: () => talkDayLimitMessage)
           : state.copyWith(status: TalkStatus.error, errorText: () => talkFailedMessage));
@@ -326,7 +403,7 @@ class Talk extends _$Talk {
       keepChoice: false,
     );
     _set(next);
-    if (!next.mixed && talkOver(next.repliesCount, next.usedCount, next.words.length)) {
+    if (!learnFlow && !next.mixed && talkOver(next.repliesCount, next.usedCount, next.words.length)) {
       await finish();
       return;
     }
@@ -339,17 +416,21 @@ class Talk extends _$Talk {
               for (final m in next.messages)
                 TalkLine(role: m.role == TalkRole.ai ? 'ai' : 'learner', text: m.text, isChoice: m.isChoice),
             ]),
+            topic: _topic,
+            maxReplies: _maxReplies,
           );
       if (_finished || _disposed) return;
       final target = _targetOf(turn.target);
       final moved = target != next.target;
+      // The main dialog ends at its reply limit whatever the AI said.
+      final last = _maxReplies != null && next.repliesCount >= _maxReplies!;
       _set(state.copyWith(
         status: TalkStatus.talking,
         messages: [...state.messages, TalkMessage(TalkRole.ai, turn.reply)],
         target: () => target,
-        interaction: turn.interaction,
-        choices: turn.choices,
-        speakingPrompt: turn.speakingPrompt,
+        interaction: last ? 'complete' : turn.interaction,
+        choices: last ? const [] : turn.choices,
+        speakingPrompt: last ? '' : turn.speakingPrompt,
         hintWord: moved ? () => null : null,
         repliesWithoutTarget: moved ? 0 : null,
       ));
@@ -440,7 +521,7 @@ class Talk extends _$Talk {
   Future<void> retry() async {
     if (state.status != TalkStatus.error) return;
     if (state.messages.isEmpty) {
-      if (state.words.isEmpty) return start(split: _split);
+      if (state.words.isEmpty) return learnFlow ? startFlow() : start(split: _split);
       return _open();
     }
     final draft = state.keepDraft;
@@ -454,25 +535,35 @@ class Talk extends _$Talk {
     _set(state.copyWith(hintWord: () => state.target, hinted: {...state.hinted, row}));
   }
 
-  /// Done, or the talk's own end: scores the words (AC-22), moves the boxes in
-  /// one store write and hands the result to the results screen. Runs once.
-  Future<void> finish({DateTime? now}) async {
-    if (_finished || state.words.isEmpty || _id == null) return;
-    _finished = true;
-    final store = await ref.read(collectionStoreProvider.future);
-    final pick = _pick;
-    final result = await finishSession(
-      store: store,
-      collectionId: _id,
-      // A quiz answer counts too: right is a use, wrong a miss (owner, 2026-10-24).
-      outcomes: scoreTalk(_words, used: {
+  /// The flow this main dialog belongs to; null in a plain talk.
+  LearnFlow? get _flow => learnFlow && _id != null ? ref.read(learnFlowProvider(_id!).notifier) : null;
+
+  /// Each talk word's outcome (AC-22): a quiz answer counts too, right is a
+  /// use, wrong a miss (owner, 2026-10-24).
+  Map<WordPair, WordOutcome> get _outcomes => scoreTalk(_words, used: {
         for (final w in state.words)
           if (w.used) w.word.rowId,
         for (final q in state.quizzes) ...?q.quiz?.rightRows,
         for (final q in state.quizzes) ...?q.quiz?.wrongRows,
       }, hinted: state.hinted, missed: {
         for (final q in state.quizzes) ...?q.quiz?.wrongRows,
-      }),
+      });
+
+  /// Done, or the talk's own end: scores the words (AC-22), moves the boxes in
+  /// one store write and hands the result to the results screen. Runs once.
+  /// The Learn flow's main dialog moves no box (learn-welcome AC-14): each
+  /// word's [DialogWordResult] goes to the flow and a used word gets a
+  /// `WordResult` (known when clean, repeat after a hint or a miss).
+  Future<void> finish({DateTime? now}) async {
+    if (_finished || state.words.isEmpty || _id == null) return;
+    _finished = true;
+    if (learnFlow) return _finishFlow();
+    final store = await ref.read(collectionStoreProvider.future);
+    final pick = _pick;
+    final result = await finishSession(
+      store: store,
+      collectionId: _id,
+      outcomes: _outcomes,
       kind: SessionKind.talk,
       now: now,
       groupIndex: pick?.groupIndex,
@@ -484,6 +575,23 @@ class Talk extends _$Talk {
     if (result.written && index != null) {
       await ref.read(learnLastGroupProvider(_id!).notifier).set(index);
     }
+    _set(state.copyWith(status: TalkStatus.over));
+  }
+
+  Future<void> _finishFlow() async {
+    final results = {for (final e in _outcomes.entries) e.key.rowId: dialogResultOf(e.value)};
+    final sink = ref.read(examResultSinkProvider);
+    for (final e in results.entries) {
+      if (e.value == DialogWordResult.unused) continue;
+      await sink.record(
+        collectionId: _id,
+        rowId: e.key,
+        exerciseId: talkExerciseId,
+        label: e.value == DialogWordResult.used ? WordResultLabel.known : WordResultLabel.repeat,
+      );
+    }
+    if (_disposed) return;
+    _flow?.recordDialog(results);
     _set(state.copyWith(status: TalkStatus.over));
   }
 }

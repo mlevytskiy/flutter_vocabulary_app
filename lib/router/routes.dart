@@ -201,16 +201,20 @@ class LearningSessionRoute extends GoRouteData with $LearningSessionRoute {
 
 /// Talk with AI (learn-redesign SCR-06, AC-20), opened from the Learn sheet's
 /// Talk with AI card. Ids only (rule 1): [collectionId] as on [LearnRoute],
-/// [split] as ticked on the sheet.
+/// [split] as ticked on the sheet. [learnFlow]: the Learn flow's main dialog
+/// of [collectionId] (learn-welcome AC-13), pushed by the flow screen; its
+/// setup comes from `learnFlowDialogSetupProvider`, and it pops back to the
+/// flow when it ends.
 class TalkRoute extends GoRouteData with $TalkRoute {
-  const TalkRoute({this.collectionId, this.split = true});
+  const TalkRoute({this.collectionId, this.split = true, this.learnFlow = false});
 
   final String? collectionId;
   final bool split;
+  final bool learnFlow;
 
   @override
   Widget build(BuildContext context, GoRouterState state) =>
-      TalkScreen(collectionId: collectionId, split: split);
+      TalkScreen(collectionId: collectionId, split: split, learnFlow: learnFlow);
 /// The results of the session just finished (learn-redesign SCR-04; AC-12),
 /// read from `lastSessionResultProvider`. [collectionId] as on
 /// [LearningSessionRoute].
