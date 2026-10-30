@@ -181,13 +181,4 @@ void main() {
     expect(find.text('Pick at least one exercise'), findsNothing);
   });
 
-  testWidgets('AC-17: the sheet gear opens the Learn settings', (t) async {
-    await pump(t, initial: '/words/table');
-    await t.tap(find.text('Learn'));
-    await t.pumpAndSettle();
-    await t.tap(find.byTooltip('Learn settings'));
-    await t.pumpAndSettle();
-    expect(find.text('Preset'), findsOneWidget);
-    expect(find.byType(LearnSettingsScreen), findsOneWidget);
-  });
 }

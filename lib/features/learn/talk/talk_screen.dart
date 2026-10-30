@@ -800,10 +800,10 @@ class _TalkScreenState extends ConsumerState<TalkScreen> with TickerProviderStat
                         ]),
                       ),
                   ],
-                  if (s.complete)
+                  if (s.complete && s.openQuiz == null)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: FilledButton(onPressed: notifier.finish, child: const Text('See results')),
+                      child: FilledButton(onPressed: notifier.end, child: const Text('See results')),
                     ),
                   if (s.status == TalkStatus.waiting) TalkBubble(index: -1, text: '…', mine: false, maxWidth: maxWidth),
                   ValueListenableBuilder<TextEditingValue>(

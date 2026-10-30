@@ -601,6 +601,40 @@ void main() {
       expect(tide.lastCheckSide, 'uk');
     });
 
+    test('a word hinted after the last quick check gets a closing check at the talk\'s own end (AC-11)',
+        () async {
+      final id = await newCollection(['crowded', 'ticket']);
+      final api = FakeTalkApi()..answers.add(const TalkTurn(reply: 'Hi', target: 'ticket'));
+      final (c, talk) = await started(id, api);
+      await talk.send('A crowded hall');
+      await talk.send('Nothing');
+      talk.showHint();
+      await talk.send('Where is my ticket?'); // every word used: the talk's own end
+      var s = c.read(talkProvider(id));
+      expect(s.status, TalkStatus.talking, reason: 'the closing check comes first');
+      final step = s.openQuiz!.quiz!.current;
+      expect(step.kind, TalkQuizKind.selfCheck);
+      expect(step.word.word, 'ticket');
+      expect(s.openQuiz!.quiz!.items, hasLength(1));
+      await talk.rateQuiz(SelfRating.hard);
+      await pumpEventQueue();
+      s = c.read(talkProvider(id));
+      expect(s.status, TalkStatus.over);
+      expect(c.read(lastSessionResultProvider)!.moves.firstWhere((m) => m.word == 'ticket').rating,
+          SelfRating.hard);
+      final ticket = (await store.byId(id))!.boxes.firstWhere((b) => b.rowId == 'r2');
+      expect(ticket.box, 1, reason: 'Hard on a new word: box 1');
+    });
+
+    test('the talk\'s own end without a flagged word finishes at once', () async {
+      final id = await newCollection(['crowded']);
+      final api = FakeTalkApi();
+      final (c, talk) = await started(id, api);
+      await talk.end();
+      expect(c.read(talkProvider(id)).status, TalkStatus.over);
+      expect(c.read(talkProvider(id)).quizzes, isEmpty);
+    });
+
     test('leaving without Done writes nothing', () async {
       final id = await newCollection(['crowded', 'ticket']);
       final api = FakeTalkApi();

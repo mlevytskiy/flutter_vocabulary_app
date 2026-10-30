@@ -235,6 +235,9 @@ class Talk extends _$Talk {
   bool _finished = false;
   bool _disposed = false;
 
+  /// Set while the closing check is open: the talk finishes once it closes.
+  bool _finishOnClose = false;
+
   /// The main dialog's topic and reply limit; null in a plain talk.
   TalkTopic? _topic;
   int? _maxReplies;
@@ -425,7 +428,7 @@ class Talk extends _$Talk {
     );
     _set(next);
     if (!learnFlow && !next.mixed && talkOver(next.repliesCount, next.usedCount, next.words.length)) {
-      await finish();
+      await end();
       return;
     }
     try {
@@ -535,24 +538,53 @@ class Talk extends _$Talk {
   /// each talk word flagged so far — missed (a wrong answer) or used only
   /// after its hint — that no quick check has given one yet
   /// (self-check-cards AC-11). A word flagged later waits for the next quick
-  /// check; a talk ending before it leaves the word unrated (AC-09).
+  /// check or the closing check ([end]); ending early leaves it unrated (AC-09).
   TalkQuiz _withSelfChecks(TalkQuiz quiz) {
     if (!quiz.exercisesDone) return quiz;
+    final steps = _selfCheckSteps(quiz);
+    return steps.isEmpty ? quiz : quiz.copyWith(items: [...quiz.items, ...steps]);
+  }
+
+  /// A self-check step for each talk word flagged so far that no quick check
+  /// gave one yet, [extra] (a quiz not in the state yet) counted too.
+  List<TalkQuizItem> _selfCheckSteps(TalkQuiz? extra) {
     final checked = {
       for (final q in state.quizzes) ...?q.quiz?.checkedRows,
-      ...quiz.checkedRows,
+      ...?extra?.checkedRows,
     };
-    final outcomes = _outcomesWith(quiz);
+    final outcomes = _outcomesWith(extra);
     final flagged = [
       for (final e in outcomes.entries)
         if (isFlagged(e.value) && !checked.contains(e.key.rowId)) e.key
     ];
-    if (flagged.isEmpty) return quiz;
+    if (flagged.isEmpty) return const [];
     final missed = {
       for (final e in outcomes.entries)
         if (e.value == WordOutcome.missed) e.key.rowId
     };
-    return quiz.copyWith(items: [...quiz.items, ...selfCheckSteps(flagged, boxes: _boxes, missedRows: missed)]);
+    return selfCheckSteps(flagged, boxes: _boxes, missedRows: missed);
+  }
+
+  /// The talk's own end — its last reply, or See results after the AI closed
+  /// it: a word flagged after the last quick check gets its self-check step
+  /// first, in a closing check of only those steps, and the talk finishes
+  /// when that check closes (self-check-cards AC-11). Without such a word,
+  /// [finish] at once. The header's End stays [finish]: ending early leaves
+  /// a flagged word unrated (AC-09).
+  Future<void> end() async {
+    if (_finished || _finishOnClose) return;
+    final steps = state.openQuiz == null ? _selfCheckSteps(null) : const <TalkQuizItem>[];
+    if (steps.isEmpty) return finish();
+    _finishOnClose = true;
+    _set(state.copyWith(
+      status: TalkStatus.talking,
+      quizzes: [...state.quizzes, (at: state.messages.length, quiz: TalkQuiz(items: steps))],
+    ));
+  }
+
+  /// Finishes the talk once its closing check has closed.
+  Future<void> _finishIfClosed() async {
+    if (_finishOnClose && state.openQuiz == null) await finish();
   }
 
   /// The open quiz's self-check step rated (self-check-cards AC-11): in a
@@ -570,7 +602,7 @@ class Talk extends _$Talk {
     final row = item.word;
     if (!learnFlow) {
       _ratings[row.rowId] = (rating: rating, side: item.side);
-      return;
+      return _finishIfClosed();
     }
     final now = ref.read(learnFlowClockProvider)();
     _boxes = {
@@ -586,6 +618,7 @@ class Talk extends _$Talk {
         box,
       ];
     });
+    await _finishIfClosed();
   }
 
   /// The next step of the open quiz, or back to the talk after the last.
@@ -593,6 +626,7 @@ class Talk extends _$Talk {
     final quiz = state.openQuiz?.quiz;
     if (quiz == null || !quiz.current.done) return;
     _setQuiz(quiz.isLast ? quiz.copyWith(closed: true) : quiz.copyWith(index: quiz.index + 1));
+    unawaited(_finishIfClosed());
   }
 
   /// Retry after an error: the opening again, or the kept reply.

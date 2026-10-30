@@ -50,8 +50,10 @@ with one guard from what the exercises saw, moves the box once, at the end of th
 - **AC-10 Results.** The results screen shows each word's move and, for a rated word, the rating
   that moved it.
 - **AC-11 Talk.** In Talk with AI, a word missed or used only after its hint gets a self-check step
-  in the quick check; its rating moves the box by AC-05–AC-07. A talk word flagged but never rated
-  (talk ended before the quick check) keeps its box (AC-09).
+  in the quick check; its rating moves the box by AC-05–AC-07. A word flagged after the last quick
+  check gets its step in a closing check of only self-check steps when the talk ends by itself (its
+  last reply, or See results); the talk finishes when that check closes (owner, 2026-10-30). A talk
+  word flagged but never rated (the learner ended the talk before rating it) keeps its box (AC-09).
 
 ## Owner's answers (2026-10-27)
 
