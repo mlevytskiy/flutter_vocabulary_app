@@ -31,6 +31,8 @@ ThemeData classicTheme() {
     ),
     useMaterial3: true,
     fontFamily: matchaBodyFont,
+    // The constructor's defaults are Classic's slots (rateForgot … rateEasy
+    // included).
     extensions: const [AppDecor.classic],
   );
   final textTheme = withDisplayFont(base.textTheme, matchaDisplayFont);

@@ -67,6 +67,10 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.onLearnRight = Colors.white,
     this.learnWrong = const Color(0xFFE5604D),
     this.onLearnWrong = Colors.white,
+    this.rateForgot = const Color(0xFFD84B4B),
+    this.rateHard = const Color(0xFFEF8A2E),
+    this.rateMedium = const Color(0xFF3F7FD9),
+    this.rateEasy = const Color(0xFF2E9E5B),
     this.picked = Colors.blueGrey,
     this.pic50 = const Color(0xfff6effe),
     this.pic100 = const Color(0xffeee2fd),
@@ -190,6 +194,15 @@ class AppDecor extends ThemeExtension<AppDecor> {
   final Color onLearnRight;
   final Color learnWrong;
   final Color onLearnWrong;
+
+  /// The self-check card's four rating buttons (learn-welcome AC-07,
+  /// ADR-0006): I don't remember, Hard, Medium, Easy. Filled with these, the
+  /// text black or white by their brightness; outlined in them in a theme
+  /// with [picOutline].
+  final Color rateForgot;
+  final Color rateHard;
+  final Color rateMedium;
+  final Color rateEasy;
 
   /// Painted behind the main screen's list: a gradient and soft colour blobs.
   final Gradient? backdrop;
