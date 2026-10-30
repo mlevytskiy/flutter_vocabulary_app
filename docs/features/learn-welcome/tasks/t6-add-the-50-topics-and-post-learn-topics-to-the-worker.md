@@ -7,7 +7,7 @@ acs: ["AC-03"]
 files_hint: ["vocab-photo-api/src/learn/topics.ts", "vocab-photo-api/src/learn/routes.ts", "vocab-photo-api/test/learn-topics.test.ts"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Add the 50 topics and POST /learn/topics to the Worker

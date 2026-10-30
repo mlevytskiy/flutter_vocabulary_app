@@ -7,7 +7,7 @@ acs: ["AC-01"]
 files_hint: ["lib/features/learn/session/exercise_page.dart", "lib/features/learn/kit/typed_answer_field.dart", "test/learn_kit_typed_answer_field_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Let exercise pages report a hint: right after a hint is its own result, not a clean right

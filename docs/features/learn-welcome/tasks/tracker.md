@@ -10,7 +10,7 @@
 | T3 | [Add the pure self-check rules: SelfRating, rateBox, nextSide, box labels](./t3-add-the-pure-self-check-rules-selfrating-ratebox-nextside-bo.md) | domain | implementer agent | S | T2 | todo |
 | T4 | [Add the pure flow word rules: card words, the source-tail split, dialog words](./t4-add-the-pure-flow-word-rules-card-words-the-source-tail-spli.md) | domain | implementer agent | M | T1 | done |
 | T5 | [Add the pure story slot scheduler](./t5-add-the-pure-story-slot-scheduler.md) | domain | implementer agent | S | T1 | done |
-| T6 | [Add the 50 topics and POST /learn/topics to the Worker](./t6-add-the-50-topics-and-post-learn-topics-to-the-worker.md) | ports | implementer agent | M | — | todo |
+| T6 | [Add the 50 topics and POST /learn/topics to the Worker](./t6-add-the-50-topics-and-post-learn-topics-to-the-worker.md) | ports | implementer agent | M | — | done |
 | T7 | [Add the topics service with a 4 s timeout and the bundled fallback](./t7-add-the-topics-service-with-a-4-s-timeout-and-the-bundled-fa.md) | app | implementer agent | S | T6 | todo |
 | T8 | [Let the talk mission take a topic, a reply limit and chosen words](./t8-let-the-talk-mission-take-a-topic-a-reply-limit-and-chosen-w.md) | ports | implementer agent | M | — | done |
 | T9 | [Let story runs send each word's context, source and edited translation to the story writer](./t9-let-story-runs-send-each-word-s-context-source-and-edited-tr.md) | ports | implementer agent | S | — | todo |
