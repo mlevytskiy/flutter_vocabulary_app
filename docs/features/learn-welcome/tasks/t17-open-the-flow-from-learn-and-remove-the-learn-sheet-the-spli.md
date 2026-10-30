@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-17"]
 files_hint: ["lib/router/routes.dart", "lib/features/words_table/widgets/learn_share_bar.dart", "lib/features/learn/entry/learn_sheet.dart", "lib/features/learn/widgets/group_pager.dart", "test/learn_entry_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T17 — Open the flow from Learn and remove the Learn sheet, the split checkbox and the group line
