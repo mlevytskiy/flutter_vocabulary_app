@@ -7,7 +7,7 @@ acs: ["AC-04", "AC-05"]
 files_hint: ["lib/features/words/words_notifier.dart", "lib/features/words/widgets/translation_dots_button.dart", "lib/features/words/widgets/definition_dots_button.dart", "test/word_edit_flags_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Set the edit flags on learner edits and clear on a word change
