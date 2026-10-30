@@ -7,7 +7,7 @@ acs: ["AC-11"]
 files_hint: ["lib/features/learn/talk/talk_rules.dart", "lib/features/learn/talk/talk_quiz.dart", "lib/features/learn/talk/talk_quiz_card.dart", "lib/features/learn/talk/talk_notifier.dart", "test/talk_quiz_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Talk with AI: a self-check step in the quick check for missed and hinted words; talk scoring through the ratings
