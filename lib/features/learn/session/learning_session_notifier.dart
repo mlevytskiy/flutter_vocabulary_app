@@ -12,6 +12,7 @@ import '../../../core/story/word_grouping.dart' show wordsToLearn;
 import '../../words/words_notifier.dart';
 import '../entry/learn_presets.dart';
 import '../kit/exercise_random.dart';
+import 'check_queue.dart';
 import 'exercise_page.dart';
 import 'ladder_queue.dart';
 import 'leitner.dart';
@@ -56,6 +57,8 @@ class LearningSessionState {
     this.stepProgress = 0,
     this.loadFailed = false,
     this.outcomes = const {},
+    this.checks,
+    this.checkCard,
   });
 
   final SessionStatus status;
@@ -95,6 +98,15 @@ class LearningSessionState {
   /// Each word's outcome once [status] is [SessionStatus.finished], keyed by
   /// the same [WordPair] instances as [SessionPick.words] (for `applySession`).
   final Map<WordPair, WordOutcome> outcomes;
+
+  /// The self-check cards (self-check-cards AC-02): null unless the session
+  /// was started with `checkCards: true`. Its `ratings` hold each rated
+  /// word's last rating and `ratedReasons` why that card was due.
+  final CheckQueue<Object>? checks;
+
+  /// The word whose self-check card is due now; [page] is then null and the
+  /// session waits for [LearningSession.rateCheck].
+  final String? checkCard;
 }
 
 /// One learning session of a collection (learn-redesign ADR-0004; AC-02,
@@ -126,6 +138,8 @@ class LearningSession extends _$LearningSession {
   late Map<String, WordPair> _byRow;
   SessionPick? _pick;
   LadderQueue? _queue;
+  CheckQueue<Object>? _checks;
+  String? _checkCard;
   bool _split = false;
   bool _disposed = false;
 
@@ -163,7 +177,11 @@ class LearningSession extends _$LearningSession {
   ///
   /// [skipGroup] is "Next group": the group just played, left out of the
   /// picker's due / new rules (AC-12).
-  Future<void> start({required bool split, List<String>? rowIds, int? skipGroup}) async {
+  ///
+  /// [checkCards] schedules a self-check card 3 pages after each wrong or
+  /// hinted page (self-check-cards AC-01, AC-02); off, the pages play as
+  /// before.
+  Future<void> start({required bool split, List<String>? rowIds, int? skipGroup, bool checkCards = false}) async {
     _publish(SessionStatus.loading);
     final collection = await _readOnce(collectionId == null
         ? wordsProvider.future
@@ -205,6 +223,7 @@ class LearningSession extends _$LearningSession {
       _drawn[step] = on.take(min(typesPerStep, on.length)).toList();
     }
     _queue = LadderQueue([for (final w in pick.words) w.rowId], due: pick.dueRowIds, random: _random);
+    _checks = checkCards ? CheckQueue<Object>() : null;
 
     // Step 1 up front; steps 2 and 3 start now and are awaited when the
     // first word reaches them.
@@ -230,8 +249,10 @@ class LearningSession extends _$LearningSession {
 
   /// The current page was answered: [results] holds right/wrong by row id
   /// (a board page has several). Records each word on the ladder and sets
-  /// the verdict (AC-09, AC-10).
-  void answer(Map<String, bool> results) {
+  /// the verdict (AC-09, AC-10). With check cards on, a word whose detailed
+  /// result ([detailed], else the page answer's own) is wrong or hinted is
+  /// flagged for a card (self-check-cards AC-01).
+  void answer(Map<String, bool> results, {Map<String, PageResult>? detailed}) {
     final page = _page;
     final queue = _queue;
     if (page == null || queue == null || _verdict != null) return;
@@ -240,6 +261,20 @@ class LearningSession extends _$LearningSession {
         if (_byRow.containsKey(id) && !queue.passed(id)) id: results[id] ?? false,
     };
     rights.forEach(queue.record);
+    final checks = _checks;
+    if (checks != null) {
+      final details = detailed ?? _answer?.pageResults ?? _answer?.checkedResults ?? const {};
+      final flags = <String, CheckReason>{};
+      rights.forEach((id, right) {
+        final result = details[id] ?? PageResult.of(right);
+        if (result == PageResult.hinted) {
+          flags[id] = CheckReason.hint;
+        } else if (result == PageResult.wrong || !right) {
+          flags[id] = CheckReason.mistake;
+        }
+      });
+      checks.pageDone(page.rowIds, flags);
+    }
     final right = rights.values.every((r) => r);
     if (page.rowIds.length > 1) {
       final count = rights.values.where((r) => r).length;
@@ -259,6 +294,18 @@ class LearningSession extends _$LearningSession {
   Future<void> next() async {
     if (_verdict == null) return;
     _verdict = null;
+    await _advance();
+  }
+
+  /// The due self-check card ([LearningSessionState.checkCard]) was rated:
+  /// [rating] is kept as the word's last rating for the session end (no box
+  /// moves here), then the session goes on.
+  Future<void> rateCheck(Object rating) async {
+    final id = _checkCard;
+    final checks = _checks;
+    if (id == null || checks == null) return;
+    checks.rate(id, rating);
+    _checkCard = null;
     await _advance();
   }
 
@@ -327,6 +374,11 @@ class LearningSession extends _$LearningSession {
     final queue = _queue!;
     while (true) {
       final next = queue.next();
+      final card = _checks?.due(
+        next: next?.rowId,
+        othersPending: (id) => queue.pendingCount > (queue.passed(id) ? 0 : 1),
+      );
+      if (card != null) return _showCard(card.rowId);
       if (next == null) return await _finish();
       final step = next.rung.step;
       if (!_loadedSteps.contains(step)) {
@@ -383,12 +435,29 @@ class LearningSession extends _$LearningSession {
     _used.add(page);
     _lastShown[page.exerciseId] = _pageIndex;
     _shownRows.addAll(page.rowIds);
-    _pageNumber = queue.answered - _skipped + 1;
-    _pageTotal = queue.estimatedTotal - _skipped;
+    _pageNumber = queue.answered - _skipped + (_checks?.rated ?? 0) + 1;
+    _pageTotal = queue.estimatedTotal - _skipped + _cardsTotal;
     _step = rung.step;
     final words = _pick!.words;
     final past = words.where((w) => queue.passed(w.rowId) || queue.rungOf(w.rowId).index >= _step).length;
     _stepProgress = past / words.length;
+    _publish(SessionStatus.playing);
+  }
+
+  /// Rated plus waiting self-check cards: part of "page N of M".
+  int get _cardsTotal => (_checks?.rated ?? 0) + (_checks?.waitingCount ?? 0);
+
+  /// Shows [rowId]'s self-check card as the next page (self-check-cards
+  /// AC-02); the card page itself is drawn by the session screen.
+  void _showCard(String rowId) {
+    final queue = _queue!;
+    _pageIndex++;
+    _page = null;
+    _answer = null;
+    _verdict = null;
+    _checkCard = rowId;
+    _pageNumber = queue.answered - _skipped + _checks!.rated + 1;
+    _pageTotal = queue.estimatedTotal - _skipped + _cardsTotal;
     _publish(SessionStatus.playing);
   }
 
@@ -443,6 +512,8 @@ class LearningSession extends _$LearningSession {
       stepProgress: _stepProgress,
       loadFailed: _failed.isNotEmpty,
       outcomes: _outcomes,
+      checks: _checks,
+      checkCard: status == SessionStatus.playing ? _checkCard : null,
     );
   }
 }

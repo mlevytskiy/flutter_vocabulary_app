@@ -91,7 +91,7 @@ final class LearningSessionProvider
   }
 }
 
-String _$learningSessionHash() => r'f01243df74503a8fc95e7aa6193f1e1e3f1928e7';
+String _$learningSessionHash() => r'b9c5264924b033a5ecc242dd66038bbae1757401';
 
 /// One learning session of a collection (learn-redesign ADR-0004; AC-02,
 /// AC-08, AC-09, AC-11, AC-16). [collectionId] null is the current

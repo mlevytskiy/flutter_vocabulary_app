@@ -14,6 +14,7 @@ import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_api_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/entry/learn_presets.dart';
 import 'package:flutter_vocabulary_app/features/learn/kit/exercise_random.dart';
+import 'package:flutter_vocabulary_app/features/learn/session/check_queue.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/exercise_page.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/ladder_queue.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/learning_session_notifier.dart';
@@ -321,6 +322,88 @@ void main() {
         expect(s.outcomes.keys.any((k) => identical(k, w)), isTrue);
         expect(s.outcomes[w], w.rowId == missed ? WordOutcome.missed : WordOutcome.clean);
       }
+    });
+  });
+
+  group('self-check cards (self-check-cards T5, AC-01, AC-02)', () {
+    test('off by default: a wrong page schedules no card and the pages play as before', () async {
+      final c = _container(_collection(5), _Fakes());
+      await _session(c).start(split: true);
+      await _answer(c, right: false);
+      while (_state(c).status == SessionStatus.playing) {
+        expect(_state(c).checkCard, isNull);
+        expect(_state(c).checks, isNull);
+        await _answer(c, right: true);
+      }
+      expect(_state(c).status, SessionStatus.finished);
+    });
+
+    test('a wrong page: its card comes after 3 other pages, counts in "page N of M", and keeps the rating', () async {
+      final off = _container(_collection(5), _Fakes());
+      await _session(off).start(split: true);
+      await _answer(off, right: false);
+      final totalOff = _state(off).pageTotal;
+
+      final c = _container(_collection(5), _Fakes());
+      await _session(c).start(split: true, checkCards: true);
+      final missed = _state(c).page!.rowIds.single;
+      await _answer(c, right: false);
+      expect(_state(c).page!.rowIds.single, _state(off).page!.rowIds.single, reason: 'the same ladder');
+      expect(_state(c).pageTotal, totalOff + 1, reason: 'the waiting card counts');
+
+      final shown = <String>[];
+      var cardAt = -1;
+      while (_state(c).status == SessionStatus.playing) {
+        final s = _state(c);
+        if (s.checkCard != null) {
+          expect(s.page, isNull);
+          expect(s.checkCard, missed);
+          expect(s.pageNumber, shown.length + 2);
+          cardAt = shown.length;
+          await _session(c).rateCheck('easy');
+          continue;
+        }
+        shown.add(s.page!.rowIds.single);
+        await _answer(c, right: true);
+      }
+      expect(cardAt, greaterThanOrEqualTo(0));
+      final before = shown.take(cardAt).toList();
+      expect(before.where((id) => id != missed).length, greaterThanOrEqualTo(3));
+      expect(before.last, isNot(missed));
+      if (cardAt < shown.length) expect(shown[cardAt], isNot(missed));
+      final checks = _state(c).checks!;
+      expect(checks.ratings, {missed: 'easy'});
+      expect(checks.ratedReasons, {missed: CheckReason.mistake});
+      expect(_state(c).status, SessionStatus.finished);
+    });
+
+    test('a hinted page flags a hint card and stays right on the ladder', () async {
+      final c = _container(_collection(5), _Fakes());
+      await _session(c).start(split: true, checkCards: true);
+      final hinted = _state(c).page!.rowIds.single;
+      _session(c).answer({hinted: true}, detailed: {hinted: PageResult.hinted});
+      expect(_state(c).verdict!.right, isTrue);
+      expect(_state(c).queue!.missed(hinted), isFalse);
+      expect(_state(c).checks!.isWaiting(hinted), isTrue);
+      await _session(c).next();
+      while (_state(c).status == SessionStatus.playing) {
+        if (_state(c).checkCard != null) {
+          await _session(c).rateCheck('hard');
+          continue;
+        }
+        await _answer(c, right: true);
+      }
+      expect(_state(c).checks!.ratedReasons, {hinted: CheckReason.hint});
+      expect(_state(c).checks!.ratings, {hinted: 'hard'});
+    });
+
+    test("the page answer's own detailed results flag the word", () async {
+      final c = _container(_collection(3), _Fakes());
+      await _session(c).start(split: true, checkCards: true);
+      final id = _state(c).page!.rowIds.single;
+      _state(c).answer!.doneResults({id: PageResult.hinted});
+      _session(c).answer(_state(c).answer!.results!);
+      expect(_state(c).checks!.isWaiting(id), isTrue);
     });
   });
 

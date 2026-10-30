@@ -25,6 +25,7 @@ class PageAnswer extends ChangeNotifier {
   Future<Map<String, PageResult>> Function()? _check;
   Map<String, PageResult>? _done;
   Map<String, bool>? _doneBools;
+  Map<String, PageResult>? _checked;
   bool _selfChecking = false;
   bool _hintedCountsRight = true;
 
@@ -39,6 +40,9 @@ class PageAnswer extends ChangeNotifier {
 
   /// The results passed to [done] or [doneResults], with hints, once given.
   Map<String, PageResult>? get pageResults => _done;
+
+  /// What the last [runCheck] / [runCheckResults] returned, with hints.
+  Map<String, PageResult>? get checkedResults => _checked;
 
   /// Set once the body has used [done]: the frame shows no Check.
   bool get selfChecking => _selfChecking;
@@ -96,7 +100,7 @@ class PageAnswer extends ChangeNotifier {
   Future<Map<String, PageResult>> runCheckResults() async {
     final check = _check;
     if (check == null) return const {};
-    return check();
+    return _checked = await check();
   }
 
   /// Forgets the state for the next page.
@@ -104,6 +108,7 @@ class PageAnswer extends ChangeNotifier {
     _check = null;
     _done = null;
     _doneBools = null;
+    _checked = null;
     _selfChecking = false;
     _hintedCountsRight = true;
     notifyListeners();
