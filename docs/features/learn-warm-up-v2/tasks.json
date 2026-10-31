@@ -1,0 +1,291 @@
+{
+  "slug": "learn-warm-up-v2",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Record the four approved visible changes in approved-changes.md",
+      "layer": "docs",
+      "deps": [],
+      "acs": [
+        "AC-06",
+        "AC-10",
+        "AC-11",
+        "AC-16"
+      ],
+      "dod": "docs/approved-changes.md lists the dialog warm-up with its step bar, the learner profile section, the grammar line and the \ud83d\udc4d/\ud83d\udc4e question (feature, owner via proxy, 2026-10-31)",
+      "files_hint": [
+        "docs/approved-changes.md"
+      ]
+    },
+    {
+      "id": "T2",
+      "title": "Revise the 50 topics: groups, hooks, merged pairs, six new topics and permanent aliases",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-14",
+        "AC-15"
+      ],
+      "dod": "topics.ts has 50 unique ids in 8 groups with a hook each; the 6 merged ids resolve through an alias map pinned by a test; the first three ids unchanged; keywords updated for merged topics; Node tests green",
+      "files_hint": [
+        "vocab-photo-api/src/learn/topics.ts",
+        "vocab-photo-api/test/learn-topics.test.mjs"
+      ]
+    },
+    {
+      "id": "T3",
+      "title": "Let the topics call take the profile and mood, fill slot 3 only from the profile, and write situation lines",
+      "layer": "ports",
+      "deps": [
+        "T2"
+      ],
+      "acs": [
+        "AC-13",
+        "AC-12"
+      ],
+      "dod": "optional profile (each field \u2264 80) and mood accepted, bad fields rejected; the model returns word ids, \u2264 1 profile id and lines; code builds [word1, word2, profile-or-word3]; each line \u2264 20 words and checked, else the hook; no profile text logged; Node tests green",
+      "files_hint": [
+        "vocab-photo-api/src/learn/topics.ts",
+        "vocab-photo-api/test/learn-topics.test.mjs"
+      ]
+    },
+    {
+      "id": "T4",
+      "title": "Add the free warm-up reaction call with a checked one-line reply",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-05",
+        "AC-12"
+      ],
+      "dod": "POST /learn/warm-up/reaction takes question + answer \u2264 80; 1.8 s cutoff; reply checked (one sentence, \u2264 15 words, no link, not echoing the answer) else empty; never counted; answer never logged; Node tests green",
+      "files_hint": [
+        "vocab-photo-api/src/learn/warm-up.ts",
+        "vocab-photo-api/src/learn/routes.ts",
+        "vocab-photo-api/test/learn-warm-up.test.mjs"
+      ]
+    },
+    {
+      "id": "T5",
+      "title": "Let the talk take a grammar rule on every turn and return a verdict per reply",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "grammar \u2264 40 chars accepted on start and reply; prompts invite the rule, keep the target-word rule, and add the gentle fix only after a wrong line; every reply with a rule returns grammarVerdict right/wrong/unsure; old callers unchanged; Node tests green",
+      "files_hint": [
+        "vocab-photo-api/src/learn/talk.ts",
+        "vocab-photo-api/src/learn/talk-mixed.ts",
+        "vocab-photo-api/test/learn-talk-mixed.test.mjs"
+      ]
+    },
+    {
+      "id": "T6",
+      "title": "Add the events call that accepts fixed names and values only",
+      "layer": "ports",
+      "deps": [],
+      "acs": [
+        "AC-17"
+      ],
+      "dod": "POST /learn/events takes \u2264 20 events from a fixed list with fixed values and numbers; any free string or unknown name rejected; each event logged with logEvent; Node tests green",
+      "files_hint": [
+        "vocab-photo-api/src/learn/events.ts",
+        "vocab-photo-api/src/learn/routes.ts",
+        "vocab-photo-api/test/learn-events.test.mjs"
+      ]
+    },
+    {
+      "id": "T7",
+      "title": "Add the learner profile store with the round and counters in one preferences value",
+      "layer": "infra",
+      "deps": [],
+      "acs": [
+        "AC-04",
+        "AC-11",
+        "AC-03"
+      ],
+      "dod": "LearnerProfileStore reads/writes one versioned JSON value (level, goal, daily, round, grammar counter, talks-to-thumbs counter); bad value reads as empty; 1\u20132 char answers saved only into empty fields; clearing a field keeps round and counters; provider in providers.dart; unit tests",
+      "files_hint": [
+        "lib/core/services/learner_profile_store.dart",
+        "lib/core/providers.dart",
+        "test/learner_profile_store_test.dart"
+      ]
+    },
+    {
+      "id": "T8",
+      "title": "Add the pure warm-up plan and the grammar rule list",
+      "layer": "domain",
+      "deps": [
+        "T7"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-06",
+        "AC-07",
+        "AC-08"
+      ],
+      "dod": "planWarmUp gives intro only without a level, the next main question from a random round, grammar when counter \u2265 4 and level set and no intro and talk limit not reached; 3 or 4 steps; grammar_rules.dart has the 15 rules, 4 picked at random per level, Beginner \u2192 Elementary, Not sure \u2192 Elementary + Intermediate; counter rule (+1, or 0 after an answered grammar question) as a pure function; unit tests with seeded random",
+      "files_hint": [
+        "lib/features/learn/flow/warm_up_plan.dart",
+        "lib/features/learn/flow/grammar_rules.dart",
+        "test/warm_up_plan_test.dart"
+      ]
+    },
+    {
+      "id": "T9",
+      "title": "Add the reaction and events services and send profile and mood with the topic pick",
+      "layer": "app",
+      "deps": [
+        "T3",
+        "T4",
+        "T6"
+      ],
+      "acs": [
+        "AC-05",
+        "AC-12",
+        "AC-13",
+        "AC-17"
+      ],
+      "dod": "WarmUpReactionService: one try, 2 s, fixed line (six lines, random) on failure, late or empty; LearnEventsService: fire-and-forget, never throws; LearnTopicsService sends profile + mood, reads situation lines, timeout counted from a given start; providers added; tests with mocked clients and fake timers",
+      "files_hint": [
+        "lib/core/services/warm_up_reaction_service.dart",
+        "lib/core/services/learn_events_service.dart",
+        "lib/core/services/learn_topics_service.dart",
+        "lib/core/providers.dart",
+        "test/warm_up_services_test.dart"
+      ]
+    },
+    {
+      "id": "T10",
+      "title": "Walk the warm-up plan in the Learn flow: save answers, react, pick topics, count",
+      "layer": "app",
+      "deps": [
+        "T8",
+        "T9"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-02",
+        "AC-03",
+        "AC-04",
+        "AC-05",
+        "AC-06",
+        "AC-07",
+        "AC-08",
+        "AC-13",
+        "AC-17"
+      ],
+      "dod": "LearnFlow builds the plan at warm-up start, walks its steps, saves answers to the store before the reaction, starts the topic pick after the main answer, applies the counter rule when the cards open, sends finish and leave events, passes the chosen rule to the dialog setup; at most 2 reactions + 1 topic pick; notifier tests",
+      "files_hint": [
+        "lib/features/learn/flow/learn_flow_notifier.dart",
+        "test/learn_flow_warm_up_test.dart"
+      ]
+    },
+    {
+      "id": "T11",
+      "title": "Draw the warm-up as a dialog: step bar, level, main and grammar taps, own words, topics with situations",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T10"
+      ],
+      "acs": [
+        "AC-01",
+        "AC-03",
+        "AC-04",
+        "AC-06",
+        "AC-07",
+        "AC-13"
+      ],
+      "dod": "warm_up_view shows the 3\u20134 step bar, gear, AI bubbles with reactions, tap answers per step, the Something else composer (80-char rule, typed and spoken), topic tiles with situation lines and My own topic\u2026, Hard/Easy; no Skip; widget tests",
+      "files_hint": [
+        "lib/features/learn/flow/warm_up_view.dart",
+        "test/warm_up_view_test.dart"
+      ]
+    },
+    {
+      "id": "T12",
+      "title": "Send the grammar rule with the main dialog and count the verdicts",
+      "layer": "app",
+      "deps": [
+        "T5",
+        "T10"
+      ],
+      "acs": [
+        "AC-09",
+        "AC-10"
+      ],
+      "dod": "Talk notifier sends the rule on start and every reply; collects grammarVerdict for learner lines; right/wrong counted, unsure left out; boxes and word results unchanged; the counts reach LearnFlowResults; notifier tests",
+      "files_hint": [
+        "lib/features/learn/talk/talk_notifier.dart",
+        "lib/core/services/talk_api_service.dart",
+        "lib/features/learn/flow/learn_flow_notifier.dart",
+        "test/learn_session_talk_test.dart"
+      ]
+    },
+    {
+      "id": "T13",
+      "title": "Show the grammar line and the occasional \ud83d\udc4d/\ud83d\udc4e on the results page",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T9",
+        "T12"
+      ],
+      "acs": [
+        "AC-10",
+        "AC-16",
+        "AC-17"
+      ],
+      "dod": "results Talk part shows \"Rule: used N times, M right\" only when something was judged; \ud83d\udc4d/\ud83d\udc4e on every 3rd talk reaching results (finished or ended), one tap records an event and hides it; the counter lives in the store; widget tests",
+      "files_hint": [
+        "lib/features/learn/flow/flow_result.dart",
+        "test/learn_flow_results_test.dart"
+      ]
+    },
+    {
+      "id": "T14",
+      "title": "Add the learner profile section to Learn settings",
+      "layer": "ui",
+      "deps": [
+        "T1",
+        "T7"
+      ],
+      "acs": [
+        "AC-11",
+        "AC-04"
+      ],
+      "dod": "section shows level, goal, daily context or Not set under \"Used only to pick talk topics\"; change with the warm-up taps (goal/daily also own words \u2264 80); clear each; widget tests",
+      "files_hint": [
+        "lib/features/learn/entry/learner_profile_section.dart",
+        "lib/features/learn/entry/learn_settings_screen.dart",
+        "test/learner_profile_section_test.dart"
+      ]
+    },
+    {
+      "id": "T15",
+      "title": "Finish learn-warm-up-v2: generated code, analyze, changed tests, grep check, deploy order, device check list",
+      "layer": "docs",
+      "deps": [
+        "T2",
+        "T11",
+        "T13",
+        "T14"
+      ],
+      "acs": [
+        "AC-12",
+        "AC-15"
+      ],
+      "dod": "build_runner, flutter analyze, tool/test.sh -q changed and the Worker tests green; grep for Navigator.push clean; folder-layout.md and architecture-features.md updated; device-check.md written; note: deploy the Worker before the app",
+      "files_hint": [
+        "docs/folder-layout.md",
+        "docs/architecture-features.md",
+        "docs/features/learn-warm-up-v2/device-check.md"
+      ]
+    }
+  ]
+}
