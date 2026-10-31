@@ -29,6 +29,7 @@ import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
 import 'services/collection_naming_service.dart';
 import 'services/learn_topics_service.dart';
+import 'services/learner_profile_store.dart';
 import 'services/collection_search.dart' show CollectionSummary;
 import 'services/collection_search_scope.dart' show QuickTag;
 import 'services/tag_rules.dart' show tagKey;
@@ -151,6 +152,10 @@ LearnApiService learnApiService(Ref ref) => LearnApiService();
 /// The Worker's talk turns for Talk with AI (learn-redesign ADR-0007).
 @Riverpod(keepAlive: true)
 TalkApiService talkApiService(Ref ref) => TalkApiService();
+
+/// The learner profile, the warm-up round and its counters (learn-warm-up-v2, ADR-0001).
+@Riverpod(keepAlive: true)
+LearnerProfileStore learnerProfileStore(Ref ref) => LearnerProfileStore();
 
 /// The Worker's opening picture of a Talk mission (talk-mission).
 @Riverpod(keepAlive: true)

@@ -5,6 +5,7 @@ import '../../../core/providers.dart';
 import '../../../router/routes.dart';
 import '../exercises.dart';
 import 'learn_presets.dart';
+import 'learner_profile_section.dart';
 import 'speech_engine_section.dart';
 import 'talk_voice_section.dart';
 
@@ -53,6 +54,8 @@ class LearnSettingsScreen extends ConsumerWidget {
           const SpeechEngineSection(),
           const Divider(),
           const TalkVoiceSection(),
+          const Divider(),
+          const LearnerProfileSection(),
           const Divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),

@@ -927,6 +927,55 @@ final class TalkApiServiceProvider
 
 String _$talkApiServiceHash() => r'210b666c417cfb782e871aedfb4eeb8ee1dbbaed';
 
+/// The learner profile, the warm-up round and its counters (learn-warm-up-v2, ADR-0001).
+
+@ProviderFor(learnerProfileStore)
+final learnerProfileStoreProvider = LearnerProfileStoreProvider._();
+
+/// The learner profile, the warm-up round and its counters (learn-warm-up-v2, ADR-0001).
+
+final class LearnerProfileStoreProvider extends $FunctionalProvider<
+    LearnerProfileStore,
+    LearnerProfileStore,
+    LearnerProfileStore> with $Provider<LearnerProfileStore> {
+  /// The learner profile, the warm-up round and its counters (learn-warm-up-v2, ADR-0001).
+  LearnerProfileStoreProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'learnerProfileStoreProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$learnerProfileStoreHash();
+
+  @$internal
+  @override
+  $ProviderElement<LearnerProfileStore> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LearnerProfileStore create(Ref ref) {
+    return learnerProfileStore(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LearnerProfileStore value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LearnerProfileStore>(value),
+    );
+  }
+}
+
+String _$learnerProfileStoreHash() =>
+    r'6336aa38aa7c46799065b60e140ae8bd8e5b654c';
+
 /// The Worker's opening picture of a Talk mission (talk-mission).
 
 @ProviderFor(talkPictureService)
