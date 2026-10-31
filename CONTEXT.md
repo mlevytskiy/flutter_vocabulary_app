@@ -1,6 +1,6 @@
 ---
 status: Living
-updated_at: "2026-10-23"
+updated_at: "2026-10-31"
 ---
 
 # Domain Context — flutter_vocabulary_app
@@ -30,3 +30,6 @@ updated_at: "2026-10-23"
 - learning companion — who the learner learns with: alone, with teacher, with friend; picked from the drop-down beside Learn. Only "alone" works now. NOT a partner (a partner opens a shared link).
 - learn preset — a ready-made choice of exercises per step and words per session in Learn settings: Quick, Balanced, Deep, or Custom (the learner's own switches).
 - Talk with AI — the learning mode where the learner converses (typing, later speaking) with an AI partner who steers toward the session's words; the app, not the AI, decides which words were used. NOT the exercise "Explain it to a friend".
+- warm-up — the short dialog at the start of a Learn flow, before the cards: an intro the first time (the English level), one main question, sometimes the grammar question, then the topic and Hard/Easy. Its answers prepare the main dialog. NOT the main dialog (the mission talk after the cards).
+- learner profile — what the learner told the warm-up about themselves (English level, goal, daily context), kept only on their phone and used only to pick talk topics. NOT a login account (the app has none), NOT a conversation history.
+- grammar focus — one grammar rule the learner chose in the warm-up for this one main dialog; the AI steers toward it and the results count its uses. NOT a word of the collection and never part of a Leitner box.
