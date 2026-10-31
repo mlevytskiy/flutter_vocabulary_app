@@ -9,6 +9,7 @@ import { learnSpeechRoute } from "./speech.ts";
 import { learnTalkPictureRoute } from "./talk-picture.ts";
 import { learnTalkRoute } from "./talk.ts";
 import { learnTopicsRoute } from "./topics.ts";
+import { learnWarmUpReactionRoute } from "./warm-up.ts";
 import { EXERCISES, findAvailable, isWordToLearn } from "./exercises";
 import { renderComingSoonPage, renderLearnPage, renderNoWordsPage } from "./page";
 
@@ -62,4 +63,6 @@ export const learnRoutes: RouteDefinition[] = [
   learnSpeechRoute,
   // The warm-up's 3 topics (learn-welcome AC-03, ADR-0003): app-only, never counted as a talk.
   learnTopicsRoute,
+  // The warm-up's one-line reaction (learn-warm-up-v2 AC-05, ADR-0003): app-only, free, never counted.
+  learnWarmUpReactionRoute,
 ];
