@@ -5,6 +5,7 @@ import { renderNotFoundPage } from "../session/page";
 import { loadSession } from "../session/store";
 import { learnCheckRoute } from "./check.ts";
 import { learnDataRoute } from "./data.ts";
+import { learnEventsRoute } from "./events.ts";
 import { learnSpeechRoute } from "./speech.ts";
 import { learnTalkPictureRoute } from "./talk-picture.ts";
 import { learnTalkRoute } from "./talk.ts";
@@ -65,4 +66,6 @@ export const learnRoutes: RouteDefinition[] = [
   learnTopicsRoute,
   // The warm-up's one-line reaction (learn-warm-up-v2 AC-05, ADR-0003): app-only, free, never counted.
   learnWarmUpReactionRoute,
+  // The warm-up and talk counts (learn-warm-up-v2 AC-17, ADR-0007): app-only, fixed names and values, logged only.
+  learnEventsRoute,
 ];
