@@ -45,7 +45,8 @@ dialog with a step bar, the learner profile section in Learn settings, the gramm
 
 Decision (orchestrator, 31 Oct, from D1 + G6): the grammar focus is *invited*, never *required*. The AI's questions
 and speaking prompts are phrased so the rule fits the answer naturally. A speaking task still needs only its target
-word (D1), so the rule never makes a task harder to pass.
+word (D1), so the rule never makes a task harder to pass. This replaces the brief's W6 line "some speaking tasks need
+the rule"; do not restore it (owner proxy O3).
 
 ## 2. Goals
 
@@ -122,20 +123,27 @@ come in the same warm-up: when both are due, the grammar question waits for the 
 studying, or something else?". Their taps: Something useful · A little mystery · A friendly argument · Surprise
 me; Speak at work · Travel confidently · Make friends · Enjoy films and series · Study in English · Everyday
 conversations · Something else; Working · Studying · Working and studying · Family or home · Something else. "Something
-else" opens the learner's own words. None comes again until all three have been answered. A
+else" opens the learner's own words; it is the only way to answer in own words (the intro and the grammar question are
+taps only). The three come in a random order inside each round of three, and none comes again until all three have
+been answered. Clearing the profile doesn't restart the round. A
 question counts as asked only when it was answered; one the learner left stays first for next time.
 
 ### AC-04 (US-02) — error
-**Given** a learner answering any warm-up part in their own words, typed or spoken
-**When** the text is empty, or longer than 80 characters
-**Then** Send stays disabled, and over 80 characters the field says "Keep it under 80 characters". A blank or 1–2
-character answer never replaces a profile field that already holds an answer.
+**Given** a learner answering the goal or daily-context question in their own words ("Something else"), typed or
+spoken
+**When** the text, trimmed, is empty or longer than 80 characters
+**Then** Send stays disabled, and over 80 characters the field says "Keep it under 80 characters" (spoken text the
+same as typed). A 1–2 character answer gets a reaction but is saved only into an empty profile field; it never replaces
+an answer already there.
 
 ### AC-05 (US-02) — happy
 **Given** a learner who just answered the intro, the main question or the grammar question
 **When** the answer is sent
 **Then** the AI adds one friendly line of at most 15 words. If it hasn't arrived within 2 seconds, a fixed line shows
-instead. The fixed line also shows when the call fails or the reply fails the check, and a later reply is dropped. The topic and Hard/Easy steps get no reaction. Reactions never count toward
+instead. The fixed line also shows when the call fails or the reply fails the check (one sentence, at most 15 words,
+no link, and not repeating the learner's answer), and a later reply is dropped. The next step shows right after the
+reaction or the fixed line. The fixed lines, picked at random: "Got it, thanks!", "Nice, good to know.", "Great,
+let's go on.", "Thanks, that helps!", "Sounds good!", "Cool, thanks for sharing." The topic and Hard/Easy steps get no reaction. Reactions never count toward
 the daily talks.
 
 ### AC-06 (US-02) — domain invariant
@@ -148,10 +156,10 @@ learner profile when given, and stay there if the learner leaves later. Back use
 warm-up counts as finished only when the cards open.
 
 ### AC-07 (US-03) — happy
-**Given** a learner with a level, and at least 4 finished warm-ups since the grammar question was last asked (or
-since their first warm-up)
+**Given** a learner with a level whose grammar counter is 4 or more (the counter goes up by one each time a warm-up
+finishes and goes back to 0 only when the grammar question is answered; leaving at the grammar step keeps it due)
 **When** the warm-up reaches its special part
-**Then** it asks "Would you like to focus on a grammar rule in this talk?" with 4 rules that fit the level (Beginner uses the Elementary rules; "Not sure" uses the
+**Then** it asks "Would you like to focus on a grammar rule in this talk?" with 4 rules of the level's list, picked at random (Beginner uses the Elementary rules; "Not sure" uses the
 Elementary and Intermediate rules) and "No, just talk". The chosen rule holds for this flow's main
 dialog only.
 
@@ -170,8 +178,8 @@ without stopping the talk. When the line was right, no such repeat happens.
 ### AC-10 (US-03) — cross-context
 **Given** a finished or ended main dialog with a grammar focus
 **When** the results page shows
-**Then** the Talk part has a line like "Present Perfect: used 4 times, 3 right", counting only the lines the AI was
-sure about. The line is hidden when no line was judged. The grammar line never changes a Leitner box or a word's
+**Then** the Talk part has a line like "Present Perfect: used 4 times, 3 right". Each AI reply judges the learner's
+line it answers as right, wrong or unsure, with no extra AI call; only right and wrong are counted. The line is hidden when no line was judged. The grammar line never changes a Leitner box or a word's
 dialog result.
 
 ### AC-11 (US-04) — happy
@@ -183,15 +191,19 @@ dialog result.
 ### AC-12 (US-04) — authorization
 **Given** a learner with a learner profile
 **When** they share a collection, a partner opens its shared page, or the server records counts
-**Then** the profile never appears. The saved profile leaves the phone only with the topic pick. Each answer is sent
-once for its reaction, and no answer or profile text is ever written to logs.
+**Then** the profile never appears. The saved profile and this warm-up's answers leave the phone only in the topic
+pick and, for each answer, its one reaction call (no retries); nowhere else. No answer or profile text is ever
+written to logs.
 
 ### AC-13 (US-05) — happy
 **Given** a learner at the topic step
 **When** the topics arrive
 **Then** they see 3 topics and "My own topic…". The words decide the ranking. At most 1 of the 3 is there
-because of the profile. The mood answer shapes how the descriptions read, and the level sets how simple they are.
-On a failure or no answer within 4 seconds, the 3 bundled topics show as today. The own-topic button keeps today's
+because of the profile, and that one can only take the third place. Each topic shows its title and a one-line
+situation of at most 20 words, written for this learner in the mood they chose ("Surprise me": any mood) and in
+English as simple as their level; when no line comes, the topic's example situation from the catalog shows. The topic
+pick starts when the main question is answered, and the 4 seconds count from reaching the topic step. On a failure or
+no answer in time, the 3 bundled topics show as today. The own-topic button keeps today's
 label "My own topic…".
 
 ### AC-14 (US-06) — happy
@@ -259,12 +271,18 @@ or ended early, another talk started from the results, 👍/👎)
 
 ## 8. Open questions
 
-- [ ] The exact list of about 15 grammar rules and their levels (Beginner uses Elementary)? Default now: Elementary: Present Simple, Present
+- [x] The grammar list — resolved by the owner proxy (O1): accepted as below. Elementary: Present Simple, Present
   Continuous, Past Simple, Comparatives, There is/are; Intermediate: Present Perfect, Past Continuous,
   Going to / will, First conditional, Modal verbs for advice; Upper-intermediate/Advanced: Second conditional,
-  Passive voice, Reported speech, Present Perfect Continuous, Third conditional. — owner: owner proxy, due: before
-  sdd:tasks
-- [ ] The wording of the fixed reaction lines? Default now: a small set ("Got it, thanks!", "Nice, good to know.",
-  "Great, let's go on.") picked at random. — owner: owner proxy, due: sdd:design
+  Passive voice, Reported speech, Present Perfect Continuous, Third conditional. Beginner uses Elementary.
+- [x] The fixed reaction lines — resolved by the owner proxy (O2): the six lines in AC-05.
 - [ ] Where the owner reads the counts? Default now: the server log via the existing log search. — owner: owner,
   due: after release
+
+## Clarifications (2026-10-31)
+
+Ambiguity sweep (devil's advocate, mode A) resolved in place: AC-12 (where answers go), AC-13 (situation lines,
+profile slot, when the pick starts), AC-10 (per-line verdict, no extra call), AC-07 (grammar counter), AC-04 (own
+words only via "Something else", trimming, short answers), AC-05 (the reaction check and pacing), AC-03 (random order
+in rounds of three). Owner proxy O1–O4: grammar list and fixed lines accepted; "invited, not required" accepted; route
+skips: data-model, api (described in the design doc), screens and a separate sequences pass are skipped.
