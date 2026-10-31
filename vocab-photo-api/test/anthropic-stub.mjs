@@ -56,6 +56,10 @@
 //   "STUB:profile" -> the profileId even without a profile (the route must ignore it)
 //   "STUB:badlines" -> a 21-word line, a line with a link, and no line for the third topic
 //   "STUB:error" -> 500, "STUB:malformed" -> prose, "STUB:slow" -> the reply after 2 s
+// A warm-up reaction (learn-warm-up-v2 T4; system names "one short friendly reaction", user = JSON {question,
+// answer}) answers "Nice, that sounds like a lovely plan!". Markers anywhere in the answer:
+//   "STUB:error" -> 500, "STUB:slow" -> the reply after 2 s, "STUB:long" -> 19 words, "STUB:link" -> a URL,
+//   "STUB:two" -> two sentences, "STUB:echo" -> repeats the rest of the answer
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
 // the last request body and its x-api-key -- so a test can tell whether the AI
 // was reached.
@@ -206,16 +210,24 @@ function learnTalkAnswer(model, content, system = "") {
   }
   const last = history.length ? history[history.length - 1].text : scene;
   if (last.includes("STUB:error")) return answer(model, "STUB:error");
+  // learn-warm-up-v2 T5: with a grammar focus each reply carries a verdict -- "wrong" for "STUB:wrong",
+  // a value off the list for "STUB:odd", "right" otherwise; "STUB:prose" answers a plain reply as plain text.
+  const { grammar } = JSON.parse(content);
+  const verdict = grammar === undefined ? {}
+    : { grammarVerdict: last.includes("STUB:wrong") ? "wrong" : last.includes("STUB:odd") ? "perhaps" : "right" };
   if (mixed) {
     const n = history.filter((m) => m.role === "learner").length;
     return { status: 200, body: message(model, JSON.stringify({
       reply: system.includes("MUST be complete") ? "You found your boat. Thanks for helping!" : "Let us find the boat together.",
       choices: !system.includes("MUST be complete") && n % 3 !== 2 ? ["Look along the shore", "Ask for a map"] : [],
       speakingPrompt: n % 3 === 2 ? "Describe where you last saw the boat." : "",
+      ...verdict,
     })) };
   }
-  if (system.includes("This is the last turn")) return { status: 200, body: message(model, "We did it. The boat is back at the pier.") };
-  return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };
+  const plain = system.includes("This is the last turn") ? "We did it. The boat is back at the pier."
+    : last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?";
+  const wrap = grammar !== undefined && !last.includes("STUB:prose");
+  return { status: 200, body: message(model, wrap ? JSON.stringify({ reply: plain, ...verdict }) : plain) };
 }
 
 function learnTopicsAnswer(model, content) {
@@ -232,6 +244,17 @@ function learnTopicsAnswer(model, content) {
     delete lines[wordIds[2]];
   }
   return { status: 200, body: message(model, "```json\n" + JSON.stringify({ wordIds, profileId, lines }) + "\n```") };
+}
+
+function reactionAnswer(model, content) {
+  const { answer: said = "" } = JSON.parse(content);
+  if (said.includes("STUB:error")) return answer(model, "STUB:error");
+  const text = said.includes("STUB:long") ? "That is a really wonderful thing to hear and I am so very happy you told me!"
+    : said.includes("STUB:link") ? "Read more at https://example.com today."
+    : said.includes("STUB:two") ? "Nice choice. I like it too."
+    : said.includes("STUB:echo") ? `So ${said.replace(/STUB:\S+\s*/, "").replace(/^I /, "you ")}, nice!`
+    : "Nice, that sounds like a lovely plan!";
+  return { status: 200, body: message(model, text) };
 }
 
 function namingAnswer(model, content) {
@@ -313,7 +336,8 @@ export function startAnthropicStub() {
         : body.system.includes("data for vocabulary exercises") ? learnDataAnswer
         : body.system.includes("check a learner's") ? learnCheckAnswer
         : body.system.includes("English conversation partner") ? learnTalkAnswer
-        : body.system.includes("conversation topics") ? learnTopicsAnswer : undefined;
+        : body.system.includes("conversation topics") ? learnTopicsAnswer
+        : body.system.includes("one short friendly reaction") ? reactionAnswer : undefined;
       if (learn) {
         const { status, body: reply } = learn(body.model, content, body.system);
         const send = () => {
