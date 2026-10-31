@@ -8,6 +8,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_topics_service.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/flow_words.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.dart';
+import 'package:flutter_vocabulary_app/features/learn/flow/warm_up_plan.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/warm_up_view.dart';
 import 'package:flutter_vocabulary_app/features/learn/talk/talk_widgets.dart';
 
@@ -30,14 +31,20 @@ class _FakeFlow extends LearnFlow {
   @override
   void chooseTopic(LearnTopic topic) {
     topicsChosen.add(topic);
-    state = state.copyWith(topic: FlowTopic(id: topic.id, text: topic.title, description: topic.description));
+    state = state.copyWith(
+        topic: FlowTopic(id: topic.id, text: topic.title, description: topic.description),
+        answers: {...state.answers, WarmUpStep.topic: topic.title},
+        stepIndex: state.stepIndex + 1);
   }
 
   @override
   bool ownTopic(String text) {
     ownTopics.add(text);
     if (text.trim().isEmpty || text.length > maxOwnTopicLength) return false;
-    state = state.copyWith(topic: FlowTopic(text: text));
+    state = state.copyWith(
+        topic: FlowTopic(text: text),
+        answers: {...state.answers, WarmUpStep.topic: text},
+        stepIndex: state.stepIndex + 1);
     return true;
   }
 
@@ -57,8 +64,19 @@ const _topics = [
   LearnTopic(id: 'work', title: 'Work life', description: 'Your job.'),
 ];
 
-LearnFlowState _warm({List<LearnTopic>? topics = _topics, FlowTopic? topic}) =>
-    LearnFlowState(phase: FlowPhase.warmUp, words: _words, topics: topics, topic: topic);
+/// The warm-up at its topic step (learn-warm-up-v2: after the main
+/// question), or at Hard / Easy once [topic] is given.
+LearnFlowState _warm({List<LearnTopic>? topics = _topics, FlowTopic? topic}) => LearnFlowState(
+      phase: FlowPhase.warmUp,
+      words: _words,
+      topics: topics,
+      topic: topic,
+      plan: const WarmUpPlan(
+          steps: [WarmUpStep.main, WarmUpStep.topic, WarmUpStep.hardEasy], main: MainQuestion.goal, round: ['goal']),
+      stepIndex: topic == null ? 1 : 2,
+      answers: {WarmUpStep.main: 'Make friends', if (topic != null) WarmUpStep.topic: topic.text},
+      reactions: const {WarmUpStep.main: 'Nice one!'},
+    );
 
 void main() {
   late _FakeFlow flow;
@@ -97,14 +115,13 @@ void main() {
 
   IconButton send(WidgetTester t) => t.widget<IconButton>(find.byKey(warmUpSendKey));
 
-  testWidgets('AC-02: a 2-step bar on step 1, the AI question, 3 topics and My own topic…, no Skip', (t) async {
+  testWidgets('AC-02: the topic step on the bar, the AI question, 3 topics and My own topic…, no Skip', (t) async {
     await pump(t, _warm());
-    expect(find.byKey(warmUpStepKey1), findsOneWidget);
-    expect(find.byKey(warmUpStepKey2), findsOneWidget);
-    expect(barValue(t, warmUpStepKey1), 1);
-    expect(barValue(t, warmUpStepKey2), 0);
-    expect(find.text('1 / 2'), findsOneWidget);
-    expect(find.byType(TalkBubble), findsOneWidget);
+    expect(barValue(t, warmUpStepKey(1)), 1);
+    expect(barValue(t, warmUpStepKey(2)), 1);
+    expect(barValue(t, warmUpStepKey(3)), 0);
+    expect(find.text('2 / 3'), findsOneWidget);
+    expect(find.byType(TalkBubble), findsNWidgets(4), reason: 'main question, answer, reaction, topic question');
     expect(find.textContaining('Hi! 9 words today. What would you like to talk about?', findRichText: true),
         findsOneWidget);
     expect(find.byType(TalkChoiceButton), findsNWidgets(4));
@@ -133,13 +150,13 @@ void main() {
     expect(find.textContaining('Hi!', findRichText: true), findsNothing);
   });
 
-  testWidgets('AC-02: a tapped topic goes to chooseTopic, then Q2 asks Hard or Easy on step 2', (t) async {
+  testWidgets('AC-02: a tapped topic goes to chooseTopic, then the last step asks Hard or Easy', (t) async {
     await pump(t, _warm());
     await t.tap(find.textContaining('Food and cooking', findRichText: true));
     await t.pumpAndSettle();
     expect(flow.topicsChosen, [_topics[1]]);
-    expect(barValue(t, warmUpStepKey2), 1);
-    expect(find.text('2 / 2'), findsOneWidget);
+    expect(barValue(t, warmUpStepKey(3)), 1);
+    expect(find.text('3 / 3'), findsOneWidget);
     expect(find.textContaining(warmUpModeQuestion, findRichText: true), findsOneWidget);
     expect(find.textContaining(warmUpHardChoice, findRichText: true), findsOneWidget);
     expect(find.textContaining(warmUpEasyChoice, findRichText: true), findsOneWidget);

@@ -8,6 +8,9 @@ import 'package:flutter_vocabulary_app/core/services/learn_events_service.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_topics_service.dart';
 import 'package:flutter_vocabulary_app/core/services/learner_profile_store.dart';
 import 'package:flutter_vocabulary_app/core/services/warm_up_reaction_service.dart';
+import 'package:flutter_vocabulary_app/features/learn/flow/flow_words.dart';
+import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.dart';
+import 'package:flutter_vocabulary_app/features/learn/flow/warm_up_plan.dart';
 
 /// Fakes for the learn-warm-up-v2 services the Learn flow calls. They share
 /// one [log] so tests can check the order of saves, picks and reactions.
@@ -142,4 +145,83 @@ class FakeTopics extends LearnTopicsService {
     picks.add(words);
     return super.pick(words, level: level, goal: goal, daily: daily, mood: mood);
   }
+}
+
+/// The Learn flow with the warm-up walked by hand, for the warm-up view
+/// tests: each answer is recorded in [calls], kept in
+/// [LearnFlowState.answers], gets [reaction] (intro, main and grammar only;
+/// held until [react] while [hold]) and moves to the next step. The topic
+/// step gets [topicsOnStep] on arrival.
+class FakeWarmUpFlow extends LearnFlow {
+  FakeWarmUpFlow(this.initial);
+
+  final LearnFlowState initial;
+  final calls = <String>[];
+  bool hold = false;
+  String reaction = 'Nice one!';
+  List<LearnTopic>? topicsOnStep = fakeTopics;
+
+  @override
+  LearnFlowState build(String collectionId) => initial;
+
+  void set(LearnFlowState next) => state = next;
+
+  void _answer(WarmUpStep step, String answer, {bool reacts = true}) {
+    state = state.copyWith(answers: {...state.answers, step: answer}, reacting: reacts && hold);
+    if (!reacts) return _next();
+    if (!hold) react();
+  }
+
+  /// The (held) reaction arrives; the next step shows.
+  void react() {
+    final step = state.warmUpStep!;
+    state = state.copyWith(reactions: {...state.reactions, step: reaction}, reacting: false);
+    _next();
+  }
+
+  void _next() {
+    state = state.copyWith(stepIndex: state.stepIndex + 1);
+    if (state.warmUpStep == WarmUpStep.topic && topicsOnStep != null) {
+      state = state.copyWith(topics: topicsOnStep);
+    }
+  }
+
+  @override
+  void answerLevel(String level) {
+    calls.add('level:$level');
+    _answer(WarmUpStep.intro, level);
+  }
+
+  @override
+  bool answerMain(String answer, {bool own = false}) {
+    calls.add('main:$answer${own ? ' (own)' : ''}');
+    if (own && (answer.trim().isEmpty || answer.trim().length > learnerTextMax)) return false;
+    _answer(WarmUpStep.main, answer);
+    return true;
+  }
+
+  @override
+  void answerGrammar(String? rule) {
+    calls.add('grammar:$rule');
+    _answer(WarmUpStep.grammar, rule ?? noGrammarAnswer);
+  }
+
+  @override
+  void chooseTopic(LearnTopic topic) {
+    calls.add('topic:${topic.id}');
+    state = state.copyWith(topic: FlowTopic(id: topic.id, text: topic.title, description: topic.description));
+    _answer(WarmUpStep.topic, topic.title, reacts: false);
+  }
+
+  @override
+  bool ownTopic(String text) {
+    calls.add('ownTopic:$text');
+    if (text.trim().isEmpty || text.length > maxOwnTopicLength) return false;
+    state = state.copyWith(topic: FlowTopic(text: text));
+    _answer(WarmUpStep.topic, text, reacts: false);
+    return true;
+  }
+
+  @override
+  void chooseMode(FlowMode mode) => calls.add('mode:${mode.name}');
 }
