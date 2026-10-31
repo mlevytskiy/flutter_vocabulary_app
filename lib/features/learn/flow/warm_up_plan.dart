@@ -8,6 +8,24 @@ enum WarmUpStep { intro, main, grammar, topic, hardEasy }
 /// The three main questions, one asked per warm-up (AC-03).
 enum MainQuestion { mood, goal, daily }
 
+/// The taps of the goal question; "Something else" opens own words (AC-03).
+const goalChoices = <String>[
+  'Speak at work',
+  'Travel confidently',
+  'Make friends',
+  'Enjoy films and series',
+  'Study in English',
+  'Everyday conversations',
+];
+
+/// The taps of the daily-context question; "Something else" opens own words.
+const dailyChoices = <String>[
+  'Working',
+  'Studying',
+  'Working and studying',
+  'Family or home',
+];
+
 /// What the Learn flow walks: the steps of this warm-up (3 or 4), the main
 /// question, and the round to keep in the store. Pure data.
 class WarmUpPlan {
