@@ -109,7 +109,8 @@ class _Topics extends LearnTopicsService {
   final asked = <List<String>>[];
 
   @override
-  Future<List<LearnTopic>> pick(List<String> words) async {
+  Future<List<LearnTopic>> pick(List<String> words,
+      {String? level, String? goal, String? daily, String? mood}) async {
     asked.add(words);
     return LearnTopicsService.bundled;
   }

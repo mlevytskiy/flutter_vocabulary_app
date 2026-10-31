@@ -836,6 +836,104 @@ final class LearnTopicsServiceProvider extends $FunctionalProvider<
 String _$learnTopicsServiceHash() =>
     r'26a99ff87cc08e8d6c7785c4917d8b583b3391a2';
 
+/// The free warm-up reaction (learn-warm-up-v2 AC-05), fixed line on failure.
+
+@ProviderFor(warmUpReactionService)
+final warmUpReactionServiceProvider = WarmUpReactionServiceProvider._();
+
+/// The free warm-up reaction (learn-warm-up-v2 AC-05), fixed line on failure.
+
+final class WarmUpReactionServiceProvider extends $FunctionalProvider<
+    WarmUpReactionService,
+    WarmUpReactionService,
+    WarmUpReactionService> with $Provider<WarmUpReactionService> {
+  /// The free warm-up reaction (learn-warm-up-v2 AC-05), fixed line on failure.
+  WarmUpReactionServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'warmUpReactionServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$warmUpReactionServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<WarmUpReactionService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  WarmUpReactionService create(Ref ref) {
+    return warmUpReactionService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(WarmUpReactionService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<WarmUpReactionService>(value),
+    );
+  }
+}
+
+String _$warmUpReactionServiceHash() =>
+    r'536ecb0d7f5d141efbd1abb7fdab0d1beb8582c4';
+
+/// The fire-and-forget warm-up and talk counts (learn-warm-up-v2 AC-17).
+
+@ProviderFor(learnEventsService)
+final learnEventsServiceProvider = LearnEventsServiceProvider._();
+
+/// The fire-and-forget warm-up and talk counts (learn-warm-up-v2 AC-17).
+
+final class LearnEventsServiceProvider extends $FunctionalProvider<
+    LearnEventsService,
+    LearnEventsService,
+    LearnEventsService> with $Provider<LearnEventsService> {
+  /// The fire-and-forget warm-up and talk counts (learn-warm-up-v2 AC-17).
+  LearnEventsServiceProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'learnEventsServiceProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$learnEventsServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<LearnEventsService> $createElement(
+          $ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  LearnEventsService create(Ref ref) {
+    return learnEventsService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(LearnEventsService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<LearnEventsService>(value),
+    );
+  }
+}
+
+String _$learnEventsServiceHash() =>
+    r'5b1126676c0a9a1bf08f70f087da788b9e30dba0';
+
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 
 @ProviderFor(learnApiService)
