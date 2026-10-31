@@ -17,6 +17,7 @@ import { writeText } from "../story/providers/text.ts";
 import { matchPlaces } from "../story/word-check.ts";
 import { mixedPrompt, mixedTarget, readMixedTurn } from "./talk-mixed.ts";
 import { takeLearnTalk } from "./allowance.ts";
+import { resolveTopicId } from "./topics.ts";
 
 const MAX_SCENE_LENGTH = 4000;
 const MAX_WORD_LENGTH = 100;
@@ -106,7 +107,8 @@ function parseTopic(value: unknown): TalkTopic | string {
   if (typeof value.id !== "string" || value.id.trim() === "" || value.id.length > MAX_TOPIC_ID_LENGTH) {
     return `A topic id is 1 to ${MAX_TOPIC_ID_LENGTH} characters`;
   }
-  return { id: value.id, text };
+  // A merged-away id from an older app runs (and is logged) as its merged topic (AC-15, ADR-0006).
+  return { id: resolveTopicId(value.id), text };
 }
 
 /** The learner replies so far: every learner message, a picked choice too. */

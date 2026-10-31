@@ -4,7 +4,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { appHeaders, baseUrl, d1 } from "./helpers.mjs";
-import { keywordScore, parseTopicsRequest, pickTopics, rankByKeywords, readTopicIds, TOPICS, topicsPrompt } from "../src/learn/topics.ts";
+import { keywordScore, parseTopicsRequest, pickTopics, rankByKeywords, readTopicIds, resolveTopicId, TOPIC_ALIASES, TOPIC_GROUPS, TOPICS, topicsPrompt } from "../src/learn/topics.ts";
+import { parseTalkRequest } from "../src/learn/talk.ts";
 
 const stubUrl = process.env.VOCAB_API_AI_STUB_URL;
 const stubCalls = async () => (await fetch(new URL("__calls", stubUrl))).json();
@@ -25,8 +26,60 @@ test("Q5: 50 topics, kebab-case unique ids, titles of at most 4 words, one-sente
   }
 });
 
+// learn-warm-up-v2 T2: the revised catalog (AC-14) and the permanent aliases of the merged ids (AC-15, ADR-0006).
+
+test("AC-14: 8 groups in order, each topic in one of them, every group used", () => {
+  assert.deepEqual(TOPIC_GROUPS, ["Everyday life", "People", "Work and study", "Travel and transport", "Places and nature",
+    "Leisure and ideas", "Technology and services", "Health and getting help"]);
+  for (const t of TOPICS) assert.ok(TOPIC_GROUPS.includes(t.group), `${t.id}: ${t.group}`);
+  for (const g of TOPIC_GROUPS) assert.ok(TOPICS.some((t) => t.group === g), `${g} has topics`);
+});
+
+test("AC-14: every topic has an example situation (hook): one sentence of at most 20 words", () => {
+  for (const t of TOPICS) {
+    assert.equal(typeof t.hook, "string", t.id);
+    assert.match(t.hook, /^[A-Z][^.!?]*[.!?]$/, `${t.id}: one sentence`);
+    assert.ok(t.hook.trim().split(/\s+/).length <= 20, `${t.id}: at most 20 words`);
+  }
+});
+
+test("AC-14: the six new topics are in the catalog", () => {
+  const titles = TOPICS.map((t) => t.title);
+  for (const title of ["Meeting new people", "Meetings and presenting ideas", "Helping customers", "Online shopping and deliveries",
+    "Invitations and making plans", "Favours and polite boundaries"]) assert.ok(titles.includes(title), title);
+});
+
+test("AC-15: the alias map is pinned -- the six merged-away ids, never removed", () => {
+  assert.deepEqual(TOPIC_ALIASES, {
+    "pharmacy-visit": "at-the-doctor",
+    "camping-trip": "nature-walk",
+    "saving-and-budget": "money-and-banking",
+    "computer-problems": "phones-and-gadgets",
+    "watching-a-match": "sport-and-fitness",
+    "university-life": "school-days",
+  });
+  const ids = new Set(TOPICS.map((t) => t.id));
+  for (const [old, merged] of Object.entries(TOPIC_ALIASES)) {
+    assert.ok(!ids.has(old), `${old} is gone from the catalog`);
+    assert.ok(ids.has(merged), `${merged} is a topic`);
+    assert.equal(resolveTopicId(old), merged);
+  }
+  assert.equal(resolveTopicId("travel"), "travel");
+  assert.equal(resolveTopicId("own-made-up"), "own-made-up");
+});
+
+test("AC-15: a talk started on a merged-away id runs (and is logged) on the merged topic", () => {
+  const words = ["shore", "tide", "fog", "gale", "pier", "anchor", "mast", "deck"].map((word) => ({ word, translation: "t" }));
+  const start = { kind: "start", scene: "Sea words", words, target: "shore", history: [] };
+  const parsed = parseTalkRequest({ ...start, topic: { id: "camping-trip", text: "Camping trip" } });
+  assert.equal(parsed.error, undefined);
+  assert.deepEqual(parsed.topic, { id: "nature-walk", text: "Camping trip" });
+  assert.deepEqual(parseTalkRequest({ ...start, topic: { id: "travel", text: "Travel" } }).topic, { id: "travel", text: "Travel" });
+});
+
 test("AC-03: the app's bundled fallback topics are the first three and win a keyword tie", () => {
   assert.deepEqual(TOPICS.slice(0, 3).map((t) => t.title), ["Daily routine", "Food and cooking", "Travel"]);
+  assert.deepEqual(TOPICS.slice(0, 3).map((t) => t.id), ["daily-routine", "food-and-cooking", "travel"]);
   assert.deepEqual(rankByKeywords(["zzzz"]).slice(0, 3), ["daily-routine", "food-and-cooking", "travel"]);
 });
 
@@ -49,16 +102,17 @@ test("ADR-0003: the keyword score counts touched keywords by shared stem", () =>
 
 test("ADR-0003: the model's answer keeps real ids once each, in order; prose gives none", () => {
   assert.deepEqual(readTopicIds('```json\n{"ids": ["travel", "nope", "travel", " at-the-doctor ", 4]}\n```'), ["travel", "at-the-doctor"]);
+  assert.deepEqual(readTopicIds('{"ids": ["camping-trip", "nature-walk"]}'), ["nature-walk"], "an alias counts as its merged id");
   assert.deepEqual(readTopicIds("Travel is nice."), []);
   assert.deepEqual(readTopicIds('{"topics": ["travel"]}'), []);
 });
 
 test("ADR-0003: 3 topics -- the model's ids first, missing ones filled by keyword score", () => {
   const words = ["doctor", "fever", "cough", "pill", "pharmacy", "dose"];
-  assert.deepEqual(pickTopics(["travel", "camping-trip", "nature-walk", "city-life"], words).map((t) => t.id), ["travel", "camping-trip", "nature-walk"]);
-  assert.deepEqual(pickTopics(["travel"], words).map((t) => t.id), ["travel", "at-the-doctor", "pharmacy-visit"]);
-  assert.deepEqual(pickTopics(["at-the-doctor"], words).map((t) => t.id), ["at-the-doctor", "pharmacy-visit", "daily-routine"]);
-  assert.deepEqual(pickTopics([], words).map((t) => t.id), ["at-the-doctor", "pharmacy-visit", "daily-routine"]);
+  assert.deepEqual(pickTopics(["travel", "beach-holiday", "nature-walk", "city-life"], words).map((t) => t.id), ["travel", "beach-holiday", "nature-walk"]);
+  assert.deepEqual(pickTopics(["travel"], words).map((t) => t.id), ["travel", "at-the-doctor", "daily-routine"]);
+  assert.deepEqual(pickTopics(["at-the-doctor"], words).map((t) => t.id), ["at-the-doctor", "daily-routine", "food-and-cooking"]);
+  assert.deepEqual(pickTopics([], words).map((t) => t.id), ["at-the-doctor", "daily-routine", "food-and-cooking"]);
 });
 
 test("ADR-0003: the prompt sends the words and every topic's id and keywords, nothing more", () => {
@@ -126,7 +180,7 @@ test("AC-03: a model failure, a prose answer or a late answer still gives 3 topi
   for (const marker of ["STUB:error", "STUB:malformed", "STUB:slow"]) {
     const res = await post({ words: [marker, "doctor", "fever", "cough", "pill"] });
     assert.equal(res.status, 200, marker);
-    assert.deepEqual(ids(await res.json()), ["at-the-doctor", "pharmacy-visit", "daily-routine"], marker);
+    assert.deepEqual(ids(await res.json()), ["at-the-doctor", "daily-routine", "food-and-cooking"], marker);
   }
   assert.equal(talksUsed(), keep);
 });
