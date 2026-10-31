@@ -26,11 +26,11 @@ The owner wants counts of warm-up parts shown, answered and left, topics, finish
 ## Considered options
 
 1. **A new `POST /learn/events` call** taking ≤ 20 events from a fixed list, sent fire-and-forget; anything else is rejected; the Worker only logs.
-2. **Log only what existing calls see**: cannot count leaving or 👍/👎.
+2. **Add counters to existing calls**: the topics call logs the warm-up answers, the talk call logs finished or ended, and the next Learn's topics call carries the last leave point and 👍/👎 as fixed fields.
 
 ## Decision outcome
 
-**Chosen:** Option 1. It is the only option that measures the KPIs, and the fixed list keeps content out by construction.
+**Chosen:** Option 1. Counts arrive the same day and are not tied to the learner's next Learn, and the fixed list keeps content out by construction. Option 2 adds fields to calls that carry personal data, which mixes counts with content.
 
 ## Consequences
 

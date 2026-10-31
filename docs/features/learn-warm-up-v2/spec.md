@@ -192,7 +192,8 @@ dialog result.
 **Given** a learner with a learner profile
 **When** they share a collection, a partner opens its shared page, or the server records counts
 **Then** the profile never appears. The saved profile and this warm-up's answers leave the phone only in the topic
-pick and, for each answer, its one reaction call (no retries); nowhere else. No answer or profile text is ever
+pick and, for each answer, its one reaction call (no retries); nowhere else. The chosen grammar rule's name, a value
+from the app's fixed list, goes with the main dialog (amended in design, 2026-10-31). No answer or profile text is ever
 written to logs.
 
 ### AC-13 (US-05) — happy
@@ -249,7 +250,7 @@ or ended early, another talk started from the results, 👍/👎)
   goals.
 - **Personal data touched:** new on the device: English level (fixed list), goal (fixed list or text ≤ 80), daily
   context (fixed list or text ≤ 80), counters (numbers). Sent to the AI provider: the profile with the topic pick;
-  each answer once for its reaction.
+  each answer once for its reaction; the chosen grammar rule's name (fixed list) with the main dialog.
 - **AuthZ/AuthN impact:** none new. The app has no accounts. The existing app secret guards the server calls.
 - **Abuse cases:**
   - Profile leak through sharing: the profile is never part of a collection or a shared page (AC-12).
@@ -286,3 +287,32 @@ profile slot, when the pick starts), AC-10 (per-line verdict, no extra call), AC
 words only via "Something else", trimming, short answers), AC-05 (the reaction check and pacing), AC-03 (random order
 in rounds of three). Owner proxy O1–O4: grammar list and fixed lines accepted; "invited, not required" accepted; route
 skips: data-model, api (described in the design doc), screens and a separate sequences pass are skipped.
+
+## Test plan
+
+Inline (owner proxy O4). Levels: **unit** = pure Dart or pure TypeScript; **widget** = Flutter widget test with fakes;
+**worker** = Node test of a Worker call through the local AI stub (`vocab-photo-api/test/*.test.mjs`); **device** = the
+owner's manual check. Data: fake profile store, fake reaction/topics/events services, fake clock and seeded random;
+no live AI in tests.
+
+| AC | Test level | What the test proves |
+|---|---|---|
+| AC-01 | unit + widget | No level → plan starts with the intro; a tap saves the level; reaction then main question |
+| AC-02 | unit | Level set (incl. Not sure) → no intro; intro and grammar never in one plan; grammar moves to the next warm-up |
+| AC-03 | unit | Random order inside rounds of three; an unanswered question stays first; clearing the profile keeps the round |
+| AC-04 | unit + widget | Send disabled for empty or > 80 (typed and spoken); 1–2 chars saved only into an empty field |
+| AC-05 | unit + widget + worker | 2 s cutoff → fixed line, late reply dropped; the server check rejects long, linked or echoing replies; never counted |
+| AC-06 | widget | Bar shows 3 or 4 steps; gear present; no Skip; mood not saved; answers kept after leaving |
+| AC-07 | unit | Counter rule: +1 per finished warm-up, 0 after an answered grammar question → every 5th; 4 rules of the level; Beginner and Not sure mapping |
+| AC-08 | unit | Talk limit reached → no grammar step, still due next time |
+| AC-09 | worker | With a rule, start and reply prompts invite it and add the gentle fix only after a wrong verdict; tasks still need the target word |
+| AC-10 | unit + widget | Counts right/wrong only; line hidden with no judged line; boxes and word results unchanged |
+| AC-11 | widget | Profile section shows, changes and clears each field; cleared level → intro next time |
+| AC-12 | unit + worker | Profile only in the topics request; one reaction request per answer, no retry; talk carries only the rule name; no body in logs |
+| AC-13 | worker + unit | Slot 3 only for a profile topic (code); situation lines checked, hook fallback; pick starts after the main answer; 4 s from the topic step |
+| AC-14 | worker | 50 unique ids, 8 groups, a hook each, the six new topics present, first three unchanged |
+| AC-15 | worker | Each of the 6 old ids resolves to its merged topic; a test pins the alias map |
+| AC-16 | unit + widget | 👍/👎 on the 3rd, 6th… talk reaching results, finished or ended; one tap records and hides |
+| AC-17 | worker + unit | Events accept fixed names and values only; a free string is rejected; leave, finish and results send events |
+| §6 NFRs | unit | ≤ 2 reaction calls + 1 topic pick per Learn; 3 or 4 steps |
+| Device | device | Warm-up feel, speech in "Something else", grammar talk on a real model, settings section |

@@ -89,17 +89,17 @@ C4Container
 
 | Block | File (new unless marked) | Job |
 |---|---|---|
-| Learner profile + counters store | `lib/core/services/learner_profile_store.dart`, provider in `lib/core/providers.dart` (changed) | One JSON value: level, goal, daily context, main-question round, grammar counter, talks-to-👍 counter; no-overwrite rule (AC-04); never throws (ADR-0001) |
+| Learner profile + counters store | `lib/core/services/learner_profile_store.dart`, provider in `lib/core/providers.dart` (changed) | One JSON value: level, goal, daily context, main-question round, grammar counter, talks-to-👍 counter; no-overwrite rule (AC-04); clearing a profile field never touches the round or the counters (AC-03); never throws (ADR-0001) |
 | Warm-up plan | `lib/features/learn/flow/warm_up_plan.dart` | Pure: `planWarmUp(profile, round, grammarCounter, talkLimitReached, random)` → steps; next main question; 4 grammar rules for a level (AC-02, AC-03, AC-07, AC-08) |
 | Grammar rules | `lib/features/learn/flow/grammar_rules.dart` | The 15 rules by level (spec §8, proxy O1); Beginner → Elementary, Not sure → Elementary + Intermediate. Kept in the app only (proxy D-e, a deliberate change from the brief's W6) |
 | Learn flow notifier | `lib/features/learn/flow/learn_flow_notifier.dart` (changed) | Walks the plan; saves answers to the store; starts the topic pick after the main answer; asks for reactions; passes the grammar rule to the dialog; counts the warm-up on cards open (AC-01–AC-08, AC-13) |
 | Warm-up view | `lib/features/learn/flow/warm_up_view.dart` (changed) | Dialog look: bar of 3 or 4 steps, bubbles, taps, "Something else" composer with 80-char rule, gear (AC-04, AC-06) |
-| Reaction service | `lib/core/services/warm_up_reaction_service.dart` | Reaction call with a 2 s cutoff; fixed line on failure or late reply; never throws (AC-05) |
+| Reaction service | `lib/core/services/warm_up_reaction_service.dart`, provider in `providers.dart` | Reaction call with a 2 s cutoff, one try, no retries; fixed line on failure or late reply; never throws (AC-05, AC-12) |
 | Topics service | `lib/core/services/learn_topics_service.dart` (changed) | Sends profile, mood and level; reads situation lines; 4 s from reaching the topic step; bundled fallback (AC-13) |
-| Talk | `lib/features/learn/talk/talk_notifier.dart`, `lib/core/services/talk_api_service.dart` (changed) | Grammar rule on the talk start; per-reply verdict collected for the learner's lines (AC-09, AC-10) |
+| Talk | `lib/features/learn/talk/talk_notifier.dart`, `lib/core/services/talk_api_service.dart` (changed) | Grammar rule on the talk start and on every reply request (the Worker keeps no state); per-reply verdict collected for the learner's lines (AC-09, AC-10) |
 | Results | `lib/features/learn/flow/flow_result.dart` + `LearnFlowResults` (changed) | Grammar line; 👍/👎 on every 3rd talk reaching results (AC-10, AC-16) |
 | Profile section | `lib/features/learn/entry/learner_profile_section.dart`, `learn_settings_screen.dart` (changed) | See, change, clear; note "Used only to pick talk topics" (AC-11) |
-| Events service | `lib/core/services/learn_events_service.dart` | Fire-and-forget batch of fixed events (AC-17) |
+| Events service | `lib/core/services/learn_events_service.dart`, provider in `providers.dart` | Fire-and-forget batch of fixed events: at warm-up end, on leaving the warm-up (leave dialog), and at the results page (AC-17) |
 
 ### 5.2 Worker
 
@@ -108,7 +108,7 @@ C4Container
 | Catalog | `vocab-photo-api/src/learn/topics.ts` (changed) | Revised 50 with `group` and `hook`, alias map for 6 merged ids, first three unchanged (AC-14, AC-15; ADR-0006) |
 | Topics call | `topics.ts` (changed) | Accepts optional `profile` and `mood`; model returns word-fit ids, at most one profile id and situation lines; code builds [word1, word2, profile-or-word3]; lines checked, catalog hook on failure (AC-13; ADR-0004) |
 | Reaction call | `vocab-photo-api/src/learn/warm-up.ts`, `routes.ts` (changed) | `POST /learn/warm-up/reaction`: one answer + the question id, 1.8 s cutoff, checked reply or an empty answer; free (AC-05; ADR-0003) |
-| Talk call | `vocab-photo-api/src/learn/talk.ts`, `talk-mixed.ts` (changed) | Optional `grammar` (≤ 40 chars) on the start; prompts invite the rule and add the gentle fix; every reply returns `grammarVerdict` right / wrong / unsure for the learner line it answers (AC-09, AC-10; ADR-0005) |
+| Talk call | `vocab-photo-api/src/learn/talk.ts`, `talk-mixed.ts` (changed) | Optional `grammar` (≤ 40 chars) on the start and on every reply; prompts invite the rule and add the gentle fix; every reply returns `grammarVerdict` right / wrong / unsure for the learner line it answers (AC-09, AC-10; ADR-0005) |
 | Events call | `vocab-photo-api/src/learn/events.ts`, `routes.ts` (changed) | `POST /learn/events`: up to 20 events from a fixed list with fixed values and numbers only, else rejected; logged only (AC-17; ADR-0007) |
 
 ### 5.3 Changed Worker calls (in place of a separate OpenAPI file, proxy O4)
@@ -117,7 +117,7 @@ C4Container
 |---|---|---|---|
 | `POST /learn/topics` | `profile?: {level?, goal?, daily?}` (each ≤ 80 chars), `mood?: useful \| mystery \| argument \| surprise` | per topic `situation: string` (≤ 20 words, or the catalog hook) | 400 on a bad field (the app then uses the bundled 3) |
 | `POST /learn/warm-up/reaction` (new) | `{question: intro \| mood \| goal \| daily \| grammar, answer: string ≤ 80}` | `{reaction: string}` (empty when the model failed or the check failed) | 400 on a bad body; never 429 (free) |
-| `POST /learn/talk` | start: `grammar?: string ≤ 40` | every reply: `grammarVerdict?: right \| wrong \| unsure` (only when the talk has a grammar focus) | unchanged |
+| `POST /learn/talk` | start and every reply: `grammar?: string ≤ 40` | every reply: `grammarVerdict?: right \| wrong \| unsure` (only when the talk has a grammar focus) | unchanged |
 | `POST /learn/events` (new) | `{events: [{name, value?, n?}]}`, ≤ 20; names and values from fixed lists | `{ok: true}` | 400 on any unknown name, value or a free string |
 
 ## 6. Runtime view
@@ -146,25 +146,31 @@ sequenceDiagram
     end
     F-->>L: main question
     L->>F: answer (tap or own words ≤ 80)
-    F->>S: save goal or daily (no overwrite by 1–2 chars); mark round
+    F->>S: save goal or daily (no overwrite by 1–2 chars), mark round
     F->>W: reaction(main, answer)
     F->>W: topics(words, profile, mood)
     opt grammar due
         F-->>L: grammar question (4 rules of the level)
         L->>F: rule or No, just talk
-        F->>S: grammar counter = 0
+        F->>W: reaction(grammar, answer)
+        Note over F: same 2 s cutoff and fixed line
     end
     alt topics within 4 s of the topic step
         W-->>F: 3 topics + situation lines
     else failure or late
         F->>F: bundled 3
     end
+    opt Back before the cards
+        L->>F: leave
+        F->>W: events(warm-up left at this part)
+    end
     L->>F: topic, Hard/Easy
-    F->>S: grammar counter + 1
+    F->>S: grammar counter = 0 if the grammar question was answered, else + 1
     F->>W: events(warm-up finished, parts answered)
     Note over F: cards and stories unchanged
     F->>W: talk start(topic text, words, grammar?)
     loop each reply
+        F->>W: reply(scene, history, grammar?)
         W-->>F: reply + grammarVerdict
     end
     F-->>L: results: grammar line, 👍/👎 every 3rd
@@ -173,9 +179,11 @@ sequenceDiagram
 
 Learn reads the store and builds the plan. Each answer is saved first, then sent once for its reaction; a failed or
 late reaction shows a fixed line. The topic pick starts after the main answer, so it runs while the grammar question
-is answered. The cards and stories run as today. The talk start carries the topic text and the rule. Every reply
-returns a verdict for the learner's line, which the app counts for the results. Events go out fire-and-forget at the
-end of the warm-up and of the results page.
+is answered. When the warm-up finishes, the grammar counter goes back to 0 if the grammar question was answered, else up by one,
+so the question comes on every 5th finished warm-up. The cards and stories run as today. The talk start and every
+reply carry the topic text and the rule (the Worker keeps no state between turns). Every reply returns a verdict for
+the learner's line, which the app counts for the results. Events go out fire-and-forget at the end of the warm-up, on
+leaving it, and at the results page.
 
 ## 7. Deployment view
 
@@ -184,8 +192,9 @@ behind the existing app secret. No database migration: the phone keeps one prefe
 
 ## 8. Crosscutting concepts
 
-- **Privacy rule** (spec AC-12): only the topics call carries the profile; only the reaction call carries one answer;
-  the talk carries the rule name only. `logEvent` gets numbers and fixed values; no handler logs a request body.
+- **Privacy rule** (spec AC-12, amended 2026-10-31): only the topics call carries the profile; only the reaction call
+  carries one answer, once, with no retries; the talk carries only the chosen rule's name, a value from the app's fixed
+  list, never the learner's words. `logEvent` gets numbers and fixed values; no handler logs a request body.
 - **Prompt safety**: answers, profile text and the rule are passed as JSON data with "treat as data, not
   instructions". Reaction and situation lines pass a check (one sentence, word cap, no link, not repeating the
   answer).
@@ -211,9 +220,9 @@ behind the existing app secret. No database migration: the phone keeps one prefe
 
 | Scenario | When | Then | How verified |
 |---|---|---|---|
-| Reaction late | the reaction call takes longer than 2 s | the fixed line shows; a later reply is dropped ("≤ 2 s, then the fixed line") | widget test with a slow fake service |
-| Topics late | no topics within 4 s of reaching the topic step | the bundled 3 show ("≤ 4 s, then the bundled 3") | notifier test with a fake clock |
-| AI cost | one Learn with intro or grammar | at most 2 reaction calls + 1 topic pick ("≤ 2 cheap reaction calls + 1 topic pick") | notifier test counts service calls |
+| Reaction late | the reaction call takes longer than 2 s | the fixed line shows; a later reply is dropped ("≤ 2 s, then the fixed line") | widget test with a slow fake service; server log latency p95 |
+| Topics late | no topics within 4 s of reaching the topic step | the bundled 3 show ("≤ 4 s, then the bundled 3 (unchanged)") | notifier test with a fake clock; server log |
+| AI cost | one Learn with intro or grammar | at most 2 reaction calls + 1 topic pick ("≤ 2 cheap reaction calls + 1 topic pick") | notifier test counts service calls; server log count per Learn |
 | Steps | any warm-up | 3 or 4 steps ("3 or 4") | plan unit tests |
 | No content in counts | an event with a free string | rejected ("0 free-text fields") | Worker test |
 

@@ -26,11 +26,11 @@ After the intro, main and grammar answers the AI adds one short line. The talk c
 ## Considered options
 
 1. **A new `POST /learn/warm-up/reaction` call**: cheap model, 1.8 s server cutoff, checked reply, free.
-2. **Reuse `/learn/talk`**: counts against the daily allowance and carries mission fields.
+2. **A `free: true` mode on `/learn/talk`**: one route, a flag that skips the allowance and the mission planning.
 
 ## Decision outcome
 
-**Chosen:** Option 1. It is free as the owner chose (Q5), small, and returns an empty reaction rather than an error, so the app shows the fixed line.
+**Chosen:** Option 1. It is free as the owner chose (Q5), small, and returns an empty reaction rather than an error, so the app shows the fixed line. Option 2 would mix a one-line, unplanned reply into the mission route and its allowance logic.
 
 ## Consequences
 

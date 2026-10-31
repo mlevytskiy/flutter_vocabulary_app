@@ -25,12 +25,12 @@ With a grammar focus the results show "Rule: used N times, M right" from judgeme
 
 ## Considered options
 
-1. **The talk start carries the rule text; each reply returns `grammarVerdict` right / wrong / unsure** for the learner line it answers; the app counts.
-2. **A separate judging call at the end of the talk.**
+1. **The talk start and every reply request carry the rule text (the Worker keeps no state); each reply returns `grammarVerdict` right / wrong / unsure** for the learner line it answers; the app counts.
+2. **The app judges on the phone** with a fixed pattern per rule (for example "have/has + past participle").
 
 ## Decision outcome
 
-**Chosen:** Option 1. No extra call or wait; the verdict comes with the reply the talk already makes.
+**Chosen:** Option 1. No extra call or wait; the verdict comes with the reply the talk already makes, and a model judges meaning that fixed patterns would miss (for example a correct Present Perfect without "have" written out by speech recognition).
 
 ## Consequences
 
