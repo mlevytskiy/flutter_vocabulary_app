@@ -3,8 +3,9 @@
 
 Reads the Claude Code transcripts (main session + its subagents) for this repo and
 prints, per agent, how many minutes went to model work, each kind of test run,
-analyze and other shell work, then the slowest single commands and the per-task
-commit timeline from `SDD-Task:` trailers.
+analyze and other shell work, then the tokens each agent used (per model and per
+role), the slowest single commands and the per-task commit timeline from
+`SDD-Task:` trailers.
 
   python3 tool/sdd_profile.py --since "2026-10-12 23:00"   # every session since then
   python3 tool/sdd_profile.py --session 9ff03ab4             # one session (id prefix)
@@ -22,6 +23,9 @@ DIRS = ["-Users-max-CascadeProjects-flutter-vocabulary-app", "-Users-max"]
 REPO_MARK = "flutter_vocabulary_app"
 KINDS = ["model", "test smoke", "test changed/feature", "test FULL", "worker test",
          "flutter test", "typecheck", "analyze/codegen", "git", "other shell", "waiting"]
+# Token columns: fresh input, cache writes, cache reads, output (thinking included).
+TOKENS = [("input", "input_tokens"), ("cache w", "cache_creation_input_tokens"),
+          ("cache r", "cache_read_input_tokens"), ("output", "output_tokens")]
 
 
 def ts(s):
@@ -43,6 +47,7 @@ def kind(cmd):
 
 def profile(path):
     pend, out, slow = {}, collections.defaultdict(float), []
+    usage, models = {}, collections.Counter()
     first = last = last_result = None
     for line in open(path, errors="ignore"):
         try:
@@ -58,6 +63,10 @@ def profile(path):
         if not isinstance(content, list):
             continue
         if d.get("type") == "assistant":
+            msg = d["message"]
+            if msg.get("usage") and msg.get("id"):  # a reply is logged once per content block
+                usage[msg["id"]] = msg["usage"]
+                models[msg.get("model", "?")] += 1
             if last_result and t - last_result < 900:  # longer gaps = the user was away
                 out["model"] += t - last_result
             last_result = None
@@ -71,7 +80,9 @@ def profile(path):
                 if name == "Bash":
                     out[kind(cmd)] += t - start
                     slow.append((t - start, cmd.replace("\n", " ")[:120]))
-    return first, last, out, slow
+    tokens = {label: sum(u.get(key) or 0 for u in usage.values()) for label, key in TOKENS}
+    model = models.most_common(1)[0][0].replace("claude-", "") if models else "?"
+    return first, last, out, slow, tokens, model
 
 
 def sessions(args):
@@ -101,6 +112,7 @@ def main():
         args.since = datetime.strptime(args.since, "%Y-%m-%d %H:%M").timestamp()
 
     total, wall_total, slow_all, n = collections.defaultdict(float), 0.0, [], 0
+    token_rows, by_role = [], collections.defaultdict(lambda: collections.Counter())
     print(f"{'agent':24}{'wall':>6} " + " ".join(f"{k[:9]:>9}" for k in KINDS) + "   (minutes)")
     first_seen = None
     for sid, main in sessions(args):
@@ -111,9 +123,11 @@ def main():
             role = json.load(open(meta)).get("agentType", "?") if os.path.exists(meta) else "?"
             files.append(("  " + role.replace("sdd:", "")[:14], f))
         for label, f in files:
-            first, last, out, slow = profile(f)
+            first, last, out, slow, tokens, model = profile(f)
             if not first:
                 continue
+            token_rows.append((label, model, tokens))
+            by_role[f"{label.strip() if 'main' not in label else 'main'} ({model})"].update(tokens)
             wall = (last - first) / 60
             print(f"{label:24}{wall:6.1f} " + " ".join(f"{out[k] / 60:9.1f}" for k in KINDS))
             if "main" not in label:  # the main session's wall time includes waiting for you
@@ -126,6 +140,13 @@ def main():
         for k in KINDS:
             if total[k]:
                 print(f"  {100 * total[k] / 60 / wall_total:5.1f} %  {total[k] / 60:6.1f} min  {k}")
+    print(f"\n{'agent':24}{'model':>16} " + " ".join(f"{t:>9}" for t, _ in TOKENS) + "   (thousand tokens)")
+    for label, model, tokens in token_rows:
+        print(f"{label:24}{model[:16]:>16} " + " ".join(f"{tokens[t] / 1000:9.0f}" for t, _ in TOKENS))
+    print("\nTokens per role (thousands; cache reads are the cheap part):")
+    for role, tokens in sorted(by_role.items(), key=lambda r: -sum(r[1].values())):
+        print(f"  {role:36} " + " ".join(f"{t} {tokens[t] / 1000:7.0f}" for t, _ in TOKENS))
+
     print("\nSlowest commands:")
     for dur, cmd in sorted(slow_all, reverse=True)[:10]:
         print(f"  {dur:6.0f} s  {cmd}")

@@ -6,6 +6,7 @@
 #   tool/test.sh changed            smoke + the tests this branch touches: before a commit
 #   tool/test.sh feature FILE...    smoke + the test files named
 #   tool/test.sh full               the full regression (~2.5 min): only when the owner asks
+#   tool/test.sh -q MODE ...        the same, printing only each part's result and its failures
 #
 # FILE is test/<name>_test.dart or vocab-photo-api/test/<name>.test.mjs.
 # The Worker side needs `npm ci` in vocab-photo-api once.
@@ -13,7 +14,7 @@ set -u
 cd "$(dirname "$0")/.."
 
 usage() {
-  sed -n '5,10p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '5,11p' "$0" | sed 's/^# \{0,1\}//'
   exit 2
 }
 
@@ -46,6 +47,9 @@ changed_tests() {
     done | sort -u
 }
 
+quiet=""
+if [ "${1:-}" = -q ]; then quiet=1; shift; fi
+
 mode=${1:-}
 [ $# -gt 0 ] && shift
 case "$mode" in
@@ -66,12 +70,39 @@ run() {
   shift
   local started=$SECONDS
   echo "### $name: $*"
-  if "$@"; then
+  if [ -z "$quiet" ]; then
+    if "$@"; then
+      echo "### $name passed in $((SECONDS - started)) s"
+    else
+      echo "### $name FAILED after $((SECONDS - started)) s"
+      failed="$failed $name"
+    fi
+    return
+  fi
+  local log
+  log=$(mktemp)
+  if "$@" >"$log" 2>&1; then
+    grep -E 'All tests passed|^ℹ (tests|fail) ' "$log" || tail -n 1 "$log"
     echo "### $name passed in $((SECONDS - started)) s"
   else
-    echo "### $name FAILED after $((SECONDS - started)) s"
+    show_failures "$log"
+    echo "### $name FAILED after $((SECONDS - started)) s (full output: $log)"
     failed="$failed $name"
+    return
   fi
+  rm -f "$log"
+}
+
+# -q on a failure: the log without flutter's per-test progress lines (a failing
+# test's own line, marked [E], stays), pub's dependency report and the app's own
+# log lines (VOCAB:, [definition] …), so every error block, test name and the
+# "Failing tests:" list are kept whole.
+show_failures() {
+  sed '/^Resolving dependencies/,/^Try `flutter pub outdated`/d' "$1" |
+    grep -v -E '^VOCAB: |^IsarCore |^\[[a-z_-]+\] ' |
+    grep -v -E '^[0-9]+:[0-9]+ \+[0-9]+( ~[0-9]+)?( -[0-9]+)?: ' |
+    head -n 400
+  grep -E '^[0-9]+:[0-9]+ \+[0-9]+.*(\[E\]|Some tests failed)' "$1" | head -n 50
 }
 
 if [ "$mode" = full ]; then

@@ -18,12 +18,17 @@ description: >
      session. Name the top 3 time sinks in minutes.
    - **Compared with the baseline** in the script's header (10-07: 6-36 min per task, Worker full
      suite 62 %, model 13 %). Say plainly whether it got better or worse.
+   - **Tokens:** the per-role token table (model, fresh input, cache writes, cache reads,
+     output). Name the roles that used the most, and compare with the previous run if the
+     owner has one (the token economy rules are in `.claude/sdd.local.md`).
    - **Slowest commands:** call out any that repeat or look wrong.
 3. Recommend at most 3 improvements, each tied to a number from the report. Check these first:
    - `test FULL` or plain `worker test` time inside tasks → CLAUDE.md rule 7 was not followed
      (tasks should use `tool/test.sh smoke` / `changed`; full only when the owner asks).
    - `waiting` time → agents blocked on each other's test runs (parallel agents in one tree).
    - The same test command run 3+ times in one agent → flaky test or retry loop; name the test.
+   - Big `cache w` per short-lived agent → each agent re-reads a lot at start; check its prompt
+     and what CLAUDE.md tells it to read.
    - `model` is the biggest share → agents read too much up front (whole sad.md/spec.md, a
      growing handoff.md); suggest reading only the task's linked sections.
    - Main session wall time far above the subagents' → time went to waiting for the owner
