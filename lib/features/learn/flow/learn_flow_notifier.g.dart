@@ -90,7 +90,7 @@ final class LearnFlowProvider
   }
 }
 
-String _$learnFlowHash() => r'1ade59b3335ebd4f142b7ab0c6c2e55d7b3a8e8f';
+String _$learnFlowHash() => r'41f23a5e311e6cd5e7fa13b44c118c158d337a9e';
 
 /// The Learn flow of one collection (learn-welcome ADR-0001; AC-01, AC-08,
 /// AC-09, AC-13, AC-16): warm-up → cards with story slots → main dialog →
@@ -271,4 +271,64 @@ final class LearnFlowDialogSetupFamily extends $Family
 
   @override
   String toString() => r'learnFlowDialogSetupProvider';
+}
+
+/// The day the daily talk limit refused the main dialog (learn-warm-up-v2
+/// AC-08), kept while the app runs: on that day the warm-up asks no grammar
+/// question. The app learns of the limit only from a refused talk start.
+
+@ProviderFor(TalkLimitDay)
+final talkLimitDayProvider = TalkLimitDayProvider._();
+
+/// The day the daily talk limit refused the main dialog (learn-warm-up-v2
+/// AC-08), kept while the app runs: on that day the warm-up asks no grammar
+/// question. The app learns of the limit only from a refused talk start.
+final class TalkLimitDayProvider
+    extends $NotifierProvider<TalkLimitDay, DateTime?> {
+  /// The day the daily talk limit refused the main dialog (learn-warm-up-v2
+  /// AC-08), kept while the app runs: on that day the warm-up asks no grammar
+  /// question. The app learns of the limit only from a refused talk start.
+  TalkLimitDayProvider._()
+      : super(
+          from: null,
+          argument: null,
+          retry: null,
+          name: r'talkLimitDayProvider',
+          isAutoDispose: false,
+          dependencies: null,
+          $allTransitiveDependencies: null,
+        );
+
+  @override
+  String debugGetCreateSourceHash() => _$talkLimitDayHash();
+
+  @$internal
+  @override
+  TalkLimitDay create() => TalkLimitDay();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(DateTime? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<DateTime?>(value),
+    );
+  }
+}
+
+String _$talkLimitDayHash() => r'e719ee6f6e5a7ff26a6d85901c5128f6db6b3a3f';
+
+/// The day the daily talk limit refused the main dialog (learn-warm-up-v2
+/// AC-08), kept while the app runs: on that day the warm-up asks no grammar
+/// question. The app learns of the limit only from a refused talk start.
+
+abstract class _$TalkLimitDay extends $Notifier<DateTime?> {
+  DateTime? build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<DateTime?, DateTime?>;
+    final element = ref.element as $ClassProviderElement<
+        AnyNotifier<DateTime?, DateTime?>, DateTime?, Object?, Object?>;
+    return element.handleCreate(ref, build);
+  }
 }

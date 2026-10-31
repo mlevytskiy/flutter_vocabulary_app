@@ -12,6 +12,7 @@ import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_topics_service.dart';
+import 'package:flutter_vocabulary_app/core/services/learner_profile_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_picture_service.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
@@ -21,6 +22,8 @@ import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.d
 import 'package:flutter_vocabulary_app/features/learn/flow/story_slots.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
+
+import 'fake_warm_up.dart';
 
 /// learn-welcome T10 (ADR-0001, ADR-0004; AC-01, AC-08, AC-09, AC-13, AC-16):
 /// the LearnFlow notifier over fakes of the store, the story runs, the
@@ -109,10 +112,9 @@ class _Topics extends LearnTopicsService {
   final asked = <List<String>>[];
 
   @override
-  Future<List<LearnTopic>> pick(List<String> words,
-      {String? level, String? goal, String? daily, String? mood}) async {
+  PendingTopics start(List<String> words, {String? level, String? goal, String? daily, String? mood}) {
     asked.add(words);
-    return LearnTopicsService.bundled;
+    return super.start(const []);
   }
 }
 
@@ -167,7 +169,15 @@ class _Flow {
 
   Future<void> settle() => pumpEventQueue();
 
+  /// learn-warm-up-v2: the main question first (a level is set, so no
+  /// intro and no grammar step).
+  Future<void> answerMain() async {
+    notifier.answerMain('Make friends');
+    await settle();
+  }
+
   Future<void> open({FlowMode mode = FlowMode.easy}) async {
+    await answerMain();
     notifier.chooseTopic(LearnTopicsService.bundled.first);
     notifier.chooseMode(mode);
     await settle();
@@ -195,6 +205,10 @@ Future<_Flow> _flow(WordCollection collection, {_Runs? runs, _Tracker? tracker})
     learnTopicsServiceProvider.overrideWithValue(topics),
     talkPictureServiceProvider.overrideWithValue(picture),
     learnFlowClockProvider.overrideWithValue(() => _now),
+    learnerProfileStoreProvider
+        .overrideWithValue(FakeProfileStore(const LearnerProfile(level: 'Elementary', round: ['goal']), [])),
+    warmUpReactionServiceProvider.overrideWithValue(FakeReactions([])),
+    learnEventsServiceProvider.overrideWithValue(FakeEvents()),
   ]);
   addTearDown(c.dispose);
   c.listen(learnFlowProvider('c1'), (_, __) {});
@@ -211,11 +225,13 @@ void main() {
     expect(flowTooFewWordsMessage, 'Add at least 4 words to learn');
   });
 
-  test('build: warm-up with the card words, their groups and the topics', () async {
+  test('build: warm-up with the card words and their groups; the topics after the main answer', () async {
     final f = await _flow(_collection(16));
     expect(f.state.phase, FlowPhase.warmUp);
     expect(f.state.words.map((w) => w.rowId), [for (var i = 0; i < 16; i++) 'r$i']);
     expect(f.state.groups.map((g) => g.length), [12, 4]);
+    expect(f.topics.asked, isEmpty);
+    await f.answerMain();
     expect(f.topics.asked.single, [for (var i = 0; i < 16; i++) 'word$i']);
     expect(f.state.topics, LearnTopicsService.bundled);
     expect(f.tracker.started, isEmpty, reason: 'stories start with the cards');
@@ -223,6 +239,7 @@ void main() {
 
   test('AC-04: own topic is taken as it is, up to 80 characters, never blank', () async {
     final f = await _flow(_collection(5));
+    await f.answerMain();
     expect(f.notifier.ownTopic('   '), isFalse);
     expect(f.notifier.ownTopic('x' * 81), isFalse);
     expect(f.state.topic, isNull);

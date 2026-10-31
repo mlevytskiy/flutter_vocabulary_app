@@ -8,6 +8,18 @@ enum WarmUpStep { intro, main, grammar, topic, hardEasy }
 /// The three main questions, one asked per warm-up (AC-03).
 enum MainQuestion { mood, goal, daily }
 
+/// The taps of the mood question and the mood id each sends to the topic pick
+/// (AC-03, AC-13). The mood is never saved (AC-06).
+const moodChoices = <String, String>{
+  'Something useful': 'useful',
+  'A little mystery': 'mystery',
+  'A friendly argument': 'argument',
+  'Surprise me': 'surprise',
+};
+
+/// The answer "No, just talk" to the grammar question (AC-07).
+const noGrammarAnswer = 'No, just talk';
+
 /// The taps of the goal question; "Something else" opens own words (AC-03).
 const goalChoices = <String>[
   'Speak at work',

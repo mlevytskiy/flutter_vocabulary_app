@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,9 @@ import '../../../core/models/word_box.dart';
 import '../../../core/models/word_collection.dart';
 import '../../../core/models/word_pair.dart';
 import '../../../core/providers.dart';
+import '../../../core/services/learn_events_service.dart';
 import '../../../core/services/learn_topics_service.dart';
+import '../../../core/services/learner_profile_store.dart';
 import '../../../core/story/story_run_tracker.dart';
 import '../../../core/story/word_grouping.dart' show wordsToLearn;
 import '../../words/words_notifier.dart';
@@ -17,12 +20,17 @@ import '../session/leitner.dart';
 import '../session/self_check.dart';
 import 'flow_stories.dart';
 import 'flow_words.dart';
+import 'grammar_rules.dart';
 import 'story_slots.dart';
+import 'warm_up_plan.dart';
 
 part 'learn_flow_notifier.g.dart';
 
 /// The flow's clock; tests pin it.
 final learnFlowClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// The flow's dice (the round, the grammar rules); tests pin it.
+final learnFlowRandomProvider = Provider<Random>((ref) => Random());
 
 /// A collection needs this many words to learn before Learn opens (AC-01).
 const int minFlowWords = 4;
@@ -93,6 +101,7 @@ class LearnDialogSetup {
     required this.words,
     this.picture,
     this.pictureLoading = false,
+    this.grammarRule,
   });
 
   final String collectionId;
@@ -110,6 +119,11 @@ class LearnDialogSetup {
   final Uint8List? picture;
   final bool pictureLoading;
 
+  /// The grammar focus chosen in the warm-up, a name from the app's fixed
+  /// list, for this main dialog only; null without one (learn-warm-up-v2
+  /// AC-07, AC-09).
+  final String? grammarRule;
+
   LearnDialogSetup withPicture(Uint8List? picture, bool loading) => LearnDialogSetup(
         collectionId: collectionId,
         topic: topic,
@@ -118,6 +132,7 @@ class LearnDialogSetup {
         words: words,
         picture: picture,
         pictureLoading: loading,
+        grammarRule: grammarRule,
       );
 }
 
@@ -181,6 +196,14 @@ class LearnFlowState {
     this.dialogResults = const {},
     this.talkLimit = false,
     this.results,
+    this.plan,
+    this.stepIndex = 0,
+    this.reacting = false,
+    this.answers = const {},
+    this.reactions = const {},
+    this.grammarRules = const [],
+    this.grammarRule,
+    this.mood,
   });
 
   final FlowPhase phase;
@@ -225,6 +248,40 @@ class LearnFlowState {
   /// Set when [phase] reaches [FlowPhase.results].
   final LearnFlowResults? results;
 
+  /// The warm-up's steps (learn-warm-up-v2 ADR-0002); null while loading.
+  final WarmUpPlan? plan;
+
+  /// The step shown now: `plan.steps[stepIndex]`.
+  final int stepIndex;
+
+  /// The last answer waits for its reaction; the next step shows after it
+  /// (AC-05).
+  final bool reacting;
+
+  /// The answers given in this warm-up, as shown (a tap or the own words).
+  final Map<WarmUpStep, String> answers;
+
+  /// The AI line (or the fixed line) after each answered intro, main and
+  /// grammar step (AC-05).
+  final Map<WarmUpStep, String> reactions;
+
+  /// The 4 rules the grammar step offers; empty without a grammar step
+  /// (AC-07).
+  final List<String> grammarRules;
+
+  /// The chosen grammar rule; null for none or "No, just talk".
+  final String? grammarRule;
+
+  /// The mood tap of this warm-up, used only for its topics (AC-06).
+  final String? mood;
+
+  /// The warm-up step shown now; null before the plan or after the warm-up.
+  WarmUpStep? get warmUpStep =>
+      phase == FlowPhase.warmUp && plan != null && stepIndex < plan!.steps.length ? plan!.steps[stepIndex] : null;
+
+  /// The main question of this warm-up.
+  MainQuestion? get mainQuestion => plan?.main;
+
   /// The card shown while [slot] is a [CardSlot]; null otherwise.
   WordPair? get card =>
       phase == FlowPhase.cards && slot is CardSlot && cardsDone < words.length ? words[cardsDone] : null;
@@ -250,6 +307,14 @@ class LearnFlowState {
     Map<String, DialogWordResult>? dialogResults,
     bool? talkLimit,
     LearnFlowResults? results,
+    WarmUpPlan? plan,
+    int? stepIndex,
+    bool? reacting,
+    Map<WarmUpStep, String>? answers,
+    Map<WarmUpStep, String>? reactions,
+    List<String>? grammarRules,
+    String? grammarRule,
+    String? mood,
   }) =>
       LearnFlowState(
         phase: phase ?? this.phase,
@@ -269,6 +334,14 @@ class LearnFlowState {
         dialogResults: dialogResults ?? this.dialogResults,
         talkLimit: talkLimit ?? this.talkLimit,
         results: results ?? this.results,
+        plan: plan ?? this.plan,
+        stepIndex: stepIndex ?? this.stepIndex,
+        reacting: reacting ?? this.reacting,
+        answers: answers ?? this.answers,
+        reactions: reactions ?? this.reactions,
+        grammarRules: grammarRules ?? this.grammarRules,
+        grammarRule: grammarRule ?? this.grammarRule,
+        mood: mood ?? this.mood,
       );
 }
 
@@ -295,6 +368,10 @@ class LearnFlow extends _$LearnFlow {
   final _watches = <StreamSubscription<StoryRun?>>[];
   final Map<String, int> _beforeBox = {};
   Future<void> _writes = Future.value();
+  LearnerProfile _profile = const LearnerProfile();
+  LearnerProfileStore? _store;
+  Future<void> _profileWrites = Future.value();
+  PendingTopics? _pendingTopics;
 
   @override
   LearnFlowState build(String collectionId) {
@@ -325,45 +402,203 @@ class LearnFlow extends _$LearnFlow {
     final now = ref.read(learnFlowClockProvider)();
     final words = cardWords(wordsToLearn(collection), collection.boxes, now);
     final boxes = {for (final w in words) w.rowId: boxOf(collection.boxes, w)?.copy()};
+    final store = ref.read(learnerProfileStoreProvider);
+    _store = store;
+    final profile = _profile = await store.read();
+    if (_gone) return;
+    final random = ref.read(learnFlowRandomProvider);
+    final plan = planWarmUp(
+      profile: profile,
+      talkLimitReached: ref.read(talkLimitDayProvider) == DateTime(now.year, now.month, now.day),
+      random: random,
+    );
+    unawaited(_saveProfile((s) => s.setRound(plan.round)));
     _set(state.copyWith(
       phase: FlowPhase.warmUp,
       words: words,
       groups: splitGroups(words),
       boxes: boxes,
+      plan: plan,
+      grammarRules: plan.steps.contains(WarmUpStep.grammar) ? pickGrammarRules(profile.level!, random) : null,
     ));
-    final topics = await ref.read(learnTopicsServiceProvider).pick([for (final w in words) w.word]);
-    _set(state.copyWith(topics: topics));
   }
 
-  // --- warm-up -------------------------------------------------------------
+  // --- warm-up (learn-warm-up-v2 ADR-0002) --------------------------------
 
-  /// Q1 answered with an offered topic.
-  void chooseTopic(LearnTopic topic) {
-    if (state.phase != FlowPhase.warmUp) return;
-    _set(state.copyWith(topic: FlowTopic(id: topic.id, text: topic.title, description: topic.description)));
-    _maybeOpenCards();
+  /// The intro answered with one of [learnerLevels] (AC-01): saved, then
+  /// sent for its reaction.
+  void answerLevel(String level) {
+    if (state.warmUpStep != WarmUpStep.intro || state.reacting || !learnerLevels.contains(level)) return;
+    _answered(WarmUpStep.intro, level);
+    unawaited(_reactAfter(_saveProfile((s) => s.setLevel(level)), WarmUpStep.intro, 'intro', level));
   }
 
-  /// Q1 answered with the learner's own [text] (AC-04): taken as it is;
-  /// false (nothing kept) when it is blank or longer than 80 characters.
-  bool ownTopic(String text) {
-    if (state.phase != FlowPhase.warmUp) return false;
-    if (text.trim().isEmpty || text.length > maxOwnTopicLength) return false;
-    _set(state.copyWith(topic: FlowTopic(text: text)));
-    _maybeOpenCards();
+  /// The main question answered with a tap of its list, or with the
+  /// learner's own words ([own], goal and daily only) (AC-03, AC-04): false
+  /// (nothing kept) for a tap off the list or own words that are blank or
+  /// longer than 80 characters once trimmed. The goal or daily answer is
+  /// saved and the question leaves the round; the mood is kept for this
+  /// warm-up's topics only (AC-06). Then the topic pick starts (AC-13) and
+  /// the answer goes for its reaction (AC-05).
+  bool answerMain(String answer, {bool own = false}) {
+    if (state.warmUpStep != WarmUpStep.main || state.reacting) return false;
+    final main = state.plan!.main;
+    final trimmed = answer.trim();
+    final valid = own
+        ? main != MainQuestion.mood && trimmed.isNotEmpty && trimmed.length <= learnerTextMax
+        : switch (main) {
+            MainQuestion.mood => moodChoices.containsKey(answer),
+            MainQuestion.goal => goalChoices.contains(answer),
+            MainQuestion.daily => dailyChoices.contains(answer),
+          };
+    if (!valid) return false;
+    if (main == MainQuestion.mood) _set(state.copyWith(mood: answer));
+    _answered(WarmUpStep.main, answer);
+    unawaited(_mainAnswered(main, answer, own));
     return true;
   }
 
-  /// Q2 answered: Hard or Easy.
+  Future<void> _mainAnswered(MainQuestion main, String answer, bool own) async {
+    await _saveProfile((s) async {
+      switch (main) {
+        case MainQuestion.mood:
+          break;
+        case MainQuestion.goal:
+          await (own ? s.saveGoalAnswer(answer) : s.setGoal(answer));
+        case MainQuestion.daily:
+          await (own ? s.saveDailyAnswer(answer) : s.setDaily(answer));
+      }
+      await s.markMainAnswered(main.name);
+    });
+    if (_gone) return;
+    _profile = await _store!.read();
+    if (_gone) return;
+    _pendingTopics = _startTopics();
+    await _react(WarmUpStep.main, main.name, answer);
+  }
+
+  PendingTopics _startTopics() => ref.read(learnTopicsServiceProvider).start(
+        [for (final w in state.words) w.word],
+        level: _profile.level,
+        goal: _profile.goal,
+        daily: _profile.daily,
+        mood: moodChoices[state.mood],
+      );
+
+  /// The grammar question answered with one of [LearnFlowState.grammarRules],
+  /// or null for "No, just talk" (AC-07). The rule holds for this flow's main
+  /// dialog only.
+  void answerGrammar(String? rule) {
+    if (state.warmUpStep != WarmUpStep.grammar || state.reacting) return;
+    if (rule != null && !state.grammarRules.contains(rule)) return;
+    final answer = rule ?? noGrammarAnswer;
+    if (rule != null) _set(state.copyWith(grammarRule: rule));
+    _answered(WarmUpStep.grammar, answer);
+    unawaited(_react(WarmUpStep.grammar, 'grammar', answer));
+  }
+
+  /// The topic step answered with an offered topic (no reaction).
+  void chooseTopic(LearnTopic topic) {
+    if (state.warmUpStep != WarmUpStep.topic) return;
+    _set(state.copyWith(topic: FlowTopic(id: topic.id, text: topic.title, description: topic.description)));
+    _answered(WarmUpStep.topic, topic.title, reacting: false);
+    _nextStep();
+  }
+
+  /// The topic step answered with the learner's own [text] (AC-04): taken as
+  /// it is; false (nothing kept) when it is blank or longer than 80
+  /// characters.
+  bool ownTopic(String text) {
+    if (state.warmUpStep != WarmUpStep.topic) return false;
+    if (text.trim().isEmpty || text.length > maxOwnTopicLength) return false;
+    _set(state.copyWith(topic: FlowTopic(text: text)));
+    _answered(WarmUpStep.topic, text, reacting: false);
+    _nextStep();
+    return true;
+  }
+
+  /// The last step answered: Hard or Easy (no reaction). The cards open.
   void chooseMode(FlowMode mode) {
-    if (state.phase != FlowPhase.warmUp) return;
+    if (state.warmUpStep != WarmUpStep.hardEasy) return;
     _set(state.copyWith(mode: mode));
+    _answered(WarmUpStep.hardEasy, mode.name, reacting: false);
     _maybeOpenCards();
   }
+
+  void _answered(WarmUpStep step, String answer, {bool reacting = true}) =>
+      _set(state.copyWith(answers: {...state.answers, step: answer}, reacting: reacting));
+
+  Future<void> _reactAfter(Future<void> saved, WarmUpStep step, String question, String answer) async {
+    await saved;
+    if (!_gone) await _react(step, question, answer);
+  }
+
+  /// One reaction per answer (AC-05): the service gives the AI line or a
+  /// fixed line within 2 s and never throws; the next step shows after it.
+  Future<void> _react(WarmUpStep step, String question, String answer) async {
+    final line = await ref.read(warmUpReactionServiceProvider).react(question, answer);
+    if (_gone || state.phase != FlowPhase.warmUp) return;
+    _set(state.copyWith(reactions: {...state.reactions, step: line}, reacting: false));
+    _nextStep();
+  }
+
+  void _nextStep() {
+    _set(state.copyWith(stepIndex: state.stepIndex + 1));
+    if (state.warmUpStep == WarmUpStep.topic) unawaited(_reachTopics());
+  }
+
+  /// The topic step reached (AC-13): the pick started at the main answer
+  /// has 4 s from now, else the bundled three.
+  Future<void> _reachTopics() async {
+    final topics = await (_pendingTopics ??= _startTopics()).topics();
+    _set(state.copyWith(topics: topics));
+  }
+
+  /// Profile writes, one after the other, so none reads a stale value. They
+  /// go on after the flow is left (AC-06).
+  Future<void> _saveProfile(Future<void> Function(LearnerProfileStore) write) {
+    final store = _store!;
+    return _profileWrites = _profileWrites.then((_) => write(store));
+  }
+
+  /// The warm-up finished: the cards open (AC-06, AC-07, AC-17).
+  void _warmUpFinished() {
+    final grammarAnswered = state.answers.containsKey(WarmUpStep.grammar);
+    final counter = nextGrammarCounter(counter: _profile.grammarCounter, grammarAnswered: grammarAnswered);
+    unawaited(_saveProfile((s) => s.setGrammarCounter(counter)));
+    _sendEvents([
+      ..._stepEvents(),
+      if (grammarAnswered) LearnEvent.grammarAnswer(rule: state.grammarRule != null),
+      LearnEvent.topicPicked(own: state.topic!.isOwn),
+      LearnEvent.warmUpFinished(state.answers.length),
+    ]);
+  }
+
+  /// Each step shown so far, and whether it was answered (AC-17).
+  List<LearnEvent> _stepEvents() {
+    final steps = state.plan!.steps;
+    return [
+      for (var i = 0; i <= state.stepIndex && i < steps.length; i++) ...[
+        LearnEvent.warmUpShown(_stepName(steps[i])),
+        if (state.answers.containsKey(steps[i])) LearnEvent.warmUpAnswered(_stepName(steps[i])),
+      ],
+    ];
+  }
+
+  String _stepName(WarmUpStep step) => switch (step) {
+        WarmUpStep.intro => 'intro',
+        WarmUpStep.main => state.plan!.main.name,
+        WarmUpStep.grammar => 'grammar',
+        WarmUpStep.topic => 'topic',
+        WarmUpStep.hardEasy => 'difficulty',
+      };
+
+  void _sendEvents(List<LearnEvent> events) => unawaited(ref.read(learnEventsServiceProvider).send(events));
 
   void _maybeOpenCards() {
     if (_cardsOpened || state.topic == null || state.mode == null) return;
     _cardsOpened = true;
+    _warmUpFinished();
     final story = storyGroups(state.groups);
     final ends = <int>[];
     var at = 0;
@@ -552,6 +787,7 @@ class LearnFlow extends _$LearnFlow {
         words: words,
         picture: _picture,
         pictureLoading: !_pictureDone,
+        grammarRule: state.grammarRule,
       ),
     ));
   }
@@ -572,6 +808,7 @@ class LearnFlow extends _$LearnFlow {
   /// to the results with "Daily talk limit reached".
   void dialogRefused() {
     if (state.phase != FlowPhase.dialog) return;
+    ref.read(talkLimitDayProvider.notifier).reached(ref.read(learnFlowClockProvider)());
     _finish(dialog: const {}, limit: true);
   }
 
@@ -625,9 +862,14 @@ class LearnFlow extends _$LearnFlow {
   /// Back, confirmed in the leave dialog (AC-16): the ratings already
   /// written stay, started runs go on into Story runs (the tracker collects
   /// them), the warm-up answers and the dialog are dropped. The flow takes
-  /// no more calls.
+  /// no more calls. The profile answers already saved stay (learn-warm-up-v2
+  /// AC-06); leaving the warm-up sends where it was left (AC-17).
   void leave() {
     if (_left) return;
+    final plan = state.plan;
+    if (state.phase == FlowPhase.warmUp && plan != null) {
+      _sendEvents([..._stepEvents(), LearnEvent.warmUpLeft(_stepName(plan.steps[state.stepIndex]))]);
+    }
     _left = true;
     _stopFollowing();
   }
@@ -658,3 +900,14 @@ class LearnFlow extends _$LearnFlow {
 @riverpod
 LearnDialogSetup? learnFlowDialogSetup(Ref ref, String collectionId) =>
     ref.watch(learnFlowProvider(collectionId).select((s) => s.dialogSetup));
+
+/// The day the daily talk limit refused the main dialog (learn-warm-up-v2
+/// AC-08), kept while the app runs: on that day the warm-up asks no grammar
+/// question. The app learns of the limit only from a refused talk start.
+@Riverpod(keepAlive: true)
+class TalkLimitDay extends _$TalkLimitDay {
+  @override
+  DateTime? build() => null;
+
+  void reached(DateTime now) => state = DateTime(now.year, now.month, now.day);
+}
