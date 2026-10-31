@@ -206,16 +206,24 @@ function learnTalkAnswer(model, content, system = "") {
   }
   const last = history.length ? history[history.length - 1].text : scene;
   if (last.includes("STUB:error")) return answer(model, "STUB:error");
+  // learn-warm-up-v2 T5: with a grammar focus each reply carries a verdict -- "wrong" for "STUB:wrong",
+  // a value off the list for "STUB:odd", "right" otherwise; "STUB:prose" answers a plain reply as plain text.
+  const { grammar } = JSON.parse(content);
+  const verdict = grammar === undefined ? {}
+    : { grammarVerdict: last.includes("STUB:wrong") ? "wrong" : last.includes("STUB:odd") ? "perhaps" : "right" };
   if (mixed) {
     const n = history.filter((m) => m.role === "learner").length;
     return { status: 200, body: message(model, JSON.stringify({
       reply: system.includes("MUST be complete") ? "You found your boat. Thanks for helping!" : "Let us find the boat together.",
       choices: !system.includes("MUST be complete") && n % 3 !== 2 ? ["Look along the shore", "Ask for a map"] : [],
       speakingPrompt: n % 3 === 2 ? "Describe where you last saw the boat." : "",
+      ...verdict,
     })) };
   }
-  if (system.includes("This is the last turn")) return { status: 200, body: message(model, "We did it. The boat is back at the pier.") };
-  return { status: 200, body: message(model, last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?") };
+  const plain = system.includes("This is the last turn") ? "We did it. The boat is back at the pier."
+    : last.includes("STUB:empty") ? "  " : "That sounds lovely. What can you see near the water?";
+  const wrap = grammar !== undefined && !last.includes("STUB:prose");
+  return { status: 200, body: message(model, wrap ? JSON.stringify({ reply: plain, ...verdict }) : plain) };
 }
 
 function learnTopicsAnswer(model, content) {

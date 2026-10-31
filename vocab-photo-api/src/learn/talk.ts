@@ -35,6 +35,8 @@ const MAX_TOPIC_LENGTH = 80;
 const MAX_TOPIC_ID_LENGTH = 60;
 /** Easy and Hard main dialogs (learn-welcome AC-13). */
 const REPLY_LIMITS: readonly number[] = [6, 12];
+/** A grammar rule's name (learn-warm-up-v2 AC-09). */
+const MAX_GRAMMAR_LENGTH = 40;
 
 export type TalkKind = "start" | "reply";
 
@@ -67,7 +69,12 @@ export interface TalkRequest {
   /** learn-welcome AC-13: the talk ends with the AI's answer to this learner reply, and the mission
    *  keeps every given word (the app chose them). */
   maxReplies?: number;
+  /** learn-warm-up-v2 AC-09 (ADR-0005): the grammar rule the main dialog invites, sent on the start and every
+   *  reply (the Worker keeps no state); a name from the app's fixed list. */
+  grammar?: string;
 }
+
+export type GrammarVerdict = "right" | "wrong" | "unsure";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
@@ -143,11 +150,16 @@ export function parseTalkRequest(body: unknown): (TalkRequest & { error?: undefi
     if (typeof maxReplies !== "number" || !REPLY_LIMITS.includes(maxReplies)) return { error: "maxReplies must be 6 or 12" };
     if (learnerReplies({ history }) > maxReplies) return { error: `The talk ended after ${maxReplies} replies` };
   }
+  const { grammar } = body;
+  if (grammar !== undefined && (typeof grammar !== "string" || grammar.trim() === "" || grammar.length > MAX_GRAMMAR_LENGTH)) {
+    return { error: `The grammar rule is 1 to ${MAX_GRAMMAR_LENGTH} characters` };
+  }
   return {
     kind, scene, words, target, history,
     ...(body.mode === "mixed" ? { mode: "mixed" as const } : {}),
     ...(topic ? { topic } : {}),
     ...(typeof maxReplies === "number" ? { maxReplies } : {}),
+    ...(typeof grammar === "string" ? { grammar: grammar.trim() } : {}),
   };
 }
 
@@ -284,6 +296,57 @@ export const isLastTurn = (req: TalkRequest): boolean =>
 
 export const LAST_TURN = "This is the last turn of the talk: conclude the mission in character with a concrete outcome that reflects the learner's decisions, in at most 25 words. Do not introduce another problem and do not ask a question.";
 
+const VERDICT_SHAPE = '"grammarVerdict": "right" | "wrong" | "unsure"';
+
+/**
+ * A talk prompt with the grammar focus added (learn-warm-up-v2 AC-09, AC-10; ADR-0005), or the same prompt
+ * when the talk has none. The rule goes into the user JSON as data. A start only invites it; a reply also
+ * judges the learner's last line, repeats their idea correctly only after a wrong one, and returns the
+ * verdict (a plain reply then answers JSON instead of plain text).
+ */
+export function grammarPrompt(prompt: { system: string; user: string }, req: TalkRequest): { system: string; user: string } {
+  if (req.grammar === undefined) return prompt;
+  const user = JSON.stringify({ ...JSON.parse(prompt.user || "{}"), grammar: req.grammar });
+  const chose = "\"grammar\" is the grammar rule the learner chose to practise in this talk:";
+  if (req.kind === "start") {
+    return {
+      system: `${prompt.system}\n${chose} phrase the opening question so a natural answer could use it. The rule is invited, never required.`,
+      user,
+    };
+  }
+  const mixed = req.mode === "mixed";
+  return {
+    system: [
+      prompt.system,
+      `${chose} phrase your questions${mixed ? " and speaking tasks" : ""} so a natural answer could use it. The rule is invited, never required; a speaking task still needs only its target word.`,
+      "Judge only the learner's last message: \"right\" when it uses the rule correctly, \"wrong\" when it tries the rule and gets it wrong, \"unsure\" when it does not use the rule or you cannot tell; a message with source=choice is a picked action, so \"unsure\".",
+      "Only when it is \"wrong\", start your reply by repeating the learner's idea in the correct form in a few words (up to 8 extra words), without calling it a mistake, and go on with the talk; when it is \"right\" or \"unsure\", do not repeat it.",
+      mixed
+        ? `Also include ${VERDICT_SHAPE} in the JSON.`
+        : `Answer with one JSON object only, no markdown, instead of plain text: {"reply": "your turn", ${VERDICT_SHAPE}}.`,
+    ].join("\n"),
+    user,
+  };
+}
+
+/** A model's verdict: right or wrong when it says so, otherwise unsure (only right and wrong are counted). */
+export function readVerdict(value: unknown): GrammarVerdict {
+  const v = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return v === "right" || v === "wrong" ? v : "unsure";
+}
+
+/** A reply with a grammar focus: the JSON's reply and verdict; prose is kept as the reply, judged unsure. */
+export function readGrammarReply(answer: string): { reply: string; grammarVerdict: GrammarVerdict } {
+  let json: unknown;
+  try {
+    json = JSON.parse(answer.slice(answer.indexOf("{"), answer.lastIndexOf("}") + 1));
+  } catch {
+    return { reply: answer.trim(), grammarVerdict: "unsure" };
+  }
+  if (!isRecord(json)) return { reply: answer.trim(), grammarVerdict: "unsure" };
+  return { reply: typeof json.reply === "string" ? json.reply.trim() : "", grammarVerdict: readVerdict(json.grammarVerdict) };
+}
+
 const badRequest = (error: string) => jsonResponse({ error, code: "bad_request" }, 400);
 
 async function handleLearnTalk({ request, env }: RouteContext): Promise<Response> {
@@ -318,16 +381,19 @@ async function handleLearnTalk({ request, env }: RouteContext): Promise<Response
   // A mixed talk moves its target every turn, so more of the words come up (owner, 2026-10-24).
   const target = parsed.mode === "mixed" ? mixedTarget(parsed) : nextTarget(parsed);
   const last = parsed.mode !== "mixed" && isLastTurn(parsed);
-  const { system, user } = parsed.mode === "mixed"
+  // learn-warm-up-v2 ADR-0005: a reply with a grammar focus judges the learner line it answers.
+  const judged = !start && parsed.grammar !== undefined;
+  const { system, user } = grammarPrompt(parsed.mode === "mixed"
     ? mixedPrompt({ ...parsed, target }, basePrompt)
-    : last ? { ...basePrompt, system: `${basePrompt.system}\n${LAST_TURN}` } : basePrompt;
+    : last ? { ...basePrompt, system: `${basePrompt.system}\n${LAST_TURN}` } : basePrompt, parsed);
   const result = await writeText(env, {
     model: GROUPING_MODEL,
     system,
     user,
     maxOutputTokens: start
       ? MISSION_MAX_OUTPUT_TOKENS + (parsed.mode === "mixed" ? 200 : 0) + (parsed.maxReplies === 12 ? 100 : 0)
-      : parsed.mode === "mixed" ? 400 : last ? TALK_MAX_OUTPUT_TOKENS + 40 : TALK_MAX_OUTPUT_TOKENS,
+      : parsed.mode === "mixed" ? 400 + (judged ? 20 : 0)
+      : (last ? TALK_MAX_OUTPUT_TOKENS + 40 : TALK_MAX_OUTPUT_TOKENS) + (judged ? 40 : 0),
     timeoutMs: Number(env.LEARN_AI_TIMEOUT_MS) || TALK_TIMEOUT_MS,
   });
   const answer = result.failed === undefined ? result.text.trim() : "";
@@ -349,10 +415,19 @@ async function handleLearnTalk({ request, env }: RouteContext): Promise<Response
     log("ok");
     return jsonResponse({ reply: planned.opening, target: planned.mission.words[0], mission: planned.mission, ...mixed });
   }
+  const graded = judged ? readGrammarReply(answer) : undefined;
+  const reply = graded && !mixed ? graded.reply : answer;
+  if (reply === "") {
+    log("empty");
+    return jsonResponse({ error: "Could not get a reply", code: "talk_failed" }, 502);
+  }
+  // A picked choice is not the learner's own line, so it is never judged.
+  const picked = parsed.history[parsed.history.length - 1].source === "choice";
+  const verdict = graded ? { grammarVerdict: picked ? ("unsure" as const) : graded.grammarVerdict } : {};
   log("ok");
   // A plain talk's last turn says so the way a mixed one does, so the app ends it either way.
   const ending = last ? { interaction: "complete" as const, choices: [], speakingPrompt: "" } : {};
-  return jsonResponse({ reply: answer, target, ...ending, ...mixed });
+  return jsonResponse({ reply, target, ...ending, ...mixed, ...verdict });
 }
 
 export const learnTalkRoute: RouteDefinition = { method: "POST", pattern: /^\/learn\/talk$/, public: false, handler: handleLearnTalk };
