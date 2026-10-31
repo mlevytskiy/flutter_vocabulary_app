@@ -48,9 +48,13 @@
 // An autofill request (system names "several of a learner's word lists", user = JSON {collections}) answers a name
 // and a description for every collection plus one for an id nobody asked about; a collection with the id
 // "STUB:skip" gets none, a first collection "STUB:error" -> 500, "STUB:malformed" -> prose.
-// A topics request (learn-welcome T6; system names "conversation topics", user = JSON {words, topics}) answers
-// {"ids": [...]} with the last three topic ids, in a fenced block. Markers, as the first word:
+// A topics request (learn-welcome T6, learn-warm-up-v2 T3; system names "conversation topics", user = JSON
+// {words, topics, profile?, mood?}) answers {"wordIds": [...], "profileId", "lines"} in a fenced block: the last
+// three topic ids, the fourth topic's id as profileId when a profile was sent, and the line
+// "You talk about {id} today." for each. Markers, as the first word:
 //   "STUB:partial" -> one unknown id and the sixth topic's id twice (the route fills the rest)
+//   "STUB:profile" -> the profileId even without a profile (the route must ignore it)
+//   "STUB:badlines" -> a 21-word line, a line with a link, and no line for the third topic
 //   "STUB:error" -> 500, "STUB:malformed" -> prose, "STUB:slow" -> the reply after 2 s
 // `GET /__calls` answers `{ count, last, lastApiKey }` -- how many calls so far,
 // the last request body and its x-api-key -- so a test can tell whether the AI
@@ -215,12 +219,19 @@ function learnTalkAnswer(model, content, system = "") {
 }
 
 function learnTopicsAnswer(model, content) {
-  const { words = [], topics = [] } = JSON.parse(content);
+  const { words = [], topics = [], profile } = JSON.parse(content);
   const first = words[0] ?? "";
   if (first === "STUB:error") return answer(model, "STUB:error");
   if (first === "STUB:malformed") return { status: 200, body: message(model, "Travel sounds like a nice topic.") };
-  const ids = first === "STUB:partial" ? ["no-such-topic", topics[5].id, topics[5].id] : topics.slice(-3).map((t) => t.id);
-  return { status: 200, body: message(model, "```json\n" + JSON.stringify({ ids }) + "\n```") };
+  const wordIds = first === "STUB:partial" ? ["no-such-topic", topics[5].id, topics[5].id] : topics.slice(-3).map((t) => t.id);
+  const profileId = profile !== undefined || first === "STUB:profile" ? topics[3].id : null;
+  const lines = Object.fromEntries([...wordIds, ...(profileId ? [profileId] : [])].map((id) => [id, `You talk about ${id} today.`]));
+  if (first === "STUB:badlines") {
+    lines[wordIds[0]] = Array.from({ length: 21 }, () => "word").join(" ") + ".";
+    lines[wordIds[1]] = "Read https://example.com first.";
+    delete lines[wordIds[2]];
+  }
+  return { status: 200, body: message(model, "```json\n" + JSON.stringify({ wordIds, profileId, lines }) + "\n```") };
 }
 
 function namingAnswer(model, content) {
