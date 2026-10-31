@@ -29,6 +29,8 @@ import 'services/collection_publish_service.dart';
 import 'services/collection_level.dart';
 import 'services/collection_naming_service.dart';
 import 'services/learn_topics_service.dart';
+import 'services/learn_events_service.dart';
+import 'services/warm_up_reaction_service.dart';
 import 'services/collection_search.dart' show CollectionSummary;
 import 'services/collection_search_scope.dart' show QuickTag;
 import 'services/tag_rules.dart' show tagKey;
@@ -143,6 +145,15 @@ CollectionNamingService collectionNamingService(Ref ref) =>
 /// The Worker's Talk topics (learn-welcome AC-03), bundled three on failure.
 @Riverpod(keepAlive: true)
 LearnTopicsService learnTopicsService(Ref ref) => LearnTopicsService();
+
+/// The free warm-up reaction (learn-warm-up-v2 AC-05), fixed line on failure.
+@Riverpod(keepAlive: true)
+WarmUpReactionService warmUpReactionService(Ref ref) =>
+    WarmUpReactionService();
+
+/// The fire-and-forget warm-up and talk counts (learn-warm-up-v2 AC-17).
+@Riverpod(keepAlive: true)
+LearnEventsService learnEventsService(Ref ref) => LearnEventsService();
 
 /// The Worker's exercise services: data and sentence checks (learn-kit S-13).
 @Riverpod(keepAlive: true)
