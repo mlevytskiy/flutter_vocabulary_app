@@ -412,7 +412,7 @@ class LearnFlow extends _$LearnFlow {
       return _set(state.copyWith(phase: FlowPhase.refused));
     }
     final now = ref.read(learnFlowClockProvider)();
-    final words = cardWords(wordsToLearn(collection), collection.boxes, now);
+    final words = cardWords(wordsToLearn(collection));
     final boxes = {for (final w in words) w.rowId: boxOf(collection.boxes, w)?.copy()};
     final store = ref.read(learnerProfileStoreProvider);
     _store = store;

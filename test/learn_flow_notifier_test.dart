@@ -253,6 +253,23 @@ void main() {
     expect(f.tracker.started, isEmpty, reason: 'stories start with the cards');
   });
 
+  test('every word of the collection is a card, rated before or not (owner, 2026-11-01: 28 words, not 6)', () async {
+    final collection = _collection(28)
+      ..boxes = [
+        for (var i = 0; i < 22; i++)
+          WordBox()
+            ..rowId = 'r$i'
+            ..word = 'word$i'
+            ..box = 3
+            ..dueAt = DateTime(2026, 11, 20),
+      ];
+    final f = await _flow(collection);
+    expect(f.state.words.map((w) => w.rowId), [for (var i = 0; i < 28; i++) 'r$i']);
+    expect(f.state.groups.map((g) => g.length), [12, 12, 4]);
+    await f.open();
+    expect(f.state.card!.rowId, 'r0');
+  });
+
   test('AC-04: own topic is taken as it is, up to 80 characters, never blank', () async {
     final f = await _flow(_collection(5));
     await f.answerMain();

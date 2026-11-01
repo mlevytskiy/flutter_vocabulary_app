@@ -199,10 +199,8 @@ void main() {
     testWidgets('the dialog pushes Talk once; its end shows the results', (t) async {
       await pump(t, const LearnFlowState(phase: FlowPhase.dialog));
       expect(find.text('talk true c1'), findsOneWidget);
-      await t.tap(find.text('end talk'));
-      await t.pumpAndSettle();
-      expect(find.textContaining('talk '), findsNothing, reason: 'Talk is pushed only once');
-
+      // Talk hands its result to the flow first, then pops (talk_notifier
+      // _finishFlow), so the flow is at its results when Talk closes.
       flow.push(const LearnFlowState(
         phase: FlowPhase.results,
         results: LearnFlowResults(
@@ -221,7 +219,10 @@ void main() {
           dueTomorrow: 0,
         ),
       ));
+      await t.pump();
+      await t.tap(find.text('end talk'));
       await t.pumpAndSettle();
+      expect(find.textContaining('talk '), findsNothing, reason: 'Talk is pushed only once');
       expect(find.byType(SessionResultsScreen), findsOneWidget);
       expect(find.text('Cards'), findsOneWidget);
     });

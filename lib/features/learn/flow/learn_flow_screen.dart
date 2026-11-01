@@ -233,6 +233,7 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
       onEnter: widget.onStoryEnter,
       onExit: widget.onStoryExit,
       onZoomClosed: () => _landOn(index),
+      onClose: _confirmLeave,
     );
   }
 }

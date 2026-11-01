@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/core/theme/app_theme.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/flow_stories.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.dart';
+import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_page.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_screen.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/story_page.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/story_slots.dart';
@@ -163,8 +165,8 @@ void main() {
     expect(pagerPage(tester), 1);
     final story = find.byType(StoryPage);
     expect(find.descendant(of: story, matching: find.textContaining('Card')), findsNothing);
-    // Its one button is the zoom (learn-flow-cards).
-    expect(find.descendant(of: story, matching: find.byType(IconButton)), findsOneWidget);
+    // Its buttons: Close and the zoom (learn-flow-cards).
+    expect(find.descendant(of: story, matching: find.byType(IconButton)), findsNWidgets(2));
     expect(find.descendant(of: story, matching: find.byKey(const ValueKey('story-zoom-open'))), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('flow-story-page')));
     expect(fake.calls, ['storyDone']);
@@ -358,6 +360,111 @@ void main() {
     expect(fake.calls, ['leave']);
     expect(find.byType(LearnFlowScreen), findsNothing);
     expect(find.text('go'), findsOneWidget);
+  });
+
+  testWidgets('the story page has Close too: Leave leaves at once (iOS has no system Back here)', (tester) async {
+    const ready = FlowStory(
+        index: 0,
+        groupId: 'g0',
+        rowIds: ['r-apple'],
+        status: FlowStoryStatus.ready,
+        picturePath: '/no/such.png',
+        progress: 1);
+    await open(tester, cards(slot: const StorySlot(0), stories: const [ready]));
+    await tester.tap(find.descendant(of: find.byType(StoryPage), matching: find.byTooltip('Close')));
+    await tester.pumpAndSettle();
+    expect(fake.calls, isEmpty, reason: 'Close is not a tap on the story');
+    await tester.tap(find.text('Leave'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, ['leave']);
+    expect(find.byType(LearnFlowScreen), findsNothing);
+    expect(find.text('go'), findsOneWidget);
+  });
+
+  testWidgets('the zoom view: Back closes it, then Close leaves', (tester) async {
+    const ready = FlowStory(
+        index: 0,
+        groupId: 'g0',
+        rowIds: ['r-apple'],
+        status: FlowStoryStatus.ready,
+        picturePath: '/no/such.png',
+        progress: 1);
+    await open(tester, cards(slot: const StorySlot(0), stories: const [ready]));
+    await tester.tap(find.byKey(const ValueKey('story-zoom-open')));
+    await tester.pumpAndSettle();
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await tester.pumpAndSettle();
+    expect(find.byType(StoryZoomView), findsNothing);
+    expect(find.byType(LearnFlowScreen), findsOneWidget);
+    await tester.tap(find.descendant(of: find.byType(StoryPage), matching: find.byTooltip('Close')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leave'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LearnFlowScreen), findsNothing);
+  });
+
+  testWidgets('Talk closed before the dialog ended leaves the flow, not a blank screen', (tester) async {
+    fake = _FakeFlow(LearnFlowState(phase: FlowPhase.dialog, words: words));
+    final router = GoRouter(initialLocation: '/words', routes: [
+      GoRoute(
+        path: '/words',
+        builder: (context, _) => TextButton(onPressed: () => context.push('/words/table/flow'), child: const Text('go')),
+        routes: [
+          GoRoute(path: 'table/flow', builder: (_, __) => const LearnFlowPage(collectionId: 'c1')),
+          GoRoute(
+            path: 'table/talk',
+            builder: (context, _) => Scaffold(
+              body: TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('talk back')),
+            ),
+          ),
+        ],
+      ),
+    ]);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [learnFlowProvider.overrideWith(() => fake)],
+      child: MaterialApp.router(theme: appThemes.first.build(), routerConfig: router),
+    ));
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    expect(find.text('talk back'), findsOneWidget);
+    // Talk left (its own Leave, or Back while it was starting).
+    await tester.tap(find.text('talk back'));
+    await tester.pumpAndSettle();
+    expect(fake.calls, ['leave']);
+    expect(find.byType(LearnFlowScreen), findsNothing);
+    expect(find.text('go'), findsOneWidget);
+  });
+
+  testWidgets('Talk that ended goes back to the flow, which stays for its results', (tester) async {
+    fake = _FakeFlow(LearnFlowState(phase: FlowPhase.dialog, words: words));
+    final router = GoRouter(initialLocation: '/words', routes: [
+      GoRoute(
+        path: '/words',
+        builder: (context, _) => TextButton(onPressed: () => context.push('/words/table/flow'), child: const Text('go')),
+        routes: [
+          GoRoute(
+            path: 'table/flow',
+            builder: (_, __) => LearnFlowScreen(
+              collectionId: 'c1',
+              phases: {
+                FlowPhase.dialog: (context, s, f) => const Text('dialog'),
+                FlowPhase.results: (context, s, f) => const Text('results'),
+              },
+            ),
+          ),
+        ],
+      ),
+    ]);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [learnFlowProvider.overrideWith(() => fake)],
+      child: MaterialApp.router(theme: appThemes.first.build(), routerConfig: router),
+    ));
+    await tester.tap(find.text('go'));
+    await tester.pumpAndSettle();
+    fake.push(LearnFlowState(phase: FlowPhase.results, words: words));
+    await tester.pumpAndSettle();
+    expect(find.text('results'), findsOneWidget);
+    expect(fake.calls, isEmpty);
   });
 
   testWidgets('system Back on a card asks too', (tester) async {

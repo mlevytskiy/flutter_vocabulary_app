@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/word_collection.dart';
 import '../../../core/story/word_grouping.dart' show wordsToLearn;
@@ -54,22 +55,32 @@ class LearnFlowPage extends StatelessWidget {
 
 /// Pushes the main dialog's Talk screen once; the flow stays below it and
 /// Talk pops back to it when the dialog ends (AC-13).
-class _DialogLauncher extends StatefulWidget {
+///
+/// Talk closed before that (its own Leave, Back while it starts, Back on its
+/// error) is the learner leaving the study: the flow leaves and closes too,
+/// instead of staying on this empty page (owner, 2026-11-01).
+class _DialogLauncher extends ConsumerStatefulWidget {
   const _DialogLauncher({required this.collectionId});
 
   final String collectionId;
 
   @override
-  State<_DialogLauncher> createState() => _DialogLauncherState();
+  ConsumerState<_DialogLauncher> createState() => _DialogLauncherState();
 }
 
-class _DialogLauncherState extends State<_DialogLauncher> {
+class _DialogLauncherState extends ConsumerState<_DialogLauncher> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      TalkRoute(collectionId: widget.collectionId, learnFlow: true).push(context);
+      await TalkRoute(collectionId: widget.collectionId, learnFlow: true).push<void>(context);
+      if (!mounted) return;
+      final provider = learnFlowProvider(widget.collectionId);
+      // Ended talks hand their result over before they pop (results phase).
+      if (ref.read(provider).phase != FlowPhase.dialog) return;
+      ref.read(provider.notifier).leave();
+      Navigator.of(context).pop();
     });
   }
 

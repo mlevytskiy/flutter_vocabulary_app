@@ -19,7 +19,9 @@ export 'story_zoom.dart' show appOrientations, storyOrientations;
 /// [onZoomClosed] runs.
 ///
 /// [onEnter] runs when the page is built for the first time and [onExit]
-/// when it goes away.
+/// when it goes away. [onClose] is the Close button at the top, as on the
+/// card pages (the only way out on iOS, where the flow blocks the back
+/// swipe).
 class StoryPage extends StatefulWidget {
   const StoryPage({
     super.key,
@@ -28,6 +30,7 @@ class StoryPage extends StatefulWidget {
     this.onEnter,
     this.onExit,
     this.onZoomClosed,
+    this.onClose,
   });
 
   /// The story picture on the phone; null shows the empty page.
@@ -36,6 +39,7 @@ class StoryPage extends StatefulWidget {
   final VoidCallback? onEnter;
   final VoidCallback? onExit;
   final VoidCallback? onZoomClosed;
+  final VoidCallback? onClose;
 
   @override
   State<StoryPage> createState() => _StoryPageState();
@@ -81,9 +85,17 @@ class _StoryPageState extends State<StoryPage> {
       child: SafeArea(
         child: Column(
           children: [
+            if (widget.onClose != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+                  child: IconButton(tooltip: 'Close', icon: const Icon(Icons.close), onPressed: widget.onClose),
+                ),
+              ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                padding: EdgeInsets.fromLTRB(12, widget.onClose == null ? 12 : 0, 12, 0),
                 child: DecoratedBox(
                   decoration: BoxDecoration(color: decor.storyFrame, borderRadius: radius),
                   child: SizedBox.expand(

@@ -1,13 +1,8 @@
-import '../../../core/models/word_box.dart';
 import '../../../core/models/word_pair.dart';
-import '../session/leitner.dart';
 
 /// The pure word rules of the Learn flow (learn-welcome AC-05, AC-06, AC-13;
 /// ADR-0002). Nothing here touches the store: the flow notifier hands in the
 /// words to learn, their boxes and the card ratings.
-
-/// How many words the cards take at most (AC-05).
-const int maxCardWords = 36;
 
 /// A story group's largest size (AC-06).
 const int maxGroupSize = 12;
@@ -22,31 +17,11 @@ const int maxStoryGroups = 3;
 /// and its practice words (AC-13).
 enum FlowMode { easy, hard }
 
-/// The card words (AC-05): up to [maxCardWords] of [rows], in list order, from
-/// the first row that is due or new on. When no row is due or new, the
-/// [maxCardWords] rows due soonest, in list order among equal dates.
-List<WordPair> cardWords(
-  List<WordPair> rows,
-  List<WordBox> boxes,
-  DateTime now,
-) {
-  final start = rows.indexWhere((row) {
-    final box = boxOf(boxes, row);
-    return box == null || isDue(box, now);
-  });
-  if (start >= 0) return rows.skip(start).take(maxCardWords).toList();
-
-  // Every row has a box due later. List.sort is not stable, so ties fall
-  // back to the list index.
-  final indexed = [
-    for (var i = 0; i < rows.length; i++)
-      (index: i, row: rows[i], dueAt: boxOf(boxes, rows[i])!.dueAt),
-  ]..sort((a, b) {
-      final byDate = a.dueAt.compareTo(b.dueAt);
-      return byDate != 0 ? byDate : a.index.compareTo(b.index);
-    });
-  return [for (final e in indexed.take(maxCardWords)) e.row];
-}
+/// The card words (AC-05, changed by the owner 2026-11-01): every word to
+/// learn of the collection, in list order, whatever its box. (Before: up to
+/// 36 words from the first due-or-new word of the list on, so a list whose
+/// first words were rated earlier showed only its tail.)
+List<WordPair> cardWords(List<WordPair> rows) => List.of(rows);
 
 /// The source a row came from (AC-06): its photo, film or Quizlet set
 /// (`sourceId`), or typing.

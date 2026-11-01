@@ -54,7 +54,9 @@ set of rating rules for the whole app.
 - **AC-04 (US-01) Own topic.** "My own topic…" takes typed or spoken text up to 80 characters; Send is disabled
   while it is empty; the text is used as it is.
 - **AC-05 (US-02) Card words.** Up to 36 words, from the first due-or-new word of the list on, in list order. When
-  no word is due or new, the 36 words due soonest (list order among equal dates).
+  no word is due or new, the 36 words due soonest (list order among equal dates). **Changed by the owner,
+  2026-11-01 (learn-flow-cards):** every word to learn of the collection, in list order, whatever its box, no cap
+  (`cardWords` in `lib/features/learn/flow/flow_words.dart`).
 - **AC-06 (US-03) Split.** The card words are cut in order into groups of up to 12. When the last words of a full
   group (up to 4) come from another source than the word before them, they start the next group. A source is the
   row's photo, film or Quizlet set (`sourceId`), or typing. Only the first 3 groups get a story; 4–7 words make one

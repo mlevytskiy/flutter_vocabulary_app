@@ -1,77 +1,34 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_vocabulary_app/core/models/word_box.dart';
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/flow_words.dart';
 
 /// learn-welcome T4: the pure flow word rules (AC-05, AC-06, AC-13; ADR-0002).
 void main() {
-  final now = DateTime(2026, 10, 30, 15, 30);
-  final today = DateTime(2026, 10, 30);
-
   WordPair row(String id, {String? source}) =>
       WordPair(word: 'w$id', rowId: id, sourceId: source);
-
-  WordBox box(String id, {required DateTime dueAt}) => WordBox()
-    ..rowId = id
-    ..word = 'w$id'
-    ..box = 2
-    ..dueAt = dueAt
-    ..lastUpDay = '';
 
   List<String> ids(List<WordPair> words) => [for (final w in words) w.rowId];
 
   List<WordPair> rows(int n, {String prefix = 'r', String? source}) =>
       [for (var i = 0; i < n; i++) row('$prefix$i', source: source)];
 
-  group('cardWords (AC-05)', () {
-    test('starts at the first due-or-new row and takes up to 36 in order', () {
-      final list = rows(50);
-      final later = today.add(const Duration(days: 3));
-      final boxes = [
-        for (var i = 0; i < 5; i++) box('r$i', dueAt: later),
-        box('r5', dueAt: today), // due today
-      ];
-      final picked = cardWords(list, boxes, now);
-      expect(picked.length, 36);
-      expect(picked.first.rowId, 'r5');
-      expect(ids(picked), ids(list.sublist(5, 41)));
+  group('cardWords (AC-05, owner 2026-11-01: every word)', () {
+    test('the owner\'s case: 28 words, 22 not due yet: all 28 cards, in list order', () {
+      // Boxes no longer pick the cards: none is passed in.
+      final list = rows(28);
+      final picked = cardWords(list);
+      expect(picked.length, 28);
+      expect(ids(picked), ids(list));
     });
 
-    test('a new row (no box) starts the cards', () {
+    test('no cap: 50 words make 50 cards', () {
+      expect(ids(cardWords(rows(50))), ids(rows(50)));
+    });
+
+    test('a copy: changing it leaves the words as they are', () {
       final list = rows(4);
-      final later = today.add(const Duration(days: 2));
-      final boxes = [box('r0', dueAt: later), box('r1', dueAt: later)];
-      expect(ids(cardWords(list, boxes, now)), ['r2', 'r3']);
-    });
-
-    test('a row whose English word changed counts as new', () {
-      final list = rows(3);
-      final later = today.add(const Duration(days: 2));
-      final boxes = [
-        box('r0', dueAt: later),
-        box('r1', dueAt: later)..word = 'old word',
-        box('r2', dueAt: later),
-      ];
-      expect(ids(cardWords(list, boxes, now)), ['r1', 'r2']);
-    });
-
-    test('fewer than 36 rows left: takes what is there', () {
-      final list = rows(10);
-      expect(ids(cardWords(list, const [], now)), ids(list));
-    });
-
-    test('nothing due or new: the 36 due soonest, list order on ties', () {
-      final list = rows(40);
-      final boxes = [
-        for (var i = 0; i < 40; i++)
-          box('r$i',
-              dueAt: today.add(Duration(days: i < 4 ? 9 : (i.isEven ? 2 : 1)))),
-      ];
-      final picked = ids(cardWords(list, boxes, now));
-      final odd = [for (var i = 5; i < 40; i += 2) 'r$i'];
-      final even = [for (var i = 4; i < 40; i += 2) 'r$i'];
-      expect(picked, [...odd, ...even]);
-      expect(picked.length, 36);
+      cardWords(list).removeLast();
+      expect(list.length, 4);
     });
   });
 
