@@ -84,6 +84,11 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.glassEdge = const Color(0xFF9F86D8),
     this.glassShadow = const Color(0xFF3A1D6E),
     this.aiAccent = const Color(0xFF00838F),
+    this.flowCard = Colors.white,
+    this.flowCardBorder = const Color(0x33954EF3),
+    this.flowCardShadow = const Color(0x293A1D6E),
+    this.storyFrame = const Color(0xFF1E1530),
+    this.onStoryFrame = Colors.white,
     this.backdrop,
     this.blobs = const [],
   });
@@ -203,6 +208,18 @@ class AppDecor extends ThemeExtension<AppDecor> {
   final Color rateHard;
   final Color rateMedium;
   final Color rateEasy;
+
+  /// The Learn flow's peek pager (learn-flow-cards, owner 2026-11-01): each
+  /// page's card fill, its border and its shadow (also the lift of a card
+  /// turning over).
+  final Color flowCard;
+  final Color flowCardBorder;
+  final Color flowCardShadow;
+
+  /// The dark frame behind a story picture (the story card and its full
+  /// screen zoom) and the icons on it.
+  final Color storyFrame;
+  final Color onStoryFrame;
 
   /// Painted behind the main screen's list: a gradient and soft colour blobs.
   final Gradient? backdrop;

@@ -34,3 +34,9 @@ Chosen: Option 1. iOS keeps landscape in Info.plist (needed to rotate at all) bu
 
 - + real full-screen landscape
 - − iOS 16+ needs `setPreferredOrientations` plus a geometry update; tested on device
+
+## Amendment (learn-flow-cards, owner 2026-11-01)
+
+The story page now stays portrait (the picture fitted to its card). Its zoom button opens `StoryZoomView`
+(`lib/features/learn/flow/story_zoom.dart`), a full-screen dialog over the flow that sets landscape when it opens
+and portrait as soon as it closes (cross or Back; again on dispose). The zoom is now the only place the app turns.

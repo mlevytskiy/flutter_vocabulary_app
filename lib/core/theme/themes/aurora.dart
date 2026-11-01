@@ -86,6 +86,11 @@ final aurora = AppThemeSpec(
         glassPanel: const Color(0x660C1322),
         glassEdge: mint,
         glassShadow: Colors.black,
+        flowCard: card,
+        flowCardBorder: mint.withValues(alpha: 0.22),
+        flowCardShadow: const Color(0x99000000),
+        storyFrame: const Color(0xFF04070D),
+        onStoryFrame: ice,
         backdrop: const LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,

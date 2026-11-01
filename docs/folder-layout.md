@@ -281,10 +281,13 @@ lib/
                                       level, goal, daily context; change or clear each
       flow/                           (learn-warm-up-v2) warm_up_plan.dart (pure plan: intro, reaction, main question,
                                       grammar every 5th warm-up; ADR-0002), grammar_rules.dart (the fixed rule list
-                                      per level), warm_up_view.dart (the warm-up drawn as a dialog), learn_flow_notifier
+                                      per level), warm_up_view.dart (the warm-up drawn as a dialog), learn_flow_notifier;
+                                      (learn-flow-cards) flow_peek_pager.dart (FlowPeekPager, FlowCardFrame),
+                                      story_page.dart (portrait story card), story_zoom.dart (StoryZoomView:
+                                      landscape full screen; appOrientations / storyOrientations)
       session/                        (learn-redesign) leitner.dart (WordBox rules, applySession), session_words.dart
                                       (which words a session takes; session groups of 7-12), ladder_queue.dart
-                                      (word ladder Meet/Practise/Use), exercise_page.dart + page_input.dart +
+                                      (word ladder Meet/Practise/Use), flip_card.dart (FlipCard: the 3D card flip, learn-flow-cards), exercise_page.dart + page_input.dart +
                                       page_registry.dart (each exercise's <x>_pages.dart page source and
                                       <x>_page_body.dart, ADR-0003), learn_page_frame.dart (card-and-check frame,
                                       AppDecor.learnRight/learnWrong), learning_session_notifier/screen

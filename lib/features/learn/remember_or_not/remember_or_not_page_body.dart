@@ -6,6 +6,7 @@ import '../../../core/services/pronunciation_service.dart';
 import '../../words/widgets/pronunciation_buttons.dart';
 import '../kit/word_marks.dart';
 import '../session/exercise_page.dart';
+import '../session/flip_card.dart';
 import 'remember_or_not_pages.dart';
 
 /// One flash card (learn-remember-or-not): the masked front with Flip, then
@@ -35,41 +36,51 @@ class RememberOrNotPageBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme;
+    // The word turns over in 3D (learn-flow-cards, owner 2026-11-01).
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!flipped) ...[
-          InkWell(
+        FlipCard(
+          flipped: flipped,
+          onTap: flipped ? null : onFlip,
+          front: Padding(
             key: const ValueKey('card-front'),
-            onTap: onFlip,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text(card.front, style: style.headlineSmall),
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            child: Text(card.front, style: style.headlineSmall),
+          ),
+          back: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Flexible(child: Text(card.word, style: style.headlineSmall)),
+                    const SizedBox(width: 8),
+                    PronunciationButtons(onSpeak: onSpeak),
+                  ],
+                ),
+                if (card.translation.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(card.translation, style: style.titleMedium),
+                ],
+                if (card.example != null) ...[
+                  const SizedBox(height: 16),
+                  Text.rich(
+                    key: const ValueKey('example'),
+                    TextSpan(children: boldWord(card.example!, card.word)),
+                  ),
+                ],
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          ElevatedButton(onPressed: onFlip, child: const Text('Flip')),
-        ] else ...[
-          Row(
-            children: [
-              Flexible(child: Text(card.word, style: style.headlineSmall)),
-              const SizedBox(width: 8),
-              PronunciationButtons(onSpeak: onSpeak),
-            ],
-          ),
-          if (card.translation.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(card.translation, style: style.titleMedium),
-          ],
-          if (card.example != null) ...[
-            const SizedBox(height: 16),
-            Text.rich(
-              key: const ValueKey('example'),
-              TextSpan(children: boldWord(card.example!, card.word)),
-            ),
-          ],
-          const SizedBox(height: 24),
+        ),
+        const SizedBox(height: 24),
+        if (!flipped)
+          ElevatedButton(onPressed: onFlip, child: const Text('Flip'))
+        else ...[
           ElevatedButton(
             onPressed: () => onRate(true),
             child: Text(rememberedLabel),

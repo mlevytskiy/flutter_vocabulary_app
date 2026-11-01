@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +7,7 @@ import '../../../core/providers.dart';
 import '../../../core/services/pronunciation_service.dart';
 import '../../../core/theme/app_decor.dart';
 import '../../words/widgets/pronunciation_buttons.dart';
+import 'flip_card.dart';
 import 'self_check.dart';
 
 /// The self-check card (learn-welcome AC-07, AC-18; ADR-0006). The front shows
@@ -61,12 +60,7 @@ class SelfCheckCard extends StatefulWidget {
   State<SelfCheckCard> createState() => _SelfCheckCardState();
 }
 
-class _SelfCheckCardState extends State<SelfCheckCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _turn = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 350),
-  );
+class _SelfCheckCardState extends State<SelfCheckCard> {
   bool _flipped = false;
   bool _rated = false;
 
@@ -76,24 +70,13 @@ class _SelfCheckCardState extends State<SelfCheckCard>
     if (old.row.rowId != widget.row.rowId || old.side != widget.side) {
       _flipped = false;
       _rated = false;
-      _turn.value = 0;
     }
   }
 
-  @override
-  void dispose() {
-    _turn.dispose();
-    super.dispose();
-  }
-
+  /// Turns the card over ([FlipCard], learn-flow-cards).
   void _flip() {
     if (_flipped) return;
     setState(() => _flipped = true);
-    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _turn.value = 1;
-    } else {
-      _turn.forward();
-    }
   }
 
   void _rate(SelfRating rating) {
@@ -125,27 +108,12 @@ class _SelfCheckCardState extends State<SelfCheckCard>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        GestureDetector(
+        FlipCard(
           key: const ValueKey('self-check-card'),
-          behavior: HitTestBehavior.opaque,
+          flipped: _flipped,
           onTap: _flip,
-          child: AnimatedBuilder(
-            animation: _turn,
-            builder: (context, _) {
-              final t = _turn.value;
-              final back = t >= 0.5;
-              // The back is turned a half turn further, so it reads the
-              // right way round once the card has turned over.
-              final angle = math.pi * t + (back ? math.pi : 0);
-              return Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateY(angle),
-                child: back ? _back(context) : _front(context),
-              );
-            },
-          ),
+          front: _front(context),
+          back: _back(context),
         ),
         const SizedBox(height: 16),
         _ratings(context),
@@ -160,7 +128,7 @@ class _SelfCheckCardState extends State<SelfCheckCard>
         widget.side == 'en' ? widget.row.word : widget.row.translation;
     return Padding(
       key: const ValueKey('self-check-front'),
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -179,7 +147,7 @@ class _SelfCheckCardState extends State<SelfCheckCard>
     final contextText = widget.wordContext.trim();
     return Padding(
       key: const ValueKey('self-check-back'),
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,

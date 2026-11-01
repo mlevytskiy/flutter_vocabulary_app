@@ -8,6 +8,7 @@ import '../../../core/theme/app_decor.dart';
 import '../session/learning_session_screen.dart' show confirmLeaveSession;
 import '../session/self_check_card.dart';
 import '../session/self_check.dart';
+import 'flow_peek_pager.dart';
 import 'learn_flow_notifier.dart';
 import 'story_page.dart';
 import 'story_slots.dart';
@@ -18,8 +19,8 @@ import 'story_slots.dart';
 typedef FlowPhaseBuilder = Widget Function(BuildContext context, LearnFlowState state, LearnFlow flow);
 
 /// The Learn flow of one collection (learn-welcome AC-07, AC-10, AC-11,
-/// AC-16). While [FlowPhase.cards], one pager whose next page the notifier
-/// picks ([LearnFlowState.slot]): card pages ("Card N of M" and the
+/// AC-16). While [FlowPhase.cards], one peek pager ([FlowPeekPager],
+/// learn-flow-cards) whose next page the notifier picks ([LearnFlowState.slot]): card pages ("Card N of M" and the
 /// self-check card), story pages (the picture alone, [StoryPage]) and the
 /// wait page ("Writing your story…", progress, "Skip, show it later").
 ///
@@ -39,7 +40,8 @@ class LearnFlowScreen extends ConsumerStatefulWidget {
   /// What the phases other than [FlowPhase.cards] show.
   final Map<FlowPhase, FlowPhaseBuilder> phases;
 
-  /// Passed on to every [StoryPage] (landscape, T14).
+  /// Passed on to every [StoryPage]: run when it is first built and when it
+  /// goes away.
   final VoidCallback? onStoryEnter;
   final VoidCallback? onStoryExit;
 
@@ -80,7 +82,7 @@ class _FlowPage {
 }
 
 class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
-  final _pager = PageController();
+  final _pager = flowPeekController();
   final _pages = <_FlowPage>[];
 
   @override
@@ -122,6 +124,15 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
     });
   }
 
+  /// Back on the last page after the story zoom closed and the screen
+  /// turned back to portrait (learn-flow-cards).
+  void _landOnLast() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final last = _pages.length - 1;
+      if (mounted && _pager.hasClients && last >= 0 && _pager.page != last) _pager.jumpToPage(last);
+    });
+  }
+
   /// The leave dialog (AC-16): Leave drops the flow and closes the screen.
   Future<void> _confirmLeave() async {
     final leave = await confirmLeaveSession(context);
@@ -140,11 +151,10 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
     final custom = widget.phases[s.phase];
     final Widget body;
     if (s.phase == FlowPhase.cards) {
-      body = PageView.builder(
-        key: const ValueKey('flow-pager'),
+      body = FlowPeekPager(
         controller: _pager,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _pages.length,
+        count: _pages.length,
+        current: _pages.length - 1,
         itemBuilder: (context, i) => _buildPage(context, _pages[i], s, flow),
       );
     } else if (custom != null) {
@@ -195,6 +205,7 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
       onDone: flow.storyDone,
       onEnter: widget.onStoryEnter,
       onExit: widget.onStoryExit,
+      onZoomClosed: _landOnLast,
     );
   }
 }

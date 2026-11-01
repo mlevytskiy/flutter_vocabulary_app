@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_vocabulary_app/features/learn/session/flip_card.dart' show flipDuration;
 import 'package:flutter_vocabulary_app/core/models/film_dialogue.dart';
 import 'package:flutter_vocabulary_app/core/models/word_collection.dart';
 import 'package:flutter_vocabulary_app/core/models/word_group.dart';
@@ -101,9 +102,11 @@ void main() {
     return container;
   }
 
+  /// Taps [text] and lets a card flip finish (learn-flow-cards).
   Future<void> tapText(WidgetTester tester, String text) async {
     await tester.tap(find.text(text));
     await tester.pump();
+    await tester.pump(flipDuration);
   }
 
   testWidgets('AC-01: title, counter, a meaning and Flip; nothing of the back', (tester) async {
