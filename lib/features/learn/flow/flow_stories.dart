@@ -141,14 +141,17 @@ String _filmSource(WordOrigin o) {
 }
 
 /// The picture of a finished, collected story run; null otherwise.
-String? storyPicture(StoryRun run) {
+String? storyPicture(StoryRun run) => storyPictureStep(run)?.picturePath;
+
+/// The picture step of a finished, collected story run; null otherwise.
+StoryStep? storyPictureStep(StoryRun run) {
   if (run.kind != StoryRunKind.story ||
       run.outcome != 'done' ||
       !run.collected) {
     return null;
   }
   for (final s in run.steps.reversed) {
-    if (s.role == 'picture') return s.picturePath;
+    if (s.role == 'picture') return s;
   }
   return null;
 }

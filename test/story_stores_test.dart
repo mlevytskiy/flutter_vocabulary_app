@@ -191,6 +191,14 @@ void main() {
       expect(await store.write('r1', 1, Uint8List(10)), isNull);
     });
 
+    test('pathOf: where a kept picture is now; null when it is gone', () async {
+      final store = StoryPictureStore(
+          directory: dir.path, compress: (b, q) async => b);
+      final written = await store.write('r1', 1, Uint8List.fromList([1, 2]));
+      expect(await store.pathOf('r1', 1), written);
+      expect(await store.pathOf('r1', 2), isNull);
+    });
+
     test('never throws: a bad directory gives null / false', () async {
       final store = StoryPictureStore(
           directory: '${dir.path}/file.txt/nested', compress: (b, q) async => b);
@@ -198,6 +206,7 @@ void main() {
       expect(await store.write('r1', 1, Uint8List(10)), isNull);
       expect(await store.read('r1', 1), isNull);
       expect(await store.exists('r1', 1), isFalse);
+      expect(await store.pathOf('r1', 1), isNull);
     });
   });
 }

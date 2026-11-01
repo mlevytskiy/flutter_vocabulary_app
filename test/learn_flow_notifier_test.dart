@@ -13,6 +13,7 @@ import 'package:flutter_vocabulary_app/core/providers.dart';
 import 'package:flutter_vocabulary_app/core/services/collection_store.dart';
 import 'package:flutter_vocabulary_app/core/services/learn_topics_service.dart';
 import 'package:flutter_vocabulary_app/core/services/learner_profile_store.dart';
+import 'package:flutter_vocabulary_app/core/services/story_picture_store.dart';
 import 'package:flutter_vocabulary_app/core/services/story_run_store.dart';
 import 'package:flutter_vocabulary_app/core/services/talk_picture_service.dart';
 import 'package:flutter_vocabulary_app/core/story/story_run_tracker.dart';
@@ -129,6 +130,16 @@ class _Picture extends TalkPictureService {
   }
 }
 
+/// The picture files as the store finds them now: under this install's
+/// documents folder, except the runs in [gone].
+class _Pictures extends StoryPictureStore {
+  final gone = <String>{};
+
+  @override
+  Future<String?> pathOf(String runId, int attempt) async =>
+      gone.contains(runId) ? null : '/docs/mnemonic_pictures/$runId-$attempt.jpg';
+}
+
 WordPair _pair(int i, {String? source}) =>
     WordPair(word: 'word$i', translation: 'слово$i', rowId: 'r$i', sourceId: source);
 
@@ -152,12 +163,15 @@ StoryRun _run(String runId, String groupId, {String outcome = 'done', bool pictu
       StoryStep()
         ..role = 'picture'
         ..outcome = 'done'
-        ..picturePath = picture ? '/p/$runId.jpg' : null,
+        // Kept by an earlier install: iOS moves the app's folder on every
+        // reinstall or update, so this absolute path is stale now.
+        ..picturePath = picture ? '/old-install/Documents/mnemonic_pictures/$runId-1.jpg' : null,
   ];
 
 class _Flow {
-  _Flow(this.container, this.store, this.runs, this.tracker, this.topics, this.picture);
+  _Flow(this.container, this.store, this.runs, this.tracker, this.topics, this.picture, this.pictures);
   final ProviderContainer container;
+  final _Pictures pictures;
   final _Store store;
   final _Runs runs;
   final _Tracker tracker;
@@ -191,7 +205,8 @@ class _Flow {
   }
 }
 
-Future<_Flow> _flow(WordCollection collection, {_Runs? runs, _Tracker? tracker}) async {
+Future<_Flow> _flow(WordCollection collection, {_Runs? runs, _Tracker? tracker, _Pictures? pictures}) async {
+  final kept = pictures ?? _Pictures();
   final store = _Store(collection);
   final r = runs ?? _Runs();
   final t = tracker ?? _Tracker();
@@ -202,6 +217,7 @@ Future<_Flow> _flow(WordCollection collection, {_Runs? runs, _Tracker? tracker})
     collectionStoreProvider.overrideWith((ref) async => store),
     storyRunStoreProvider.overrideWith((ref) async => r),
     storyRunTrackerProvider.overrideWith(() => t),
+    storyPictureStoreProvider.overrideWithValue(kept),
     learnTopicsServiceProvider.overrideWithValue(topics),
     talkPictureServiceProvider.overrideWithValue(picture),
     learnFlowClockProvider.overrideWithValue(() => _now),
@@ -214,7 +230,7 @@ Future<_Flow> _flow(WordCollection collection, {_Runs? runs, _Tracker? tracker})
   c.listen(learnFlowProvider('c1'), (_, __) {});
   c.listen(learnFlowDialogSetupProvider('c1'), (_, __) {});
   await pumpEventQueue();
-  return _Flow(c, store, r, t, topics, picture);
+  return _Flow(c, store, r, t, topics, picture, kept);
 }
 
 void main() {
@@ -291,9 +307,36 @@ void main() {
     await f.open();
     expect(f.tracker.started, isEmpty);
     expect(f.state.stories.map((s) => (s.runId, s.reused, s.status, s.picturePath)), [
-      ('old-flow', true, FlowStoryStatus.ready, '/p/old-flow.jpg'),
-      ('page-story', true, FlowStoryStatus.ready, '/p/page-story.jpg'),
+      ('old-flow', true, FlowStoryStatus.ready, '/docs/mnemonic_pictures/old-flow-1.jpg'),
+      ('page-story', true, FlowStoryStatus.ready, '/docs/mnemonic_pictures/page-story-1.jpg'),
     ]);
+  });
+
+  test('the story picture is found where the store keeps it now, not at the path an earlier install saved',
+      () async {
+    // The black story page: a reused story kept its old absolute path, which
+    // iOS invalidates on every reinstall or update, so Image.file drew nothing.
+    final collection = _collection(16);
+    final runs = _Runs();
+    final rows = collection.words;
+    runs.runs.addAll([
+      _run('old-flow', flowGroupId(rows.take(12).toList())),
+      _run('gone', flowGroupId(rows.skip(12).toList())),
+    ]);
+    final pictures = _Pictures()..gone.add('gone');
+    final f = await _flow(collection, runs: runs, pictures: pictures);
+    await f.open();
+    expect(f.state.stories[0].picturePath, '/docs/mnemonic_pictures/old-flow-1.jpg');
+    expect(f.state.stories[0].reused, isTrue);
+    // Its picture is no longer on the phone: not reused, a new run starts.
+    expect(f.tracker.started.map((g) => g.id), [flowGroupId(rows.skip(12).toList())]);
+    expect(f.state.stories[1].reused, isFalse);
+    expect(f.state.stories[1].status, FlowStoryStatus.writing);
+
+    f.runs.emit(_run('run-1', f.state.stories[1].groupId));
+    await f.settle();
+    expect(f.state.stories[1].status, FlowStoryStatus.ready);
+    expect(f.state.stories[1].picturePath, '/docs/mnemonic_pictures/run-1-1.jpg');
   });
 
   test('a run of these rows still going is followed, not started again; a refused start fails', () async {

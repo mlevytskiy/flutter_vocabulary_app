@@ -80,6 +80,18 @@ class StoryPictureStore {
     }
   }
 
+  /// Where the kept picture is now, or null when the file is gone. A path a
+  /// run saved earlier can be stale: iOS moves the app's folder on every
+  /// reinstall or update.
+  Future<String?> pathOf(String runId, int attempt) async {
+    try {
+      final file = await _file(runId, attempt);
+      return await file.exists() ? file.path : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<bool> exists(String runId, int attempt) async {
     try {
       return await (await _file(runId, attempt)).exists();

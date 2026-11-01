@@ -90,7 +90,7 @@ final class LearnFlowProvider
   }
 }
 
-String _$learnFlowHash() => r'78fcbeea965333a0fa1babe888e12496070c7131';
+String _$learnFlowHash() => r'1b7edd896733720df3c9b69e9b6d2916899b27eb';
 
 /// The Learn flow of one collection (learn-welcome ADR-0001; AC-01, AC-08,
 /// AC-09, AC-13, AC-16): warm-up → cards with story slots → main dialog →

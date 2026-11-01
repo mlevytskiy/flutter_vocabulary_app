@@ -376,7 +376,7 @@ class LearnFlow extends _$LearnFlow {
   Uint8List? _picture;
   StorySlots? _slots;
   StoryFollow? _follow;
-  final _watches = <StreamSubscription<StoryRun?>>[];
+  final _watches = <StreamSubscription<void>>[];
   final Map<String, int> _beforeBox = {};
   Future<void> _writes = Future.value();
   LearnerProfile _profile = const LearnerProfile();
@@ -711,8 +711,11 @@ class LearnFlow extends _$LearnFlow {
       final runs = await runStore.newestFirst();
       if (_gone) return;
       final saved = reusableStory(collection, groups[i], runs);
-      if (saved != null) {
-        _setStory(i, followRun(state.stories[i].copyWith(runId: saved.runId, reused: true), saved));
+      final picture = saved == null ? null : await _pictureOnPhone(saved);
+      if (_gone) return;
+      if (saved != null && picture != null) {
+        _setStory(i, followRun(state.stories[i].copyWith(runId: saved.runId, reused: true), saved)
+            .copyWith(picturePath: picture));
         continue;
       }
       final runId = runningStory(collectionId, groups[i], runs)?.runId ??
@@ -727,10 +730,24 @@ class LearnFlow extends _$LearnFlow {
       }
       _setStory(i, state.stories[i].copyWith(runId: runId, status: FlowStoryStatus.writing));
       _follow ??= tracker.follow();
-      _watches.add(runStore.watch(runId).listen((run) {
-        if (!_gone) _setStory(i, followRun(state.stories[i], run));
+      _watches.add(runStore.watch(runId).asyncMap((run) async => (run, await _pictureOnPhone(run))).listen((got) {
+        final (run, picture) = got;
+        if (_gone) return;
+        final story = followRun(state.stories[i], run);
+        _setStory(i, story.status == FlowStoryStatus.ready ? story.copyWith(picturePath: picture) : story);
       }));
     }
+  }
+
+  /// Where [run]'s story picture is on the phone now, or null. The path the
+  /// run saved is absolute and goes stale when iOS moves the app's folder (on
+  /// every reinstall or update): the story page then drew nothing, a black
+  /// screen. The store finds the file by run id and attempt, as every other
+  /// story screen does.
+  Future<String?> _pictureOnPhone(StoryRun? run) async {
+    final step = run == null ? null : storyPictureStep(run);
+    if (step == null || step.picturePath == null) return null;
+    return ref.read(storyPictureStoreProvider).pathOf(run!.runId, step.attempt);
   }
 
   void _setStory(int i, FlowStory story) {
