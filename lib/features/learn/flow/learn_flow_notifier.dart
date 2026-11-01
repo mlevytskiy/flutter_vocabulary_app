@@ -148,6 +148,9 @@ class LearnFlowResults {
     required this.talk,
     required this.talkLimit,
     required this.dueTomorrow,
+    this.grammarRule,
+    this.grammarRight = 0,
+    this.grammarWrong = 0,
   });
 
   /// Cards per rating (every rating present, 0 when unused).
@@ -173,6 +176,14 @@ class LearnFlowResults {
 
   /// Words to learn whose box is due by tomorrow ("N words due tomorrow").
   final int dueTomorrow;
+
+  /// The main dialog's grammar focus and its learner lines judged right /
+  /// wrong (learn-warm-up-v2 AC-10; unsure never counted). The results show
+  /// "[grammarRule]: used right + wrong times, right right" only when
+  /// something was judged. Never changes a box or a word's dialog result.
+  final String? grammarRule;
+  final int grammarRight;
+  final int grammarWrong;
 }
 
 /// What the flow screen shows (ADR-0001).
@@ -795,12 +806,16 @@ class LearnFlow extends _$LearnFlow {
   /// The main dialog ended (T15): [results] per practice word's row id; a
   /// practice word missing from it counts as unused. Never moves a box
   /// (AC-14).
-  void recordDialog(Map<String, DialogWordResult> results) {
+  /// [grammarRight] / [grammarWrong]: the learner lines the talk judged
+  /// against the grammar focus (learn-warm-up-v2 AC-10).
+  void recordDialog(Map<String, DialogWordResult> results, {int grammarRight = 0, int grammarWrong = 0}) {
     if (state.phase != FlowPhase.dialog) return;
     final setup = state.dialogSetup!;
     _finish(
       dialog: {for (final w in setup.words) w.rowId: results[w.rowId] ?? DialogWordResult.unused},
       limit: false,
+      grammarRight: grammarRight,
+      grammarWrong: grammarWrong,
     );
   }
 
@@ -812,7 +827,8 @@ class LearnFlow extends _$LearnFlow {
     _finish(dialog: const {}, limit: true);
   }
 
-  void _finish({required Map<String, DialogWordResult> dialog, required bool limit}) {
+  void _finish(
+      {required Map<String, DialogWordResult> dialog, required bool limit, int grammarRight = 0, int grammarWrong = 0}) {
     final now = ref.read(learnFlowClockProvider)();
     final local = now.toLocal();
     final tomorrow = DateTime(local.year, local.month, local.day + 1, 12);
@@ -835,6 +851,9 @@ class LearnFlow extends _$LearnFlow {
       },
       talkLimit: limit,
       dueTomorrow: _dueBy(tomorrow),
+      grammarRule: state.dialogSetup?.grammarRule,
+      grammarRight: grammarRight,
+      grammarWrong: grammarWrong,
     );
     _set(state.copyWith(
       phase: FlowPhase.results,

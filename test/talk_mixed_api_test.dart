@@ -49,4 +49,27 @@ void main() {
     expect(
         (await legacy.start(scene: '', words: [(word: 'word', translation: '')], target: 'word')).interaction, isNull);
   });
+
+  test('learn-warm-up-v2 AC-09 / AC-10: the grammar rule goes on start and reply; the verdict is read', () async {
+    final bodies = <Map<String, dynamic>>[];
+    var verdict = '"right"';
+    final service = TalkApiService(client: MockClient((request) async {
+      bodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+      return http.Response('{"reply":"Hi","target":"word","grammarVerdict":$verdict}', 200);
+    }));
+    const words = [(word: 'word', translation: '')];
+    await service.start(scene: '', words: words, target: 'word', grammar: 'Present Perfect');
+    final right = await service.reply(
+        scene: '',
+        words: words,
+        target: 'word',
+        history: [const TalkLine(role: 'learner', text: 'I have seen it')],
+        grammar: 'Present Perfect');
+    expect(bodies.map((b) => b['grammar']), ['Present Perfect', 'Present Perfect']);
+    expect(right.grammarVerdict, 'right');
+    verdict = '"maybe"';
+    expect((await service.reply(scene: '', words: words, target: 'word', history: const [])).grammarVerdict, isNull,
+        reason: 'an unknown verdict is no verdict');
+    expect(bodies.last.containsKey('grammar'), isFalse, reason: 'no rule, no field');
+  });
 }

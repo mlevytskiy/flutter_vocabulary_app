@@ -92,7 +92,8 @@ class TalkTurn {
       this.mission,
       this.interaction,
       this.choices = const [],
-      this.speakingPrompt = ''});
+      this.speakingPrompt = '',
+      this.grammarVerdict});
 
   final String reply;
   final String target;
@@ -102,6 +103,11 @@ class TalkTurn {
   final String? interaction;
   final List<String> choices;
   final String speakingPrompt;
+
+  /// With a grammar rule on the talk (learn-warm-up-v2 AC-10, ADR-0005), a
+  /// reply's judgement of the learner line it answers: "right", "wrong" or
+  /// "unsure"; null without a rule, on a start, or for any other value.
+  final String? grammarVerdict;
 }
 
 /// The app's side of the Worker's talk route `POST /learn/talk` (ADR-0007),
@@ -163,7 +169,11 @@ class TalkApiService {
             mission: TalkMission.fromJson(json['mission']),
             interaction: interaction as String?,
             choices: interaction == 'choice' ? (rawChoices as List).cast<String>() : const [],
-            speakingPrompt: prompt is String ? prompt : '');
+            speakingPrompt: prompt is String ? prompt : '',
+            grammarVerdict: switch (json['grammarVerdict']) {
+              final String v when v == 'right' || v == 'wrong' || v == 'unsure' => v,
+              _ => null,
+            });
       }
       throw TalkApiException(TalkApiError.failed, 'unexpected answer');
     }
@@ -178,10 +188,13 @@ class TalkApiService {
       ];
 
   /// The Learn flow's main dialog (learn-welcome AC-13): the chosen [topic]
-  /// and the reply limit (6 or 12), sent on every call of that talk.
-  Map<String, Object> _flow(TalkTopic? topic, int? maxReplies) => {
+  /// and the reply limit (6 or 12), sent on every call of that talk; with
+  /// the warm-up's [grammar] rule too (learn-warm-up-v2 AC-09; the Worker
+  /// keeps no state).
+  Map<String, Object> _flow(TalkTopic? topic, int? maxReplies, String? grammar) => {
         if (topic != null) 'topic': {if (topic.id != null) 'id': topic.id!, 'text': topic.text},
         if (maxReplies != null) 'maxReplies': maxReplies,
+        if (grammar != null) 'grammar': grammar,
       };
 
   /// Opens a talk: takes one of the day's talks on the Worker (20 a day
@@ -195,6 +208,7 @@ class TalkApiService {
     required String target,
     TalkTopic? topic,
     int? maxReplies,
+    String? grammar,
   }) =>
       _post({
         'kind': 'start',
@@ -203,7 +217,7 @@ class TalkApiService {
         'words': _words(words),
         'target': target,
         'history': const <Object>[],
-        ..._flow(topic, maxReplies),
+        ..._flow(topic, maxReplies, grammar),
       });
 
   /// The AI's answer to the learner's last line; [history] (1–24 lines) ends
@@ -215,6 +229,7 @@ class TalkApiService {
     required List<TalkLine> history,
     TalkTopic? topic,
     int? maxReplies,
+    String? grammar,
   }) =>
       _post({
         'kind': 'reply',
@@ -223,6 +238,6 @@ class TalkApiService {
         'words': _words(words),
         'target': target,
         'history': [for (final l in history) l.toJson()],
-        ..._flow(topic, maxReplies),
+        ..._flow(topic, maxReplies, grammar),
       });
 }

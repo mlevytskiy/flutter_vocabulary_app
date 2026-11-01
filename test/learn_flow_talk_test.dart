@@ -33,13 +33,19 @@ class _FakeFlow extends LearnFlow {
 
   final LearnDialogSetup setup;
   Map<String, DialogWordResult>? recorded;
+
+  /// The grammar verdicts the talk counted (learn-warm-up-v2 T12).
+  ({int right, int wrong})? grammar;
   int refused = 0;
 
   @override
   LearnFlowState build(String collectionId) => LearnFlowState(phase: FlowPhase.dialog, dialogSetup: setup);
 
   @override
-  void recordDialog(Map<String, DialogWordResult> results) => recorded = results;
+  void recordDialog(Map<String, DialogWordResult> results, {int grammarRight = 0, int grammarWrong = 0}) {
+    recorded = results;
+    grammar = (right: grammarRight, wrong: grammarWrong);
+  }
 
   @override
   void dialogRefused() => refused++;
@@ -101,7 +107,11 @@ void main() {
 
   /// The dialog setup over [order] (indexes into [words]).
   LearnDialogSetup setupOf(String id,
-          {List<int> order = const [1, 0, 2, 3], int maxReplies = 6, Uint8List? bytes, bool loading = false}) =>
+          {List<int> order = const [1, 0, 2, 3],
+          int maxReplies = 6,
+          Uint8List? bytes,
+          bool loading = false,
+          String? grammarRule}) =>
       LearnDialogSetup(
         collectionId: id,
         topic: const FlowTopic(id: 'travel', text: 'Travel', description: 'Trips and tickets'),
@@ -110,6 +120,7 @@ void main() {
         words: [for (final i in order) pair(i)],
         picture: bytes,
         pictureLoading: loading,
+        grammarRule: grammarRule,
       );
 
   ({ProviderContainer c, Talk talk, _FakeFlow flow, FakeTalkPicture pictures}) container(
@@ -299,6 +310,59 @@ void main() {
     expect(flow.recorded!['q1'], DialogWordResult.missed);
     final after = (await store.byId(id))!.boxes;
     expect([for (final b in after) (b.rowId, b.box)], [('q1', 2)], reason: 'the end moves no box');
+  });
+
+  test('learn-warm-up-v2 AC-09: the grammar rule goes with the start and every reply; none without it', () async {
+    final id = await newCollection();
+    final api = FakeTalkApi()..answers.add(const TalkTurn(reply: 'Hi!', target: 'crowded'));
+    final (c: _, :talk, flow: _, pictures: _) = container(id, api, setupOf(id, grammarRule: 'Present Perfect'));
+    await talk.startFlow();
+    await talk.send('I have taken the bus');
+    await talk.send('Yes', isChoice: false);
+    expect([for (final k in api.calls) k.kind], ['start', 'reply', 'reply']);
+    expect(api.grammars, ['Present Perfect', 'Present Perfect', 'Present Perfect']);
+
+    final id2 = await newCollection();
+    final plain = FakeTalkApi()..answers.add(const TalkTurn(reply: 'Hi!', target: 'crowded'));
+    final (c: _, talk: talk2, flow: _, pictures: _) = container(id2, plain, setupOf(id2));
+    await talk2.startFlow();
+    await talk2.send('hello');
+    expect(plain.grammars, [null, null]);
+  });
+
+  test('learn-warm-up-v2 AC-10: right and wrong verdicts are counted, unsure left out; word results unchanged',
+      () async {
+    final id = await newCollection();
+    final before = (await store.byId(id))!;
+    final boxesBefore = [for (final b in before.boxes) (b.rowId, b.box, b.dueAt, b.lastUpDay)];
+    final api = FakeTalkApi()
+      ..answers.addAll(const [
+        TalkTurn(reply: 'Hi!', target: 'crowded'),
+        TalkTurn(reply: 'Good.', target: 'crowded', grammarVerdict: 'right'),
+        TalkTurn(reply: 'You mean "I have seen".', target: 'crowded', grammarVerdict: 'wrong'),
+        TalkTurn(reply: 'Hm.', target: 'crowded', grammarVerdict: 'unsure'),
+        TalkTurn(reply: 'Nice.', target: 'crowded', grammarVerdict: 'right'),
+        TalkTurn(reply: 'Bye.', target: 'crowded', interaction: 'complete'),
+      ]);
+    final (:c, :talk, :flow, pictures: _) = container(id, api, setupOf(id, grammarRule: 'Present Perfect'));
+    await talk.startFlow();
+    await talk.send('I have been on a crowded bus');
+    await talk.send('I have saw it');
+    await talk.send('Maybe');
+    await talk.send('I have bought a ticket');
+    await talk.send('Bye');
+    final s = c.read(talkProvider(id, learnFlow: true));
+    expect((s.grammarRight, s.grammarWrong), (2, 1));
+    await talk.finish();
+    expect(flow.grammar, (right: 2, wrong: 1));
+    expect(flow.recorded, {
+      'r2': DialogWordResult.used,
+      'r1': DialogWordResult.used,
+      'r3': DialogWordResult.used,
+      'r4': DialogWordResult.unused,
+    });
+    final after = (await store.byId(id))!;
+    expect([for (final b in after.boxes) (b.rowId, b.box, b.dueAt, b.lastUpDay)], boxesBefore);
   });
 
   test('a wrong quick-check answer counts as missed', () {

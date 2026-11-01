@@ -90,7 +90,14 @@ class TalkState {
     this.quizzes = const [],
     this.quizzedRows = const {},
     this.replyLimit,
+    this.grammarRight = 0,
+    this.grammarWrong = 0,
   });
+
+  /// The main dialog's grammar verdicts so far (learn-warm-up-v2 AC-10):
+  /// learner lines a reply judged right / wrong; unsure ones are left out.
+  final int grammarRight;
+  final int grammarWrong;
 
   /// The Learn flow's main dialog's reply limit (6 or 12, learn-welcome
   /// AC-13) for the counter; null in a plain talk.
@@ -185,6 +192,8 @@ class TalkState {
     bool? keepChoice,
     List<({int at, TalkQuiz? quiz})>? quizzes,
     Set<String>? quizzedRows,
+    int? grammarRight,
+    int? grammarWrong,
   }) =>
       TalkState(
         status: status ?? this.status,
@@ -208,6 +217,8 @@ class TalkState {
         quizzes: quizzes ?? this.quizzes,
         quizzedRows: quizzedRows ?? this.quizzedRows,
         replyLimit: replyLimit,
+        grammarRight: grammarRight ?? this.grammarRight,
+        grammarWrong: grammarWrong ?? this.grammarWrong,
       );
 }
 
@@ -241,6 +252,10 @@ class Talk extends _$Talk {
   /// The main dialog's topic and reply limit; null in a plain talk.
   TalkTopic? _topic;
   int? _maxReplies;
+
+  /// The main dialog's grammar rule (learn-warm-up-v2 AC-09), sent on the
+  /// start and every reply; null without one and in a plain talk.
+  String? _grammar;
 
   /// The talk words' boxes when the talk started (by rowId), kept up to date
   /// by the main dialog's self-check ratings; a new word has none.
@@ -300,6 +315,7 @@ class Talk extends _$Talk {
     _id = id;
     _topic = (id: setup.topic.id, text: setup.topic.text);
     _maxReplies = setup.maxReplies;
+    _grammar = setup.grammarRule;
     _scene = scenePick(name: c?.name ?? '', description: c?.description ?? '');
     _keepBoxes(words, c?.boxes ?? const []);
     _set(TalkState(
@@ -354,7 +370,13 @@ class Talk extends _$Talk {
     try {
       final turn = await ref
           .read(talkApiServiceProvider)
-          .start(scene: _scene, words: _wire, target: state.target!, topic: _topic, maxReplies: _maxReplies);
+          .start(
+              scene: _scene,
+              words: _wire,
+              target: state.target!,
+              topic: _topic,
+              maxReplies: _maxReplies,
+              grammar: _grammar);
       final mission = turn.mission;
       if (mission != null && !learnFlow) {
         // Only the mission's words are talked about; the rest keep their boxes.
@@ -442,6 +464,7 @@ class Talk extends _$Talk {
             ]),
             topic: _topic,
             maxReplies: _maxReplies,
+            grammar: _grammar,
           );
       if (_finished || _disposed) return;
       final target = _targetOf(turn.target);
@@ -457,6 +480,9 @@ class Talk extends _$Talk {
         speakingPrompt: last ? '' : turn.speakingPrompt,
         hintWord: moved ? () => null : null,
         repliesWithoutTarget: moved ? 0 : null,
+        // Only right and wrong count (learn-warm-up-v2 AC-10).
+        grammarRight: _grammar != null && turn.grammarVerdict == 'right' ? state.grammarRight + 1 : null,
+        grammarWrong: _grammar != null && turn.grammarVerdict == 'wrong' ? state.grammarWrong + 1 : null,
       ));
       unawaited(_maybeQuiz());
     } catch (_) {
@@ -720,7 +746,7 @@ class Talk extends _$Talk {
       );
     }
     if (_disposed) return;
-    _flow?.recordDialog(results);
+    _flow?.recordDialog(results, grammarRight: state.grammarRight, grammarWrong: state.grammarWrong);
     _set(state.copyWith(status: TalkStatus.over));
   }
 }

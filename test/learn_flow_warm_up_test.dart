@@ -251,6 +251,36 @@ void main() {
     expect(f.topics.starts.length, 1, reason: 'one topic pick');
   });
 
+  test('AC-10: the dialog\'s right / wrong counts and the rule reach the results; word results unchanged', () async {
+    final f = await _flow(const LearnerProfile(level: 'Intermediate', round: _goalFirst, grammarCounter: 4));
+    f.notifier.answerMain('Make friends');
+    await f.settle();
+    final rule = f.state.grammarRules.first;
+    f.notifier.answerGrammar(rule);
+    await f.settle();
+    f.notifier.chooseTopic(fakeTopics.first);
+    f.notifier.chooseMode(FlowMode.easy);
+    await f.settle();
+    await f.toDialog();
+    f.notifier.recordDialog({'r0': DialogWordResult.used}, grammarRight: 3, grammarWrong: 1);
+    final r = f.state.results!;
+    expect(r.grammarRule, rule);
+    expect((r.grammarRight, r.grammarWrong), (3, 1));
+    expect(r.talk[DialogWordResult.used], 1);
+
+    final g = await _flow(const LearnerProfile(level: 'Beginner', round: _goalFirst, grammarCounter: 2));
+    g.notifier.answerMain('Make friends');
+    await g.settle();
+    g.notifier.chooseTopic(fakeTopics.first);
+    g.notifier.chooseMode(FlowMode.easy);
+    await g.settle();
+    await g.toDialog();
+    g.notifier.recordDialog({'r0': DialogWordResult.used});
+    final none = g.state.results!;
+    expect(none.grammarRule, isNull);
+    expect((none.grammarRight, none.grammarWrong), (0, 0));
+  });
+
   test('AC-07: "No, just talk" also resets the counter; no grammar step adds one', () async {
     final f = await _flow(const LearnerProfile(level: 'Beginner', round: _goalFirst, grammarCounter: 5));
     f.notifier.answerMain('Make friends');

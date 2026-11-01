@@ -37,6 +37,10 @@ class FakeTalkApi implements TalkApiService {
   /// T15), in step with [calls].
   final flows = <({TalkTopic? topic, int? maxReplies})>[];
 
+  /// The grammar rule each call sent (learn-warm-up-v2 T12), in step with
+  /// [calls].
+  final grammars = <String?>[];
+
   Future<TalkTurn> _next(TalkCall call) async {
     calls.add(call);
     if (answers.isEmpty) return TalkTurn(reply: 'Tell me more.', target: call.target);
@@ -52,8 +56,10 @@ class FakeTalkApi implements TalkApiService {
     required String target,
     TalkTopic? topic,
     int? maxReplies,
+    String? grammar,
   }) {
     flows.add((topic: topic, maxReplies: maxReplies));
+    grammars.add(grammar);
     return _next((kind: 'start', scene: scene, words: words, target: target, history: const []));
   }
 
@@ -65,8 +71,10 @@ class FakeTalkApi implements TalkApiService {
     required List<TalkLine> history,
     TalkTopic? topic,
     int? maxReplies,
+    String? grammar,
   }) {
     flows.add((topic: topic, maxReplies: maxReplies));
+    grammars.add(grammar);
     return _next((kind: 'reply', scene: scene, words: words, target: target, history: history));
   }
 }
