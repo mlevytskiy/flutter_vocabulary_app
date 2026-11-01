@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/providers.dart';
+import '../../../core/services/learn_events_service.dart';
 import '../../../core/theme/app_decor.dart';
 import '../../../router/routes.dart';
 import '../flow/flow_result.dart';
@@ -179,10 +180,40 @@ class SessionResultsScreen extends ConsumerWidget {
 }
 
 /// The Learn flow's results (learn-welcome AC-15), in the layout above.
-class _FlowResults extends StatelessWidget {
+class _FlowResults extends ConsumerStatefulWidget {
   const _FlowResults({required this.flow});
 
   final FlowResult flow;
+
+  @override
+  ConsumerState<_FlowResults> createState() => _FlowResultsState();
+}
+
+class _FlowResultsState extends ConsumerState<_FlowResults> {
+  /// "Was this talk interesting?" is open (learn-warm-up-v2 AC-16).
+  bool _asking = false;
+
+  FlowResult get flow => widget.flow;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!flow.results.talkLimit) _countTalk();
+  }
+
+  /// A talk reached results: the store's counter goes up, and every 3rd
+  /// talk asks for the 👍/👎.
+  Future<void> _countTalk() async {
+    final store = ref.read(learnerProfileStoreProvider);
+    final n = (await store.read()).talksCounter + 1;
+    await store.setTalksCounter(n);
+    if (n % 3 == 0 && mounted) setState(() => _asking = true);
+  }
+
+  void _rate(bool up) {
+    ref.read(learnEventsServiceProvider).send([LearnEvent.talkRating(up: up)]);
+    setState(() => _asking = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -259,6 +290,25 @@ class _FlowResults extends StatelessWidget {
               chips([
                 for (final (result, label, bg, fg) in talk) chip('${r.talk[result] ?? 0}\n$label', bg, fg),
               ]),
+            if (r.grammarRule != null && r.grammarRight + r.grammarWrong > 0)
+              line('${r.grammarRule}: used ${r.grammarRight + r.grammarWrong} times, ${r.grammarRight} right'),
+            if (_asking)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(children: [
+                  Expanded(child: Text('Was this talk interesting?', style: theme.textTheme.bodyMedium)),
+                  TextButton(
+                    key: const ValueKey('talk-rating-up'),
+                    onPressed: () => _rate(true),
+                    child: const Text('👍', style: TextStyle(fontSize: 24)),
+                  ),
+                  TextButton(
+                    key: const ValueKey('talk-rating-down'),
+                    onPressed: () => _rate(false),
+                    child: const Text('👎', style: TextStyle(fontSize: 24)),
+                  ),
+                ]),
+              ),
             const SizedBox(height: 20),
             Text('${r.dueTomorrow} words due tomorrow', style: theme.textTheme.titleMedium),
             const SizedBox(height: 16),

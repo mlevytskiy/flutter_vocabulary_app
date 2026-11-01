@@ -4,11 +4,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:flutter_vocabulary_app/core/models/word_pair.dart';
+import 'package:flutter_vocabulary_app/core/providers.dart';
+import 'package:flutter_vocabulary_app/core/services/learner_profile_store.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/flow_result.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/flow_stories.dart';
 import 'package:flutter_vocabulary_app/features/learn/flow/learn_flow_notifier.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/self_check.dart';
 import 'package:flutter_vocabulary_app/features/learn/session/session_results_screen.dart';
+
+import 'fake_warm_up.dart';
 
 /// learn-welcome T16 (AC-15): the flow's results on the session results
 /// screen — Cards, Stories, Talk, due tomorrow, and the three buttons.
@@ -16,7 +20,7 @@ import 'package:flutter_vocabulary_app/features/learn/session/session_results_sc
 FlowStory _story(int i, {bool reused = false}) =>
     FlowStory(index: i, groupId: 'g$i', rowIds: ['r$i'], reused: reused, status: FlowStoryStatus.ready);
 
-LearnFlowResults _results({bool talkLimit = false, int saved = 1}) => LearnFlowResults(
+LearnFlowResults _results({bool talkLimit = false, int saved = 1, String? rule, int right = 0, int wrong = 0}) => LearnFlowResults(
       ratingCounts: const {
         SelfRating.dontRemember: 3,
         SelfRating.hard: 5,
@@ -35,10 +39,18 @@ LearnFlowResults _results({bool talkLimit = false, int saved = 1}) => LearnFlowR
       },
       talkLimit: talkLimit,
       dueTomorrow: 9,
+      grammarRule: rule,
+      grammarRight: right,
+      grammarWrong: wrong,
     );
 
 void main() {
-  Future<List<String>> pump(WidgetTester tester, LearnFlowResults results) async {
+  late FakeProfileStore store;
+  late FakeEvents events;
+
+  Future<List<String>> pump(WidgetTester tester, LearnFlowResults results, {int talks = 0}) async {
+    store = FakeProfileStore(LearnerProfile(talksCounter: talks), []);
+    events = FakeEvents();
     tester.view.physicalSize = const Size(800, 1600);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -59,7 +71,12 @@ void main() {
       ),
       GoRoute(path: '/flow', builder: (_, __) => SessionResultsScreen(flow: flow)),
     ]);
-    await tester.pumpWidget(ProviderScope(child: MaterialApp.router(routerConfig: router)));
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        learnerProfileStoreProvider.overrideWithValue(store),
+        learnEventsServiceProvider.overrideWithValue(events),
+      ],
+      child: MaterialApp.router(routerConfig: router)));
     await tester.tap(find.text('words'));
     await tester.pumpAndSettle();
     return visited;
@@ -135,5 +152,51 @@ void main() {
     final flow = FlowResult.of('c1', state)!;
     expect(flow.cardRowIds, ['r1', 'r2']);
     expect(flow.collectionId, 'c1');
+  });
+
+  testWidgets('grammar line shows the counts of judged uses', (tester) async {
+    await pump(tester, _results(rule: 'Present Perfect', right: 3, wrong: 1));
+    expect(find.text('Present Perfect: used 4 times, 3 right'), findsOneWidget);
+  });
+
+  testWidgets('grammar line hidden with no rule or nothing judged', (tester) async {
+    await pump(tester, _results(rule: 'Present Perfect'));
+    expect(find.textContaining('used 0 times'), findsNothing);
+    expect(find.textContaining('Present Perfect'), findsNothing);
+    await pump(tester, _results(right: 2));
+    expect(find.textContaining('times,'), findsNothing);
+  });
+
+  testWidgets('thumbs question on every 3rd talk, one tap records and hides', (tester) async {
+    await pump(tester, _results(), talks: 2);
+    expect(find.text('Was this talk interesting?'), findsOneWidget);
+    expect(store.profile.talksCounter, 3);
+    await tester.tap(find.byKey(const ValueKey('talk-rating-up')));
+    await tester.pumpAndSettle();
+    expect(find.text('Was this talk interesting?'), findsNothing);
+    expect(events.all.map((e) => e.name), ['talk_rating']);
+    expect(events.all.single.value, 'up');
+  });
+
+  testWidgets('thumbs down records down', (tester) async {
+    await pump(tester, _results(), talks: 5);
+    await tester.tap(find.byKey(const ValueKey('talk-rating-down')));
+    await tester.pumpAndSettle();
+    expect(events.all.single.value, 'down');
+  });
+
+  testWidgets('no question on the 1st and 2nd talk; the counter still counts', (tester) async {
+    await pump(tester, _results(), talks: 0);
+    expect(find.text('Was this talk interesting?'), findsNothing);
+    expect(store.profile.talksCounter, 1);
+    await pump(tester, _results(), talks: 1);
+    expect(find.text('Was this talk interesting?'), findsNothing);
+    expect(store.profile.talksCounter, 2);
+  });
+
+  testWidgets('no talk happened (limit) neither counts nor asks', (tester) async {
+    await pump(tester, _results(talkLimit: true), talks: 2);
+    expect(find.text('Was this talk interesting?'), findsNothing);
+    expect(store.profile.talksCounter, 2);
   });
 }
