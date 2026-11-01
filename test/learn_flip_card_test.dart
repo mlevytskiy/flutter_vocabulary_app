@@ -57,12 +57,31 @@ void main() {
     expect(turnOf(tester).abs(), lessThan(1e-6));
   });
 
-  testWidgets('the next card shows its front at once', (tester) async {
+  testWidgets('flipped back, it turns back in 3D to the front (owner, 2026-11-01)', (tester) async {
     await tester.pumpWidget(host(true));
     expect(find.text('back face'), findsOneWidget);
     await tester.pumpWidget(host(false));
+    await tester.pump(flipDuration * 0.3);
+    expect(find.text('back face'), findsOneWidget);
+    expect(turnOf(tester).abs(), greaterThan(0.05));
+    await tester.pumpAndSettle();
     expect(find.text('front face'), findsOneWidget);
     expect(find.text('back face'), findsNothing);
+    expect(turnOf(tester).abs(), lessThan(1e-6));
+  });
+
+  testWidgets('a new card (a new key) starts on its front without a turn', (tester) async {
+    await tester.pumpWidget(host(true));
+    await tester.pumpWidget(const MaterialApp(
+      home: FlipCard(
+        key: ValueKey('next'),
+        flipped: false,
+        front: Text('front face'),
+        back: Text('back face'),
+      ),
+    ));
+    expect(find.text('front face'), findsOneWidget);
+    expect(turnOf(tester).abs(), lessThan(1e-6));
   });
 
   testWidgets('it takes about half a second', (tester) async {

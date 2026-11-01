@@ -62,14 +62,14 @@ void main() {
       (s) => s.id == AppThemeId.classic || s.id == AppThemeId.amberTerminal)) {
     final theme = spec.build();
     group(spec.name, () {
-      testWidgets('Ukrainian front with Tap to flip; buttons off until flip',
+      testWidgets('Ukrainian front with Tap to flip; buttons on before and after the flip (owner, 2026-11-01)',
           (tester) async {
         await tester.pumpWidget(host(theme: theme));
         expect(find.text('яблуко'), findsOneWidget);
         expect(find.text('apple'), findsNothing);
         expect(find.text('Tap to flip'), findsOneWidget);
         for (final r in SelfRating.values) {
-          expect(button(tester, r).onPressed, isNull, reason: r.name);
+          expect(button(tester, r).onPressed, isNotNull, reason: r.name);
         }
         await flip(tester);
         expect(find.byKey(const ValueKey('self-check-back')), findsOneWidget);
@@ -123,14 +123,55 @@ void main() {
       testWidgets('a rating after the flip calls onRated once', (tester) async {
         final got = <SelfRating>[];
         await tester.pumpWidget(host(theme: theme, onRated: got.add));
-        await tester.tap(find.text('Hard'));
-        await tester.pump();
-        expect(got, isEmpty);
         await flip(tester);
         await tester.tap(find.text('Hard'));
         await tester.tap(find.text('Easy'));
         await tester.pump();
         expect(got, [SelfRating.hard]);
+      });
+
+      testWidgets('a rating before the flip counts too, once (owner, 2026-11-01)', (tester) async {
+        final got = <SelfRating>[];
+        await tester.pumpWidget(host(theme: theme, onRated: got.add));
+        await tester.tap(find.text('Hard'));
+        await tester.pump();
+        expect(got, [SelfRating.hard]);
+        await tester.tap(find.text('Easy'));
+        await flip(tester);
+        await tester.tap(find.text('Medium'));
+        await tester.pump();
+        expect(got, [SelfRating.hard]);
+      });
+
+      testWidgets('a second tap turns the card back to its front (owner, 2026-11-01)', (tester) async {
+        await tester.pumpWidget(host(theme: theme));
+        await flip(tester);
+        expect(find.byKey(const ValueKey('self-check-back')), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('self-check-card')));
+        // Part way back it still shows the back, then the front again.
+        await tester.pump(const Duration(milliseconds: 120));
+        expect(find.byKey(const ValueKey('self-check-back')), findsOneWidget);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('self-check-front')), findsOneWidget);
+        expect(find.byKey(const ValueKey('self-check-back')), findsNothing);
+        expect(find.text('Tap to flip'), findsOneWidget);
+        // And over again.
+        await flip(tester);
+        expect(find.byKey(const ValueKey('self-check-back')), findsOneWidget);
+      });
+
+      testWidgets('without onRated (a card looked at again) the buttons are off', (tester) async {
+        await tester.pumpWidget(MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: SelfCheckCard(row: row(), box: null, side: 'uk', now: now, onSpeak: (_) {}, onRated: null),
+            ),
+          ),
+        ));
+        for (final r in SelfRating.values) {
+          expect(button(tester, r).onPressed, isNull, reason: r.name);
+        }
       });
 
       testWidgets('each button reports its own rating', (tester) async {

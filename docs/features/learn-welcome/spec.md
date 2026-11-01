@@ -62,7 +62,8 @@ set of rating rules for the whole app.
 - **AC-07 (US-02) Card.** Front: the Ukrainian translation (recall the English word) or the English word (recall the
   meaning), switched per word across sessions by `WordBox.lastCheckSide` (none → Ukrainian). Flip shows the word,
   its sound, the translation and the context. The four buttons I don't remember / Hard / Medium / Easy are disabled
-  until the flip; under each is the box it leads to. A counter "Card N of M" replaces the bar.
+  until the flip (changed by the owner, 2026-11-01, learn-flow-cards: always enabled, and a second tap turns the card
+  back); under each is the box it leads to. A counter "Card N of M" replaces the bar.
 - **AC-08 (US-02) Rating.** From the box before (new = 0): I don't remember → 1; Hard → max(1, box − 1); Medium →
   stays (new → 1); Easy → min(5, box + 1); up at most once a calendar day (`lastUpDay`); next review = start of today
   + 1/2/4/8/16 days. The move and the shown side are saved when the card is rated.

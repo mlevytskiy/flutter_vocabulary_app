@@ -13,8 +13,9 @@ const flipDuration = Duration(milliseconds: 540);
 /// shows [back] from the half turn on, mirrored back so it reads the right
 /// way round. Only one face is in the tree at a time.
 ///
-/// [flipped] turning false (the next card) shows the front at once, without
-/// a turn. With animations off, the card shows the back at once too.
+/// [flipped] turning false turns it back to the front the same way (owner,
+/// 2026-11-01). A new card gets a new key, so it starts on its front without
+/// a turn. With animations off, the card shows the other face at once.
 class FlipCard extends StatefulWidget {
   const FlipCard({
     super.key,
@@ -44,12 +45,12 @@ class _FlipCardState extends State<FlipCard> with SingleTickerProviderStateMixin
   void didUpdateWidget(FlipCard old) {
     super.didUpdateWidget(old);
     if (widget.flipped == old.flipped) return;
-    if (!widget.flipped) {
-      _turn.value = 0;
-    } else if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
-      _turn.value = 1;
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _turn.value = widget.flipped ? 1 : 0;
+    } else if (widget.flipped) {
+      _turn.forward();
     } else {
-      _turn.forward(from: 0);
+      _turn.reverse();
     }
   }
 

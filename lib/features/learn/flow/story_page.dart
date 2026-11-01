@@ -9,7 +9,9 @@ export 'story_zoom.dart' show appOrientations, storyOrientations;
 
 /// A story page of the Learn flow (learn-welcome AC-10, AC-11): the story
 /// picture (its captions carry the story) fitted to the portrait card, with
-/// "Tap to continue" under it. A tap or a swipe calls [onDone] once.
+/// "Tap to continue" under it. A tap or a vertical swipe calls [onDone] once;
+/// a sideways swipe is the pager's (back to the cards seen, or forward past
+/// this page, which the flow screen takes as done too).
 ///
 /// Since learn-flow-cards (owner, 2026-11-01) the page stays portrait: its
 /// zoom button opens the picture full screen in landscape ([showStoryZoom]),
@@ -75,7 +77,6 @@ class _StoryPageState extends State<StoryPage> {
       key: const ValueKey('flow-story-page'),
       behavior: HitTestBehavior.opaque,
       onTap: _next,
-      onHorizontalDragEnd: (_) => _next(),
       onVerticalDragEnd: (_) => _next(),
       child: SafeArea(
         child: Column(

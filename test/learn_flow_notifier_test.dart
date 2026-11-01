@@ -480,6 +480,55 @@ void main() {
     expect(r.talkLimit, isFalse);
   });
 
+  test('a card swiped past unrated is skipped: no rating, no box move, no write, left out of the counts (owner, 2026-11-01)',
+      () async {
+    final collection = _collection(5)
+      ..boxes = [
+        WordBox()
+          ..rowId = 'r1'
+          ..word = 'word1'
+          ..box = 3
+          ..dueAt = DateTime(2026, 10, 29),
+      ];
+    final runs = _Runs()..runs.add(_run('kept', flowGroupId(collection.words)));
+    final f = await _flow(collection, runs: runs);
+    await f.open();
+    await f.notifier.rate(SelfRating.easy); // r0 new → 1 (up)
+    expect(f.state.card!.rowId, 'r1');
+    await f.notifier.skipCard(); // r1 left as it was
+    expect(f.store.updates, 1);
+    expect(f.state.cardsDone, 2);
+    expect(f.state.card!.rowId, 'r2');
+    expect(f.state.ratings.containsKey('r1'), isFalse);
+    final b1 = collection.boxes.firstWhere((b) => b.rowId == 'r1');
+    expect((b1.box, b1.dueAt), (3, DateTime(2026, 10, 29)));
+    expect(f.state.boxes['r1']!.box, 3);
+    await f.notifier.rate(SelfRating.dontRemember); // r2 new → 1
+    await f.notifier.skipCard(); // r3
+    await f.notifier.skipCard(); // r4: the last card, then the story
+    await f.settle();
+    expect(f.store.updates, 2);
+    expect(f.state.slot, isA<StorySlot>());
+    // Not on a card: skipping does nothing.
+    await f.notifier.skipCard();
+    expect(f.state.cardsDone, 5);
+    f.notifier.storyDone();
+    f.notifier.recordDialog(const {});
+    await f.settle();
+
+    final r = f.state.results!;
+    expect(r.ratingCounts, {
+      SelfRating.dontRemember: 1,
+      SelfRating.hard: 0,
+      SelfRating.medium: 0,
+      SelfRating.easy: 1,
+    });
+    // r2 was new (box 0), so "I don't remember" (box 1) is a move up; the
+    // skipped r1, r3, r4 do not move.
+    expect(r.movedUp, ['r0', 'r2']);
+    expect(r.movedDown, isEmpty);
+  });
+
   test('AC-13: a refused dialog goes to the results with the daily limit', () async {
     final f = await _flow(_collection(4), runs: _Runs()..runs.add(_run('kept', flowGroupId(_collection(4).words))));
     await f.open();

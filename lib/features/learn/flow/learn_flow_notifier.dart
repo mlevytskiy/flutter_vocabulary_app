@@ -230,7 +230,8 @@ class LearnFlowState {
   final FlowTopic? topic;
   final FlowMode? mode;
 
-  /// Cards rated so far; the current card is `words[cardsDone]`.
+  /// Cards rated or skipped so far ([LearnFlow.skipCard]); the current card
+  /// is `words[cardsDone]`. [ratings] holds only the rated ones.
   final int cardsDone;
 
   /// The page shown while [phase] is [FlowPhase.cards].
@@ -649,6 +650,16 @@ class LearnFlow extends _$LearnFlow {
       ratings: {...state.ratings, row.rowId: rating},
     ));
     _writes = _writes.then((_) => _write(row, rating, now, side));
+    _advance();
+    return _writes;
+  }
+
+  /// The current card swiped past without a rating (owner, 2026-11-01): on
+  /// to the next page with no rating, no box move and nothing written, so it
+  /// is left out of the rating counts and the moves. Nothing off a card.
+  Future<void> skipCard() {
+    if (state.card == null || _gone) return _writes;
+    _set(state.copyWith(cardsDone: state.cardsDone + 1));
     _advance();
     return _writes;
   }

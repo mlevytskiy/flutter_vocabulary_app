@@ -83,6 +83,7 @@ class _FlowPage {
 
 class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
   final _pager = flowPeekController();
+  final _swipeLimit = FlowSwipeLimit();
   final _pages = <_FlowPage>[];
 
   @override
@@ -124,13 +125,32 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
     });
   }
 
-  /// Back on the last page after the story zoom closed and the screen
-  /// turned back to portrait (learn-flow-cards).
-  void _landOnLast() {
+  /// Back on page [index] after the story zoom closed and the screen turned
+  /// back to portrait (learn-flow-cards).
+  void _landOn(int index) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final last = _pages.length - 1;
-      if (mounted && _pager.hasClients && last >= 0 && _pager.page != last) _pager.jumpToPage(last);
+      if (mounted && _pager.hasClients && index < _pages.length && _pager.page != index) _pager.jumpToPage(index);
     });
+  }
+
+  /// The page count when a swipe past the last page last counted, so one
+  /// drag (many overscroll events) moves on once.
+  int _swipedPastAt = -1;
+
+  /// A swipe forward past the current page (owner, 2026-11-01): on a story
+  /// page it is "seen", as a tap; on a card it skips the card unrated
+  /// ([LearnFlow.skipCard]: no rating, no box move); the wait page keeps its
+  /// "Skip, show it later".
+  void _swipePast(LearnFlowState s, LearnFlow flow) {
+    if (_pages.isEmpty || _swipedPastAt == _pages.length) return;
+    final page = _pages.last;
+    if (page.wait) return;
+    _swipedPastAt = _pages.length;
+    if (page.story == null) {
+      flow.skipCard();
+    } else {
+      flow.storyDone();
+    }
   }
 
   /// The leave dialog (AC-16): Leave drops the flow and closes the screen.
@@ -155,7 +175,9 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
         controller: _pager,
         count: _pages.length,
         current: _pages.length - 1,
-        itemBuilder: (context, i) => _buildPage(context, _pages[i], s, flow),
+        itemBuilder: (context, i) => _buildPage(context, i, s, flow),
+        limit: _swipeLimit,
+        onSwipePast: () => _swipePast(s, flow),
       );
     } else if (custom != null) {
       body = custom(context, s, flow);
@@ -175,7 +197,12 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
     );
   }
 
-  Widget _buildPage(BuildContext context, _FlowPage page, LearnFlowState s, LearnFlow flow) {
+  /// Page [index]. A page before the last one was already answered: it can be
+  /// looked at again after a swipe back, but rates, skips and moves on
+  /// nothing (owner, 2026-11-01).
+  Widget _buildPage(BuildContext context, int index, LearnFlowState s, LearnFlow flow) {
+    final page = _pages[index];
+    final live = index == _pages.length - 1;
     final story = page.story;
     if (story == null) {
       return _CardPage(
@@ -187,7 +214,7 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
         side: page.side,
         now: ref.read(learnFlowClockProvider)(),
         onClose: _confirmLeave,
-        onRated: flow.rate,
+        onRated: live ? flow.rate : null,
       );
     }
     final flowStory = story < s.stories.length ? s.stories[story] : null;
@@ -195,17 +222,17 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
       return _WaitPage(
         key: ValueKey('flow-wait-$story'),
         progress: flowStory?.progress ?? 0,
-        onSkip: () => flow.skipStory(story),
+        onSkip: live ? () => flow.skipStory(story) : null,
         onClose: _confirmLeave,
       );
     }
     return StoryPage(
       key: ValueKey('flow-story-$story'),
       picturePath: flowStory?.picturePath,
-      onDone: flow.storyDone,
+      onDone: live ? flow.storyDone : () {},
       onEnter: widget.onStoryEnter,
       onExit: widget.onStoryExit,
-      onZoomClosed: _landOnLast,
+      onZoomClosed: () => _landOn(index),
     );
   }
 }
@@ -231,7 +258,7 @@ class _CardPage extends StatelessWidget {
   final String side;
   final DateTime now;
   final VoidCallback onClose;
-  final ValueChanged<SelfRating> onRated;
+  final ValueChanged<SelfRating>? onRated;
 
   @override
   Widget build(BuildContext context) {
@@ -276,7 +303,7 @@ class _WaitPage extends StatelessWidget {
   const _WaitPage({super.key, required this.progress, required this.onSkip, required this.onClose});
 
   final double progress;
-  final VoidCallback onSkip;
+  final VoidCallback? onSkip;
   final VoidCallback onClose;
 
   @override

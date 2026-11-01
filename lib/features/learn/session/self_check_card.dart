@@ -14,8 +14,11 @@ import 'self_check.dart';
 /// one side of [row] -- its Ukrainian translation for [side] `'uk'` (recall
 /// the English word) or its English word for `'en'` (recall the meaning) --
 /// and "Tap to flip". A tap turns it over to the word, its sound, the
-/// translation and the [wordContext] line. The four rating buttons stay
-/// disabled until the flip; under each is the box it leads to ([boxLabel]).
+/// translation and the [wordContext] line; another tap turns it back (owner,
+/// 2026-11-01). The four rating buttons are always enabled, before the flip
+/// too (owner, 2026-11-01; AC-07 had them wait for the flip); under each is
+/// the box it leads to ([boxLabel]). A null [onRated] (a card looked at
+/// again, not to be rated) disables them.
 ///
 /// It keeps nothing: a tap on a rating only calls [onRated] (once), and the
 /// caller saves the move ([rateBox]).
@@ -54,7 +57,7 @@ class SelfCheckCard extends StatefulWidget {
   /// Plays the word; null speaks it through the app's pronunciation service.
   final ValueChanged<Accent>? onSpeak;
 
-  final ValueChanged<SelfRating> onRated;
+  final ValueChanged<SelfRating>? onRated;
 
   @override
   State<SelfCheckCard> createState() => _SelfCheckCardState();
@@ -73,16 +76,14 @@ class _SelfCheckCardState extends State<SelfCheckCard> {
     }
   }
 
-  /// Turns the card over ([FlipCard], learn-flow-cards).
-  void _flip() {
-    if (_flipped) return;
-    setState(() => _flipped = true);
-  }
+  /// Turns the card over, or back ([FlipCard], learn-flow-cards).
+  void _flip() => setState(() => _flipped = !_flipped);
 
   void _rate(SelfRating rating) {
-    if (!_flipped || _rated) return;
+    final onRated = widget.onRated;
+    if (onRated == null || _rated) return;
     _rated = true;
-    widget.onRated(rating);
+    onRated(rating);
   }
 
   Future<void> _speak(Accent accent) async {
@@ -108,12 +109,16 @@ class _SelfCheckCardState extends State<SelfCheckCard> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        FlipCard(
+        KeyedSubtree(
           key: const ValueKey('self-check-card'),
-          flipped: _flipped,
-          onTap: _flip,
-          front: _front(context),
-          back: _back(context),
+          child: FlipCard(
+            // A new card starts on its front, without a turn.
+            key: ValueKey('self-check-flip-${widget.row.rowId}-${widget.side}'),
+            flipped: _flipped,
+            onTap: _flip,
+            front: _front(context),
+            back: _back(context),
+          ),
         ),
         const SizedBox(height: 16),
         _ratings(context),
@@ -214,7 +219,7 @@ class _SelfCheckCardState extends State<SelfCheckCard> {
                   afterMistake: widget.afterMistake),
               color: color,
               outline: decor.picOutline,
-              onPressed: _flipped ? () => _rate(rating) : null,
+              onPressed: widget.onRated == null ? null : () => _rate(rating),
             ),
           ),
         ],

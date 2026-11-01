@@ -32,6 +32,9 @@ class _FakeFlow extends LearnFlow {
   void storyDone() => calls.add('storyDone');
 
   @override
+  Future<void> skipCard() async => calls.add('skipCard');
+
+  @override
   void skipStory(int story) => calls.add('skip:$story');
 
   @override
@@ -75,7 +78,8 @@ Future<void> open(WidgetTester tester, LearnFlowState initial,
           body: Center(
             child: TextButton(
               onPressed: () => Navigator.of(context).push(PageRouteBuilder<void>(
-                  pageBuilder: (_, __, ___) => LearnFlowScreen(collectionId: 'c1', phases: phases, onStoryEnter: onStoryEnter))),
+                  pageBuilder: (_, __, ___) =>
+                      LearnFlowScreen(collectionId: 'c1', phases: phases, onStoryEnter: onStoryEnter))),
               child: const Text('go'),
             ),
           ),
@@ -249,6 +253,56 @@ void main() {
     // The page still moves on with a tap.
     await tester.tap(find.byKey(const ValueKey('flow-story-page')));
     expect(fake.calls, ['storyDone']);
+  });
+
+  testWidgets('swipe back to a card seen and forward again; a swipe on past the current card skips it (owner, 2026-11-01)',
+      (tester) async {
+    await open(tester, cards());
+    await flipAndRate(tester, SelfRating.easy);
+    fake.push(cards(done: 1));
+    await tester.pumpAndSettle();
+    expect(pagerPage(tester), 1);
+
+    // Back to card 1: looked at again, its ratings off.
+    await tester.fling(find.byType(PageView), const Offset(300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(pagerPage(tester), 0);
+    final first = find.byKey(const ValueKey('flow-card-1'));
+    final easy = find.descendant(of: first, matching: find.byKey(const ValueKey('rate-easy')));
+    expect(
+        tester
+            .widget<ButtonStyleButton>(
+                find.descendant(of: easy, matching: find.byWidgetPredicate((w) => w is ButtonStyleButton)))
+            .onPressed,
+        isNull);
+    await tester.tap(easy, warnIfMissed: false);
+    await tester.pump();
+    // Forward to card 2 again: no skip on the way back to it.
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(pagerPage(tester), 1);
+    expect(fake.calls, ['rate:easy']);
+
+    // On past card 2, unrated: the flow skips it once, and the pager goes on
+    // to the page the flow adds.
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(fake.calls, ['rate:easy', 'skipCard']);
+    fake.push(cards(done: 2));
+    await tester.pumpAndSettle();
+    expect(pagerPage(tester), 2);
+    expect(find.text('Card 3 of 5'), findsOneWidget);
+    // Card 3 still takes its rating.
+    await tester.tap(find.descendant(of: find.byKey(const ValueKey('flow-card-3')), matching: find.text('Hard')));
+    await tester.pump();
+    expect(fake.calls, ['rate:easy', 'skipCard', 'rate:hard']);
+  });
+
+  testWidgets('a rating before the flip rates the card (owner, 2026-11-01)', (tester) async {
+    await open(tester, cards());
+    await tester.tap(find.text('Medium'));
+    await tester.pump();
+    expect(fake.calls, ['rate:medium']);
   });
 
   testWidgets('a swipe on the story page moves on too', (tester) async {
