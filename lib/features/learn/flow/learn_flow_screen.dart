@@ -113,7 +113,11 @@ class _LearnFlowScreenState extends ConsumerState<LearnFlowScreen> {
       if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
         _pager.jumpToPage(to);
       } else {
-        _pager.animateToPage(to, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+        // The story page turns the screen while the slide is still running,
+        // and the slide then stops short of it; land on the page asked for.
+        _pager.animateToPage(to, duration: const Duration(milliseconds: 300), curve: Curves.easeOut).then((_) {
+          if (mounted && _pager.hasClients && to == _pages.length - 1 && _pager.page != to) _pager.jumpToPage(to);
+        });
       }
     });
   }

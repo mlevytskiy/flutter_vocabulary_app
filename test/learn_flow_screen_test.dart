@@ -62,7 +62,7 @@ LearnFlowState cards({int done = 0, NextSlot slot = const CardSlot(), List<FlowS
 late _FakeFlow fake;
 
 Future<void> open(WidgetTester tester, LearnFlowState initial,
-    {Map<FlowPhase, FlowPhaseBuilder> phases = const {}, bool settle = true}) async {
+    {Map<FlowPhase, FlowPhaseBuilder> phases = const {}, bool settle = true, VoidCallback? onStoryEnter}) async {
   fake = _FakeFlow(initial);
   await tester.pumpWidget(ProviderScope(
     overrides: [learnFlowProvider.overrideWith(() => fake)],
@@ -73,7 +73,7 @@ Future<void> open(WidgetTester tester, LearnFlowState initial,
           body: Center(
             child: TextButton(
               onPressed: () => Navigator.of(context).push(PageRouteBuilder<void>(
-                  pageBuilder: (_, __, ___) => LearnFlowScreen(collectionId: 'c1', phases: phases))),
+                  pageBuilder: (_, __, ___) => LearnFlowScreen(collectionId: 'c1', phases: phases, onStoryEnter: onStoryEnter))),
               child: const Text('go'),
             ),
           ),
@@ -147,6 +147,25 @@ void main() {
     expect(find.byType(StoryPage), findsOneWidget);
     expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, before);
     expect(before, 1);
+  });
+
+  testWidgets('the story page stays when the screen turns during the slide to it', (tester) async {
+    addTearDown(tester.view.reset);
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 2;
+    // The real StoryPage turns the screen to landscape in initState, while
+    // the pager is still sliding to it; the turn arrives a moment later.
+    await open(tester, cards(),
+        onStoryEnter: () => Future<void>.delayed(
+            const Duration(milliseconds: 50), () => tester.view.physicalSize = const Size(1600, 800)));
+    for (var done = 1; done <= 3; done++) {
+      fake.push(cards(done: done));
+      await tester.pumpAndSettle();
+    }
+    fake.push(cards(done: 4, slot: const StorySlot(0)));
+    await tester.pumpAndSettle();
+    expect(find.byType(StoryPage), findsOneWidget);
+    expect(tester.widget<PageView>(find.byType(PageView)).controller!.page, 4);
   });
 
   testWidgets('a swipe on the story page moves on too', (tester) async {
