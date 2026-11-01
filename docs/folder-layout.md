@@ -141,6 +141,12 @@ lib/
                                 speech_input.dart (learn-redesign ADR-0009: SpeechInput over
                                 speech_to_text or speech_to_text_pro, picked by the persisted
                                 SpeechEngine in Learn settings; speechInputProvider)
+                                learner_profile_store.dart (learn-warm-up-v2 ADR-0001: LearnerProfileStore —
+                                level, goal, daily context, warm-up round and counters in ONE preferences value)
+                                warm_up_reaction_service.dart (learn-warm-up-v2 ADR-0003: the free one-line
+                                reaction call, 2 s cutoff, fixed-line fallback, no retry)
+                                learn_events_service.dart (learn-warm-up-v2 ADR-0007: POST /learn/events,
+                                fixed names and values only, fire and forget)
                                 exam_result_sink.dart (learn-kit: ExamResultSink, StoreExamResultSink —
                                 Step 3 word results onto the session via appendResult; latest per row)
                                 story_run_store.dart (Isar StoryRun: put/byId/watch; nothing is ever
@@ -271,6 +277,11 @@ lib/
                                       "Soon" beside Learn), learn_presets.dart (Quick / Balanced / Deep / Custom),
                                       learn_settings_screen.dart (presets, switches, words per session, Try it,
                                       speech engine)
+                                      learner_profile_section.dart (learn-warm-up-v2) the learner profile in Learn settings:
+                                      level, goal, daily context; change or clear each
+      flow/                           (learn-warm-up-v2) warm_up_plan.dart (pure plan: intro, reaction, main question,
+                                      grammar every 5th warm-up; ADR-0002), grammar_rules.dart (the fixed rule list
+                                      per level), warm_up_view.dart (the warm-up drawn as a dialog), learn_flow_notifier
       session/                        (learn-redesign) leitner.dart (WordBox rules, applySession), session_words.dart
                                       (which words a session takes; session groups of 7-12), ladder_queue.dart
                                       (word ladder Meet/Practise/Use), exercise_page.dart + page_input.dart +

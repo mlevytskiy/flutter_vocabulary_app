@@ -7,7 +7,7 @@ acs: ["AC-14", "AC-15"]
 files_hint: ["vocab-photo-api/src/learn/topics.ts", "vocab-photo-api/test/learn-topics.test.mjs"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T2 — Revise the 50 topics: groups, hooks, merged pairs, six new topics and permanent aliases

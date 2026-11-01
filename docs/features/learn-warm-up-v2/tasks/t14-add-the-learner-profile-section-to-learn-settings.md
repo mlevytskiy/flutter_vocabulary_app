@@ -7,7 +7,7 @@ acs: ["AC-11", "AC-04"]
 files_hint: ["lib/features/learn/entry/learner_profile_section.dart", "lib/features/learn/entry/learn_settings_screen.dart", "test/learner_profile_section_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T14 — Add the learner profile section to Learn settings

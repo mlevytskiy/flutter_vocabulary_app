@@ -7,7 +7,7 @@ acs: ["AC-04", "AC-11", "AC-03"]
 files_hint: ["lib/core/services/learner_profile_store.dart", "lib/core/providers.dart", "test/learner_profile_store_test.dart"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T7 — Add the learner profile store with the round and counters in one preferences value

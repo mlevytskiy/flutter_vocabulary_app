@@ -7,7 +7,7 @@ acs: ["AC-05", "AC-12"]
 files_hint: ["vocab-photo-api/src/learn/warm-up.ts", "vocab-photo-api/src/learn/routes.ts", "vocab-photo-api/test/learn-warm-up.test.mjs"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T4 — Add the free warm-up reaction call with a checked one-line reply

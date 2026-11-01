@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-03", "AC-04", "AC-06", "AC-07", "AC-13"]
 files_hint: ["lib/features/learn/flow/warm_up_view.dart", "test/warm_up_view_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T11 — Draw the warm-up as a dialog: step bar, level, main and grammar taps, own words, topics with situations

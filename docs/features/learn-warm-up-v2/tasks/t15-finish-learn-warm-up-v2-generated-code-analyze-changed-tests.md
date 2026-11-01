@@ -7,7 +7,7 @@ acs: ["AC-12", "AC-15"]
 files_hint: ["docs/folder-layout.md", "docs/architecture-features.md", "docs/features/learn-warm-up-v2/device-check.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T15 — Finish learn-warm-up-v2: generated code, analyze, changed tests, grep check, deploy order, device check list

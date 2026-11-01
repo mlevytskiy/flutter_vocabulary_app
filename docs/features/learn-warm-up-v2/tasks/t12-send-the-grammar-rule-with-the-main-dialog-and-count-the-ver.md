@@ -7,7 +7,7 @@ acs: ["AC-09", "AC-10"]
 files_hint: ["lib/features/learn/talk/talk_notifier.dart", "lib/core/services/talk_api_service.dart", "lib/features/learn/flow/learn_flow_notifier.dart", "test/learn_session_talk_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T12 — Send the grammar rule with the main dialog and count the verdicts

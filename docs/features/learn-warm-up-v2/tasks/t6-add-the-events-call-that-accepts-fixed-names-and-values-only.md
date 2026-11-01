@@ -7,7 +7,7 @@ acs: ["AC-17"]
 files_hint: ["vocab-photo-api/src/learn/events.ts", "vocab-photo-api/src/learn/routes.ts", "vocab-photo-api/test/learn-events.test.mjs"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T6 — Add the events call that accepts fixed names and values only

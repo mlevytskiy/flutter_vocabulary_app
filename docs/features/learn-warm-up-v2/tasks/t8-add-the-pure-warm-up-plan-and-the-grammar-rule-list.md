@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-06", "AC-07", "AC-08"]
 files_hint: ["lib/features/learn/flow/warm_up_plan.dart", "lib/features/learn/flow/grammar_rules.dart", "test/warm_up_plan_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T8 — Add the pure warm-up plan and the grammar rule list

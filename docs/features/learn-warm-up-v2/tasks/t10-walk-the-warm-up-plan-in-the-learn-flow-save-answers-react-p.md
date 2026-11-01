@@ -7,7 +7,7 @@ acs: ["AC-01", "AC-02", "AC-03", "AC-04", "AC-05", "AC-06", "AC-07", "AC-08", "A
 files_hint: ["lib/features/learn/flow/learn_flow_notifier.dart", "test/learn_flow_warm_up_test.dart"]
 owner: "implementer agent"
 estimate: "L"
-status: "todo"
+status: "done"
 ---
 
 # T10 — Walk the warm-up plan in the Learn flow: save answers, react, pick topics, count

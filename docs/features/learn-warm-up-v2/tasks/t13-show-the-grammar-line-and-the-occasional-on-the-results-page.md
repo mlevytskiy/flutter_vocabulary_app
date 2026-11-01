@@ -7,7 +7,7 @@ acs: ["AC-10", "AC-16", "AC-17"]
 files_hint: ["lib/features/learn/flow/flow_result.dart", "test/learn_flow_results_test.dart"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T13 — Show the grammar line and the occasional 👍/👎 on the results page

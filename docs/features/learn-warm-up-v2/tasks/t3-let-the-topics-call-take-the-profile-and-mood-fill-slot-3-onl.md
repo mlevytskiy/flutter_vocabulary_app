@@ -7,7 +7,7 @@ acs: ["AC-13", "AC-12"]
 files_hint: ["vocab-photo-api/src/learn/topics.ts", "vocab-photo-api/test/learn-topics.test.mjs"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T3 — Let the topics call take the profile and mood, fill slot 3 only from the profile, and write situation lines

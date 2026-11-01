@@ -105,3 +105,20 @@ aloud when enabled but only records after an explicit mic gesture. The final out
 stays visible until See results. Old Worker responses retain the legacy Talk UI.
 Details and tests: `docs/features/talk-mixed/spec.md`.
 
+
+## Warm-up v2 (learn-warm-up-v2, owner 2026-10-31)
+
+- Profile: level, goal and daily context live in one preferences value (`LearnerProfileStore`, ADR-0001) with the
+  warm-up round and counters. They are edited in Learn settings and never shared, published or logged (AC-12).
+- Round: `warm_up_plan.dart` is a pure plan (ADR-0002): the level intro only when no level is set, then a reaction and
+  the main question, in random order inside rounds of three. The Learn flow walks it.
+- Grammar every 5th warm-up: the counter adds 1 per finished warm-up and resets after an answered grammar question.
+  The intro and grammar never share a warm-up. The chosen rule's name (fixed list) goes with the main dialog and the
+  talk returns a verdict per reply, counted on the results page.
+- Reaction call: one free `/learn/warm-up` reaction per answer, 2 s cutoff, fixed-line fallback, no retry (ADR-0003).
+- Topics: the topics call takes the profile and mood; slot 3 may be a profile topic, enforced in Worker code
+  (ADR-0004). Merged-away topic ids stay as permanent aliases (ADR-0006, AC-15).
+- Events call: `/learn/events` accepts fixed names and values only (ADR-0007, AC-17).
+- Deploy order: deploy the Worker BEFORE the app. An app that sends profile, rule or events to an old Worker
+  would get rejected or ignored calls.
+Details and tests: `docs/features/learn-warm-up-v2/spec.md`.

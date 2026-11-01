@@ -7,7 +7,7 @@ acs: ["AC-06", "AC-10", "AC-11", "AC-16"]
 files_hint: ["docs/approved-changes.md"]
 owner: "implementer agent"
 estimate: "S"
-status: "todo"
+status: "done"
 ---
 
 # T1 — Record the four approved visible changes in approved-changes.md

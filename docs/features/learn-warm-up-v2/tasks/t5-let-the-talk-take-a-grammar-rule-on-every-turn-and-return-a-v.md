@@ -7,7 +7,7 @@ acs: ["AC-09", "AC-10"]
 files_hint: ["vocab-photo-api/src/learn/talk.ts", "vocab-photo-api/src/learn/talk-mixed.ts", "vocab-photo-api/test/learn-talk-mixed.test.mjs"]
 owner: "implementer agent"
 estimate: "M"
-status: "todo"
+status: "done"
 ---
 
 # T5 — Let the talk take a grammar rule on every turn and return a verdict per reply
