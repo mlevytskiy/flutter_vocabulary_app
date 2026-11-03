@@ -105,6 +105,9 @@ with the edit pencil (`Icons.edit_outlined`, 18 px, no circle) right after its l
 and its dashes, and the OK tick with its 32 px circle (the colour at 18% opacity, 18 px icon), take the colour
 halfway between the title's rename pencil (`AppDecor.onBarButtonOf`) and the new slot `AppDecor.contextAccent`
 (Classic's violet 0xFF954EF3; other themes their add accent).
+Words: list footer (owner Maksym, 2026-11-03) leaves 96 px of empty room (the screen's background) below the last
+row of the word list, in both the normal and the drag list, so scrolled to the end the last row sits above the round
+buttons and its fields can be edited; the same room the Collections grid leaves.
 
 ## Rule 5 — approved domain models and packages
 

@@ -1204,7 +1204,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
             child: isDragMode
             ? ReorderableListView.builder(
                 scrollController: _listScroll,
-                padding: const EdgeInsets.all(16.0),
+                // Room below the last row, so it scrolls clear of the round buttons.
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                 itemCount: _wordPairs.length,
                 onReorder: _reorderItems,
                 itemBuilder: (context, index) => _buildRowItem(index,
@@ -1219,7 +1220,8 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
               )
             : ListView.builder(
                 controller: _listScroll,
-                padding: const EdgeInsets.all(16.0),
+                // Room below the last row, so it scrolls clear of the round buttons.
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                 itemCount: _wordPairs.length,
                 itemBuilder: (context, index) => _buildRowItem(index,
                     isDragMode: false, detailMode: detailMode, highlight: highlightFor(index)),
