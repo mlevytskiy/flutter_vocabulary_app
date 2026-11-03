@@ -125,6 +125,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
 
   bool _isAnalyzingPhoto = false;
 
+  /// True while [_addWordsFromPhoto] writes the words into the rows: the
+  /// controller listeners then add no blank row (it would land after the
+  /// first word); the add puts the one blank row at the end itself.
+  bool _addingWords = false;
+
   /// side-bar-for-main-screen: the word list's scroll position (both the
   /// plain and the drag-mode list) and one key per row index, so the list can
   /// jump to a photo's first row (spec AC-04). Keyed by index like the row's
@@ -480,7 +485,7 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
 
   @override
   void _checkAndAddNewPair() {
-    if (_wordPairs.isEmpty) return;
+    if (_wordPairs.isEmpty || _addingWords) return;
 
     final lastPair = _wordPairs.last;
     // Any content -- a definition-only row too -- earns a fresh blank row.
@@ -845,7 +850,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
       _removeItem(_wordPairs.length - 1);
     }
 
-    setState(() {
+    // Filling row 0 fires its controller listeners; no blank row may be added
+    // there, between the first word and the rest.
+    _addingWords = true;
+    try {
+      setState(() {
       for (final w in words) {
         final pair = fromPhoto
             ? wordPairFromPhotoAnalysis(w, sourceId: source?.id ?? sourceId)
@@ -873,7 +882,10 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
           appendedPairs.add(_wordPairs[_wordPairs.length - 1]);
         }
       }
-    });
+      });
+    } finally {
+      _addingWords = false;
+    }
 
     if (reusedFirstRow) {
       _pushRow(0,
