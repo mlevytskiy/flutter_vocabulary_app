@@ -260,6 +260,7 @@ class WordRowItem extends StatelessWidget {
                                 rightLabel: 'Translation',
                                 leftFocusNode: wordFocusNode,
                                 rightFocusNode: translationFocusNode,
+                                scrollPadding: rowFieldScrollPadding,
                                 spacing: fieldSpacing,
                               ),
                               if (isLoadingWordTranslation ||
@@ -484,6 +485,7 @@ class WordRowItem extends StatelessWidget {
     return TextField(
       controller: controller,
       focusNode: focusNode,
+      scrollPadding: rowFieldScrollPadding,
       style: HiddenFieldText.styleFor(context, controller, style),
       strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
       minLines: minLines,

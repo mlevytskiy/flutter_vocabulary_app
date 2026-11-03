@@ -108,6 +108,9 @@ halfway between the title's rename pencil (`AppDecor.onBarButtonOf`) and the new
 Words: list footer (owner Maksym, 2026-11-03) leaves 96 px of empty room (the screen's background) below the last
 row of the word list, in both the normal and the drag list, so scrolled to the end the last row sits above the round
 buttons and its fields can be edited; the same room the Collections grid leaves.
+Words: focused field clear of the round buttons (owner Maksym, 2026-11-03): a Word, Translation, Definition or
+Context field that takes focus scrolls itself into view with 112 px of room below it (`rowFieldScrollPadding`), so
+it ends above the settings and plus buttons instead of behind them.
 
 ## Rule 5 — approved domain models and packages
 

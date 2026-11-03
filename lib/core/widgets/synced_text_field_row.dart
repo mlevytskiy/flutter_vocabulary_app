@@ -39,6 +39,11 @@ TextStyle emptyFieldLabelStyle(BuildContext context) => TextStyle(
 /// `maxLines` stays `null`. The taller field drives the height; the shorter one
 /// is padded out to match. Each instance measures only its own two controllers,
 /// so rows stay independent of each other.
+/// How far a focused Words-row field keeps from the list's edges when it
+/// scrolls itself into view: the bottom keeps it above the screen's round
+/// buttons (56 px tall, 16 px from the bottom), not just above the keyboard.
+const rowFieldScrollPadding = EdgeInsets.fromLTRB(20, 20, 20, 112);
+
 class SyncedTextFieldRow extends StatefulWidget {
   const SyncedTextFieldRow({
     super.key,
@@ -57,6 +62,7 @@ class SyncedTextFieldRow extends StatefulWidget {
         const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
     this.borderWidth = 1,
     this.style,
+    this.scrollPadding = const EdgeInsets.all(20),
   });
 
   final TextEditingController leftController;
@@ -83,6 +89,10 @@ class SyncedTextFieldRow extends StatefulWidget {
 
   /// Text style for both fields. Defaults to `bodyLarge` from the theme.
   final TextStyle? style;
+
+  /// Passed to both fields: the room a focused field keeps around it when
+  /// it scrolls into view.
+  final EdgeInsets scrollPadding;
 
   @override
   State<SyncedTextFieldRow> createState() => _SyncedTextFieldRowState();
@@ -162,6 +172,7 @@ class _SyncedTextFieldRowState extends State<SyncedTextFieldRow> {
     return TextField(
       controller: controller,
       focusNode: focusNode,
+      scrollPadding: widget.scrollPadding,
       style: HiddenFieldText.styleFor(context, controller, style),
       // A forced strut keeps the rendered line height identical to what the
       // TextPainter measured, regardless of the glyphs actually typed.

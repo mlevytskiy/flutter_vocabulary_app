@@ -131,6 +131,7 @@ class _WordContextFieldState extends State<WordContextField> {
       key: WordContextField.fieldKey,
       controller: _controller,
       focusNode: _focusNode,
+      scrollPadding: rowFieldScrollPadding,
       style: HiddenFieldText.styleFor(context, _controller, style),
       strutStyle: StrutStyle.fromTextStyle(style, forceStrutHeight: true),
       minLines: 1,

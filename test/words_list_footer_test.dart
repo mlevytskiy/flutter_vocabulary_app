@@ -82,4 +82,63 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     container.dispose();
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  testWidgets('a Word field tapped behind the settings button scrolls above it',
+      (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    late Directory dir;
+    late CollectionStore store;
+    await tester.runAsync(() async {
+      dir = Directory.systemTemp.createTempSync('words_field_scroll_test');
+      store = await CollectionStore.open(directory: dir.path);
+      final collection = WordCollection.create()
+        ..words = [for (var i = 0; i < 30; i++) WordPair(word: 'word$i', translation: 'т$i')];
+      await seedCollection(store, collection);
+      await store.setCurrentCollectionId(collection.collectionId);
+    });
+    addTearDown(() async {
+      await tester.runAsync(() async {
+        if (dir.existsSync()) dir.deleteSync(recursive: true);
+      });
+    });
+    final container = ProviderContainer(overrides: [
+      collectionStoreProvider.overrideWith((ref) async => store),
+    ]);
+    await tester.runAsync(() => container.read(wordsProvider.future));
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: const MaterialApp(home: WordsScreen()),
+    ));
+    await tester.pump();
+    await tester.pump();
+
+    final settings = tester.getRect(find.byTooltip('Settings'));
+    // A Word field (left half) whose bottom part is behind the settings button.
+    final behind = find.byWidgetPredicate((w) {
+      if (w is! TextField || w.decoration?.labelText != 'Word') return false;
+      return true;
+    }).evaluate().where((e) {
+      final box = e.renderObject! as RenderBox;
+      final r = box.localToGlobal(Offset.zero) & box.size;
+      return r.top < settings.top && r.bottom > settings.top;
+    }).toList();
+    expect(behind, isNotEmpty, reason: 'the test needs a field behind the button');
+    final word = (behind.first.widget as TextField).controller!.text;
+    final field = find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.labelText == 'Word' && w.controller?.text == word);
+
+    await tester.tap(field);
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(field).bottom, lessThanOrEqualTo(settings.top),
+        reason: 'the focused Word field is not behind the settings button');
+
+    await tester.pump(const Duration(milliseconds: 1));
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }
