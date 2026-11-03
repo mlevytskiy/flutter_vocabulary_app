@@ -167,6 +167,37 @@ void main() {
     expect(find.text('Movie words'), findsOneWidget);
   });
 
+  testWidgets('a tap inside the field moves the cursor and keeps editing',
+      (t) async {
+    await pump(t);
+    await holdName(t, 'Films words');
+    final r = t.getRect(field);
+    await t.tapAt(Offset(r.left + 6, r.center.dy));
+    await t.pump(const Duration(milliseconds: 400));
+    expect(field, findsOneWidget);
+    expect(store.calls, isEmpty);
+    final c = controller(t);
+    // All was selected; the tap put the cursor in instead.
+    expect(c.selection.isCollapsed, isTrue);
+  });
+
+  testWidgets('a drag inside the field selects text and keeps editing',
+      (t) async {
+    await pump(t);
+    await holdName(t, 'Films words');
+    final r = t.getRect(field);
+    await t.tapAt(Offset(r.left + 6, r.center.dy));
+    await t.pump(const Duration(milliseconds: 400));
+    final g = await t.startGesture(Offset(r.left + 6, r.center.dy),
+        kind: PointerDeviceKind.mouse);
+    await g.moveTo(Offset(r.right - 6, r.center.dy));
+    await g.up();
+    await t.pump();
+    expect(field, findsOneWidget);
+    expect(store.calls, isEmpty);
+    expect(controller(t).selection.isCollapsed, isFalse);
+  });
+
   testWidgets('Done saves', (t) async {
     await pump(t);
     await holdName(t, 'Films words');

@@ -370,6 +370,13 @@ class RenderRenameTapShield extends RenderProxyBox {
 
   @override
   void handleEvent(PointerEvent event, BoxHitTestEntry entry) {
-    if (event is PointerDownEvent) onShieldTouch();
+    // Touches that went through to the edited tile (moving the cursor,
+    // selecting, scrolling the field) reach here too, as the shield is their
+    // ancestor: those keep editing.
+    if (event is PointerDownEvent &&
+        active &&
+        !_insideKept(entry.localPosition)) {
+      onShieldTouch();
+    }
   }
 }
