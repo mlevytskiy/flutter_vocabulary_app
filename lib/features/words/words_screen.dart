@@ -837,9 +837,11 @@ class _WordsScreenState extends ConsumerState<WordsScreen>
     if (source != null) {
       ref.read(wordsProvider.notifier).addSource(source);
     }
-    // The new words go after the last word, not after the trailing blank row:
-    // drop it here, and _checkAndAddNewPair below adds a fresh one at the end.
-    if (words.isNotEmpty && _wordPairs.length > 1 && _wordPairs.last.isEmpty) {
+    // The new words go after the last word, not after the trailing blank rows:
+    // drop them here, and _checkAndAddNewPair below adds a fresh one at the end.
+    // There can be several -- a word typed into the end row and cleared again
+    // leaves its own row blank above the fresh one it grew.
+    while (words.isNotEmpty && _wordPairs.length > 1 && _wordPairs.last.isEmpty) {
       _removeItem(_wordPairs.length - 1);
     }
 

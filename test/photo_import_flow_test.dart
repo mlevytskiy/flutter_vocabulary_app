@@ -437,6 +437,27 @@ void main() {
     await unmount(tester);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  testWidgets(
+      'a word typed in the blank row and cleared again leaves no blank row '
+      'between the words and the photo words',
+      (tester) async {
+    await pumpScreen(tester);
+    // Typing in the end row grows a fresh blank one; clearing it leaves two.
+    final blankWord = find.byType(TextField).at(3);
+    await tester.enterText(blankWord, 'x');
+    await tester.pump();
+    await tester.enterText(blankWord, '');
+    await tester.pump();
+    expect(collectionWords(), ['harbour', '', '']);
+
+    await pickFromGalleryAndAnswer(tester, ['candid', 'fog']);
+    await tester.tap(find.text('Done'));
+    await settleDialog(tester);
+
+    expect(collectionWords(), ['harbour', 'candid', 'fog', '']);
+    await unmount(tester);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   testWidgets('the gallery pick asks for no metadata (AC-09)', (tester) async {
     await pumpScreen(tester);
     await tapGetWordsFromPhoto(tester);
