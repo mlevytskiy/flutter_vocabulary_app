@@ -9,7 +9,9 @@ enum CollectionIconKind { folder, collection }
 /// One tile of the Collections grid: the [CollectionPicture], the name (two
 /// lines, ellipsis), "N words" and a "current" badge for a collection, and,
 /// in delete mode ([onBin] set), a small round bin button at the top left.
-/// Plain values in, taps out.
+/// Plain values in, taps out. [nameEditor], when set, stands where the name
+/// is (collection inline rename); [onPress] says, on every pointer down,
+/// whether it landed on the name.
 class CollectionIcon extends StatelessWidget {
   const CollectionIcon({
     super.key,
@@ -20,6 +22,9 @@ class CollectionIcon extends StatelessWidget {
     this.badges = const [],
     this.onTap,
     this.onBin,
+    this.nameEditor,
+    this.onPress,
+    this.showDetails = true,
   });
 
   final CollectionIconKind kind;
@@ -35,6 +40,19 @@ class CollectionIcon extends StatelessWidget {
   /// rectangle, where its flight to the recycle bin starts.
   final ValueChanged<Rect>? onBin;
 
+  /// The in-place name field, drawn instead of the name while it is edited.
+  final Widget? nameEditor;
+
+  /// A pointer went down on the tile; true when it was on the name.
+  final ValueChanged<bool>? onPress;
+
+  /// False hides "N words" and "current", making room for the name field's
+  /// error inside the cell.
+  final bool showDetails;
+
+  /// The name's style, shared with the in-place name field.
+  static const nameStyle = TextStyle(fontSize: 13);
+
   static const binButtonTooltip = 'Move to recycle bin';
 
   bool get _isCollection => kind == CollectionIconKind.collection;
@@ -42,7 +60,10 @@ class CollectionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return InkWell(
+    // The name's listener runs before the tile's (innermost first), so the
+    // tile's knows whether this press began on the name.
+    var onName = false;
+    final tile = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
@@ -72,20 +93,24 @@ class CollectionIcon extends StatelessWidget {
               );
             }),
             const SizedBox(height: 4),
-            Text(
-              name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13),
-            ),
-            if (_isCollection)
+            nameEditor ??
+                Listener(
+                  onPointerDown: (_) => onName = true,
+                  child: Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: nameStyle,
+                  ),
+                ),
+            if (_isCollection && showDetails)
               Text(
                 '$wordCount words',
                 style:
                     TextStyle(fontSize: 12, color: AppDecor.of(context).muted),
               ),
-            if (_isCollection && isCurrent)
+            if (_isCollection && isCurrent && showDetails)
               Container(
                 margin: const EdgeInsets.only(top: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -102,6 +127,15 @@ class CollectionIcon extends StatelessWidget {
           ],
         ),
       ),
+    );
+    final press = onPress;
+    if (press == null) return tile;
+    return Listener(
+      onPointerDown: (_) {
+        press(onName);
+        onName = false;
+      },
+      child: tile,
     );
   }
 }

@@ -670,6 +670,19 @@ class WordsNotifier extends _$WordsNotifier {
     return true;
   }
 
+  /// Takes the stored name, details and filing into the current collection
+  /// after the store changed them directly (collection inline rename on the
+  /// Collections screen).
+  Future<void> adoptStored() async {
+    // Called after awaits; a disposed notifier has no state (Riverpod 3 throws).
+    if (!ref.mounted) return;
+    final c = state.isLoading ? null : state.value;
+    if (c == null) return;
+    final store = await ref.read(collectionStoreProvider.future);
+    final stored = await store.byId(c.collectionId);
+    if (stored != null) _adopt(stored, withSources: false);
+  }
+
   /// Sets the collection's tags of [kind] (the Notes page editor).
   Future<bool> setCollectionTags(TagKind kind, List<String> tags) =>
       saveDetails(

@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/models/session_source.dart';
 import '../../core/providers.dart';
+import '../../core/services/collection_level.dart';
 import '../../core/services/filing.dart';
 import '../words/words_notifier.dart';
 import 'collection_pictures.dart';
@@ -82,6 +83,19 @@ class CollectionsNotifier extends _$CollectionsNotifier {
     final parent =
         state.path.length >= 2 ? state.path[state.path.length - 2].id : null;
     open(parent);
+  }
+
+  /// Renames collection or folder [id] in place (collection inline rename),
+  /// through the store's rename (AC-01, AC-17). When it is the current
+  /// collection, the main screen takes the stored name at once. Everything
+  /// is read before the first await: the screen may be closing.
+  Future<FilingResult> rename(String id, String name) async {
+    final store = ref.read(collectionStoreProvider.future);
+    final words = ref.read(wordsProvider.notifier);
+    final isCurrent = ref.read(wordsProvider).value?.collectionId == id;
+    final result = await (await store).rename(id, name);
+    if (result == FilingResult.done && isCurrent) await words.adoptStored();
+    return result;
   }
 }
 

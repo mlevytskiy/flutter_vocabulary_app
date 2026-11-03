@@ -22,6 +22,7 @@ import 'collections_search_notifier.dart';
 import 'collections_speed_dial.dart';
 import 'collections_view.dart';
 import 'fly_to_bin.dart';
+import 'inline_rename.dart';
 import 'match_outside_sheet.dart';
 import 'name_dialog.dart';
 import 'recycle_bin_screen.dart';
@@ -51,7 +52,8 @@ class CollectionsScreen extends ConsumerStatefulWidget {
 
 enum _BinAction { open, toggleDeleteMode }
 
-class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
+class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
+    with WidgetsBindingObserver, InlineRename<CollectionsScreen> {
   /// Delete mode: every icon but the current collection has a small bin
   /// button. A screen-only switch; it is off whenever the screen opens.
   bool _deleteMode = false;
@@ -87,6 +89,11 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
     _binZone.dispose();
     super.dispose();
   }
+
+  /// The in-place rename's write (collection inline rename).
+  @override
+  Future<FilingResult> renameItem(String id, String name) =>
+      ref.read(collectionsProvider.notifier).rename(id, name);
 
   void _openSearch() {
     // Delete mode has no place while searching (AC-22).
@@ -312,6 +319,9 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
           : searchCollections(summaries, search.filter, now: DateTime.now());
     }
     final state = ref.watch(collectionsProvider);
+    final items = withSavedNames(state.items);
+    // A rename whose item left the grid (search, filter, deleted) saves.
+    closeRenameIfGone(search.showsResults ? null : items);
     final folders =
         ref.watch(collectionFoldersProvider).value ?? const [];
     final parentOf = {for (final f in folders) f.folderId: f.parentId};
@@ -570,7 +580,10 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                     children: [
                       Expanded(
                         child: CollectionsGrid(
-                          items: state.items,
+                          items: items,
+                          nameEditorFor: renameFieldFor,
+                          onPress: renamePress,
+                          editorShowsError: renameShowsError,
                           // Room below the last row for the round buttons.
                           padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
                           onBin: _deleteMode ? _binByButton : null,
@@ -597,19 +610,28 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen> {
                                       i.id
                                   ];
                                   final index = ids.indexOf(item.id);
+                                  // No drag while its name is edited.
+                                  final editing = item.id == editingId;
                                   // Invisible gap targets on the tile's left edge (and the last
                                   // tile's right edge) reorder to that place.
                                   return Stack(
                                     children: [
-                                      DraggableCollectionIcon(
-                                        item: item,
-                                        level: level(),
-                                        onDecision: _decide,
-                                        onHoverOpen: notifier.open,
-                                        onDragStarted: () => _dragStarted(item),
-                                        onDragEnded: _dragStopped,
-                                        child: icon,
-                                      ),
+                                      if (editing)
+                                        KeyedSubtree(
+                                            key: renameTileKey, child: icon)
+                                      else
+                                        DraggableCollectionIcon(
+                                          item: item,
+                                          level: level(),
+                                          onDecision: _decide,
+                                          onHoverOpen: notifier.open,
+                                          onDragStarted: () =>
+                                              _dragStarted(item),
+                                          onDragEnded: _dragStopped,
+                                          onLongPressNoMove: () =>
+                                              renameLongPressNoMove(item),
+                                          child: icon,
+                                        ),
                                       Positioned(
                                         left: 0,
                                         top: 0,

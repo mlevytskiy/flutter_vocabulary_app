@@ -45,7 +45,7 @@ final class CollectionsNotifierProvider
 }
 
 String _$collectionsNotifierHash() =>
-    r'4ad16935bf13243d97ed042bf5af161115e3a04a';
+    r'8b63e46742198b19597dbc8d9b6cf309dce430f4';
 
 /// Holds the open folder of the Collections screen (collections-screen T15).
 

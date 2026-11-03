@@ -139,6 +139,9 @@ class CollectionsGrid extends StatelessWidget {
     this.padding = const EdgeInsets.all(8),
     this.onBin,
     this.hidden = const {},
+    this.nameEditorFor,
+    this.onPress,
+    this.editorShowsError = false,
   });
 
   final List<CollectionItemView>? items;
@@ -158,6 +161,16 @@ class CollectionsGrid extends StatelessWidget {
   /// Items drawn invisible but still taking their place, e.g. while their
   /// picture flies to the recycle bin.
   final Set<String> hidden;
+
+  /// The in-place name field of the item being renamed, null for the others
+  /// (collection inline rename); that item's tap does nothing.
+  final Widget? Function(CollectionItemView item)? nameEditorFor;
+
+  /// The name field shows an error: its tile drops "N words" for the room.
+  final bool editorShowsError;
+
+  /// A pointer went down on an item; true when it was on the name.
+  final void Function(CollectionItemView item, bool onName)? onPress;
 
   static const emptyText = 'This folder is empty';
 
@@ -184,6 +197,7 @@ class CollectionsGrid extends StatelessWidget {
       itemCount: list.length,
       itemBuilder: (context, i) {
         final item = list[i];
+        final editor = nameEditorFor?.call(item);
         // The full cell width, also under a wrapper's loose constraints, so
         // every picture sits in its cell's middle whatever the name's width.
         final icon = SizedBox(
@@ -196,8 +210,11 @@ class CollectionsGrid extends StatelessWidget {
             wordCount: item.wordCount,
             isCurrent: item.isCurrent,
             badges: item.badges,
-            onTap: () => onTap(item),
+            onTap: editor != null ? null : () => onTap(item),
             onBin: onBin == null ? null : (rect) => onBin!(item, rect),
+            nameEditor: editor,
+            showDetails: editor == null || !editorShowsError,
+            onPress: onPress == null ? null : (onName) => onPress!(item, onName),
           ),
         );
         final shown = itemWrapper?.call(context, item, icon) ?? icon;

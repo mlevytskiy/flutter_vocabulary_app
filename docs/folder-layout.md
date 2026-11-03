@@ -269,6 +269,10 @@ lib/
                                       typed_tag_field.dart (hint, examples, ranked suggestion row,
                                       autocomplete, limits, long-press Forget), tag_suggestions.dart
                                       (+.g: tagSuggestions(kind) = library + live use counts + presets)
+    collections/                      the Collections screen, recycle bin, drag, search and filter
+                                      (collections-screen and after); inline_rename.dart (collection
+                                      inline rename): the in-place name field and the screen's mixin
+                                      that edits one name at a time
     learn/                            lib/features/learn/ (learn-part-step-1): pick exercises to practise a session's words;
                                       the Worker side is vocab-photo-api/src/learn/. learn-redesign (2026-10-23):
                                       Learn opens the Learn sheet; the old learn page opens only from Try it
