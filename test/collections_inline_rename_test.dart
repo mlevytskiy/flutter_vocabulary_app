@@ -22,8 +22,14 @@ import 'package:flutter_vocabulary_app/features/words/words_notifier.dart';
 class _FakeInput extends WordsNotifier {
   _FakeInput(this.collection);
   final WordCollection collection;
+  final opened = <String>[];
   @override
   Future<WordCollection> build() async => collection;
+  @override
+  Future<bool> open(String id) async {
+    opened.add(id);
+    return true;
+  }
 }
 
 class _FakeStore implements CollectionStore {
@@ -68,6 +74,7 @@ void main() {
   final films = _coll('Films words');
   final idioms = _coll('Idioms');
   late _FakeStore store;
+  late _FakeInput input;
 
   final field = find.byKey(InlineNameField.fieldKey);
 
@@ -79,8 +86,9 @@ void main() {
       overrides: [
         collectionStoreProvider.overrideWith((ref) async => store),
         binItemsProvider.overrideWith((ref) => Stream.value(const [])),
-        wordsProvider.overrideWith(() => _FakeInput(phrasal)),
-        collectionFoldersProvider.overrideWith((ref) => Stream.value([english])),
+        wordsProvider.overrideWith(() => input = _FakeInput(phrasal)),
+        collectionFoldersProvider
+            .overrideWith((ref) => Stream.value([english])),
         collectionLevelProvider(null).overrideWith((ref) => Stream.value([
               LevelItem.folder(english),
               LevelItem.collection(phrasal),
@@ -225,13 +233,15 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('a second long press saves the first and edits the other',
+  testWidgets('a long press on another name first only saves, then edits it',
       (t) async {
     await pump(t);
     await holdName(t, 'Films words');
     await t.enterText(field, 'Movie words');
     await holdName(t, 'Idioms');
     expect(store.calls, ['rename ${films.collectionId} Movie words']);
+    expect(field, findsNothing);
+    await holdName(t, 'Idioms');
     expect(field, findsOneWidget);
     expect(controller(t).text, 'Idioms');
     expect(find.text('Movie words'), findsOneWidget);
@@ -248,8 +258,27 @@ void main() {
     expect(find.text('French course'), findsOneWidget);
   });
 
-  testWidgets('a tap on the edited tile saves and does not open it',
+  testWidgets('a tap on another collection only saves, it opens nothing',
       (t) async {
+    await pump(t);
+    await holdName(t, 'Films words');
+    await t.enterText(field, 'Movie words');
+    // The shield takes this touch, so the tap does not reach the text.
+    await t.tap(find.text('Idioms'), warnIfMissed: false);
+    await t.pump();
+    await t.pump();
+    expect(store.calls, ['rename ${films.collectionId} Movie words']);
+    expect(input.opened, isEmpty);
+    expect(field, findsNothing);
+    expect(find.text('Movie words'), findsOneWidget);
+    // The next tap works as usual: the folder opens.
+    await t.tap(find.text('English course'));
+    await t.pump();
+    await t.pump();
+    expect(find.text('Idioms'), findsNothing);
+  });
+
+  testWidgets('a tap on the edited tile saves and does not open it', (t) async {
     await pump(t);
     await holdName(t, 'English course');
     await t.enterText(field, 'French course');

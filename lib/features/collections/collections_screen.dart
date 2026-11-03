@@ -309,8 +309,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
     final search = ref.watch(_searchProvider);
     final searchNotifier = ref.read(_searchProvider.notifier);
     final locked = search.searching || search.filter.isActive;
-    final binFull =
-        ref.watch(binItemsProvider).value?.isNotEmpty ?? false;
+    final binFull = ref.watch(binItemsProvider).value?.isNotEmpty ?? false;
     List<CollectionSummary>? results;
     if (search.showsResults) {
       final summaries = ref.watch(collectionSummariesProvider).value;
@@ -322,8 +321,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
     final items = withSavedNames(state.items);
     // A rename whose item left the grid (search, filter, deleted) saves.
     closeRenameIfGone(search.showsResults ? null : items);
-    final folders =
-        ref.watch(collectionFoldersProvider).value ?? const [];
+    final folders = ref.watch(collectionFoldersProvider).value ?? const [];
     final parentOf = {for (final f in folders) f.folderId: f.parentId};
     final notifier = ref.read(collectionsProvider.notifier);
 
@@ -387,279 +385,286 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
         // Any part of a dragged icon over the bin lights it (owner, 2026-10-18).
         child: BinZoneScope(
           zone: _binZone,
-          child: Scaffold(
-            // The side menu while this is the start of the stack; pushed from
-            // a tag tap the bar keeps Back (navigation, owner 2026-10-18).
-            drawer: appDrawerIfRoot(context, AppMenuItem.collections),
-            onDrawerChanged: (open) => setState(() => _drawerOpen = open),
-            appBar: AppBar(
-              title: search.searching
-                  ? TextField(
-                      controller: _query,
-                      autofocus: true,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        // Where the search looks (collections-search AC-02).
-                        hintText: folderName == null
-                            ? 'Search collections'
-                            : 'Search in $folderName',
-                        border: InputBorder.none,
-                        // ✕ while there is text: clears the text only; the
-                        // field and the keyboard stay (owner, 2026-10-18).
-                        suffixIcon: ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _query,
-                          builder: (context, value, _) => value.text.isEmpty
-                              ? const SizedBox.shrink()
-                              : IconButton(
-                                  icon: const Icon(Icons.close),
-                                  tooltip: 'Clear text',
-                                  onPressed: () {
-                                    _query.clear();
-                                    searchNotifier.setQuery('');
-                                  },
-                                ),
-                        ),
-                      ),
-                      onChanged: searchNotifier.setQuery,
-                    )
-                  : inFolder
-                      // Up and the path on the bar's one line (owner,
-                      // 2026-10-18), in place of the old row below it.
-                      ? CollectionsPathBar(
-                          parts: state.path,
-                          onPart: notifier.open,
-                          partWrapper: (context, part, child) =>
-                              PathPartDropTarget(
-                            part: part,
-                            level: level(),
-                            onDecision: _decide,
-                            onHoverOpen: notifier.open,
-                            child: child,
+          // While a name is edited, a touch outside it only saves it.
+          child: RenameTapShield(
+            active: editingId != null,
+            keepKey: renameTileKey,
+            onShieldTouch: commitRename,
+            child: Scaffold(
+              // The side menu while this is the start of the stack; pushed from
+              // a tag tap the bar keeps Back (navigation, owner 2026-10-18).
+              drawer: appDrawerIfRoot(context, AppMenuItem.collections),
+              onDrawerChanged: (open) => setState(() => _drawerOpen = open),
+              appBar: AppBar(
+                title: search.searching
+                    ? TextField(
+                        controller: _query,
+                        autofocus: true,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          // Where the search looks (collections-search AC-02).
+                          hintText: folderName == null
+                              ? 'Search collections'
+                              : 'Search in $folderName',
+                          border: InputBorder.none,
+                          // ✕ while there is text: clears the text only; the
+                          // field and the keyboard stay (owner, 2026-10-18).
+                          suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _query,
+                            builder: (context, value, _) => value.text.isEmpty
+                                ? const SizedBox.shrink()
+                                : IconButton(
+                                    icon: const Icon(Icons.close),
+                                    tooltip: 'Clear text',
+                                    onPressed: () {
+                                      _query.clear();
+                                      searchNotifier.setQuery('');
+                                    },
+                                  ),
                           ),
-                        )
-                      : const Text('Collections'),
-              // While searching, ← closes the search as Back does: the text
-              // and filters go and the folder view comes back (owner,
-              // 2026-10-18).
-              leading: search.searching
-                  ? IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      tooltip: 'Close search',
-                      onPressed: _clearSearch,
-                    )
-                  : inFolder
-                      ? CollectionsUpButton(
-                          enabled: true,
-                          onUp: notifier.up,
-                          wrapper: (context, up) => UpDropTarget(
-                              level: level(), onDecision: _decide, child: up),
-                        )
-                      : null,
-              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-              actions: [
-                if (!search.searching)
-                  IconButton(
-                    icon: const Icon(Icons.search),
-                    tooltip: 'Search',
-                    onPressed: _openSearch,
-                  ),
-                // The filter belongs to search; a filter that is on without the
-                // field (a tag tap) shows it too (collections-search AC-01).
-                if (search.searching || search.filter.isActive)
-                  IconButton(
-                    icon: const Icon(Icons.tune),
-                    tooltip: 'Filter',
-                    onPressed: onOpenFilter,
-                  ),
-              ],
-            ),
-            // Settings bottom-left like the main screen's, the recycle bin in
-            // the middle, the plus button bottom-right.
-            floatingActionButtonLocation:
-                FloatingActionButtonLocation.centerFloat,
-            // Hidden while Match outside shows, so they do not cover it
-            // (collections-search AC-05).
-            floatingActionButton: Offstage(
-              // Kept in the tree (the bin button's key must not be built twice
-              // while the Scaffold animates it back in).
-              offstage: showsSheet,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    FloatingActionButton(
-                      heroTag: null,
-                      onPressed: () =>
-                          const CollectionsSettingsRoute().push(context),
-                      tooltip: 'Settings',
-                      elevation: 8.0,
-                      shape: const CircleBorder(),
-                      backgroundColor: AppDecor.of(context).fabAlt,
-                      foregroundColor: AppDecor.of(context).onFabAlt,
-                      child: const Icon(Icons.settings),
-                    ),
-                    BinDropTarget(
-                      level: level(),
-                      onDecision: _decide,
-                      // A short bounce when a flown picture lands in it.
-                      builder: (context, highlighted) => AnimatedScale(
-                        scale: _binBounce ? 1.18 : 1,
-                        duration: const Duration(milliseconds: 120),
-                        onEnd: () {
-                          if (_binBounce && mounted) {
-                            setState(() => _binBounce = false);
-                          }
-                        },
-                        child: FloatingActionButton(
-                          key: _binKey,
-                          heroTag: null,
-                          onPressed: _binMenu,
-                          tooltip: 'Recycle bin',
-                          elevation: 8.0,
-                          shape: const CircleBorder(),
-                          backgroundColor: highlighted
-                              ? AppDecor.of(context).binHot
-                              : AppDecor.of(context).bin,
-                          foregroundColor: AppDecor.of(context).onBin,
-                          // Full while the recycle bin holds something (owner,
-                          // 2026-10-17).
-                          child: Icon(
-                              binFull ? Icons.delete : Icons.delete_outline),
                         ),
-                      ),
-                    ),
-                    CollectionsSpeedDial(
-                      onNewFolder: () => _newFolder(state.folderId),
-                      onNewCollection: () => _newCollection(state.folderId),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            body: search.showsResults
-                ? LayoutBuilder(
-                    builder: (context, box) => Stack(
-                      children: [
-                        CollectionsResultsView(
-                          filter: search.filter,
-                          results: split?.hereCollections,
-                          folders: split?.hereFolders ?? const [],
-                          onOpenFolder: notifier.open,
-                          emptyHere:
-                              split != null && showsSheet && split.hereIsEmpty
-                                  ? _emptyHere(split, folderName)
-                                  : null,
-                          bottomPadding: showsSheet
-                              ? box.maxHeight * MatchOutsideSheet.peekSize + 16
-                              : 96,
-                          onOpen: _openCollection,
-                          onClear: _clearSearch,
-                          onRemoveTag: searchNotifier.removeTag,
-                          onClearCreated: searchNotifier.clearCreated,
-                          onClearEdited: searchNotifier.clearEdited,
-                        ),
-                        if (showsSheet)
-                          Positioned.fill(
-                            child: MatchOutsideSheet(
-                              split: split!,
-                              route: route,
-                              folders: liveFolders,
-                              query: search.filter.query,
-                              autoOpen: split.hereIsEmpty,
-                              autoOpenKey:
-                                  _autoOpenKey(state.folderId, search.filter),
-                              onOpenFolder: notifier.open,
-                              onOpenCollection: _openCollection,
+                        onChanged: searchNotifier.setQuery,
+                      )
+                    : inFolder
+                        // Up and the path on the bar's one line (owner,
+                        // 2026-10-18), in place of the old row below it.
+                        ? CollectionsPathBar(
+                            parts: state.path,
+                            onPart: notifier.open,
+                            partWrapper: (context, part, child) =>
+                                PathPartDropTarget(
+                              part: part,
+                              level: level(),
+                              onDecision: _decide,
+                              onHoverOpen: notifier.open,
+                              child: child,
                             ),
-                          ),
-                      ],
+                          )
+                        : const Text('Collections'),
+                // While searching, ← closes the search as Back does: the text
+                // and filters go and the folder view comes back (owner,
+                // 2026-10-18).
+                leading: search.searching
+                    ? IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        tooltip: 'Close search',
+                        onPressed: _clearSearch,
+                      )
+                    : inFolder
+                        ? CollectionsUpButton(
+                            enabled: true,
+                            onUp: notifier.up,
+                            wrapper: (context, up) => UpDropTarget(
+                                level: level(), onDecision: _decide, child: up),
+                          )
+                        : null,
+                backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+                actions: [
+                  if (!search.searching)
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      tooltip: 'Search',
+                      onPressed: _openSearch,
                     ),
-                  )
-                : Column(
+                  // The filter belongs to search; a filter that is on without the
+                  // field (a tag tap) shows it too (collections-search AC-01).
+                  if (search.searching || search.filter.isActive)
+                    IconButton(
+                      icon: const Icon(Icons.tune),
+                      tooltip: 'Filter',
+                      onPressed: onOpenFilter,
+                    ),
+                ],
+              ),
+              // Settings bottom-left like the main screen's, the recycle bin in
+              // the middle, the plus button bottom-right.
+              floatingActionButtonLocation:
+                  FloatingActionButtonLocation.centerFloat,
+              // Hidden while Match outside shows, so they do not cover it
+              // (collections-search AC-05).
+              floatingActionButton: Offstage(
+                // Kept in the tree (the bin button's key must not be built twice
+                // while the Scaffold animates it back in).
+                offstage: showsSheet,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: CollectionsGrid(
-                          items: items,
-                          nameEditorFor: renameFieldFor,
-                          onPress: renamePress,
-                          editorShowsError: renameShowsError,
-                          // Room below the last row for the round buttons.
-                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
-                          onBin: _deleteMode ? _binByButton : null,
-                          hidden: _flying,
-                          onTap: (item) {
-                            if (item.isFolder) {
-                              notifier.open(item.id);
-                            } else {
-                              _openCollection(item.id);
+                      FloatingActionButton(
+                        heroTag: null,
+                        onPressed: () =>
+                            const CollectionsSettingsRoute().push(context),
+                        tooltip: 'Settings',
+                        elevation: 8.0,
+                        shape: const CircleBorder(),
+                        backgroundColor: AppDecor.of(context).fabAlt,
+                        foregroundColor: AppDecor.of(context).onFabAlt,
+                        child: const Icon(Icons.settings),
+                      ),
+                      BinDropTarget(
+                        level: level(),
+                        onDecision: _decide,
+                        // A short bounce when a flown picture lands in it.
+                        builder: (context, highlighted) => AnimatedScale(
+                          scale: _binBounce ? 1.18 : 1,
+                          duration: const Duration(milliseconds: 120),
+                          onEnd: () {
+                            if (_binBounce && mounted) {
+                              setState(() => _binBounce = false);
                             }
                           },
-                          // No drag or reorder while the search field is open (AC-22).
-                          // The icon keeps its own size at the cell's top
-                          // left, as inside the drag wrapper's Stack, so it
-                          // does not move when search opens (owner, 2026-10-18).
-                          itemWrapper: locked
-                              ? (context, item, icon) => Align(
-                                    alignment: AlignmentDirectional.topStart,
-                                    child: icon,
-                                  )
-                              : (context, item, icon) {
-                                  final ids = [
-                                    for (final i in state.items ?? const [])
-                                      i.id
-                                  ];
-                                  final index = ids.indexOf(item.id);
-                                  // No drag while its name is edited.
-                                  final editing = item.id == editingId;
-                                  // Invisible gap targets on the tile's left edge (and the last
-                                  // tile's right edge) reorder to that place.
-                                  return Stack(
-                                    children: [
-                                      if (editing)
-                                        KeyedSubtree(
-                                            key: renameTileKey, child: icon)
-                                      else
-                                        DraggableCollectionIcon(
-                                          item: item,
-                                          level: level(),
-                                          onDecision: _decide,
-                                          onHoverOpen: notifier.open,
-                                          onDragStarted: () =>
-                                              _dragStarted(item),
-                                          onDragEnded: _dragStopped,
-                                          onLongPressNoMove: () =>
-                                              renameLongPressNoMove(item),
-                                          child: icon,
-                                        ),
-                                      Positioned(
-                                        left: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width: 8,
-                                        child: CollectionGapTarget(
-                                            index: index,
+                          child: FloatingActionButton(
+                            key: _binKey,
+                            heroTag: null,
+                            onPressed: _binMenu,
+                            tooltip: 'Recycle bin',
+                            elevation: 8.0,
+                            shape: const CircleBorder(),
+                            backgroundColor: highlighted
+                                ? AppDecor.of(context).binHot
+                                : AppDecor.of(context).bin,
+                            foregroundColor: AppDecor.of(context).onBin,
+                            // Full while the recycle bin holds something (owner,
+                            // 2026-10-17).
+                            child: Icon(
+                                binFull ? Icons.delete : Icons.delete_outline),
+                          ),
+                        ),
+                      ),
+                      CollectionsSpeedDial(
+                        onNewFolder: () => _newFolder(state.folderId),
+                        onNewCollection: () => _newCollection(state.folderId),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              body: search.showsResults
+                  ? LayoutBuilder(
+                      builder: (context, box) => Stack(
+                        children: [
+                          CollectionsResultsView(
+                            filter: search.filter,
+                            results: split?.hereCollections,
+                            folders: split?.hereFolders ?? const [],
+                            onOpenFolder: notifier.open,
+                            emptyHere:
+                                split != null && showsSheet && split.hereIsEmpty
+                                    ? _emptyHere(split, folderName)
+                                    : null,
+                            bottomPadding: showsSheet
+                                ? box.maxHeight * MatchOutsideSheet.peekSize +
+                                    16
+                                : 96,
+                            onOpen: _openCollection,
+                            onClear: _clearSearch,
+                            onRemoveTag: searchNotifier.removeTag,
+                            onClearCreated: searchNotifier.clearCreated,
+                            onClearEdited: searchNotifier.clearEdited,
+                          ),
+                          if (showsSheet)
+                            Positioned.fill(
+                              child: MatchOutsideSheet(
+                                split: split!,
+                                route: route,
+                                folders: liveFolders,
+                                query: search.filter.query,
+                                autoOpen: split.hereIsEmpty,
+                                autoOpenKey:
+                                    _autoOpenKey(state.folderId, search.filter),
+                                onOpenFolder: notifier.open,
+                                onOpenCollection: _openCollection,
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: CollectionsGrid(
+                            items: items,
+                            nameEditorFor: renameFieldFor,
+                            onPress: renamePress,
+                            editorShowsError: renameShowsError,
+                            // Room below the last row for the round buttons.
+                            padding: const EdgeInsets.fromLTRB(8, 8, 8, 96),
+                            onBin: _deleteMode ? _binByButton : null,
+                            hidden: _flying,
+                            onTap: (item) {
+                              if (item.isFolder) {
+                                notifier.open(item.id);
+                              } else {
+                                _openCollection(item.id);
+                              }
+                            },
+                            // No drag or reorder while the search field is open (AC-22).
+                            // The icon keeps its own size at the cell's top
+                            // left, as inside the drag wrapper's Stack, so it
+                            // does not move when search opens (owner, 2026-10-18).
+                            itemWrapper: locked
+                                ? (context, item, icon) => Align(
+                                      alignment: AlignmentDirectional.topStart,
+                                      child: icon,
+                                    )
+                                : (context, item, icon) {
+                                    final ids = [
+                                      for (final i in state.items ?? const [])
+                                        i.id
+                                    ];
+                                    final index = ids.indexOf(item.id);
+                                    // No drag while its name is edited.
+                                    final editing = item.id == editingId;
+                                    // Invisible gap targets on the tile's left edge (and the last
+                                    // tile's right edge) reorder to that place.
+                                    return Stack(
+                                      children: [
+                                        if (editing)
+                                          KeyedSubtree(
+                                              key: renameTileKey, child: icon)
+                                        else
+                                          DraggableCollectionIcon(
+                                            item: item,
                                             level: level(),
-                                            onDecision: _decide),
-                                      ),
-                                      if (index == ids.length - 1)
+                                            onDecision: _decide,
+                                            onHoverOpen: notifier.open,
+                                            onDragStarted: () =>
+                                                _dragStarted(item),
+                                            onDragEnded: _dragStopped,
+                                            onLongPressNoMove: () =>
+                                                renameLongPressNoMove(item),
+                                            child: icon,
+                                          ),
                                         Positioned(
-                                          right: 0,
+                                          left: 0,
                                           top: 0,
                                           bottom: 0,
                                           width: 8,
                                           child: CollectionGapTarget(
-                                              index: ids.length,
+                                              index: index,
                                               level: level(),
                                               onDecision: _decide),
                                         ),
-                                    ],
-                                  );
-                                },
+                                        if (index == ids.length - 1)
+                                          Positioned(
+                                            right: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: 8,
+                                            child: CollectionGapTarget(
+                                                index: ids.length,
+                                                level: level(),
+                                                onDecision: _decide),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

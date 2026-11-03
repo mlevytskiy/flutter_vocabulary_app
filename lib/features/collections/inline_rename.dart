@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -11,7 +12,8 @@ import 'name_dialog.dart';
 
 /// The name field of a tile being renamed in place (collection inline
 /// rename, owner 2026-11-03): the name's own style, centred, at most two
-/// lines, with only a thin underline. Enter or Done saves, Esc cancels.
+/// lines, in a square box outlined in the current collection icon's colour
+/// ([AppDecor.pic600], owner 2026-11-03). Enter or Done saves, Esc cancels.
 class InlineNameField extends StatelessWidget {
   const InlineNameField({
     super.key,
@@ -39,8 +41,11 @@ class InlineNameField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    UnderlineInputBorder line(Color c) =>
-        UnderlineInputBorder(borderSide: BorderSide(color: c));
+    final edge = AppDecor.of(context).pic600;
+    OutlineInputBorder box(Color c) => OutlineInputBorder(
+          borderRadius: BorderRadius.zero,
+          borderSide: BorderSide(color: c, width: 1.8),
+        );
     return CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): onCancel,
@@ -66,10 +71,13 @@ class InlineNameField extends StatelessWidget {
         decoration: InputDecoration(
           isDense: true,
           filled: false,
-          contentPadding: const EdgeInsets.only(bottom: 2),
-          border: line(AppDecor.of(context).muted),
-          enabledBorder: line(AppDecor.of(context).muted),
-          focusedBorder: line(scheme.primary),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+          border: box(edge),
+          enabledBorder: box(edge),
+          focusedBorder: box(edge),
+          errorBorder: box(scheme.error),
+          focusedErrorBorder: box(scheme.error),
           errorText: errorText,
           errorMaxLines: 3,
           // A little smaller than the default, to fit the 160-high cell.
@@ -294,7 +302,74 @@ mixin InlineRename<W extends ConsumerStatefulWidget>
     final box = renameTileKey.currentContext?.findRenderObject();
     if (box is! RenderBox || !box.attached || !box.hasSize) return;
     box.showOnScreen(
-        rect: Offset.zero &
-            Size(box.size.width, box.size.height + _buttonRoom));
+        rect:
+            Offset.zero & Size(box.size.width, box.size.height + _buttonRoom));
+  }
+}
+
+/// While a name is edited in place, a touch anywhere on the screen outside
+/// the edited tile only saves the name and closes the keyboard: nothing under
+/// it (another tile, a button, the grid's scroll) gets that touch, as in
+/// Finder. The next touch works as usual.
+class RenameTapShield extends SingleChildRenderObjectWidget {
+  const RenameTapShield({
+    super.key,
+    required this.active,
+    required this.keepKey,
+    required this.onShieldTouch,
+    required super.child,
+  });
+
+  /// A name is being edited.
+  final bool active;
+
+  /// Around the edited tile; touches inside it go through.
+  final GlobalKey keepKey;
+
+  /// A touch the shield took.
+  final VoidCallback onShieldTouch;
+
+  @override
+  RenderRenameTapShield createRenderObject(BuildContext context) =>
+      RenderRenameTapShield(active, keepKey, onShieldTouch);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, RenderRenameTapShield renderObject) {
+    renderObject
+      ..active = active
+      ..keepKey = keepKey
+      ..onShieldTouch = onShieldTouch;
+  }
+}
+
+class RenderRenameTapShield extends RenderProxyBox {
+  RenderRenameTapShield(this.active, this.keepKey, this.onShieldTouch);
+
+  bool active;
+  GlobalKey keepKey;
+  VoidCallback onShieldTouch;
+
+  bool _insideKept(Offset position) {
+    final kept = keepKey.currentContext?.findRenderObject();
+    if (kept is! RenderBox || !kept.attached || !kept.hasSize) return false;
+    final local = kept.globalToLocal(localToGlobal(position));
+    return (Offset.zero & kept.size).contains(local);
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (!active || !size.contains(position) || _insideKept(position)) {
+      return super.hitTest(result, position: position);
+    }
+    // Only the shield is hit; the ancestors (the TapRegion surface, so the
+    // field's onTapOutside) still see the touch.
+    result.add(BoxHitTestEntry(this, position));
+    return true;
+  }
+
+  @override
+  void handleEvent(PointerEvent event, BoxHitTestEntry entry) {
+    if (event is PointerDownEvent) onShieldTouch();
   }
 }
