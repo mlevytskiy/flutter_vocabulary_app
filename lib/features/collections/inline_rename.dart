@@ -112,6 +112,17 @@ mixin InlineRename<W extends ConsumerStatefulWidget>
 
   /// The item whose name the last pointer went down on.
   String? _pressedName;
+
+  /// The item whose rename just closed: a plain tap on its name opens the
+  /// field again (owner, 2026-11-03), until a touch lands anywhere else or the
+  /// screen goes away.
+  String? _reEditId;
+
+  /// This touch went down on [_reEditId]'s name.
+  bool _downOnReEditName = false;
+
+  /// This touch closed the rename through the shield; it must not disarm it.
+  bool _keepReEdit = false;
   double _inset = 0;
 
   /// Room the round buttons take at the bottom of the grid.
@@ -175,8 +186,35 @@ mixin InlineRename<W extends ConsumerStatefulWidget>
   }
 
   /// `CollectionsGrid.onPress`.
-  void renamePress(CollectionItemView item, bool onName) =>
-      _pressedName = onName ? item.id : null;
+  void renamePress(CollectionItemView item, bool onName) {
+    _pressedName = onName ? item.id : null;
+    _downOnReEditName = onName && item.id == _reEditId;
+  }
+
+  /// Every pointer down on the screen, after the tile's [renamePress]: a touch
+  /// anywhere but the just-renamed name disarms its tap-to-edit.
+  void renameTouchDown() {
+    if (_keepReEdit) {
+      _keepReEdit = false;
+    } else if (!_downOnReEditName) {
+      _reEditId = null;
+    }
+    _downOnReEditName = false;
+  }
+
+  /// [RenameTapShield.onShieldTouch]: saves; the touch keeps tap-to-edit.
+  void renameShieldTouch() {
+    commitRename();
+    _keepReEdit = true;
+  }
+
+  /// A tap on [item]: true when it was on the just-renamed name, which then
+  /// opens the field again instead of the item.
+  bool renameReopens(CollectionItemView item) {
+    if (_reEditId != item.id || _pressedName != item.id) return false;
+    startRename(item);
+    return true;
+  }
 
   /// `DraggableCollectionIcon.onLongPressNoMove`: renames when the press
   /// began on the name.
@@ -257,6 +295,7 @@ mixin InlineRename<W extends ConsumerStatefulWidget>
   void cancelRename() => _close(false);
 
   void _close(bool quiet) {
+    if (!quiet) _reEditId = editingId;
     editingId = null;
     _error = null;
     if (quiet) return;

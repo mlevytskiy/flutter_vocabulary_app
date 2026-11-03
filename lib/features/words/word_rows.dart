@@ -860,6 +860,20 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     });
   }
 
+  /// Saves the context typed under the row's fields (Words: word context
+  /// field, owner 2026-11-03). '' clears it; text the learner wrote counts as
+  /// from the source, since only the backfill writes AI context.
+  void _saveContext(int index, String text) {
+    if (index < 0 || index >= _wordPairs.length) return;
+    final kind = text.isEmpty ? ContextKind.none : ContextKind.source;
+    setState(() {
+      _wordPairs[index]
+        ..context = text
+        ..contextKind = kind;
+    });
+    _pushRow(index, context: text, contextKind: kind);
+  }
+
   /// The row with every field, icon and button, as on the main screen.
   Widget _wordRowItem(int index,
       {required bool isDragMode,
@@ -898,6 +912,7 @@ mixin _WordRows<T extends ConsumerStatefulWidget> on ConsumerState<T> {
       translationOptions: _effectiveOptions(index),
       rowContext: _wordPairs[index].context,
       rowContextKind: _wordPairs[index].contextKind,
+      onContextChanged: (text) => _saveContext(index, text),
       canLoadTranslationOptions: _canLoadTranslationOptions(index),
       onLoadTranslations: () => _loadTranslationOptions(index),
       popupController: _popupControllers.putIfAbsent(index, () => MyCustomPopupMenuController()),

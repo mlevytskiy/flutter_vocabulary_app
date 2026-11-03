@@ -198,6 +198,62 @@ void main() {
     expect(controller(t).selection.isCollapsed, isFalse);
   });
 
+  group('a tap on a just-renamed name', () {
+    Future<void> renameFolder(WidgetTester t) async {
+      await pump(t);
+      await holdName(t, 'English course');
+      await t.enterText(field, 'French course');
+      await t.tapAt(const Offset(700, 400)); // closes, opens nothing
+      await t.pump();
+      await t.pump();
+      expect(field, findsNothing);
+    }
+
+    final topLevel = find.text('Idioms');
+
+    testWidgets('opens the field again, not the folder', (t) async {
+      await renameFolder(t);
+      await t.tap(find.text('French course'));
+      await t.pump();
+      await t.pump();
+      expect(field, findsOneWidget);
+      expect(controller(t).text, 'French course');
+      expect(topLevel, findsOneWidget);
+    });
+
+    testWidgets('opens the folder after a touch elsewhere', (t) async {
+      await renameFolder(t);
+      await t.tapAt(const Offset(700, 400));
+      await t.pump();
+      await t.tap(find.text('French course'));
+      await t.pump();
+      await t.pump();
+      expect(field, findsNothing);
+      expect(topLevel, findsNothing);
+    });
+
+    testWidgets('on the picture opens the folder', (t) async {
+      await renameFolder(t);
+      final r = t.getRect(find.text('French course'));
+      await t.tapAt(Offset(r.center.dx, r.top - 30));
+      await t.pump();
+      await t.pump();
+      expect(field, findsNothing);
+      expect(topLevel, findsNothing);
+    });
+
+    testWidgets('on a fresh screen a tap on a name opens the folder',
+        (t) async {
+      await pump(t);
+      await t.tap(find.text('English course'));
+      await t.pump();
+      await t.pump();
+      expect(field, findsNothing);
+      expect(topLevel, findsNothing);
+      await t.pump(const Duration(seconds: 2)); // let the tap's timers end
+    });
+  });
+
   testWidgets('Done saves', (t) async {
     await pump(t);
     await holdName(t, 'Films words');

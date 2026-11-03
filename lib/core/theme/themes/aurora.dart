@@ -40,6 +40,7 @@ final aurora = AppThemeSpec(
         popup: const Color(0xF2141F36),
         onPopup: ice,
         addAccent: mint,
+        contextAccent: mint,
         fab: mint,
         fabActive: const Color(0xFF3DD9B8),
         onFab: const Color(0xFF00201A),

@@ -67,6 +67,7 @@ ThemeData windows95Theme() {
       popup: face,
       onPopup: black,
       addAccent: navy,
+      contextAccent: navy,
       fab: face,
       fabActive: Color(0xFFA0A0A0),
       onFab: black,

@@ -11,6 +11,7 @@ import '../../../core/widgets/synced_text_field_row.dart';
 import 'definition_dots_button.dart';
 import 'pronunciation_buttons.dart';
 import 'translation_dots_button.dart';
+import 'word_context_field.dart';
 
 /// One row of the word-input list: the Word/Translation field pair, their
 /// lightning icons, the drag handle (in drag mode), the remove button, and
@@ -65,6 +66,10 @@ class WordRowItem extends StatelessWidget {
   /// (word-context AC-13).
   final String rowContext;
   final ContextKind rowContextKind;
+
+  /// Saves the row's context typed under the fields (Words: word context
+  /// field, owner 2026-11-03). Null draws no context line.
+  final ValueChanged<String>? onContextChanged;
 
   /// Whether the Word field holds enough text for a dictionary lookup.
   final bool canLoadTranslationOptions;
@@ -121,6 +126,7 @@ class WordRowItem extends StatelessWidget {
     this.translationOptions,
     this.rowContext = '',
     this.rowContextKind = ContextKind.none,
+    this.onContextChanged,
     this.canLoadTranslationOptions = true,
     required this.onRemove,
     required this.onFillWordWithAI,
@@ -340,6 +346,17 @@ class WordRowItem extends StatelessWidget {
                     child: _definitionFieldWithDots(context),
                   ),
                 ],
+              ],
+              if (onContextChanged != null) ...[
+                const SizedBox(height: 12),
+                Padding(
+                  padding: EdgeInsets.only(
+                      left: dragHandleWidth, right: dotsButtonSlot),
+                  child: WordContextField(
+                    contextText: rowContext,
+                    onSave: onContextChanged!,
+                  ),
+                ),
               ],
             ],
           );

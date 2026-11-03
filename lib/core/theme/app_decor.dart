@@ -34,6 +34,7 @@ class AppDecor extends ThemeExtension<AppDecor> {
     this.popup = Colors.black87,
     this.onPopup = Colors.white,
     this.addAccent = const Color(0xFF2962FF),
+    this.contextAccent = const Color(0xFF954EF3),
     this.fab = Colors.red,
     this.fabActive = const Color(0xFFD32F2F),
     this.onFab = Colors.white,
@@ -117,6 +118,11 @@ class AppDecor extends ThemeExtension<AppDecor> {
 
   /// The dashed "+ Add a word" button.
   final Color addAccent;
+
+  /// Mixed half and half with [onBarButtonOf] for the Words screen's context
+  /// pencil, "+add context" and the Context field's OK tick (Words: word
+  /// context field, owner 2026-11-03). Classic's violet ([fabAlt]).
+  final Color contextAccent;
 
   /// The plus button of a speed dial, and its open state.
   final Color fab;

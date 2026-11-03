@@ -41,6 +41,7 @@ final matcha = AppThemeSpec(
         popup: deep,
         onPopup: Color(0xFFF3F6EE),
         addAccent: leaf,
+        contextAccent: leaf,
         fab: honey,
         fabActive: Color(0xFFC98A27),
         onFab: Colors.white,

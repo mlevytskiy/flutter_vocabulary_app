@@ -208,6 +208,8 @@ lib/
       lightning_rules.dart            two pure lightning predicates, cut unchanged (see step 4 findings)
       widgets/                        pieces CUT from words_screen.dart, code unchanged:
         word_row_item.dart              _buildItem
+        word_context_field.dart         (word context field, 2026-11-03) a row's context under its
+                                        fields: text + edit, dashed "+add context", or a field
         word_row_morph.dart             (photo-panel-glass) while the photo panel is open each row
                                         glides, top to bottom, into CompactWordLine — one line,
                                         "word — translation" (the definition when there is no

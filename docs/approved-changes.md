@@ -91,7 +91,20 @@ open with the name dialog's message as its error, and the tile hides "N words" a
 shows. While edited, the tile neither drags nor opens on a tap, and it scrolls to stay above the keyboard and the
 round buttons. One item at a time; the search result list is unchanged. (owner, 2026-11-03) While a name is edited, the first
 touch anywhere outside the edited tile only saves it and closes the keyboard; nothing under it reacts, including a
-long press on another name, which then needs a second long press.
+long press on another name, which then needs a second long press. (owner, 2026-11-03) After a rename closes, a
+plain tap on that item's name opens its field again instead of the item, until a touch lands anywhere else or the
+screen goes away; a tap on its picture opens it as usual, and on a freshly opened screen a tap on a name opens it.
+Words: word context field (owner Maksym, 2026-11-03) shows each Words-screen row's context (`WordPair.context`) under
+its fields, the full width but the dots slot: a context as its text (bodyMedium) with an edit icon (`Icons.edit_outlined`,
+18 px, `AppDecor.rowIcon`); no context as "+add context" in the Notes dialog's dashed `DashedAddButton`. A tap on either
+turns it into a "Context" field styled like Word and Translation; Done or focus loss saves the trimmed text to the word
+(kind "from the source"; empty clears it and "+add context" comes back). `WordContextField`, no new colours, no models.
+Follow-up (owner Maksym, 2026-11-03, Stitch variants A–D, picked B without the word highlight): an OK tick
+(`Icons.check_rounded`) on the right of the Context field saves it; a saved context is plain 15 px text
+with the edit pencil (`Icons.edit_outlined`, 18 px, no circle) right after its last word. The pencil, "+add context"
+and its dashes, and the OK tick with its 32 px circle (the colour at 18% opacity, 18 px icon), take the colour
+halfway between the title's rename pencil (`AppDecor.onBarButtonOf`) and the new slot `AppDecor.contextAccent`
+(Classic's violet 0xFF954EF3; other themes their add accent).
 
 ## Rule 5 — approved domain models and packages
 

@@ -62,3 +62,6 @@ isar.dll
 # SDD plugin — per-developer settings and worktrees
 .claude/*.local.md
 .worktrees/
+
+# BashCmd personal (per-developer) config
+bash_cmd_plugin/personal/

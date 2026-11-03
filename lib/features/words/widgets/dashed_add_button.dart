@@ -11,14 +11,18 @@ class DashedAddButton extends StatelessWidget {
     super.key,
     required this.label,
     required this.onPressed,
+    this.color,
   });
 
   final String label;
   final VoidCallback onPressed;
 
+  /// The text and dash colour; [AppDecor.addAccent] when null.
+  final Color? color;
+
   @override
   Widget build(BuildContext context) {
-    final color = AppDecor.of(context).addAccent;
+    final color = this.color ?? AppDecor.of(context).addAccent;
     return Align(
       alignment: Alignment.centerLeft,
       child: CustomPaint(

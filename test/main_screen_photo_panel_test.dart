@@ -244,8 +244,13 @@ void main() {
     final position = listPosition(tester);
     position.jumpTo(0);
     await tester.pump();
+    // Rows with their context line may leave row 4 unbuilt at the top.
+    while (!tester.any(row(4))) {
+      position.jumpTo(position.pixels + 100);
+      await tester.pump();
+    }
     final row4 = tester.getRect(row(4));
-    position.jumpTo(row4.top - list.top + row4.height / 3);
+    position.jumpTo(position.pixels + row4.top - list.top + row4.height / 3);
     await tester.pump();
     final (first, share) = topRow();
     expect(first, 4);

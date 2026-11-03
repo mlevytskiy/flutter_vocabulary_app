@@ -39,6 +39,7 @@ final amberTerminal = AppThemeSpec(
         popup: panel,
         onPopup: glow,
         addAccent: amber,
+        contextAccent: amber,
         fab: amber,
         fabActive: const Color(0xFFE09A00),
         onFab: dark,

@@ -380,6 +380,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
         if (!didPop) _clearSearch();
       },
       child: Listener(
+        onPointerDown: (_) => renameTouchDown(),
         onPointerUp: (_) => _dragStopped(),
         onPointerCancel: (_) => _dragStopped(),
         // Any part of a dragged icon over the bin lights it (owner, 2026-10-18).
@@ -389,7 +390,7 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
           child: RenameTapShield(
             active: editingId != null,
             keepKey: renameTileKey,
-            onShieldTouch: commitRename,
+            onShieldTouch: renameShieldTouch,
             child: Scaffold(
               // The side menu while this is the start of the stack; pushed from
               // a tag tap the bar keeps Back (navigation, owner 2026-10-18).
@@ -593,6 +594,8 @@ class _CollectionsScreenState extends ConsumerState<CollectionsScreen>
                             onBin: _deleteMode ? _binByButton : null,
                             hidden: _flying,
                             onTap: (item) {
+                              // Just renamed: a tap on its name edits again.
+                              if (renameReopens(item)) return;
                               if (item.isFolder) {
                                 notifier.open(item.id);
                               } else {
